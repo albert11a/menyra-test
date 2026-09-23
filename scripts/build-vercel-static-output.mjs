@@ -10,6 +10,7 @@ const deployablePaths = [
   "docs/lifeskin-prompt.json",
   "docs/lifeskin-prompt-v5.json",
   "docs/lifeskin-prompt-v8.txt",
+  "docs/lifeskin-prompt-v8-pa-foto.txt",
   "apps",
   "shared",
   "hub",

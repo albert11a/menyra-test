@@ -188,6 +188,9 @@ export class Terapia {
   get bestellt() { return BESTELLT.includes(this.daten?.status); }
   get nurVorschau() { return this.daten?.status === "vorschau"; }
   get mitAngebot() { return this.produkte.length > 0 && !this.bestellt; }
+  // Ohne Foto (Heart: Analyse-Art). Die Seite spricht dann von dem, was er
+  // erzaehlt hat - nie davon, was jemand gesehen haette.
+  get ohneFoto() { return this.daten?.ohneBild === true; }
 
   #suche(name) {
     try { return new URLSearchParams(this.ort?.search || "").get(name); } catch { return null; }
@@ -277,14 +280,23 @@ export class Terapia {
     this.#whatsapp($("#t-wa1"));
 
     // 2. Warum genau diese Therapie.
-    schreibe($("#t-psesyri"), mitProdukten ? "Pse pikërisht kjo terapi" : "Çfarë pa Dr. Gashi");
-    schreibe($("#t-psetitulli"), mitProdukten
-      ? "Çfarë pa Dr. Gashi te ju — dhe çfarë e trajton."
-      : "Gjetjet kryesore te ju.");
+    schreibe($("#t-psesyri"), mitProdukten ? "Pse pikërisht kjo terapi"
+      : (this.ohneFoto ? "Çfarë na treguat" : "Çfarë pa Dr. Gashi"));
+    schreibe($("#t-psetitulli"), this.ohneFoto
+      ? (mitProdukten ? "Çfarë na treguat — dhe çfarë e trajton." : "Ajo që na përshkruat.")
+      : (mitProdukten ? "Çfarë pa Dr. Gashi te ju — dhe çfarë e trajton." : "Gjetjet kryesore te ju."));
     this.#gjetjet();
     const diagnoza = String(r.diagnoza || "").trim();
     const vleresimi = $("#t-vleresimi");
-    vleresimi.textContent = diagnoza ? `Vlerësimi: ${diagnoza.replace(/;\s*/g, " · ")}. ` : "";
+    vleresimi.textContent = this.ohneFoto
+      ? "Plani bazohet në përshkrimin tuaj. "
+      : (diagnoza ? `Vlerësimi: ${diagnoza.replace(/;\s*/g, " · ")}. ` : "");
+    zeigen($("#t-fotoftese"), this.ohneFoto && Boolean(LIFESKIN_WHATSAPP));
+    const fotoWa = $("#t-fotowa");
+    if (fotoWa && LIFESKIN_WHATSAPP) {
+      const code = String(d.code || "");
+      fotoWa.href = `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(`Përshëndetje Dr. Gashi! Po ju dërgoj një foto për analizën time${code ? ` (${code})` : ""}.`)}`;
+    }
     const link = element("a", null, "Analiza e plotë ↓");
     link.href = "#analiza";
     vleresimi.append(link);
@@ -479,6 +491,27 @@ export class Terapia {
 
   #analiza() {
     const r = this.raport;
+    // OHNE FOTO gibt es nichts, was gemessen wurde: keine Diagnose-Karte,
+    // keine Zonen, keine zehn "nuk vlerësohet". Stattdessen, wie der Plan
+    // entstanden ist - aus seiner Beschreibung.
+    if (this.ohneFoto) {
+      schreibe($("#t-analizasyri"), "Si u zgjodh plani juaj");
+      schreibe($("#t-analizatitulli"), "Nga ajo që na treguat.");
+      schreibe($("#t-faq1"), "Dr. Gashi e zgjodhi sipas përshkrimit tuaj. Nëse keni lëkurë shumë të ndjeshme ose përdorni ilaçe për lëkurën, na shkruani para se të filloni — dhe nëse dërgoni një foto, plani bëhet edhe më i saktë.");
+      const metoda = $("#t-metoda");
+      schreibe(metoda, "Ky plan bazohet në atë që na përshkruat. Një foto e lëkurës e bën vlerësimin më të saktë — mund ta dërgoni kurdo në WhatsApp, dhe gjatë 28 ditëve Dr. Gashi e shikon lëkurën tuaj çdo javë me skanim.");
+      const summe = $("#t-metodablock summary");
+      if (summe?.firstChild) summe.firstChild.textContent = "Si u vlerësua pa foto?";
+      zeigen($("#t-diagnoza"), false);
+      zeigen($("#t-zonatblock"), false);
+      zeigen($("#t-parametratblock"), false);
+      schreibe($("#t-permbledhja"), String(r.gjetjet || ""));
+      const shpjegimi = Array.isArray(r.shpjegimi) ? r.shpjegimi.filter(Boolean) : [];
+      $("#t-shpjegimi").replaceChildren(...shpjegimi.map((x) => element("p", null, x)));
+      zeigen($("#t-shpjegimiblock"), shpjegimi.length > 0);
+      this.#paKujdes(r);
+      return;
+    }
     const diagnoza = String(r.diagnoza || "").trim();
     zeigen($("#t-diagnoza"), Boolean(diagnoza));
     schreibe($("#t-diagnozaemri"), diagnoza.replace(/;\s*/g, " · "));
@@ -510,6 +543,10 @@ export class Terapia {
     $("#t-shpjegimi").replaceChildren(...shpjegimi.map((x) => element("p", null, x)));
     zeigen($("#t-shpjegimiblock"), shpjegimi.length > 0);
 
+    this.#paKujdes(r);
+  }
+
+  #paKujdes(r) {
     const pk = r.paKujdes || {};
     const zeilen = [["Mund të zbehet", pk.zbehet], ["Çfarë mund të mbetet", pk.nukZbehet], ["Pas 6 muajsh", pk.pas6Muajsh]]
       .filter(([, text]) => String(text || "").trim());

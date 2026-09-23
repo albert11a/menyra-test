@@ -230,9 +230,11 @@ test("Heart gibt den Prompt aus, der hier liegt", () => {
   // keiner - dann weiss niemand, welche Fassung im Umlauf ist.
   const heart = lies("apps/mnyra-heart/heart-lifeskin-render.js");
   assert.match(heart, /Prompt v8 für diesen Fall kopieren/);
-  assert.match(lies("apps/mnyra-heart/heart.js"), /fetch\('\/docs\/lifeskin-prompt-v8\.txt'/);
+  // Zwei Vorlagen: mit Foto und ohne Foto (nach seiner Beschreibung).
+  assert.match(lies("apps/mnyra-heart/heart.js"), /'\/docs\/lifeskin-prompt-v8-pa-foto\.txt' : '\/docs\/lifeskin-prompt-v8\.txt'/);
   // Und die Datei muss auch ausgeliefert werden, sonst holt der Knopf eine
   // 404 und die Meldung lautet "Vorlage konnte nicht geladen werden".
+  assert.match(lies("scripts/build-vercel-static-output.mjs"), /docs\/lifeskin-prompt-v8-pa-foto\.txt/);
   assert.match(lies("scripts/build-vercel-static-output.mjs"), /docs\/lifeskin-prompt-v8\.txt/,
     "Die Vorlage wird nicht mit ausgeliefert");
 });

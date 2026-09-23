@@ -65,7 +65,7 @@ export function pruefeRaportV3(d) {
   if (vleresimi && !STATUS_VLERESIMI.includes(vleresimi.statusi)) merke('Unbekannter Beurteilungsstatus.');
 
   const raporti = keys(d.raporti,['fotot','parametrat_e_vleresuar','parametrat_me_gjetje','zonat_e_kontrolluara','zonat_me_ndryshime'],'raporti');
-  if (raporti) { integer(raporti.fotot,1,3,'fotot'); integer(raporti.zonat_e_kontrolluara,0,13,'zonat_e_kontrolluara'); }
+  if (raporti) { integer(raporti.fotot,0,3,'fotot'); integer(raporti.zonat_e_kontrolluara,0,13,'zonat_e_kontrolluara'); }
 
   const gjetjet = keys(d.gjetjet,['permbledhja','gjetja_kryesore','gjetja_dyta','sipas_zonave'],'gjetjet');
   const zonen = Array.isArray(gjetjet?.sipas_zonave) ? gjetjet.sipas_zonave : [];

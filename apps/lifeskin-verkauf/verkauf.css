@@ -268,3 +268,7 @@ img.produkt__ikona { object-fit: cover; padding: 0; }
 .porosia__faleminderit { padding-top: 30px; padding-bottom: 30px; display: grid; gap: 12px; }
 .porosia__faleminderit p { color: var(--muted); }
 #t-shpjegimi p { padding: 0 0 12px; color: var(--muted); font-size: .92rem; }
+
+/* Ohne Foto: die Einladung, eines nachzureichen */
+.foto-ftese { margin-top: 18px; padding: 16px; border-radius: 14px; background: var(--green-soft); border: 1px solid #cfe0d3; display: grid; gap: 12px; }
+.foto-ftese p { font-size: .92rem; }

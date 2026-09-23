@@ -75,6 +75,11 @@
         <h2 id="t-psetitulli">Çfarë pa Dr. Gashi te ju — dhe çfarë e trajton.</h2>
         <ol class="gjetjet" id="t-gjetjet"></ol>
         <p class="shenim" id="t-vleresimi"></p>
+        <!-- Nur ohne Foto: die Einladung, eines zu schicken. -->
+        <div class="foto-ftese" id="t-fotoftese" hidden>
+          <p><b>Dëshironi një plan edhe më të saktë?</b> Dërgoni një foto të lëkurës në WhatsApp — Dr. Gashi e shikon dhe e përshtat planin tuaj, pa pagesë.</p>
+          <a class="knopf knopf--wa" id="t-fotowa" href="#" target="_blank" rel="noopener">Dërgo një foto në WhatsApp</a>
+        </div>
       </section>
 
       <!-- 3. WAS DRIN IST -->
@@ -145,7 +150,7 @@
         <p class="syri">Para se të vendosni</p>
         <h2>Pyetje të shpeshta.</h2>
         <details><summary>A është kjo terapi e përshtatshme për mua?<i aria-hidden="true">+</i></summary>
-          <p>Dr. Gashi e zgjodhi sipas fotove tuaja dhe gjetjeve të kësaj analize. Nëse keni lëkurë shumë të ndjeshme ose përdorni ilaçe për lëkurën, na shkruani para se të filloni.</p></details>
+          <p id="t-faq1">Dr. Gashi e zgjodhi sipas fotove tuaja dhe gjetjeve të kësaj analize. Nëse keni lëkurë shumë të ndjeshme ose përdorni ilaçe për lëkurën, na shkruani para se të filloni.</p></details>
         <details><summary>Kur shoh ndryshim?<i aria-hidden="true">+</i></summary>
           <p>Lëkura ndryshon ngadalë — ndryshimet e para zakonisht duken pas disa javësh. Prandaj Dr. Gashi e kontrollon çdo javë dhe e krahason në ditën 28.</p></details>
         <details><summary>Si paguaj dhe sa kushton dërgesa?<i aria-hidden="true">+</i></summary>
@@ -157,8 +162,8 @@
 
       <!-- 8. DIE GANZE ANALYSE -->
       <section class="pjese analiza" id="analiza" data-pfad="Ganze Analyse">
-        <p class="syri">Analiza e plotë</p>
-        <h2>Detajet, kur dëshironi t'i lexoni.</h2>
+        <p class="syri" id="t-analizasyri">Analiza e plotë</p>
+        <h2 id="t-analizatitulli">Detajet, kur dëshironi t'i lexoni.</h2>
         <div class="diagnoza" id="t-diagnoza" hidden>
           <p><span>Vlerësimi orientues</span><strong id="t-diagnozaemri"></strong><em id="t-diagnozalat"></em></p>
           <span class="shkalla" id="t-niveli" hidden></span>
@@ -172,8 +177,8 @@
           <div id="t-shpjegimi"></div></details>
         <details id="t-pakujdesblock" hidden><summary>Çfarë ndodh pa kujdes?<i aria-hidden="true">+</i></summary>
           <dl class="zonat" id="t-pakujdes"></dl></details>
-        <details><summary>Si vlerësohet?<i aria-hidden="true">+</i></summary>
-          <p>Vlerësim i pamjes së lëkurës nga foto. Nga një fotografi nuk vlerësohen dot thellësia e lezioneve, dhimbja apo faktorët hormonalë; drita dhe kamera mund ta ndryshojnë pamjen e skuqjes. Historia dhe produktet që përdorni e plotësojnë planin.</p></details>
+        <details id="t-metodablock"><summary>Si vlerësohet?<i aria-hidden="true">+</i></summary>
+          <p id="t-metoda">Vlerësim i pamjes së lëkurës nga foto. Nga një fotografi nuk vlerësohen dot thellësia e lezioneve, dhimbja apo faktorët hormonalë; drita dhe kamera mund ta ndryshojnë pamjen e skuqjes. Historia dhe produktet që përdorni e plotësojnë planin.</p></details>
       </section>
 
       <footer class="fundi">

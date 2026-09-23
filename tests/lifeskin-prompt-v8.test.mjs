@@ -108,3 +108,27 @@ test("Therapieseite: Produktzahl und Fettdruck im Einstiegssatz", async () => {
   assert.match(fettNachtragen(neu, [{ gjetja: "Puçrra të kuqe" }]),
     /^Për \*\*puçrrat aktive në faqe\*\* dhe \*\*skuqjen në mjekër\*\* — 2 produkte/);
 });
+
+test("Prompt ohne Foto: dieselben Platzhalter, kein Bild-Vokabular als Anweisung verboten", async () => {
+  const ohne = readFileSync(new URL("../docs/lifeskin-prompt-v8-pa-foto.txt", import.meta.url), "utf8");
+  for (const platz of ["{{PATIENT_NAME}}", "{{AGE}}", "{{ANAMNESIS}}", "{{VERIFIED_PRODUCTS}}", "{{FIXED_PRODUCTS}}"]) {
+    assert.ok(ohne.includes(platz), platz);
+  }
+  assert.match(ohne, /"shitja": \{/);
+  assert.match(ohne, /"shkalla": null, "grada": "nuk vlerësohet"/);
+  const text = promptV8Fuellen(ohne, { name: "Anita", ageBand: "35-44", problemi: "Lekure e yndyrshme" }, [], [{ id: "lf-acne", name: "LF ACNE" }]);
+  assert.doesNotMatch(text, /\{\{[A-Z_]+\}\}/);
+  assert.match(text, /Lekure e yndyrshme/);
+  assert.match(text, /1\. lf-acne/);
+});
+
+test("Heart waehlt die Analyse-Art nach dem Weg - und nach dem Befund, wenn er freigegeben ist", async () => {
+  const { analyseArt } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
+  assert.equal(analyseArt({ typ: "trup" }, null), "pa-foto");
+  assert.equal(analyseArt({ typ: "pytje", photos: [] }, null), "pa-foto");
+  assert.equal(analyseArt({ typ: "trup", photos: ["zona"] }, null), "foto");
+  assert.equal(analyseArt({ typ: "scan" }, null), "foto");
+  // Umgeschaltet und freigegeben: das gilt.
+  assert.equal(analyseArt({ typ: "trup" }, { status: "fertig", ohneBild: false }), "foto");
+  assert.equal(analyseArt({ typ: "scan" }, { status: "fertig", ohneBild: true }), "pa-foto");
+});

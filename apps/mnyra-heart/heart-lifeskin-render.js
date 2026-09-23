@@ -1312,6 +1312,17 @@ export function shitjaInFelder(shitja, wurzel = globalThis.document) {
   if (kasten && s.hyrja) kasten.open = true;
 }
 
+// Mit oder ohne Foto: was im Befund steht, sonst nach dem Weg. Trup und
+// Pytje kommen ohne Foto, ausser er hat doch eines angehaengt.
+export function analyseArt(sitzung, bericht) {
+  if (typeof bericht?.ohneBild === "boolean" && bericht?.status && bericht.status !== "wartet") {
+    return bericht.ohneBild ? "pa-foto" : "foto";
+  }
+  const ohne = ["trup", "pytje"].includes(String(sitzung?.typ || ""))
+    && !(Array.isArray(sitzung?.photos) && sitzung.photos.length);
+  return ohne ? "pa-foto" : "foto";
+}
+
 export function whatsappNachricht(sitzung, bericht) {
   const text = String(bericht?.raport?.shitja?.whatsapp || "").trim();
   if (!text) return "";
@@ -1924,6 +1935,18 @@ function renderBefundEditor(sitzung, produkte, bericht) {
       <div class="heart-lifeskin-vorlage">
         <textarea class="heart-lifeskin-eingabe" id="lifeskin-json" rows="3"
                   placeholder="JSON der Analyse hier einfuegen — Anfuehrungszeichen und Vorrede sind egal"></textarea>
+        <!-- MIT ODER OHNE FOTO. Bestimmt den Prompt, den der Knopf kopiert,
+             und wie die Therapieseite spricht. Ohne Foto sagt sie "was Sie
+             uns erzaehlt haben" statt "was Dr. Gashi gesehen hat". Kommt
+             das Foto spaeter per WhatsApp: umschalten, neu kopieren, neu
+             freigeben. -->
+        <label class="heart-lifeskin-feld heart-analyse-art">
+          <span>Analyse-Art</span>
+          <select class="heart-lifeskin-eingabe" data-bogen-art>
+            <option value="foto"${analyseArt(sitzung, bericht) === "foto" ? " selected" : ""}>Mit Foto – Bildanalyse</option>
+            <option value="pa-foto"${analyseArt(sitzung, bericht) === "pa-foto" ? " selected" : ""}>Ohne Foto – nach seiner Beschreibung</option>
+          </select>
+        </label>
         <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-prompt-kopieren">Prompt v8 für diesen Fall kopieren</button>
         <textarea class="heart-lifeskin-eingabe" id="lifeskin-prompt-ausgabe" hidden readonly rows="5" aria-label="Vollständiger Prompt für diesen Fall"></textarea>
         <div class="heart-lifeskin-vorlage__reihe">

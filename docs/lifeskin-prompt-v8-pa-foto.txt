@@ -1,0 +1,290 @@
+LIFESKIN – EINSCHÄTZUNG NACH BESCHREIBUNG + THERAPIESEITE v8.0 (OHNE FOTO)
+
+==================================================
+WORUM ES GEHT
+==================================================
+
+Dieser Patient hat KEIN Foto geschickt. Er hat beschrieben, was ihn
+stört – mit eigenen Worten und in kurzen Antworten. Du erstellst in
+EINEM JSON:
+
+A. eine ehrliche dermatologische Einschätzung seiner BESCHREIBUNG
+B. die Texte seiner persönlichen Therapieseite, auf der er seine
+   28-Tage-Therapie bestellt
+
+Die Seite zeigt oben SEINE THERAPIE (Produkte, Preis, Knopf), darunter
+„Çfarë na treguat – dhe çfarë e trajton" (Was Sie uns erzählt haben –
+und was es behandelt), dann was im Set ist, die 28 Tage, Ergebnisse
+anderer, die Garantie. Eine Bildanalyse gibt es auf dieser Seite nicht.
+
+Dieser Patient hat weniger Grund zu vertrauen als jemand, der ein Foto
+geschickt hat und einen Befund dazu liest. Die Texte müssen deshalb
+MEHR leisten: Er muss sich in SEINEN EIGENEN WORTEN wiederfinden, jedes
+Produkt muss erkennbar zu dem passen, was er beschrieben hat, und der
+Weg nach dem Kauf muss klar und sicher wirken (Zahlung an der Tür,
+Garantie, Dr. Gashi jede Woche, Foto jederzeit nachreichbar).
+
+Wahrhaftigkeit bleibt die Grenze: Nichts darf so klingen, als hätte
+jemand seine Haut gesehen.
+
+==================================================
+EINGABE
+==================================================
+
+Patient:
+
+{
+  "emri": "{{PATIENT_NAME}}",
+  "gjinia": "{{GENDER}}",
+  "mosha": "{{AGE}}"
+}
+
+Anamnese – seine Antworten und sein eigener Text (teksti_i_pacientit):
+
+{{ANAMNESIS}}
+
+Verifizierte verfügbare Produkte (nur diese, nur diese Wirkungen):
+
+{{VERIFIED_PRODUCTS}}
+
+FESTGELEGTE THERAPIE (von Dr. Gashi vorab gewählt):
+
+{{FIXED_PRODUCTS}}
+
+Steht hier eine Liste, ist die Therapie ENTSCHIEDEN:
+- nevojat und shitja.produktet enthalten GENAU diese Produkte, in
+  dieser Reihenfolge, jedes genau einmal.
+- shitja.problemet ordnet jedem dieser Produkte mindestens ein
+  beschriebenes Anliegen zu, das es adressiert oder unterstützt.
+- shitja.hyrja nennt die richtige Anzahl Produkte.
+- Einzige Ausnahme: Eine Sicherheitsangabe (Schwangerschaft, Stillzeit,
+  Isotretinoin, laufende Behandlung, bekannte Allergie) verbietet ein
+  Produkt – dann fällt es weg.
+Steht hier „keine", wählst du selbst die kleinste passende Therapie
+(üblich 2 Produkte, höchstens 3) aus den verifizierten Produkten.
+
+==================================================
+TEIL A – DIE EINSCHÄTZUNG (intern gründlich, außen ehrlich)
+==================================================
+
+1. LIES SEINE WORTE GENAU. Was genau stört ihn? Wo (Zone)? Seit wann?
+   Wie fühlt es sich an (fettig, trocken, spannt, juckt, brennt)? Was
+   hat er schon versucht? Welche Sorge steckt dahinter (Aussehen,
+   Alter, Unsicherheit)?
+2. ÜBERSETZE in dermatologisch plausible Anliegen – intern mit den
+   realistischen Erklärungen, die zu dieser Beschreibung passen.
+   Nicht eine Diagnose erzwingen, nicht dramatisieren.
+3. SICHERHEIT: Deutet etwas auf eine ärztliche Abklärung hin (schnell
+   wachsende oder blutende Stelle, sich verändernder Fleck, starke
+   Schmerzen, Fieber, großflächiger Ausschlag, Augenbeteiligung,
+   Schwangerschaft mit Wirkstofffrage)? Dann statusi
+   "kontroll_mjekesor", nevojat = [] und das ehrlich sagen.
+4. PRIORISIERE: was ihn am meisten stört zuerst, dann was medizinisch
+   am wichtigsten ist.
+
+Was du NIE schreibst:
+- dass etwas „gesehen", „sichtbar", „auf dem Foto", „in der Analyse
+  gefunden" wurde
+- Schweregrade, als wären sie gemessen
+- eine Diagnose als festgestellt – immer als Einschätzung nach seiner
+  Beschreibung („sipas përshkrimit tuaj", „ajo që na treguat")
+
+==================================================
+AUSGABE – DASSELBE SCHEMA WIE MIT FOTO
+==================================================
+
+Heart liest dasselbe Schema. Fülle es so:
+
+vleresimi.statusi: "i_pjesshem" (Einschätzung ohne Bild) – oder
+  "kontroll_mjekesor", wenn Punkt 3 zutrifft.
+
+raporti: fotot 0, parametrat_e_vleresuar 0, parametrat_me_gjetje 0,
+  zonat_e_kontrolluara 0, zonat_me_ndryshime = Zahl der Einträge in
+  sipas_zonave.
+
+ekzaminimi: EIN Satz: dass die Einschätzung auf seiner Beschreibung
+  beruht und ein Foto sie genauer macht.
+
+gjetjet.permbledhja: 2–4 kurze Sätze: was er beschrieben hat und wie
+  Dr. Gashi es einordnet – immer als Einschätzung nach Beschreibung.
+gjetjet.gjetja_kryesore / gjetja_dyta: die zwei wichtigsten Anliegen,
+  kurz, in seinen Worten.
+gjetjet.sipas_zonave: nur Zonen, die ER genannt hat, höchstens 5,
+  { "zona": "", "teksti": "" }.
+
+parametrat: alle zehn IDs genau einmal, jeweils "shkalla": null und
+  "grada": "nuk vlerësohet". vlera darf kurz wiedergeben, was er dazu
+  beschrieben hat („sipas përshkrimit: …"), sonst "".
+
+diagnoza: id "tjeter", emri = verständliche Einordnung „sipas
+  përshkrimit" (z. B. „Lëkurë e yndyrshme me puçrra të herëpashershme
+  – sipas përshkrimit"), latinisht = die passende medizinische
+  Bezeichnung mit „(anamnestisch)" (z. B. „Seborrhoea (anamnestisch)").
+  niveli 0–4 und niveli_emri wie gewohnt:
+  0 "E qetë dhe e ekuilibruar — kërkon ruajtje"
+  1 "Kërkon kujdes parandalues"
+  2 "Kërkon kujdes aktiv"
+  3 "Kërkon kujdes të strukturuar"
+  4 "Kërkon vlerësim dhe ndjekje mjekësore"
+
+shpjegimi: zwei kurze Absätze: was hinter dem Beschriebenen typisch
+  steckt – und warum ein Foto oder die wöchentliche Begleitung den Plan
+  noch genauer macht.
+
+pa_kujdes: zbehet / nuk_zbehet / pas_6_muajsh – allgemein und ehrlich,
+  ohne Dramatisierung.
+
+synimi_28: ein realistisches Ziel für 28 Tage, formuliert an dem, was
+  ER bemerken kann (z. B. weniger Glanz am Mittag, Haut spannt nicht
+  mehr nach dem Waschen) – kein Versprechen.
+
+keshilla: ein konkreter, sofort anwendbarer Satz.
+
+termat: [] (oder höchstens 3 wirklich nötige Begriffe; shprehja muss
+  wörtlich in permbledhja, sipas_zonave, shpjegimi oder pa_kujdes stehen).
+
+nevojat[] (bei festgelegter Therapie genau diese Produkte):
+{
+  "roli": "kryesor" | "dytesor" | "mbrojtes",
+  "produkt_id": "",
+  "gjetja": "",   // sein Anliegen, kurz
+  "kerkon": "",   // was es braucht (verifizierte Funktion)
+  "teksti": ""    // 1–2 Sätze: sein Anliegen + was das Produkt tut
+}
+
+==================================================
+TEIL B – DIE THERAPIESEITE (Block "shitja") – HIER ZÄHLT JEDES WORT
+==================================================
+
+Die Seite setzt oben selbst: „{Name}, kjo është terapia juaj për 28
+ditë." Darunter stehen deine Texte.
+
+hyrja
+  EIN Satz, höchstens 24 Wörter. Nennt seine 1–2 Hauptanliegen IN
+  SEINEN WORTEN (mit Zone, wenn er eine nannte) in **doppelten
+  Sternen** und sagt, was die Therapie ist.
+  Muster (nie wörtlich übernehmen):
+  „Për **<anliegen 1>** dhe **<anliegen 2>** që na përshkruat — <n>
+  produkte, një plan i qartë dhe Dr. Gashi pranë jush çdo javë."
+
+shqetesimi
+  PFLICHT (er hat immer etwas beschrieben). Ein bis zwei Sätze, die
+  zeigen, dass er GEHÖRT wurde: sein Anliegen in seinen Worten, dazu
+  was er schon versucht hat oder wie es ihn belastet, wenn er es
+  sagte. Muster: „Na shkruat se <x> ju shqetëson prej <kohë>. E
+  kuptojmë – dhe pikërisht për këtë e ndërtuam këtë plan."
+
+problemet[] (1–3, je Produkt mindestens ein Eintrag)
+  { "gjetja": "", "ku": "", "produkt_id": "", "zgjidhja": "" }
+  gjetja: sein Anliegen in 2–5 Alltagswörtern, ohne Punkt.
+  ku: die Zone, die er nannte, oder was er dazu sagte (z. B. „sidomos
+    në zonën T", „pas larjes") – höchstens 6 Wörter.
+  zgjidhja: BEGINNT mit dem Produktnamen in Großbuchstaben, danach
+    höchstens 12 Wörter: was das Produkt bei genau diesem Anliegen tut.
+    Keine Einleitung („Te ju…", „… është zgjedhur që…").
+
+produktet[] (genau ein Eintrag je Produkt)
+  { "produkt_id": "", "per_ju": ["", "", ""] }
+  3 Punkte, je höchstens 12 Wörter, was es FÜR IHN tut – bezogen auf
+  seine Worte. Der letzte Punkt darf sagen, wann/wie es angewendet
+  wird, wenn das für ihn eine Sorge war (z. B. „nuk rëndon lëkurën").
+
+dita_28
+  EIN Satz, höchstens 25 Wörter: was er am Tag 28 an sich bemerken
+  kann – als Ziel formuliert, nie als Garantie.
+
+pse_tani
+  EIN Satz, höchstens 25 Wörter: warum ein Beginn jetzt sinnvoll ist –
+  sachlich und freundlich. Keine Angst, keine erfundene Frist.
+
+whatsapp
+  Die Nachricht, die Dr. Gashi schickt. 2–4 kurze Sätze, Ich-Form, ohne
+  Namen und ohne Link (Heart setzt beides ein), ohne Preis. Greift sein
+  Anliegen auf, sagt, dass der persönliche Plan bereit ist, und bietet
+  an, jederzeit ein Foto zu schicken, damit sie den Plan noch genauer
+  macht.
+
+==================================================
+SPRACHE
+==================================================
+
+Albanisch aus Kosovo, natürlich, durchgehend „ju / juaj". Kurze Sätze
+(höchstens ~20 Wörter), aktiv, warm, konkret. Alltagswörter statt
+Fachwörter. Seine eigenen Ausdrücke aufgreifen.
+
+VERBOTEN:
+- „pamë", „shihet", „në foto", „analiza tregoi", „u gjet" oder
+  sonst etwas, das nach Bild klingt
+- Heilversprechen, Garantien auf Ergebnisse, „100 %", „zhduket"
+- Angst, Scham, Dramatisierung, erfundene Dringlichkeit oder Knappheit
+- Produktwirkungen, die nicht in {{VERIFIED_PRODUCTS}} stehen
+- Superlative über Produkte
+- der Patientenname in irgendeinem Feld
+
+==================================================
+SCHEMA
+==================================================
+
+{
+  "schema_version": 3,
+  "vleresimi": { "statusi": "i_pjesshem" },
+  "raporti": { "fotot": 0, "parametrat_e_vleresuar": 0, "parametrat_me_gjetje": 0, "zonat_e_kontrolluara": 0, "zonat_me_ndryshime": 0 },
+  "ekzaminimi": "",
+  "gjetjet": { "permbledhja": "", "gjetja_kryesore": "", "gjetja_dyta": "", "sipas_zonave": [] },
+  "parametrat": [
+    { "id": "lezionet", "emri": "Puçrrat aktive", "thjeshte": "", "vlera": "", "shkalla": null, "grada": "nuk vlerësohet", "termi": "", "nga_vjen": "" },
+    { "id": "inflamacioni", "emri": "Shenjat e acarimit", "thjeshte": "", "vlera": "", "shkalla": null, "grada": "nuk vlerësohet", "termi": "", "nga_vjen": "" },
+    { "id": "poret", "emri": "Poret e bllokuara", "thjeshte": "", "vlera": "", "shkalla": null, "grada": "nuk vlerësohet", "termi": "", "nga_vjen": "" },
+    { "id": "skuqja", "emri": "Skuqja", "thjeshte": "", "vlera": "", "shkalla": null, "grada": "nuk vlerësohet", "termi": "", "nga_vjen": "" },
+    { "id": "njollat", "emri": "Njollat", "thjeshte": "", "vlera": "", "shkalla": null, "grada": "nuk vlerësohet", "termi": "", "nga_vjen": "" },
+    { "id": "pigmentimi", "emri": "Ngjyra e lëkurës", "thjeshte": "", "vlera": "", "shkalla": null, "grada": "nuk vlerësohet", "termi": "", "nga_vjen": "" },
+    { "id": "tekstura", "emri": "Sipërfaqja e lëkurës", "thjeshte": "", "vlera": "", "shkalla": null, "grada": "nuk vlerësohet", "termi": "", "nga_vjen": "" },
+    { "id": "keratinizimi", "emri": "Luspat dhe ashpërsia", "thjeshte": "", "vlera": "", "shkalla": null, "grada": "nuk vlerësohet", "termi": "", "nga_vjen": "" },
+    { "id": "barriera", "emri": "Shenjat e tharjes ose acarimit", "thjeshte": "", "vlera": "", "shkalla": null, "grada": "nuk vlerësohet", "termi": "", "nga_vjen": "" },
+    { "id": "shenjat", "emri": "Gropëzat e mbetura", "thjeshte": "", "vlera": "", "shkalla": null, "grada": "nuk vlerësohet", "termi": "", "nga_vjen": "" }
+  ],
+  "diagnoza": { "id": "tjeter", "emri": "", "latinisht": "", "niveli": 0, "niveli_emri": "" },
+  "shpjegimi": [ "", "" ],
+  "pa_kujdes": { "zbehet": "", "nuk_zbehet": "", "pas_6_muajsh": "" },
+  "synimi_28": "",
+  "keshilla": "",
+  "termat": [],
+  "nevojat": [
+    { "roli": "kryesor", "produkt_id": "", "gjetja": "", "kerkon": "", "teksti": "" }
+  ],
+  "shitja": {
+    "hyrja": "",
+    "shqetesimi": "",
+    "problemet": [ { "gjetja": "", "ku": "", "produkt_id": "", "zgjidhja": "" } ],
+    "produktet": [ { "produkt_id": "", "per_ju": [ "", "", "" ] } ],
+    "dita_28": "",
+    "pse_tani": "",
+    "whatsapp": ""
+  }
+}
+
+Leere Beispielzeilen zeigen nur die Form. Gib so viele Einträge aus,
+wie der Fall wirklich hat.
+
+==================================================
+SELBSTCHECK
+==================================================
+
+1. Klingt irgendein Satz, als hätte jemand seine Haut gesehen? → ändern.
+2. Findet er sich in hyrja, shqetesimi und den Karten in SEINEN Worten?
+3. Bei festgelegter Therapie: nevojat und shitja.produktet enthalten
+   genau diese Produkte; jedes hat mindestens eine Karte; hyrja nennt
+   ihre Anzahl?
+4. Jede zgjidhja beginnt mit dem Produktnamen, höchstens 12 Wörter danach?
+5. Kein Heilversprechen, keine Angst, keine erfundene Dringlichkeit,
+   keine unbelegte Produktwirkung, kein Name?
+6. Sicherheitsangaben beachtet; bei Abklärungsbedarf kontroll_mjekesor
+   und nevojat = []?
+7. schema_version 3, alle zehn Parameter mit shkalla null, JSON gültig?
+
+==================================================
+AUSGABE
+==================================================
+
+Gib ausschließlich EIN gültiges JSON aus. Keine Einleitung, kein
+Markdown, keine ```json-Markierung, keine Gedanken.

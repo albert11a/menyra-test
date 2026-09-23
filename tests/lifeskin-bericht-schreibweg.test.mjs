@@ -41,10 +41,11 @@ function dokumentBauen(werte) {
   // ersetzbare Saetze, die nur dann im Dokument landen, wenn wirklich
   // einer geaendert wurde. Hier wird ohne geprueft - der Schreibweg des
   // Befunds selbst ist davon unberuehrt.
-  const bauen = new Function("befund", "produkte", "preis", "schwere", "analyse", "raport", "texte", "nurStaff",
+  // ohneBild kam mit der Analyse ohne Foto dazu (nach seiner Beschreibung).
+  const bauen = new Function("befund", "produkte", "preis", "schwere", "analyse", "raport", "texte", "nurStaff", "ohneBild",
     `return (${literal});`);
   return bauen(werte.befund, werte.produkte, werte.preis, werte.schwere, werte.analyse, werte.raport,
-    werte.texte || {}, false);
+    werte.texte || {}, false, false);
 }
 
 const raport = raportLesen(

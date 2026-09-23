@@ -1944,7 +1944,9 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff = false } = {}) {
   // Seite mit Befundtext und Preis - ohne Zonen, Messwerte, Diagnose und
   // Prognose. Genau so ist ein Bericht schon einmal beim Patienten
   // gelandet. Lieber hier stehenbleiben als dort halb leer ankommen.
-  if (!raport.parametrat.length) {
+  // Ohne Foto gibt es keine Messwerte - das ist dort kein Fehler.
+  const art = document.querySelector("[data-bogen-art]")?.value === "pa-foto" ? "pa-foto" : "foto";
+  if (!raport.parametrat.length && art !== "pa-foto") {
     setToast("Befund",
       "Ohne Messwerte zeigt die Seite nur Text. Bitte im Bogen mindestens einen Parameter ausfuellen — oder das JSON der Analyse einfuegen.",
       "danger");
@@ -1973,7 +1975,7 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff = false } = {}) {
   actions.patchLifeskin({ berichtStatus: "laeuft" });
   try {
     await gibBerichtFrei(id, { befund, produkte, preis: produkte.length ? preis : 0, schwere, raport,
-    texte,
+    texte, ohneBild: art === "pa-foto",
     nurStaff,
     analyse: {
       javet: [1, 2, 3, 4].map((n) => zusatz[`java_${n}`] || "")
@@ -2340,7 +2342,9 @@ async function lifeskinPromptKopieren() {
     // PROMPT v8: Analyse und Texte der Therapieseite in einem. Er ist ein
     // Text mit Platzhaltern, keine JSON-Vorlage mehr - siehe
     // promptV8Fuellen() und docs/lifeskin-prompt-v8.txt.
-    const response = await fetch('/docs/lifeskin-prompt-v8.txt', {cache:'no-store'});
+    // Mit oder ohne Foto - der Schalter im Bogen entscheidet.
+    const ohneFoto = document.querySelector('[data-bogen-art]')?.value === 'pa-foto';
+    const response = await fetch(ohneFoto ? '/docs/lifeskin-prompt-v8-pa-foto.txt' : '/docs/lifeskin-prompt-v8.txt', {cache:'no-store'});
     if (!response.ok) throw new Error('Die Promptvorlage konnte nicht geladen werden.');
     const vorlage = await response.text();
     if (store.getState().lifeskin?.offen !== session.id) return;
