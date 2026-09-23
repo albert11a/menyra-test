@@ -621,6 +621,11 @@ export function bindHeartEvents({
     // getippt hat, soll dabei nicht verschwinden.
     if (event.target?.matches?.("[data-bogen-art]")) {
       operations.lifeskinEntwurfMerken?.();
+      operations.lifeskinVorschau?.();
+      return;
+    }
+    if (event.target?.matches?.("[data-shitja-problem]")) {
+      operations.lifeskinVorschau?.();
       return;
     }
 
@@ -707,6 +712,11 @@ export function bindHeartEvents({
     // wenn sie erst nach dem Speichern stimmte.
     if (event.target?.matches?.("[data-raport], [data-text]")) {
       operations.lifeskinMarkenAuffrischen?.();
+      return;
+    }
+    // Die Vorschau unter den Texten der Therapieseite folgt jedem Tastendruck.
+    if (event.target?.matches?.("[data-shitja], [data-shitja-problem], [data-shitja-punkt]")) {
+      operations.lifeskinVorschau?.();
       return;
     }
     // Wofuer und Preis: sofort auf dem Geraet merken (Entwurf).

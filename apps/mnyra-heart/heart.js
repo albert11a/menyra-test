@@ -58,6 +58,7 @@ import { ladeLifeskin, horcheLive, ladeFotos, ladeErstesFoto, loescheAlleSitzung
   speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder } from "./heart-lifeskin-adapter.js";
 import { rasteListe, klappSetzen, rastiDom } from "./heart-lifeskin-raste.js";
 import { entwurfSchreiben, entwurfLoeschen, entwurfAusBogen } from "./heart-lifeskin-entwurf.js";
+import { vorschauAuffrischen } from "./heart-lifeskin-vorschau.js";
 import { rasteNormalisieren, rastiNormalisieren, neueRastiId, RASTI_PRODUKTE_MAX } from "../../shared/lifeskin-raste.js";
 import { aktualisiereLifeskinSitzungen } from "./heart-lifeskin-berechnung.js";
 import { baueLive } from "./heart-lifeskin-live.js";
@@ -2424,6 +2425,7 @@ function lifeskinProduktWahlGeaendert(id, an) {
   const punkte = document.querySelector(`[data-shitja-pblock="${CSS.escape(String(id))}"]`);
   if (punkte) punkte.hidden = !an;
   lifeskinEntwurfMerken();
+  vorschauAuffrischen(document);
   lifeskinTherapieFuellen();
   lifeskinPreisFolgen();
 }
@@ -2545,7 +2547,10 @@ function lifeskinBogenFuellen(raport) {
   if (meta) meta.value = JSON.stringify(raport);
   const terms = document.querySelector('[data-raport-terms]');
   if (terms) terms.value = JSON.stringify(raport.termat || [], null, 2);
-  if (document.querySelector('[data-shitja]')) shitjaInFelder(raport.shitja, document);
+  if (document.querySelector('[data-shitja]')) {
+    shitjaInFelder(raport.shitja, document);
+    vorschauAuffrischen(document);
+  }
   for (const el of document.querySelectorAll('[data-raport], [data-zona-ort], [data-zona-text], [data-par-emri], [data-par-vlera], [data-par-grada], [data-par-thjeshte], [data-par-shkalla]')) el.value = '';
   const setze = (wahl, wert) => {
     const el = document.querySelector(wahl);
@@ -3122,6 +3127,7 @@ const operations = {
   lifeskinProdukteAnlegen() { return lifeskinProdukteAnlegen(); },
   lifeskinProduktWahl(id, an) { return lifeskinProduktWahlGeaendert(id, an); },
   lifeskinEntwurfMerken() { lifeskinEntwurfMerken(); },
+  lifeskinVorschau() { vorschauAuffrischen(document); },
   lifeskinProduktSatzNeu(id) { return lifeskinTherapieNeu(id); },
   setzeLifeskinVersand(id, stand) { return setzeLifeskinVersand(id, stand); },
   openView(viewKey) {

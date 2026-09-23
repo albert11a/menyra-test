@@ -34,6 +34,7 @@ import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 import { renderRaste, renderRastiEditor, renderBefundRaste, rasteListe } from "./heart-lifeskin-raste.js";
 import { klappAttr, alsKlapp } from "./heart-lifeskin-klapp.js";
 import { entwurfLesen } from "./heart-lifeskin-entwurf.js";
+import { vorschauKasten } from "./heart-lifeskin-vorschau.js";
 import { ohneSeite, ohneSeiteTief } from "../../shared/lifeskin-ohne-seite.js";
 
 // Die Platzhalter im persoenlichen Satz.
@@ -1285,17 +1286,31 @@ export const SHITJA_PUNKTE = 3;
 // doppelt. Jetzt gehoert jeder Block fest zu seinem Produkt und steht nur
 // da, wenn es angehakt ist (heart.js blendet ihn beim Anhaken ein). Die
 // drei Punkte sind drei Felder, keine Zeilen in einem Feld.
-function renderShitjaFelder(shitja, produkte = [], gewaehltIds = []) {
+function renderShitjaFelder(shitja, produkte = [], gewaehltIds = [], { patient = "", ohneFoto = false } = {}) {
   const s = shitja && typeof shitja === "object" ? shitja : {};
+  const gewaehltSet = new Set((gewaehltIds || []).map(String));
+  const nameVon = new Map((produkte || []).map((p) => [String(p.id), String(p.name || p.id)]));
+  const mitPunkten = [...gewaehltSet].filter((id) => ((s.produktet || []).find((x) => String(x.produkt_id) === id)?.per_ju || []).length);
+  const tv = (schluessel) => {
+    if (schluessel === "hyrja") {
+      return vorschauKasten("hyrja", "hyrja", { text: s.hyrja || "", anzahl: gewaehltSet.size, imText: mitPunkten,
+        problemet: (s.problemet || []).map((p) => ({ gjetja: p.gjetja })) });
+    }
+    return vorschauKasten(schluessel, schluessel, { text: s[schluessel] || "", ohneFoto, patient },
+      schluessel === "whatsapp" ? ` data-tv-patient="${escapeHtml(patient)}"` : "");
+  };
   const optionen = (gewaehlt) => [`<option value="">— kein Produkt —</option>`,
     ...(produkte || []).map((p) => `<option value="${escapeHtml(p.id)}"${String(p.id) === String(gewaehlt || "") ? " selected" : ""}>${escapeHtml(p.name || p.id)}</option>`)
   ].join("");
   const text = (schluessel, marke, hinweis, zeilen = 2) => `
-        <label class="heart-lifeskin-feld">
-          <span>${escapeHtml(marke)}</span>
-          <textarea class="heart-lifeskin-eingabe" rows="${zeilen}" data-shitja="${schluessel}">${escapeHtml(s[schluessel] || "")}</textarea>
-          ${hinweis ? `<small>${escapeHtml(hinweis)}</small>` : ""}
-        </label>`;
+        <div class="heart-lifeskin-feld heart-tv-feld">
+          <label class="heart-lifeskin-feld">
+            <span>${escapeHtml(marke)}</span>
+            <textarea class="heart-lifeskin-eingabe" rows="${zeilen}" data-shitja="${schluessel}">${escapeHtml(s[schluessel] || "")}</textarea>
+            ${hinweis ? `<small>${escapeHtml(hinweis)}</small>` : ""}
+          </label>
+          ${tv(schluessel)}
+        </div>`;
   const probleme = Array.from({ length: SHITJA_PROBLEME }, (_, i) => {
     const p = (s.problemet || [])[i] || {};
     return `
@@ -1307,6 +1322,9 @@ function renderShitjaFelder(shitja, produkte = [], gewaehltIds = []) {
           </div>
           <select class="heart-lifeskin-eingabe" data-shitja-problem="${i}" data-teil="produkt_id" aria-label="Produkt dieser Karte">${optionen(p.produkt_id)}</select>
           <textarea class="heart-lifeskin-eingabe" rows="2" data-shitja-problem="${i}" data-teil="zgjidhja" placeholder="Was das Produkt hier tut (Produktname vorn)">${escapeHtml(p.zgjidhja || "")}</textarea>
+          ${vorschauKasten(`karte:${i}`, "karte", (!p.produkt_id || !gewaehltSet.size || gewaehltSet.has(String(p.produkt_id)))
+            ? { gjetja: p.gjetja || "", ku: p.ku || "", name: p.produkt_id ? (nameVon.get(String(p.produkt_id)) || p.produkt_id) : "", zgjidhja: p.zgjidhja || "" }
+            : { nichtImSet: true })}
         </div>`;
   }).join("");
   const gewaehlt = new Set((gewaehltIds || []).map(String));
@@ -1319,6 +1337,7 @@ function renderShitjaFelder(shitja, produkte = [], gewaehltIds = []) {
           ${Array.from({ length: SHITJA_PUNKTE }, (_, n) => `
           <textarea class="heart-lifeskin-eingabe" rows="2" maxlength="140" data-shitja-punkt="${escapeHtml(id)}" data-nr="${n}"
                     placeholder="Punkt ${n + 1}">${escapeHtml(punkte[n] || "")}</textarea>`).join("")}
+          ${vorschauKasten(`punkte:${id}`, "punkte", { name: p.name || id, punkte }, ` data-tv-name="${escapeHtml(p.name || id)}"`)}
         </div>`;
   }).join("");
   return `
@@ -2008,11 +2027,15 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({})) 
       </section>`;
 
   return `
-    <div class="heart-lifeskin-editor heart-befund" data-bewahren="${escapeHtml(bewahren)}">
-      <div class="heart-lifeskin-editor__kopf">
+    <!-- ZUGEKLAPPT, bis jemand ihn oeffnet: Wer eine Akte oeffnet, will
+         zuerst Fotos und Antworten sehen. Der Kopf zeigt den Stand. Der
+         Knoten ueberlebt jedes Neuzeichnen (data-bewahren) - offen bleibt
+         also offen, solange man in der Akte arbeitet. -->
+    <details class="heart-lifeskin-editor heart-befund" data-bewahren="${escapeHtml(bewahren)}">
+      <summary class="heart-lifeskin-editor__kopf heart-befund__kopf">
         <h4>Befund</h4>
         <span class="heart-lifeskin-marke ${marke[0]}">${escapeHtml(marke[1])}</span>
-      </div>
+      </summary>
 
       <!-- IN DER REIHENFOLGE DER ARBEIT, nummeriert: waehlen, Prompt
            kopieren, JSON einfuegen, Texte pruefen, freigeben. Was die
@@ -2060,7 +2083,7 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({})) 
 
       ${schritt(4, "Therapieseite prüfen", `
         <p class="heart-befund__hilfe">So steht es beim Patienten. Jedes Feld lässt sich ändern.</p>
-        ${renderShitjaFelder(raport.shitja, produkte, [...gewaehlt.keys()])}
+        ${renderShitjaFelder(raport.shitja, produkte, [...gewaehlt.keys()], { patient: String(sitzung.name || "").trim(), ohneFoto: art === "pa-foto" })}
         ${renderBefundRaste(raste, bericht)}`)}
 
       <!-- Die Analyse unten auf der Therapieseite ("Analiza e plotë"):
@@ -2161,7 +2184,7 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({})) 
                   data-id="${escapeHtml(sitzung.id)}" data-stand="zugestellt">Als zugestellt melden</button>
         </div>
       </div>` : ""}
-    </div>`;
+    </details>`;
 }
 
 // Ein Produkt anlegen oder aendern.

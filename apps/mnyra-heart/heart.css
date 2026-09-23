@@ -5820,3 +5820,71 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
 .heart-befund__klapp > summary small { margin-left: 6px; }
 /* Problem und Ort untereinander - nebeneinander wurden die Hinweise abgeschnitten. */
 .heart-shitja__paar { grid-template-columns: 1fr; }
+
+/* BEFUND-KARTE ZUGEKLAPPT - der Kopf ist der Knopf. */
+.heart-befund > summary.heart-befund__kopf {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px;
+  min-height: 44px; margin: 0;
+}
+.heart-befund > summary.heart-befund__kopf::-webkit-details-marker { display: none; }
+.heart-befund > summary.heart-befund__kopf::before {
+  content: "▸"; font-size: 13px; color: var(--heart-muted, #8f918d); width: 12px;
+}
+.heart-befund[open] > summary.heart-befund__kopf::before { content: "▾"; }
+.heart-befund > summary.heart-befund__kopf h4 { margin: 0; flex: 1; font-size: 17px; }
+.heart-befund[open] > summary.heart-befund__kopf { margin-bottom: 6px; }
+
+/* DIE VORSCHAU UNTER JEDEM FELD - im Stil der Therapieseite
+   (apps/lifeskin-verkauf/verkauf.css): helles Papier, dunkle Schrift,
+   Gruen fuer Produkte. Absichtlich hell mitten im dunklen Heart: So sieht
+   man sofort, was beim Patienten steht und was nur zum Bearbeiten ist. */
+.heart-tv-feld { gap: 8px; }
+.heart-tv {
+  --tv-paper: #f8f7f3; --tv-ink: #202e2b; --tv-muted: #606b65; --tv-green: #154e45;
+  --tv-green-soft: #edf2ed; --tv-line: #dce2da; --tv-orange: #b95b1d;
+  background: var(--tv-paper); color: var(--tv-ink); border-radius: 12px; padding: 10px 12px 12px;
+  font: 15px/1.5 Arial, Helvetica, sans-serif; border: 1px solid #ffffff1f;
+}
+.heart-tv__marke {
+  display: block; margin-bottom: 6px; font-size: 10.5px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--tv-green); opacity: .8;
+}
+.heart-tv p, .heart-tv h6, .heart-tv ul { margin: 0; }
+.heart-tv__leer { color: var(--tv-muted); font-style: italic; font-size: 13px; }
+.heart-tv__hyrja { color: var(--tv-muted); font-size: 15px; }
+.heart-tv__hyrja b { color: var(--tv-ink); font-weight: 600; }
+.heart-tv__kasten {
+  padding: 9px 12px; border-left: 3px solid var(--tv-green); background: var(--tv-green-soft);
+  border-radius: 0 10px 10px 0; font-size: 14px;
+}
+.heart-tv__karte {
+  display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center;
+  background: #fff; border: 1px solid var(--tv-line); border-radius: 12px; padding: 12px 14px;
+}
+.heart-tv__karte h6 { font-size: 15px; line-height: 1.35; }
+.heart-tv__karte div p { font-size: 13px; color: var(--tv-muted); }
+.heart-tv__pfeil { color: var(--tv-orange); font-weight: 700; font-size: 17px; }
+.heart-tv__zgjidhja { grid-column: 1 / -1; font-size: 14px; padding-top: 8px; border-top: 1px dashed var(--tv-line); }
+.heart-tv__zgjidhja b, .heart-tv__produkt h6 { color: var(--tv-green); }
+.heart-tv__produkt { background: #fff; border: 1px solid var(--tv-line); border-radius: 12px; padding: 12px 14px; }
+.heart-tv__produkt h6 { font-size: 15px; letter-spacing: .02em; }
+.heart-tv__produkt ul { margin-top: 8px; padding-left: 18px; font-size: 14px; display: grid; gap: 4px; }
+.heart-tv__produkt li::marker { color: var(--tv-green); }
+.heart-tv__produkt .heart-tv__leer { margin-top: 6px; }
+.heart-tv__zeit { display: flex; gap: 12px; }
+.heart-tv__zeit > span {
+  width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center;
+  border: 1px solid #cbd7c9; background: #fff; color: var(--tv-green); font-weight: 700; font-size: 13px;
+}
+.heart-tv__zeit h6 { font-size: 14px; margin: 5px 0 2px; }
+.heart-tv__zeit p { font-size: 13.5px; color: var(--tv-muted); }
+.heart-tv__zeit + .heart-tv__leer { margin-top: 6px; }
+.heart-tv__leise { color: var(--tv-muted); font-size: 14px; margin-bottom: 8px !important; }
+.heart-tv__knopf {
+  display: block; text-align: center; padding: 10px; border-radius: 999px; background: var(--tv-orange);
+  color: #fff; font-weight: 700; font-size: 14px;
+}
+.heart-tv__wa {
+  background: #dcf8c6; color: #111b21; border-radius: 10px 10px 10px 2px; padding: 9px 11px;
+  font-size: 14px; white-space: pre-wrap; max-width: 92%;
+}

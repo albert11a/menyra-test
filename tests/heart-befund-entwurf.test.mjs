@@ -48,3 +48,22 @@ test("der Bogen steht in Schritten: waehlen, Prompt, JSON, pruefen, freigeben", 
   // Die aerztliche Bestaetigung steht direkt ueber dem Freigabeknopf.
   assert.ok(html.indexOf("data-raport-reviewed") > html.indexOf("Therapieseite prüfen"));
 });
+
+test("Befund-Karte ist zugeklappt, unter den Texten steht die Vorschau wie auf der Seite", async () => {
+  const { vorschauInhalt } = await import("../apps/mnyra-heart/heart-lifeskin-vorschau.js");
+  const html = renderSitzungDetail(sitzung, null, "", STANDARD_PRODUKTE, { status: "wartet", raport: { shitja: {
+    hyrja: "Për **puçrrat në faqe** — 2 produkte, një plan i qartë.",
+    problemet: [{ gjetja: "Puçrra", ku: "në faqe", produkt_id: "lf-acne", zgjidhja: "LF ACNE nuk trajton rrudhat; qetëson puçrrat." }]
+  } } });
+  assert.match(html, /<details class="heart-lifeskin-editor heart-befund" data-bewahren/);
+  assert.doesNotMatch(html, /<details class="heart-lifeskin-editor heart-befund"[^>]* open/);
+  for (const k of ["hyrja", "shqetesimi", "karte:0", "dita_28", "pse_tani", "whatsapp"]) assert.match(html, new RegExp(`data-tv="${k}"`));
+  // Dieselben Regeln wie die Seite: fett, Produktname vorn, keine Verneinung.
+  assert.match(vorschauInhalt("hyrja", { text: "Për **puçrrat** — ok" }), /<b>puçrrat<\/b>/);
+  const karte = vorschauInhalt("karte", { gjetja: "Puçrra", name: "LF ACNE", zgjidhja: "LF ACNE nuk trajton rrudhat; qetëson puçrrat." });
+  assert.match(karte, /<b>LF ACNE<\/b> qetëson puçrrat/);
+  assert.doesNotMatch(karte, /nuk trajton/);
+  assert.match(vorschauInhalt("karte", { nichtImSet: true }), /nicht gewählt/);
+  // Kein HTML aus dem Text erreicht die Vorschau.
+  assert.doesNotMatch(vorschauInhalt("shqetesimi", { text: "<img src=x onerror=alert(1)>" }), /<img/);
+});
