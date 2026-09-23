@@ -30,6 +30,7 @@ import { TEXTE, t, fuelle } from "./bericht-texte.js";
 // gezeigt. Die Zeichen je Produktart kommen mit - ein leerer Rahmen sieht
 // nach Panne aus, ein Tiegel nach Pflege.
 import { ikoneFuer } from "../../shared/lifeskin-terapia.js";
+import { meldungAnstossen } from "../../shared/lifeskin-melden.js";
 
 const $ = (auswahl) => document.querySelector(auswahl);
 
@@ -2485,6 +2486,8 @@ class Bericht {
       order: { total: this.preis, payment: "nachnahme", status: "neu", orderId: this.daten.code || this.kennung },
       step: "ordered"
     });
+    // Sofort an Dr. Gashi melden (api/lifeskin-meldung.js).
+    if (gespeichert?.ok) meldungAnstossen(this.kennung, this.fetchFn);
 
     // Und dann der Zustand im Bericht - das ist der Teil, den er selbst
     // sieht, und der einzige, den er selbst aendern darf.

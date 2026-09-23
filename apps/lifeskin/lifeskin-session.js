@@ -15,6 +15,10 @@
 // nie anhalten. Wenn die Zaehlung ausfaellt, verkauft die Seite weiter.
 
 import { pfadPatch } from "../../shared/lifeskin-klickpfad.js";
+import { meldungAnstossen } from "../../shared/lifeskin-melden.js";
+
+// Nach diesen Schritten geht eine Meldung an Dr. Gashi (api/lifeskin-meldung.js).
+const MELDE_SCHRITTE = new Set("result ordered".split(" "));
 import {
   LIFESKIN_FIRESTORE_BASE,
   LIFESKIN_TENANT
@@ -504,8 +508,15 @@ export class Sitzung {
       catch (fehler) { globalThis.console?.warn?.("[lifeskin] Schrittmeldung:", fehler?.message); }
     }
 
-    return this.#reihen(() => this.#schreiben(daten, Object.keys(daten).flatMap((key) => key === "timings"
+    const geschrieben = this.#reihen(() => this.#schreiben(daten, Object.keys(daten).flatMap((key) => key === "timings"
       ? Object.keys(daten.timings).map((name) => `timings.${name}`) : [key])));
+    // Analyse abgeschickt oder bestellt: sofort melden - aber erst, wenn
+    // der Schritt in Firestore steht, denn die Meldung liest ihn dort.
+    if (neu > bisher && MELDE_SCHRITTE.has(name)) {
+      const id = this.id;
+      geschrieben.then((antwort) => { if (antwort?.ok) meldungAnstossen(id, this.fetchFn); });
+    }
+    return geschrieben;
   }
 
   // ZURUECK AUF EINEN FRUEHEREN SCHRITT - die eine Ausnahme.

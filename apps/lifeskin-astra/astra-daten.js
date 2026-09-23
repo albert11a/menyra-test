@@ -23,6 +23,7 @@ import { LIFESKIN_FIRESTORE_BASE, LIFESKIN_TENANT } from "../lifeskin/lifeskin-c
 import { statistikPatch } from "../../shared/lifeskin-statistik.js";
 import { felder } from "../lifeskin/lifeskin-session.js";
 import { pfadPatch } from "../../shared/lifeskin-klickpfad.js";
+import { meldungAnstossen } from "../../shared/lifeskin-melden.js";
 
 // Firestore verpackt jeden Wert in seinen Typ. Ausgepackt werden nur die
 // Formen, die im Befund wirklich vorkommen - mehr braucht diese Seite
@@ -260,6 +261,11 @@ export class AnalyseDaten {
     // Ordered writes prevent an older screen/address update overtaking purchase.
     this.schreibkette = (this.schreibkette || Promise.resolve()).then(async () =>
       (await schreiben()) || schreiben());
+    // Eine Bestellung: sofort melden, sobald sie in Firestore steht.
+    if (daten?.step === "ordered") {
+      const kennung = this.kennung;
+      this.schreibkette.then((ok) => { if (ok) meldungAnstossen(kennung, this.fetchFn); });
+    }
     return this.schreibkette;
   }
 
