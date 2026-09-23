@@ -5593,3 +5593,9 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
 .heart-pfad__zeile span:last-child { color: var(--heart-muted, #9aa09c); overflow-wrap: anywhere; }
 .heart-pfad__zeit { font-variant-numeric: tabular-nums; color: var(--heart-muted, #7b807d); }
 .heart-pfad__zeile--wichtig b { color: #17c46a; }
+
+/* Die Texte der Therapieseite im Befundbogen */
+.heart-shitja { margin: 14px 0; border: 1px solid var(--heart-line, #26292a); border-radius: 12px; padding: 10px 12px; }
+.heart-shitja > summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+.heart-shitja__karte { display: grid; gap: 6px; margin: 12px 0; padding: 10px; border-radius: 10px; background: #ffffff08; }
+.heart-shitja__karte > b { font-size: 12px; color: var(--heart-muted, #9aa09c); }

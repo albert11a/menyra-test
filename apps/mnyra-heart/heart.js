@@ -62,7 +62,7 @@ import { jsonLesen, raportLesen, siehtNachJson } from "../../shared/lifeskin-ana
 // zweite Zahl daneben: Zwei Zahlen an zwei Stellen sind frueher oder
 // spaeter zwei verschiedene, und dann faellt beim Lesen ab dem sechsten
 // Wert alles weg, was der Bogen anzeigt.
-import { RAPORT_MESSWERTE } from "./heart-lifeskin-render.js";
+import { RAPORT_MESSWERTE, shitjaAusFeldern, shitjaInFelder } from "./heart-lifeskin-render.js";
 // Die Bruecke von seinem Befund zu diesem Mittel. Dasselbe Modul, das die
 // Patientenseite benutzt - eine zweite Rechnung hier waere eine zweite
 // Wahrheit, und die erste Abweichung faellt niemandem auf.
@@ -2196,18 +2196,10 @@ function lifeskinTherapieNeu(id) {
 function lifeskinBogenLesen() {
   const meta = JSON.parse(document.querySelector('[data-raport-meta]')?.value || '{}');
   const termat = JSON.parse(document.querySelector('[data-raport-terms]')?.value || '[]');
-  // Die Texte der Therapieseite (Prompt v8). Ein Tippfehler im JSON darf
-  // die Freigabe nicht aufhalten - dann bleibt der Block, wie er kam.
-  const shitjaFeld = document.querySelector('[data-raport-shitja]');
-  let shitja = meta.shitja || null;
-  if (shitjaFeld) {
-    const roh = shitjaFeld.value.trim();
-    if (!roh) shitja = null;
-    else {
-      try { shitja = shitjaLesen(JSON.parse(roh)); }
-      catch { throw new Error('Die Texte der Therapieseite (shitja) sind kein gültiges JSON.'); }
-    }
-  }
+  // Die Texte der Therapieseite (Prompt v8) - aus ihren eigenen Feldern.
+  const shitja = document.querySelector('[data-shitja]')
+    ? shitjaLesen(shitjaAusFeldern(document))
+    : (meta.shitja || null);
   const wert = (wahl) => document.querySelector(wahl)?.value.trim() || "";
   const feld = (id) => wert(`[data-raport="${CSS.escape(id)}"]`);
   const zahl = (id) => {
@@ -2290,8 +2282,7 @@ function lifeskinBogenFuellen(raport) {
   if (meta) meta.value = JSON.stringify(raport);
   const terms = document.querySelector('[data-raport-terms]');
   if (terms) terms.value = JSON.stringify(raport.termat || [], null, 2);
-  const shitjaFeld = document.querySelector('[data-raport-shitja]');
-  if (shitjaFeld) shitjaFeld.value = raport.shitja ? JSON.stringify(raport.shitja, null, 2) : '';
+  if (document.querySelector('[data-shitja]')) shitjaInFelder(raport.shitja, document);
   for (const el of document.querySelectorAll('[data-raport], [data-zona-ort], [data-zona-text], [data-par-emri], [data-par-vlera], [data-par-grada], [data-par-thjeshte], [data-par-shkalla]')) el.value = '';
   const setze = (wahl, wert) => {
     const el = document.querySelector(wahl);

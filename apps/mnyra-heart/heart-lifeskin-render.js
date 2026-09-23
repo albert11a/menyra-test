@@ -1217,6 +1217,101 @@ function uhrzeitSekunden(iso) {
   return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
+// DIE TEXTE DER THERAPIESEITE - jedes Feld einzeln aenderbar.
+//
+// Sie kommen aus dem Block "shitja" der Analyse (Prompt v8). Hier stand
+// ein JSON-Feld: aenderbar schon, aber nur fuer jemanden, der JSON liest.
+// Jetzt hat jeder Satz der Seite sein eigenes Feld, in der Reihenfolge,
+// in der er auf der Seite steht. Leere Felder heissen: Die Seite baut den
+// Satz aus dem Befund.
+export const SHITJA_PROBLEME = 3;
+export const SHITJA_PRODUKTE = 3;
+
+function renderShitjaFelder(shitja, produkte = [], gewaehltIds = []) {
+  const s = shitja && typeof shitja === "object" ? shitja : {};
+  const optionen = (gewaehlt) => [`<option value="">— kein Produkt —</option>`,
+    ...(produkte || []).map((p) => `<option value="${escapeHtml(p.id)}"${String(p.id) === String(gewaehlt || "") ? " selected" : ""}>${escapeHtml(p.name || p.id)}</option>`)
+  ].join("");
+  const text = (schluessel, marke, hinweis, zeilen = 2) => `
+        <label class="heart-lifeskin-feld">
+          <span>${escapeHtml(marke)}</span>
+          <textarea class="heart-lifeskin-eingabe" rows="${zeilen}" data-shitja="${schluessel}">${escapeHtml(s[schluessel] || "")}</textarea>
+          ${hinweis ? `<small>${escapeHtml(hinweis)}</small>` : ""}
+        </label>`;
+  const probleme = Array.from({ length: SHITJA_PROBLEME }, (_, i) => {
+    const p = (s.problemet || [])[i] || {};
+    return `
+        <div class="heart-shitja__karte">
+          <b>Karte ${i + 1} · „Pse pikërisht kjo terapi“</b>
+          <input class="heart-lifeskin-eingabe" data-shitja-problem="${i}" data-teil="gjetja" placeholder="Problem, kurz (z. B. Pore të bllokuara)" value="${escapeHtml(p.gjetja || "")}">
+          <input class="heart-lifeskin-eingabe" data-shitja-problem="${i}" data-teil="ku" placeholder="Wo (z. B. në ballë)" value="${escapeHtml(p.ku || "")}">
+          <select class="heart-lifeskin-eingabe" data-shitja-problem="${i}" data-teil="produkt_id">${optionen(p.produkt_id)}</select>
+          <textarea class="heart-lifeskin-eingabe" rows="2" data-shitja-problem="${i}" data-teil="zgjidhja" placeholder="Was das Produkt hier tut (Produktname vorn)">${escapeHtml(p.zgjidhja || "")}</textarea>
+        </div>`;
+  }).join("");
+  const vorhanden = (s.produktet || []).map((p) => p.produkt_id);
+  const reihe = [...vorhanden, ...gewaehltIds.filter((id) => !vorhanden.includes(id))];
+  const produktRows = Array.from({ length: SHITJA_PRODUKTE }, (_, i) => {
+    const id = reihe[i] || "";
+    const eintrag = (s.produktet || []).find((p) => p.produkt_id === id) || {};
+    return `
+        <div class="heart-shitja__karte">
+          <b>Produkt ${i + 1} · Punkte unter „Çfarë merrni“</b>
+          <select class="heart-lifeskin-eingabe" data-shitja-produkt="${i}" data-teil="produkt_id">${optionen(id)}</select>
+          <textarea class="heart-lifeskin-eingabe" rows="3" data-shitja-produkt="${i}" data-teil="per_ju" placeholder="Ein Punkt je Zeile, höchstens drei">${escapeHtml((eintrag.per_ju || []).join("\n"))}</textarea>
+        </div>`;
+  }).join("");
+  return `
+        <details class="heart-shitja"${s.hyrja ? " open" : ""}>
+          <summary>Texte der Therapieseite (${s.hyrja ? "aus der Analyse" : "leer – die Seite baut sie aus dem Befund"})</summary>
+          <p class="heart-lifeskin-block__fuss">Reihenfolge wie auf der Seite. **fett** im Einstiegssatz wird fett angezeigt. Leer = die Seite nimmt den Befund.</p>
+          ${text("hyrja", "Einstiegssatz oben", "z. B. Për **poret e bllokuara në ballë** dhe **skuqjen në faqe** — 2 produkte, …", 4)}
+          ${text("shqetesimi", "Was ihn stört (grüner Kasten oben)", "Leer lassen, wenn er nichts genannt hat.")}
+          ${probleme}
+          ${produktRows}
+          ${text("dita_28", "Tag 28 (Zeitleiste)", "")}
+          ${text("pse_tani", "Warum jetzt (über dem zweiten Knopf)", "")}
+          ${text("whatsapp", "WhatsApp-Nachricht von Dr. Gashi", "Ohne Anrede und Link – beides setzt Heart beim Kopieren ein.", 3)}
+        </details>`;
+}
+
+// Die Felder oben wieder als Block "shitja" - fuer heart.js beim Freigeben.
+export function shitjaAusFeldern(wurzel = globalThis.document) {
+  const wert = (el) => String(el?.value || "").trim();
+  const raus = { problemet: [], produktet: [] };
+  for (const el of wurzel.querySelectorAll("[data-shitja]")) raus[el.dataset.shitja] = wert(el);
+  for (let i = 0; i < SHITJA_PROBLEME; i += 1) {
+    const teil = (name) => wert(wurzel.querySelector(`[data-shitja-problem="${i}"][data-teil="${name}"]`));
+    if (teil("gjetja")) raus.problemet.push({ gjetja: teil("gjetja"), ku: teil("ku"), produkt_id: teil("produkt_id"), zgjidhja: teil("zgjidhja") });
+  }
+  for (let i = 0; i < SHITJA_PRODUKTE; i += 1) {
+    const teil = (name) => wurzel.querySelector(`[data-shitja-produkt="${i}"][data-teil="${name}"]`);
+    const id = wert(teil("produkt_id"));
+    const punkte = wert(teil("per_ju")).split("\n").map((x) => x.trim()).filter(Boolean);
+    if (id && punkte.length) raus.produktet.push({ produkt_id: id, per_ju: punkte });
+  }
+  return raus;
+}
+
+// Und umgekehrt: nach dem Einfuegen des JSON die Felder fuellen.
+export function shitjaInFelder(shitja, wurzel = globalThis.document) {
+  const s = shitja && typeof shitja === "object" ? shitja : {};
+  for (const el of wurzel.querySelectorAll("[data-shitja]")) el.value = s[el.dataset.shitja] || "";
+  for (let i = 0; i < SHITJA_PROBLEME; i += 1) {
+    const p = (s.problemet || [])[i] || {};
+    for (const el of wurzel.querySelectorAll(`[data-shitja-problem="${i}"]`)) el.value = p[el.dataset.teil] || "";
+  }
+  for (let i = 0; i < SHITJA_PRODUKTE; i += 1) {
+    const p = (s.produktet || [])[i] || {};
+    const id = wurzel.querySelector(`[data-shitja-produkt="${i}"][data-teil="produkt_id"]`);
+    const punkte = wurzel.querySelector(`[data-shitja-produkt="${i}"][data-teil="per_ju"]`);
+    if (id && p.produkt_id) id.value = p.produkt_id;
+    if (punkte) punkte.value = (p.per_ju || []).join("\n");
+  }
+  const kasten = wurzel.querySelector(".heart-shitja");
+  if (kasten && s.hyrja) kasten.open = true;
+}
+
 export function whatsappNachricht(sitzung, bericht) {
   const text = String(bericht?.raport?.shitja?.whatsapp || "").trim();
   if (!text) return "";
@@ -1849,12 +1944,7 @@ function renderBefundEditor(sitzung, produkte, bericht) {
         <label class="heart-lifeskin-feld">Begriffe und Erklärungen (JSON, vor Freigabe prüfen)
           <textarea class="heart-lifeskin-eingabe" rows="5" data-raport-terms>${escapeHtml(JSON.stringify(raport.termat || [], null, 2))}</textarea>
         </label>
-        <!-- PROMPT v8: die Texte der neuen Therapieseite (/terapia/...).
-             Aenderbar wie die Begriffe darueber. Leer heisst: Die Seite
-             baut ihre Saetze aus dem Befund. -->
-        <label class="heart-lifeskin-feld">Texte der Therapieseite – shitja (JSON, vor Freigabe prüfen)
-          <textarea class="heart-lifeskin-eingabe" rows="6" data-raport-shitja>${escapeHtml(raport.shitja ? JSON.stringify(raport.shitja, null, 2) : "")}</textarea>
-        </label>
+        ${renderShitjaFelder(raport.shitja, produkte, [...gewaehlt.keys()])}
 
         <div class="heart-lifeskin-bogen__leib">
           ${RAPORT_BOGEN.map((f) => `

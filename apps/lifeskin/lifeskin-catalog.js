@@ -379,8 +379,8 @@ export const STANDARD_PRODUKTE = Object.freeze([
         de: "abends"
       },
       sasia: {
-        sq: "3 deri 4 pika",
-        de: "3 bis 4 Tropfen"
+        sq: "sa një bizele në zonat me pore",
+        de: "erbsengroß auf die Zonen mit Poren"
       },
       si: {
         sq: "Në lëkurë të pastër dhe të thatë, në zonat me pore të bllokuara. Javën e parë çdo ditë të dytë.",
@@ -614,8 +614,8 @@ export const STANDARD_PRODUKTE = Object.freeze([
         de: "nur morgens"
       },
       sasia: {
-        sq: "4 deri 5 pika",
-        de: "4 bis 5 Tropfen"
+        sq: "sa një bizele për gjithë fytyrën",
+        de: "erbsengroß für das ganze Gesicht"
       },
       si: {
         sq: "Në lëkurë të pastër, para hidratimit. Gjithmonë me mbrojtje nga dielli sipër.",
