@@ -146,6 +146,8 @@ function rewritePath(pathname = "/") {
   // vercel.json; lokal sonst niemand - und dann laedt /analiza/... die
   // Social-App statt des Berichts.
   if (/^\/analiza\/[^/]+$/.test(path)) return ANALIZA_INDEX;
+  // Die neue Therapieseite (vercel.json: /terapia/:kennung).
+  if (/^\/terapia\/[^/]+$/.test(path)) return "/apps/lifeskin-verkauf/terapia.html";
   if (path === "/lifeskinlifeskintesttest") return BERICHT_INDEX;
   // Die Vorlage: die fruehere Hauptanalyse, aufbewahrt unter eigener
   // Adresse, damit ihre Gestaltung nicht verloren geht.

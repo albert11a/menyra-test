@@ -617,7 +617,9 @@ export function baueStillLinks(zustand) {
       { label: "Analyse", url: fertig ? stillLink(`/analiza/${fertig.id}`) : "",
         fehlt: "keine freigegebene Analyse" },
       { label: "Kauf (N'shport)", url: mitKorb ? stillLink(`/analiza/${mitKorb.id}`, { kasse: "1" }) : "",
-        fehlt: "keine Analyse mit Mitteln" }
+        fehlt: "keine Analyse mit Mitteln" },
+      { label: "Therapieseite (neu)", url: fertig ? stillLink(`/terapia/${fertig.id}`) : "",
+        fehlt: "keine freigegebene Analyse" }
     ]
   });
   return { master: stillLink("/lifeskin"), aus: `${STILL_BASIS}/lifeskin?still=0`, gruppen };
@@ -1136,6 +1138,18 @@ function renderAnamnese(sitzung) {
           </div>`).join("")}
       </dl>
     </div>`;
+}
+
+// Die Nachricht, die Dr. Gashi schickt, wenn der Befund fertig ist -
+// geschrieben von der Analyse (shitja.whatsapp), hier mit Anrede und Link.
+// Der Link zeigt auf /analiza/: Solange die neue Seite nicht die
+// Hauptseite ist, ist das die Seite, die der Patient bekommt.
+export function whatsappNachricht(sitzung, bericht) {
+  const text = String(bericht?.raport?.shitja?.whatsapp || "").trim();
+  if (!text) return "";
+  const name = String(sitzung?.name || "").trim();
+  const link = `https://www.mnyra.com/analiza/${sitzung?.id || ""}`;
+  return `${name ? `Përshëndetje ${name}! ` : "Përshëndetje! "}${text}\n\n${link}`;
 }
 
 export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", produkte = [], bericht = null, loeschGefragt = false) {
@@ -1740,7 +1754,7 @@ function renderBefundEditor(sitzung, produkte, bericht) {
       <div class="heart-lifeskin-vorlage">
         <textarea class="heart-lifeskin-eingabe" id="lifeskin-json" rows="3"
                   placeholder="JSON der Analyse hier einfuegen — Anfuehrungszeichen und Vorrede sind egal"></textarea>
-        <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-prompt-kopieren">Prompt v5 für diesen Fall kopieren</button>
+        <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-prompt-kopieren">Prompt v8 für diesen Fall kopieren</button>
         <textarea class="heart-lifeskin-eingabe" id="lifeskin-prompt-ausgabe" hidden readonly rows="5" aria-label="Vollständiger Prompt für diesen Fall"></textarea>
         <div class="heart-lifeskin-vorlage__reihe">
           <button type="button" class="heart-lifeskin-knopf"
@@ -1759,6 +1773,12 @@ function renderBefundEditor(sitzung, produkte, bericht) {
         <textarea hidden data-raport-meta>${escapeHtml(JSON.stringify(raport || {}))}</textarea>
         <label class="heart-lifeskin-feld">Begriffe und Erklärungen (JSON, vor Freigabe prüfen)
           <textarea class="heart-lifeskin-eingabe" rows="5" data-raport-terms>${escapeHtml(JSON.stringify(raport.termat || [], null, 2))}</textarea>
+        </label>
+        <!-- PROMPT v8: die Texte der neuen Therapieseite (/terapia/...).
+             Aenderbar wie die Begriffe darueber. Leer heisst: Die Seite
+             baut ihre Saetze aus dem Befund. -->
+        <label class="heart-lifeskin-feld">Texte der Therapieseite – shitja (JSON, vor Freigabe prüfen)
+          <textarea class="heart-lifeskin-eingabe" rows="6" data-raport-shitja>${escapeHtml(raport.shitja ? JSON.stringify(raport.shitja, null, 2) : "")}</textarea>
         </label>
 
         <div class="heart-lifeskin-bogen__leib">
@@ -1845,6 +1865,11 @@ function renderBefundEditor(sitzung, produkte, bericht) {
         </button>
         ${bericht?.status === "vorschau" ? `<a class="heart-lifeskin-link" href="/analiza/${escapeHtml(sitzung.id)}?vorschau=1" target="_blank" rel="noopener">Vorschau ansehen</a>` : ""}
         ${fertig ? `<a class="heart-lifeskin-link" href="/analiza/${escapeHtml(sitzung.id)}" target="_blank" rel="noopener">Seite ansehen</a>` : ""}
+        ${bericht?.status === "vorschau" ? `<a class="heart-lifeskin-link" href="/terapia/${escapeHtml(sitzung.id)}?vorschau=1&amp;still=1" target="_blank" rel="noopener">Neue Therapieseite (Vorschau)</a>` : ""}
+        ${fertig && stand !== "vorschau" ? `<a class="heart-lifeskin-link" href="/terapia/${escapeHtml(sitzung.id)}?still=1" target="_blank" rel="noopener">Neue Therapieseite ansehen</a>` : ""}
+        ${fertig && bericht?.raport?.shitja?.whatsapp ? `<button type="button" class="heart-lifeskin-kopier"
+            data-action="lifeskin-text-kopieren" data-was="WhatsApp-Nachricht"
+            data-wert="${escapeHtml(whatsappNachricht(sitzung, bericht))}">WhatsApp-Nachricht kopieren</button>` : ""}
       </div>
 
       ${["bestellt", "versandt", "zugestellt"].includes(stand) ? `

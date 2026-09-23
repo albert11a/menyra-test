@@ -1,3 +1,4 @@
+import { shitjaLesen } from "./lifeskin-shitja.js";
 import { pruefeRaportV3 } from "./lifeskin-raport-v3.js";
 // Die Analyse: Schema, Einstufung, Vorlage.
 //
@@ -1007,6 +1008,11 @@ export function raportLesen(roh) {
     // ergeben, sondern ein leeres Feld im Bogen.
     raus.termat = Array.isArray(daten.termat) ? daten.termat : [];
     raus.nevojat = Array.isArray(daten.nevojat) ? daten.nevojat : [];
+    // Prompt v8: die Texte der Therapieseite. Er reist im Befund mit
+    // (Heart speichert das ganze gelesene Objekt), ohne ihn baut die
+    // Seite ihre Saetze aus den Analysefeldern.
+    const shitja = shitjaLesen(daten.shitja);
+    if (shitja) raus.shitja = shitja;
     if (daten.diagnoza && typeof daten.diagnoza === "object") {
       raus.niveli = daten.diagnoza.niveli ?? null;
       raus.niveliEmri = daten.diagnoza.niveli_emri;

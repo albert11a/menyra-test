@@ -435,6 +435,10 @@
       "destination": "/apps/lifeskin-trichter/index.html"
     },
     {
+      "source": "/terapia/:kennung",
+      "destination": "/apps/lifeskin-verkauf/terapia.html"
+    },
+    {
       "source": "/120992",
       "destination": "/apps/lifeskin-verkauf/index.html"
     },

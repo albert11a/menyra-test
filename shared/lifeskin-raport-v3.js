@@ -16,6 +16,8 @@
 //
 // Wer hier wieder ein throw einbaut, nimmt dem Arzt den Bogen weg - und
 // zwar genau dann, wenn die Analyse schon fertig ist.
+import { pruefeShitja } from './lifeskin-shitja.js';
+
 export const PARAMETER_IDS = ['lezionet','inflamacioni','poret','skuqja','njollat','pigmentimi','tekstura','keratinizimi','barriera','shenjat'];
 export const DIAGNOSE_IDS = ['akne_komedonale','akne_inflamatore','akne_e_perzier','akne_nodulare','hiperpigmentim_pas_inflamacionit','melazma','rozacea','dermatit_seborreik','barriere_e_demtuar','lekure_e_thate','lekure_e_yndyrshme','tekstura_e_pabarabarte','shenja_atrofike','lekure_e_qete','tjeter'];
 export const GRADES = ['në rregull','e lehtë','e mesme','e theksuar','e fortë'];
@@ -50,7 +52,9 @@ export function pruefeRaportV3(d) {
   // Die Fallnummer gehoert nicht ins JSON. Heart kennt sie vom offenen
   // Fall, und ein zweites Mal geschrieben ist sie nur eine zweite Wahrheit,
   // die abweichen kann. Eine mitgeschickte wird geduldet und nicht gelesen.
-  keys(d,['schema_version','vleresimi','raporti','ekzaminimi','gjetjet','parametrat','diagnoza','shpjegimi','pa_kujdes','keshilla','synimi_28','termat','nevojat'],'root',['kodi']);
+  // "shitja" kommt mit Prompt v8: die Texte der Therapieseite. Er ist
+  // freiwillig - jeder Befund davor ist ohne ihn vollstaendig.
+  keys(d,['schema_version','vleresimi','raporti','ekzaminimi','gjetjet','parametrat','diagnoza','shpjegimi','pa_kujdes','keshilla','synimi_28','termat','nevojat'],'root',['kodi','shitja']);
 
   // Die Grenze der Methode gehoert nicht ins JSON. Sie steht wortgleich in
   // der Seite ("Çfarë nuk mund të thotë një foto") und wirkt nur, weil sie
@@ -146,6 +150,7 @@ export function pruefeRaportV3(d) {
   // Hinweis bleibt, weil ein Mittel vor einer noetigen Abklaerung eine
   // Aussage ist, die jemand gesehen haben sollte.
   if (vleresimi && ['i_pavleresueshem','kontroll_mjekesor'].includes(vleresimi.statusi) && nevojat.length) merke('Produktbedarf trotz erforderlicher Abklärung.');
+  if (Object.hasOwn(d, 'shitja')) pruefeShitja(d.shitja, nevojat).forEach(merke);
 
   return hinweise;
 }
@@ -173,7 +178,8 @@ export function reportToWire(r) {
     parametrat:r.parametrat,
     diagnoza:{id:r.diagnozaId,emri:r.diagnoza,latinisht:r.diagnozaLat,niveli:r.niveli,niveli_emri:r.niveliEmri},
     shpjegimi:r.shpjegimi,pa_kujdes:{zbehet:r.paKujdes?.zbehet || '',nuk_zbehet:r.paKujdes?.nukZbehet || '',pas_6_muajsh:r.paKujdes?.pas6Muajsh || ''},
-    keshilla:r.keshilla,synimi_28:r.synimi28 || '',termat:r.termat || [],nevojat:r.nevojat || []
+    keshilla:r.keshilla,synimi_28:r.synimi28 || '',termat:r.termat || [],nevojat:r.nevojat || [],
+    ...(r.shitja ? { shitja:r.shitja } : {})
   };
 }
 // DIE ANGEBOTSSPERRE GIBT ES NICHT MEHR - und das ist eine Entscheidung

@@ -1,7 +1,8 @@
 import { pruefeRaportV3, reportToWire } from "../../shared/lifeskin-raport-v3.js";
+import { shitjaLesen } from "../../shared/lifeskin-shitja.js";
 // Was in die Promptvorlage eingesetzt wird - Name, Altersgruppe und die
 // Fragen samt Antworten, wortgleich wie im Trichter.
-import { promptFuellen } from "./heart-lifeskin-prompt.js";
+import { promptV8Fuellen } from "./heart-lifeskin-prompt.js";
 import { meldeGeraetAn } from "./heart-push.js";
 import { kannPush } from "./heart-push-utils.js";
 import { createHeartGoAdapter } from "./heart-go-adapter.js";
@@ -2195,6 +2196,18 @@ function lifeskinTherapieNeu(id) {
 function lifeskinBogenLesen() {
   const meta = JSON.parse(document.querySelector('[data-raport-meta]')?.value || '{}');
   const termat = JSON.parse(document.querySelector('[data-raport-terms]')?.value || '[]');
+  // Die Texte der Therapieseite (Prompt v8). Ein Tippfehler im JSON darf
+  // die Freigabe nicht aufhalten - dann bleibt der Block, wie er kam.
+  const shitjaFeld = document.querySelector('[data-raport-shitja]');
+  let shitja = meta.shitja || null;
+  if (shitjaFeld) {
+    const roh = shitjaFeld.value.trim();
+    if (!roh) shitja = null;
+    else {
+      try { shitja = shitjaLesen(JSON.parse(roh)); }
+      catch { throw new Error('Die Texte der Therapieseite (shitja) sind kein gültiges JSON.'); }
+    }
+  }
   const wert = (wahl) => document.querySelector(wahl)?.value.trim() || "";
   const feld = (id) => wert(`[data-raport="${CSS.escape(id)}"]`);
   const zahl = (id) => {
@@ -2241,7 +2254,7 @@ function lifeskinBogenLesen() {
 
   const niveliRoh = feld("niveli");
   return {
-    ...meta, termat,
+    ...meta, termat, shitja,
     aerztlichGeprueft: Boolean(document.querySelector("[data-raport-reviewed]")?.checked),
     parametratVleresuar: parametrat.filter(p => p.shkalla !== null).length,
     parametratMeGjetje: parametrat.filter(p => p.shkalla > 0).length,
@@ -2277,6 +2290,8 @@ function lifeskinBogenFuellen(raport) {
   if (meta) meta.value = JSON.stringify(raport);
   const terms = document.querySelector('[data-raport-terms]');
   if (terms) terms.value = JSON.stringify(raport.termat || [], null, 2);
+  const shitjaFeld = document.querySelector('[data-raport-shitja]');
+  if (shitjaFeld) shitjaFeld.value = raport.shitja ? JSON.stringify(raport.shitja, null, 2) : '';
   for (const el of document.querySelectorAll('[data-raport], [data-zona-ort], [data-zona-text], [data-par-emri], [data-par-vlera], [data-par-grada], [data-par-thjeshte], [data-par-shkalla]')) el.value = '';
   const setze = (wahl, wert) => {
     const el = document.querySelector(wahl);
@@ -2331,21 +2346,14 @@ async function lifeskinPromptKopieren() {
   const session = findeSitzung(state, state.offen);
   if (!session) { setToast('Prompt', 'Zuerst einen Fall öffnen.', 'danger'); return; }
   try {
-    const response = await fetch('/docs/lifeskin-prompt-v5.json', {cache:'no-store'});
+    // PROMPT v8: Analyse und Texte der Therapieseite in einem. Er ist ein
+    // Text mit Platzhaltern, keine JSON-Vorlage mehr - siehe
+    // promptV8Fuellen() und docs/lifeskin-prompt-v8.txt.
+    const response = await fetch('/docs/lifeskin-prompt-v8.txt', {cache:'no-store'});
     if (!response.ok) throw new Error('Die Promptvorlage konnte nicht geladen werden.');
-    const prompt = await response.json();
+    const vorlage = await response.text();
     if (store.getState().lifeskin?.offen !== session.id) return;
-    // Name, Altersgruppe und die Antworten des Patienten einsetzen. Ohne
-    // sie befundet die Analyse ein Gesicht und nicht einen Menschen.
-    const gefuellt = promptFuellen(prompt, session);
-    // Und die Mittel, die in Heart angehakt sind. Sie bleiben hier und
-    // nicht in promptFuellen(): Sie kommen aus dem Bogen auf dem
-    // Bildschirm, nicht aus der Sitzung.
-    gefuellt.hyrja.produkte_te_verifikuara = lifeskinGewaehlteProdukte().map(p => ({
-      id:String(p.id),roli:String(p.roli || ''),detyra:p.veprimi?.sq || []
-    }));
-
-    const text = JSON.stringify(gefuellt, null, 2);
+    const text = promptV8Fuellen(vorlage, session, state.produkte || []);
     const output = document.querySelector('#lifeskin-prompt-ausgabe');
     if (output) { output.value=text; output.hidden=false; }
     try { await navigator.clipboard.writeText(text); setToast('Prompt', 'Kopiert. Fehlende Angaben prüfen und mit den Gesichtsaufnahmen senden.', 'success'); }

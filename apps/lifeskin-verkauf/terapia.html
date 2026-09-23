@@ -1,0 +1,219 @@
+<!doctype html>
+<!-- DIE THERAPIESEITE MIT ECHTEN DATEN - /terapia/<kennung>.
+     Dieselbe Gestaltung wie die Vorlage unter /120992 (index.html), hier
+     gefuellt aus dem freigegebenen Befund. Die Texte oben kommen aus dem
+     Block "shitja" (Prompt v8); fehlt er, baut terapia.js sie aus den
+     Analysefeldern. Die Warteseite bleibt unter /analiza/<kennung>. -->
+<html lang="sq">
+<head>
+  <meta charset="utf-8">
+  <!-- Vor allem anderen: der stille Modus (?still=1) sperrt jede Zaehlung. -->
+  <script src="/shared/lifeskin-still.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#f8f7f3">
+  <title>Terapia juaj · LifeSkin</title>
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Analiza juaj e lëkurës · LifeSkin">
+  <meta property="og:description" content="Rezultati i analizës suaj, plani i kujdesit dhe paketa në një faqe të qartë.">
+  <meta property="og:image" content="https://www.mnyra.com/apps/lifeskin/share-analiza.jpg">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/apps/lifeskin-verkauf/verkauf.css">
+  <script type="module" src="/apps/lifeskin-verkauf/terapia.js"></script>
+</head>
+<body>
+  <header class="kopf">
+    <span class="marke">LIFESKIN<small id="t-kodi"></small></span>
+    <button class="kopf__pyetje" type="button" data-hilfe>Keni një pyetje?</button>
+  </header>
+
+  <main class="faqe">
+    <p class="gjendja" id="t-laedt">Po hapet analiza juaj…</p>
+    <div class="gjendja" id="t-weg" hidden>
+      <h1>Kjo analizë nuk u gjet.</h1>
+      <p>Linku mund të jetë i paplotë ose i vjetruar. Hapeni përsëri linkun që morët pas skanimit, ose na shkruani që t'jua dërgojmë sërish.</p>
+    </div>
+
+    <div id="t-faqja" hidden>
+      <!-- 1. DIE THERAPIE -->
+      <section class="hero" id="terapia">
+        <p class="syri" id="t-syri">Terapia juaj është gati</p>
+        <h1 id="t-titulli"></h1>
+        <div class="mjeku" id="t-mjeku" hidden>
+          <img src="/apps/lifeskin/dr-gashi.jpg" alt="Dr. Violeta Gashi" width="52" height="52">
+          <p><strong id="t-mjekuemri">E zgjodhi Dr. Violeta Gashi</strong><span id="t-mjekudata"></span></p>
+        </div>
+        <p class="hero__pse" id="t-hyrja"></p>
+        <p class="shqetesimi" id="t-shqetesimi" hidden></p>
+        <p class="kontroll" id="t-kontroll" hidden>Dr. Gashi rekomandon edhe një kontroll të afërt te mjeku për këtë pamje.</p>
+
+        <div class="seti" id="t-seti" hidden>
+          <div class="seti__produkte" id="t-setiprodukte" aria-hidden="true"></div>
+          <ul class="seti__cipa" id="t-seticipa"></ul>
+          <div class="cmimi" id="t-cmimi1">
+            <div><strong data-cmimi></strong><span data-dita></span></div>
+            <p>Transport falas<br><b>Paguani te dera</b></p>
+          </div>
+          <button class="knopf" type="button" data-porosi id="hero-knopf"></button>
+          <ul class="siguria" id="t-siguria"></ul>
+        </div>
+
+        <div class="porosi-statusi" id="t-porositur" hidden>
+          <p class="syri">Porosia juaj</p>
+          <h2>Porosia juaj është regjistruar.</h2>
+          <p id="t-porositurtext">Ju kontaktojmë për konfirmimin e adresës. Pagesa bëhet kur ta merrni pakon.</p>
+        </div>
+
+        <div class="pa-produkt" id="t-paprodukt" hidden>
+          <a class="knopf knopf--wa" id="t-wa1" href="#" target="_blank" rel="noopener">Shkruani Dr. Gashit në WhatsApp</a>
+        </div>
+      </section>
+
+      <!-- 2. WARUM DIESE THERAPIE -->
+      <section class="pjese" id="pse">
+        <p class="syri" id="t-psesyri">Pse pikërisht kjo terapi</p>
+        <h2 id="t-psetitulli">Çfarë pa Dr. Gashi te ju — dhe çfarë e trajton.</h2>
+        <ol class="gjetjet" id="t-gjetjet"></ol>
+        <p class="shenim" id="t-vleresimi"></p>
+      </section>
+
+      <!-- 3. WAS DRIN IST -->
+      <section class="pjese" id="merrni" hidden>
+        <p class="syri">Çfarë merrni</p>
+        <h2>Gjithçka për 28 ditë, në një pako.</h2>
+        <div id="t-produktet"></div>
+        <ul class="perfshihet">
+          <li><b>Plani juaj personal</b> — çfarë, kur dhe në çfarë radhe</li>
+          <li><b>Konsultë online me skanim</b> — çdo javë me Dr. Gashin</li>
+          <li><b>Vlerësimi final</b> — në ditën 28, krahasuar me sot</li>
+        </ul>
+        <div class="rutina" id="t-rutina" hidden>
+          <div><span aria-hidden="true">☀</span><p><b>Mëngjes</b><span id="t-mengjes"></span></p></div>
+          <div><span aria-hidden="true">☾</span><p><b>Mbrëmje</b><span id="t-mbremje"></span></p></div>
+        </div>
+      </section>
+
+      <!-- 4. DIE 28 TAGE -->
+      <section class="pjese" id="ditet" hidden>
+        <p class="syri">28 ditët tuaja</p>
+        <h2>Nuk mbeteni vetëm.</h2>
+        <ol class="rruga">
+          <li><span>1</span><div><h3>Dita 1 — pakoja arrin</h3><p>Me planin tuaj. Filloni po atë mbrëmje.</p></div></li>
+          <li><span>7</span><div><h3>Java 1 — skanimi i parë</h3><p>Dr. Gashi shikon si po reagon lëkura juaj.</p></div></li>
+          <li><span>14</span><div><h3>Java 2–3 — plani përshtatet</h3><p>Nëse diçka nuk ecën, e ndryshojmë bashkë.</p></div></li>
+          <li><span>28</span><div><h3>Dita 28 — vlerësimi final</h3><p id="t-dita28">Krahasojmë lëkurën tuaj me foton e sotme.</p></div></li>
+        </ol>
+      </section>
+
+      <!-- 5. ERGEBNISSE -->
+      <section class="pjese" id="rezultate" hidden>
+        <p class="syri">Raste të dokumentuara</p>
+        <h2>Rezultate me terapitë LifeSkin.</h2>
+        <div class="raste">
+          <figure class="rasti">
+            <div class="rasti__foto">
+              <img src="/apps/lifeskin-landing/fotot/rasti-1-dita1.jpg" alt="Para terapisë" loading="lazy"><span>Para</span>
+              <img src="/apps/lifeskin-landing/fotot/rasti-1-dita28.jpg" alt="Pas 28 ditëve" loading="lazy"><span class="pas">Dita 28</span>
+            </div>
+            <figcaption>Pacienti 1 · 26 vjeç · akne inflamatore<br><b>LF ACNE + LF MOISTUR</b></figcaption>
+          </figure>
+          <figure class="rasti">
+            <div class="rasti__foto">
+              <img src="/apps/lifeskin-landing/fotot/rasti-3-dita1.jpg" alt="Para terapisë" loading="lazy"><span>Para</span>
+              <img src="/apps/lifeskin-landing/fotot/rasti-3-dita28.jpg" alt="Pas 28 ditëve" loading="lazy"><span class="pas">Dita 28</span>
+            </div>
+            <figcaption>Pacienti 3 · 22 vjeç · akne & pore të mëdha<br><b>LF ACNE + LF MOISTUR + LF PORE</b></figcaption>
+          </figure>
+        </div>
+        <p class="shenim">Çdo lëkurë reagon ndryshe. Prandaj Dr. Gashi ju ndjek çdo javë.</p>
+      </section>
+
+      <!-- 6. DIE ENTSCHEIDUNG -->
+      <section class="pjese vendimi" id="vendimi" hidden>
+        <h2>Filloni sot. Paguani vetëm kur ta merrni.</h2>
+        <p class="pse-tani" id="t-psetani" hidden></p>
+        <div class="cmimi cmimi--madh" id="t-cmimi2">
+          <div><strong data-cmimi></strong><span>gjithsej, me dërgesë</span></div>
+          <p><span data-dita></span><br><b>Pa abonim</b></p>
+        </div>
+        <button class="knopf" type="button" data-porosi></button>
+        <ul class="premtimet" id="t-premtimet"></ul>
+      </section>
+
+      <!-- 7. FRAGEN -->
+      <section class="pjese" id="pyetjet">
+        <p class="syri">Para se të vendosni</p>
+        <h2>Pyetje të shpeshta.</h2>
+        <details><summary>A është kjo terapi e përshtatshme për mua?<i aria-hidden="true">+</i></summary>
+          <p>Dr. Gashi e zgjodhi sipas fotove tuaja dhe gjetjeve të kësaj analize. Nëse keni lëkurë shumë të ndjeshme ose përdorni ilaçe për lëkurën, na shkruani para se të filloni.</p></details>
+        <details><summary>Kur shoh ndryshim?<i aria-hidden="true">+</i></summary>
+          <p>Lëkura ndryshon ngadalë — ndryshimet e para zakonisht duken pas disa javësh. Prandaj Dr. Gashi e kontrollon çdo javë dhe e krahason në ditën 28.</p></details>
+        <details><summary>Si paguaj dhe sa kushton dërgesa?<i aria-hidden="true">+</i></summary>
+          <p id="t-pagesa"></p></details>
+        <details><summary>Po nëse nuk jam i kënaqur?<i aria-hidden="true">+</i></summary>
+          <p id="t-garancia"></p></details>
+        <button class="lidhje" type="button" data-hilfe>Kam një pyetje tjetër</button>
+      </section>
+
+      <!-- 8. DIE GANZE ANALYSE -->
+      <section class="pjese analiza" id="analiza">
+        <p class="syri">Analiza e plotë</p>
+        <h2>Detajet, kur dëshironi t'i lexoni.</h2>
+        <div class="diagnoza" id="t-diagnoza" hidden>
+          <p><span>Vlerësimi orientues</span><strong id="t-diagnozaemri"></strong><em id="t-diagnozalat"></em></p>
+          <span class="shkalla" id="t-niveli" hidden></span>
+        </div>
+        <p class="permbledhja" id="t-permbledhja"></p>
+        <details id="t-zonatblock" hidden><summary>Gjetjet sipas zonave<i aria-hidden="true">+</i></summary>
+          <dl class="zonat" id="t-zonat"></dl></details>
+        <details id="t-parametratblock" hidden><summary id="t-parametrattitulli">Të gjithë parametrat<i aria-hidden="true">+</i></summary>
+          <ul class="parametrat" id="t-parametrat"></ul></details>
+        <details id="t-shpjegimiblock" hidden><summary>Çfarë do të thotë<i aria-hidden="true">+</i></summary>
+          <div id="t-shpjegimi"></div></details>
+        <details id="t-pakujdesblock" hidden><summary>Çfarë ndodh pa kujdes?<i aria-hidden="true">+</i></summary>
+          <dl class="zonat" id="t-pakujdes"></dl></details>
+        <details><summary>Si vlerësohet?<i aria-hidden="true">+</i></summary>
+          <p>Vlerësim i pamjes së lëkurës nga foto. Nga një fotografi nuk vlerësohen dot thellësia e lezioneve, dhimbja apo faktorët hormonalë; drita dhe kamera mund ta ndryshojnë pamjen e skuqjes. Historia dhe produktet që përdorni e plotësojnë planin.</p></details>
+      </section>
+
+      <footer class="fundi">
+        <span class="marke">LIFESKIN<small>SKINREACT</small></span>
+        <button class="lidhje" type="button" data-hilfe>Na shkruani në WhatsApp</button>
+      </footer>
+    </div>
+  </main>
+
+  <div class="leiste" id="leiste" data-an="nein" hidden>
+    <button class="knopf" type="button" data-porosi></button>
+    <p>Paguani te dera · Transport falas · <span id="t-leistegaranci"></span></p>
+  </div>
+
+  <div class="porosia" id="porosia" hidden>
+    <div class="porosia__kok">
+      <button type="button" class="mbrapa" data-mbyll aria-label="Kthehu">←</button>
+      <p class="syri">Porosia juaj</p>
+      <h2 id="t-porosititulli">Ku ta dërgojmë terapinë?</h2>
+    </div>
+    <div class="porosia__shporta" id="t-shporta">
+      <p><b>Terapia 28-ditore</b><span id="t-shportaprodukte"></span></p>
+      <strong data-cmimi></strong>
+    </div>
+    <form class="porosia__forma" id="forma" novalidate>
+      <label>Emri dhe mbiemri<input id="t-emri" autocomplete="name" required maxlength="100"></label>
+      <label>Numri i telefonit<input id="t-telefon" type="tel" inputmode="tel" autocomplete="tel" required maxlength="30"></label>
+      <label>Rruga dhe numri<input id="t-adresa" autocomplete="street-address" required maxlength="150"></label>
+      <label>Qyteti<input id="t-qyteti" autocomplete="address-level2" required maxlength="100"></label>
+      <p class="porosia__gabim" id="t-gabim" role="alert" hidden></p>
+    </form>
+    <div class="porosia__fund" id="t-porosifund">
+      <p class="porosia__siguria" id="t-porosisiguria"></p>
+      <button class="knopf" type="submit" form="forma" id="t-dergo"></button>
+    </div>
+    <div class="porosia__faleminderit" id="t-faleminderit" hidden role="status">
+      <h2>Porosia juaj është regjistruar.</h2>
+      <p>Ju kontaktojmë për konfirmimin e adresës. Pagesa bëhet kur ta merrni pakon.</p>
+      <button class="knopf" type="button" data-mbyll>Kthehu te terapia</button>
+    </div>
+  </div>
+</body>
+</html>

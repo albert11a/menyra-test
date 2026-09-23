@@ -1,0 +1,76 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { promptV8Fuellen } from "../apps/mnyra-heart/heart-lifeskin-prompt.js";
+import { shitjaLesen, pruefeShitja } from "../shared/lifeskin-shitja.js";
+import { raportLesen } from "../shared/lifeskin-analyse.js";
+import { pruefeRaportV3, reportToWire } from "../shared/lifeskin-raport-v3.js";
+
+const VORLAGE = readFileSync(new URL("../docs/lifeskin-prompt-v8.txt", import.meta.url), "utf8");
+
+test("v8 traegt alle fuenf Platzhalter und den Block shitja", () => {
+  for (const platz of ["{{PATIENT_NAME}}", "{{GENDER}}", "{{AGE}}", "{{ANAMNESIS}}", "{{VERIFIED_PRODUCTS}}"]) {
+    assert.ok(VORLAGE.includes(platz), platz);
+  }
+  assert.match(VORLAGE, /"shitja": \{/);
+  assert.match(VORLAGE, /"schema_version": 3/);
+});
+
+test("promptV8Fuellen setzt Fall und ganzen Katalog ein - kein Platzhalter bleibt", () => {
+  const text = promptV8Fuellen(VORLAGE, {
+    name: "Test", ageBand: "25-34", problemi: "Skuqje pas puçrrave", anamnese: {}
+  }, [
+    { id: "lf-acne", name: "LF ACNE", nenName: { sq: "Terapi kundër aknes" }, veprimi: [{ sq: "Ul bakterin" }], perdorimi: { koha: { sq: "mbrëmje" } } },
+    { id: "lf-moistur", name: "LF MOISTUR", veprimi: { sq: ["Rindërton barrierën"] } }
+  ]);
+  assert.doesNotMatch(text, /\{\{[A-Z_]+\}\}/);
+  assert.match(text, /"emri": "Test"/);
+  assert.match(text, /"teksti_i_pacientit": "Skuqje pas puçrrave"/);
+  assert.match(text, /"id": "lf-moistur"/);
+  assert.match(text, /Ul bakterin/);
+  assert.match(text, /Rindërton barrierën/);
+});
+
+const V3 = {
+  schema_version: 3,
+  vleresimi: { statusi: "i_vleresueshem" },
+  raporti: { fotot: 1, parametrat_e_vleresuar: 0, parametrat_me_gjetje: 0, zonat_e_kontrolluara: 1, zonat_me_ndryshime: 0 },
+  ekzaminimi: "", gjetjet: { permbledhja: "x", gjetja_kryesore: "a", gjetja_dyta: "", sipas_zonave: [] },
+  parametrat: [], diagnoza: { id: "tjeter", emri: "x", latinisht: "y", niveli: 1, niveli_emri: "Kërkon kujdes parandalues" },
+  shpjegimi: ["a", "b"], pa_kujdes: { zbehet: "", nuk_zbehet: "", pas_6_muajsh: "" },
+  synimi_28: "", keshilla: "", termat: [],
+  nevojat: [{ roli: "kryesor", produkt_id: "lf-acne", gjetja: "g", kerkon: "k", teksti: "t" }]
+};
+
+test("shitja reist durch raportLesen und reportToWire", () => {
+  const shitja = {
+    hyrja: "Për poret e bllokuara në ballë — dy produkte.",
+    shqetesimi: "",
+    problemet: [{ gjetja: "Pore të bllokuara", ku: "në ballë", produkt_id: "lf-acne", zgjidhja: "LF ACNE i hap." }],
+    produktet: [{ produkt_id: "lf-acne", per_ju: ["Hap poret", "", "Qetëson skuqjen", "e katërta"] }],
+    dita_28: "Synimi: më pak pore të bllokuara.", pse_tani: "x", whatsapp: "Analiza juaj është gati."
+  };
+  const r = raportLesen(JSON.stringify({ ...V3, shitja }));
+  assert.equal(r.shitja.hyrja, shitja.hyrja);
+  assert.deepEqual(r.shitja.produktet[0].per_ju, ["Hap poret", "Qetëson skuqjen", "e katërta"]);
+  assert.equal(reportToWire(r).shitja.problemet[0].produkt_id, "lf-acne");
+  // Kein "unbekanntes Feld" fuer shitja, keine Hinweise bei stimmigem Block.
+  assert.deepEqual(pruefeRaportV3({ ...V3, shitja }).filter((h) => /shitja/.test(h)), []);
+});
+
+test("ohne shitja bleibt alles wie vorher", () => {
+  const r = raportLesen(JSON.stringify(V3));
+  assert.equal(r.shitja, undefined);
+  assert.equal("shitja" in reportToWire(r), false);
+});
+
+test("pruefeShitja meldet Produkte, die nicht zusammenpassen", () => {
+  const hinweise = pruefeShitja({
+    hyrja: "x", problemet: [{ gjetja: "a", produkt_id: "lf-pore", zgjidhja: "" }], produktet: []
+  }, [{ produkt_id: "lf-acne" }]);
+  assert.ok(hinweise.some((h) => /lf-pore/.test(h)));
+  assert.ok(hinweise.some((h) => /lf-acne fehlt/.test(h)));
+  assert.ok(hinweise.some((h) => /whatsapp/.test(h)));
+  assert.equal(shitjaLesen({}), null);
+  assert.equal(shitjaLesen("text"), null);
+});

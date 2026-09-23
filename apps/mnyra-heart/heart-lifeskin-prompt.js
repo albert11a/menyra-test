@@ -107,3 +107,55 @@ export function promptFuellen(vorlage, sitzung) {
   }
   return prompt;
 }
+
+// PROMPT v8 - ein Text mit fuenf Platzhaltern statt einer JSON-Vorlage.
+//
+// Der Text steht in docs/lifeskin-prompt-v8.txt und wird so eingesetzt,
+// wie er dort steht. Hier werden nur die Platzhalter gefuellt:
+// {{PATIENT_NAME}}, {{GENDER}}, {{AGE}}, {{ANAMNESIS}} und
+// {{VERIFIED_PRODUCTS}}.
+//
+// DIE PRODUKTE SIND DER GANZE KATALOG, nicht die angehakten. In v8 waehlt
+// die Analyse die Therapie selbst (Teil A, Schritt 13) - wer nur die
+// schon angehakten mitschickt, hat die Entscheidung vorweggenommen.
+const sq = (wert) => {
+  if (typeof wert === "string") return wert.trim();
+  if (wert && typeof wert === "object") return String(wert.sq || "").trim();
+  return "";
+};
+
+function produktFuerPrompt(p) {
+  const roh = p?.veprimi;
+  const liste = Array.isArray(roh) ? roh : (Array.isArray(roh?.sq) ? roh.sq : []);
+  return {
+    id: String(p?.id || ""),
+    emri: String(p?.name || p?.id || ""),
+    lloji: sq(p?.nenName) || String(p?.lloji || ""),
+    detyra: sq(p?.beschreibung) || sq(p?.kurztext),
+    veprimi: liste.map(sq).filter(Boolean),
+    koha: sq(p?.perdorimi?.koha),
+    kujdes: sq(p?.perdorimi?.kujdes)
+  };
+}
+
+export function promptV8Fuellen(vorlage, sitzung, produkte = []) {
+  const fall = sitzung || {};
+  const anamnese = { pyetjet: anamneseFuerPrompt(fall.anamnese) };
+  const geschrieben = String(fall.pyetja || fall.problemi || "").trim();
+  if (geschrieben) {
+    anamnese.teksti_i_pacientit = geschrieben;
+    anamnese.lloji = fall.pyetja ? "pytje" : "trup";
+  }
+  const katalog = (Array.isArray(produkte) ? produkte : [])
+    .filter((p) => p && p.id && p.aktiv !== false)
+    .map(produktFuerPrompt);
+  const werte = {
+    PATIENT_NAME: String(fall.name || ""),
+    GENDER: String(fall.gender || ""),
+    AGE: String(fall.ageBand || ""),
+    ANAMNESIS: JSON.stringify(anamnese, null, 2),
+    VERIFIED_PRODUCTS: JSON.stringify(katalog, null, 2)
+  };
+  return String(vorlage || "").replace(/\{\{(PATIENT_NAME|GENDER|AGE|ANAMNESIS|VERIFIED_PRODUCTS)\}\}/g,
+    (_, name) => werte[name]);
+}
