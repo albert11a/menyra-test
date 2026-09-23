@@ -85,7 +85,7 @@ test("ein freigegebener Fall zeigt im Bogen genau das, was der Patient sieht", (
   assert.ok(html.includes(raport.parametrat[0].emri), "Der erste Messwert fehlt");
   assert.ok(html.includes(raport.zonaLista[0].zona), "Die erste Zone fehlt");
   assert.ok(html.includes(raport.paKujdes.nukZbehet), "Die Prognose fehlt");
-  assert.match(html, /<details class="heart-lifeskin-bogen" id="lifeskin-bogen" open>/,
+  assert.match(html, /<details class="heart-lifeskin-bogen[^"]*" id="lifeskin-bogen" open>/,
     "Der Bogen ist zugeklappt, obwohl etwas darin steht");
 });
 

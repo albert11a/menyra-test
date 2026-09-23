@@ -229,7 +229,7 @@ test("Heart gibt den Prompt aus, der hier liegt", () => {
   // Ein Knopf, der v3 verspricht und v4 liefert, ist schlimmer als
   // keiner - dann weiss niemand, welche Fassung im Umlauf ist.
   const heart = lies("apps/mnyra-heart/heart-lifeskin-render.js");
-  assert.match(heart, /Prompt v8 für diesen Fall kopieren/);
+  assert.match(heart, /Prompt für diesen Fall kopieren/);
   // Zwei Vorlagen: mit Foto und ohne Foto (nach seiner Beschreibung).
   assert.match(lies("apps/mnyra-heart/heart.js"), /'\/docs\/lifeskin-prompt-v8-pa-foto\.txt' : '\/docs\/lifeskin-prompt-v8\.txt'/);
   // Und die Datei muss auch ausgeliefert werden, sonst holt der Knopf eine

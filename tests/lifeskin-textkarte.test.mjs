@@ -146,12 +146,15 @@ function zeichne(zusatz = {}) {
   });
 }
 
-test("ueber dem Befund stehen zwei Chips: Befund und Texte der Seite", () => {
+test("der Befund steht in Schritten; die Texte der alten Seite liegen zugeklappt darunter", () => {
   const html = zeichne();
-  assert.match(html, /data-action="lifeskin-bogen" data-wert="befund"/);
-  assert.match(html, /data-action="lifeskin-bogen" data-wert="texte"/);
   assert.match(html, /data-bogen="befund"/);
-  assert.match(html, /data-bogen="texte" hidden/);
+  assert.match(html, /data-bogen="texte"/);
+  for (const titel of ["Therapie wählen", "Prompt kopieren", "Antwort der KI einfügen", "Therapieseite prüfen", "Freigeben"]) {
+    assert.ok(html.includes(titel), titel);
+  }
+  assert.ok(html.indexOf("Therapie wählen") < html.indexOf("Prompt für diesen Fall"), "Erst waehlen, dann Prompt");
+  assert.ok(html.indexOf('data-bogen="texte"') > html.indexOf("Alte Analyseseite"), "Die alten Texte liegen im Klappteil");
 });
 
 test("umgeschaltet wird OHNE Zustandsaenderung - sonst waere alles Getippte weg", () => {

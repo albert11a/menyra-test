@@ -33,6 +33,7 @@ import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 // Aufklappen, das ein Neuzeichnen ueberlebt.
 import { renderRaste, renderRastiEditor, renderBefundRaste, rasteListe } from "./heart-lifeskin-raste.js";
 import { klappAttr, alsKlapp } from "./heart-lifeskin-klapp.js";
+import { entwurfLesen } from "./heart-lifeskin-entwurf.js";
 import { ohneSeite, ohneSeiteTief } from "../../shared/lifeskin-ohne-seite.js";
 
 // Die Platzhalter im persoenlichen Satz.
@@ -1267,8 +1268,16 @@ function uhrzeitSekunden(iso) {
 // in der er auf der Seite steht. Leere Felder heissen: Die Seite baut den
 // Satz aus dem Befund.
 export const SHITJA_PROBLEME = 3;
-export const SHITJA_PRODUKTE = 3;
+export const SHITJA_PUNKTE = 3;
 
+// JE GEWAEHLTEM PRODUKT EIN BLOCK - nicht drei feste Plaetze.
+//
+// Hier standen drei Plaetze "Produkt 1/2/3" mit einer Auswahl darin. Bei
+// zwei Produkten blieb der dritte mit einem alten Wert stehen, und beim
+// Freigeben wurde er mitgespeichert: dreimal "Çfarë merrni", eines davon
+// doppelt. Jetzt gehoert jeder Block fest zu seinem Produkt und steht nur
+// da, wenn es angehakt ist (heart.js blendet ihn beim Anhaken ein). Die
+// drei Punkte sind drei Felder, keine Zeilen in einem Feld.
 function renderShitjaFelder(shitja, produkte = [], gewaehltIds = []) {
   const s = shitja && typeof shitja === "object" ? shitja : {};
   const optionen = (gewaehlt) => [`<option value="">— kein Produkt —</option>`,
@@ -1284,40 +1293,43 @@ function renderShitjaFelder(shitja, produkte = [], gewaehltIds = []) {
     const p = (s.problemet || [])[i] || {};
     return `
         <div class="heart-shitja__karte">
-          <b>Karte ${i + 1} · „Pse pikërisht kjo terapi“</b>
-          <input class="heart-lifeskin-eingabe" data-shitja-problem="${i}" data-teil="gjetja" placeholder="Problem, kurz (z. B. Pore të bllokuara)" value="${escapeHtml(p.gjetja || "")}">
-          <input class="heart-lifeskin-eingabe" data-shitja-problem="${i}" data-teil="ku" placeholder="Wo (z. B. në ballë)" value="${escapeHtml(p.ku || "")}">
-          <select class="heart-lifeskin-eingabe" data-shitja-problem="${i}" data-teil="produkt_id">${optionen(p.produkt_id)}</select>
+          <b>Karte ${i + 1}</b>
+          <div class="heart-shitja__paar">
+            <input class="heart-lifeskin-eingabe" data-shitja-problem="${i}" data-teil="gjetja" placeholder="Problem (z. B. Pore të bllokuara)" value="${escapeHtml(p.gjetja || "")}">
+            <input class="heart-lifeskin-eingabe" data-shitja-problem="${i}" data-teil="ku" placeholder="Wo (z. B. në ballë)" value="${escapeHtml(p.ku || "")}">
+          </div>
+          <select class="heart-lifeskin-eingabe" data-shitja-problem="${i}" data-teil="produkt_id" aria-label="Produkt dieser Karte">${optionen(p.produkt_id)}</select>
           <textarea class="heart-lifeskin-eingabe" rows="2" data-shitja-problem="${i}" data-teil="zgjidhja" placeholder="Was das Produkt hier tut (Produktname vorn)">${escapeHtml(p.zgjidhja || "")}</textarea>
         </div>`;
   }).join("");
-  const vorhanden = (s.produktet || []).map((p) => p.produkt_id);
-  const reihe = [...vorhanden, ...gewaehltIds.filter((id) => !vorhanden.includes(id))];
-  const produktRows = Array.from({ length: SHITJA_PRODUKTE }, (_, i) => {
-    const id = reihe[i] || "";
-    const eintrag = (s.produktet || []).find((p) => p.produkt_id === id) || {};
+  const gewaehlt = new Set((gewaehltIds || []).map(String));
+  const produktBloecke = (produkte || []).filter((p) => p.availability !== "hidden").map((p) => {
+    const id = String(p.id);
+    const punkte = ((s.produktet || []).find((x) => String(x.produkt_id) === id)?.per_ju) || [];
     return `
-        <div class="heart-shitja__karte">
-          <b>Produkt ${i + 1} · Punkte unter „Çfarë merrni“</b>
-          <select class="heart-lifeskin-eingabe" data-shitja-produkt="${i}" data-teil="produkt_id">${optionen(id)}</select>
-          <textarea class="heart-lifeskin-eingabe" rows="3" data-shitja-produkt="${i}" data-teil="per_ju" placeholder="Ein Punkt je Zeile, höchstens drei">${escapeHtml((eintrag.per_ju || []).join("\n"))}</textarea>
+        <div class="heart-shitja__karte" data-shitja-pblock="${escapeHtml(id)}"${gewaehlt.has(id) ? "" : " hidden"}>
+          <b>${escapeHtml(p.name || id)} · „Çfarë merrni“</b>
+          ${Array.from({ length: SHITJA_PUNKTE }, (_, n) => `
+          <textarea class="heart-lifeskin-eingabe" rows="2" maxlength="140" data-shitja-punkt="${escapeHtml(id)}" data-nr="${n}"
+                    placeholder="Punkt ${n + 1}">${escapeHtml(punkte[n] || "")}</textarea>`).join("")}
         </div>`;
   }).join("");
   return `
-        <details class="heart-shitja"${s.hyrja ? " open" : ""}>
-          <summary>Texte der Therapieseite (${s.hyrja ? "aus der Analyse" : "leer – die Seite baut sie aus dem Befund"})</summary>
-          <p class="heart-lifeskin-block__fuss">Reihenfolge wie auf der Seite. **fett** im Einstiegssatz wird fett angezeigt. Leer = die Seite nimmt den Befund.</p>
-          ${text("hyrja", "Einstiegssatz oben", "z. B. Për **poret e bllokuara në ballë** dhe **skuqjen në faqe** — 2 produkte, …", 4)}
-          ${text("shqetesimi", "Was ihn stört (grüner Kasten oben)", "Leer lassen, wenn er nichts genannt hat.")}
+        <div class="heart-shitja">
+          ${text("hyrja", "Einstiegssatz oben", "**fett** wird auf der Seite fett.", 3)}
+          ${text("shqetesimi", "Was ihn stört (grüner Kasten)", "Leer, wenn er nichts genannt hat.")}
+          <p class="heart-befund__zwischen">Karten „Pse pikërisht kjo terapi“</p>
           ${probleme}
-          ${produktRows}
+          <p class="heart-befund__zwischen">Je Produkt: drei Punkte</p>
+          ${produktBloecke || `<p class="heart-lifeskin-leer">Oben erst ein Produkt anhaken.</p>`}
           ${text("dita_28", "Tag 28 (Zeitleiste)", "")}
           ${text("pse_tani", "Warum jetzt (über dem zweiten Knopf)", "")}
           ${text("whatsapp", "WhatsApp-Nachricht von Dr. Gashi", "Ohne Anrede und Link – beides setzt Heart beim Kopieren ein.", 3)}
-        </details>`;
+        </div>`;
 }
 
 // Die Felder oben wieder als Block "shitja" - fuer heart.js beim Freigeben.
+// Nur Produkte, die angehakt sind, und jedes nur einmal.
 export function shitjaAusFeldern(wurzel = globalThis.document) {
   const wert = (el) => String(el?.value || "").trim();
   const raus = { problemet: [], produktet: [] };
@@ -1326,16 +1338,21 @@ export function shitjaAusFeldern(wurzel = globalThis.document) {
     const teil = (name) => wert(wurzel.querySelector(`[data-shitja-problem="${i}"][data-teil="${name}"]`));
     if (teil("gjetja")) raus.problemet.push({ gjetja: teil("gjetja"), ku: teil("ku"), produkt_id: teil("produkt_id"), zgjidhja: teil("zgjidhja") });
   }
-  for (let i = 0; i < SHITJA_PRODUKTE; i += 1) {
-    const teil = (name) => wurzel.querySelector(`[data-shitja-produkt="${i}"][data-teil="${name}"]`);
-    const id = wert(teil("produkt_id"));
-    const punkte = wert(teil("per_ju")).split("\n").map((x) => x.trim()).filter(Boolean);
-    if (id && punkte.length) raus.produktet.push({ produkt_id: id, per_ju: punkte });
+  const kaesten = [...wurzel.querySelectorAll("[data-produkt-wahl]")];
+  const angehakt = new Set(kaesten.filter((k) => k.checked).map((k) => String(k.value)));
+  for (const block of wurzel.querySelectorAll("[data-shitja-pblock]")) {
+    const id = block.getAttribute("data-shitja-pblock");
+    if (kaesten.length && !angehakt.has(id)) continue;
+    if (raus.produktet.some((p) => p.produkt_id === id)) continue;
+    const punkte = [...block.querySelectorAll("[data-shitja-punkt]")]
+      .map((f) => wert(f).replace(/\s+/g, " ")).filter(Boolean);
+    if (punkte.length) raus.produktet.push({ produkt_id: id, per_ju: punkte });
   }
   return raus;
 }
 
-// Und umgekehrt: nach dem Einfuegen des JSON die Felder fuellen.
+// Und umgekehrt: nach dem Einfuegen des JSON die Felder fuellen. Jedes
+// Feld wird gesetzt - auch leer -, damit nichts vom vorigen Stand bleibt.
 export function shitjaInFelder(shitja, wurzel = globalThis.document) {
   const s = shitja && typeof shitja === "object" ? shitja : {};
   for (const el of wurzel.querySelectorAll("[data-shitja]")) el.value = s[el.dataset.shitja] || "";
@@ -1343,15 +1360,15 @@ export function shitjaInFelder(shitja, wurzel = globalThis.document) {
     const p = (s.problemet || [])[i] || {};
     for (const el of wurzel.querySelectorAll(`[data-shitja-problem="${i}"]`)) el.value = p[el.dataset.teil] || "";
   }
-  for (let i = 0; i < SHITJA_PRODUKTE; i += 1) {
-    const p = (s.produktet || [])[i] || {};
-    const id = wurzel.querySelector(`[data-shitja-produkt="${i}"][data-teil="produkt_id"]`);
-    const punkte = wurzel.querySelector(`[data-shitja-produkt="${i}"][data-teil="per_ju"]`);
-    if (id && p.produkt_id) id.value = p.produkt_id;
-    if (punkte) punkte.value = (p.per_ju || []).join("\n");
+  const jeProdukt = new Map();
+  for (const p of s.produktet || []) {
+    const id = String(p?.produkt_id || "");
+    if (id && !jeProdukt.has(id)) jeProdukt.set(id, p.per_ju || []);
   }
-  const kasten = wurzel.querySelector(".heart-shitja");
-  if (kasten && s.hyrja) kasten.open = true;
+  for (const feld of wurzel.querySelectorAll("[data-shitja-punkt]")) {
+    const punkte = jeProdukt.get(feld.getAttribute("data-shitja-punkt")) || [];
+    feld.value = punkte[Number(feld.dataset.nr)] || "";
+  }
 }
 
 // Mit oder ohne Foto: was im Befund steht, sonst nach dem Weg. Trup und
@@ -1818,6 +1835,16 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({})) 
     (bericht?.produkte || []).map((p) => [String(p.id), ohneSeite(String(p.satz || ""))])
   );
   const zweck = new Map((bericht?.produkte || []).map((p) => [String(p.id), String(p.zweck || "")]));
+  // Noch nicht freigegeben: die auf dem Geraet gemerkte Auswahl (Produkte,
+  // Wofuer, Art, Preis) - siehe heart-lifeskin-entwurf.js.
+  const entwurf = stand === "wartet" ? entwurfLesen(sitzung.id) : null;
+  if (entwurf?.produkte?.length) {
+    for (const id of [...gewaehlt.keys()]) if (!entwurf.produkte.includes(id)) gewaehlt.delete(id);
+    for (const id of entwurf.produkte) if (!gewaehlt.has(id)) gewaehlt.set(id, "");
+  }
+  for (const [id, text] of Object.entries(entwurf?.zweck || {})) zweck.set(id, String(text));
+  const art = entwurf?.art || analyseArt(sitzung, bericht);
+  const preis = entwurf?.preis || bericht?.preis || SET_PREIS;
 
   const marke = {
     wartet: ["heart-lifeskin-marke--offen", "wartet auf Befund"],
@@ -1927,31 +1954,35 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({})) 
                Analyse erklaert dann, wie das Produkt dabei hilft, statt
                zu schreiben, was es nicht tut. -->
           <label class="heart-lifeskin-feld">
-            <span>Wofür bei diesem Patienten (geht in den Prompt)</span>
+            <span>Wofür bei diesem Patienten</span>
             <input class="heart-lifeskin-eingabe" data-produkt-zweck="${escapeHtml(id)}" maxlength="120"
                    placeholder="z. B. rrudhat rreth syve" value="${escapeHtml(zweck.get(id) || "")}">
           </label>
-          <label class="heart-lifeskin-feld">
-            <span>Pse pikërisht ky produkt</span>
-            <textarea class="heart-lifeskin-eingabe heart-lifeskin-pwahl__satz" rows="3"
-                      data-produkt-satz="${escapeHtml(id)}"
-                      placeholder="Wird beim Anhaken aus der Analyse gefuellt">${escapeHtml(gewaehlt.get(id) || "")}</textarea>
-          </label>
-          <div class="heart-lifeskin-feld">
-            <span>Çfarë bën — një rresht për çdo veprim</span>
-            <div class="heart-lifeskin-pwahl__veprimi" data-produkt-veprimi="${escapeHtml(id)}">${zeilenFelder}
+          <!-- Begruendung und Wirkungszeilen: Die Therapieseite nimmt sie
+               nur, wenn das JSON fuer dieses Produkt nichts mitbringt.
+               Deshalb zugeklappt - sie fuellen sich trotzdem. -->
+          <details class="heart-befund__rueckfall">
+            <summary>Rückfalltext (ohne JSON)</summary>
+            <label class="heart-lifeskin-feld">
+              <span>Pse pikërisht ky produkt</span>
+              <textarea class="heart-lifeskin-eingabe heart-lifeskin-pwahl__satz" rows="3"
+                        data-produkt-satz="${escapeHtml(id)}"
+                        placeholder="Wird beim Anhaken aus der Analyse gefuellt">${escapeHtml(gewaehlt.get(id) || "")}</textarea>
+            </label>
+            <div class="heart-lifeskin-feld">
+              <span>Çfarë bën — një rresht për çdo veprim</span>
+              <div class="heart-lifeskin-pwahl__veprimi" data-produkt-veprimi="${escapeHtml(id)}">${zeilenFelder}
+              </div>
             </div>
-          </div>
-          <div class="heart-lifeskin-pwahl__fuss">
-            <small data-produkt-stand="${escapeHtml(id)}"></small>
-            <button type="button" class="heart-lifeskin-pwahl__neu"
-                    data-action="lifeskin-produkt-satz-neu" data-id="${escapeHtml(id)}">zurücksetzen</button>
-          </div>
+            <div class="heart-lifeskin-pwahl__fuss">
+              <small data-produkt-stand="${escapeHtml(id)}"></small>
+              <button type="button" class="heart-lifeskin-pwahl__neu"
+                      data-action="lifeskin-produkt-satz-neu" data-id="${escapeHtml(id)}">zurücksetzen</button>
+            </div>
+          </details>
         </div>
       </div>`;
     }).join("");
-
-  const eigeneTexte = TEXT_SCHLUESSEL.filter((k) => String((bericht?.texte || {})[k] || "").trim()).length;
 
   // DER BOGEN UEBERLEBT JEDES NEUZEICHNEN (data-bewahren, siehe
   // renderHeartApp). Alles hier lebt im DOM, bis freigegeben wird -
@@ -1963,74 +1994,77 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({})) 
   const bewahren = ["befund", sitzung.id, stand, bericht?.freigabeAt || "", bericht?.versandtAt || "",
     bericht?.ohneBild ? "pa-foto" : ""].join(":");
 
+  const schritt = (nr, titel, inhalt, zusatz = "") => `
+      <section class="heart-befund__schritt"${zusatz}>
+        <h5 class="heart-befund__titel"><span class="heart-befund__nr">${nr}</span>${titel}</h5>
+        ${inhalt}
+      </section>`;
+
   return `
-    <div class="heart-lifeskin-editor" data-bewahren="${escapeHtml(bewahren)}">
+    <div class="heart-lifeskin-editor heart-befund" data-bewahren="${escapeHtml(bewahren)}">
       <div class="heart-lifeskin-editor__kopf">
         <h4>Befund</h4>
         <span class="heart-lifeskin-marke ${marke[0]}">${escapeHtml(marke[1])}</span>
       </div>
 
-      <!-- ZWEI BOEGEN, EIN FALL: der Befund und die Texte der Seite.
-           Sie stehen nebeneinander und nicht untereinander - die Texte sind
-           hundertsiebzig Felder, und wer den Befund schreibt, will sie nicht
-           jedes Mal wegscrollen.
+      <!-- IN DER REIHENFOLGE DER ARBEIT, nummeriert: waehlen, Prompt
+           kopieren, JSON einfuegen, Texte pruefen, freigeben. Was die
+           Therapieseite nicht mehr liest (alte Seite, Schweregrad,
+           4-Wochen-Plan), liegt zugeklappt ganz unten.
 
-           Umgeschaltet wird OHNE Zustandsaenderung. Dieser ganze Bogen lebt
-           im DOM: Was hier getippt und eingefuegt wird, steht in den Feldern
-           und nirgends sonst, bis jemand freigibt. Ein Zustandswechsel
-           zeichnet Heart neu - und haette alles Getippte weggewischt. -->
-      <div class="heart-lifeskin-chips heart-lifeskin-chips--bogen" role="group">
-        <button type="button" class="heart-lifeskin-chip heart-lifeskin-chip--an"
-                data-action="lifeskin-bogen" data-wert="befund" aria-pressed="true">Befund</button>
-        <button type="button" class="heart-lifeskin-chip"
-                data-action="lifeskin-bogen" data-wert="texte" aria-pressed="false">Texte der Seite${
-          eigeneTexte ? ` <span>${eigeneTexte}</span>` : ""}</button>
-      </div>
-
+           Der ganze Bogen lebt im DOM, bis freigegeben wird - und
+           ueberlebt jedes Neuzeichnen (data-bewahren). -->
       <div data-bogen="befund">
 
-      <!-- Oben nur das Einfuegen.
-           Die Analyse entsteht in einem anderen Fenster und liegt in der
-           Zwischenablage, nicht als Datei. Ein Umweg ueber "Speichern
-           unter" waere je Patient ein Schritt mehr - bei fuenfzig am Tag
-           sind das fuenfzig. Was eingefuegt wird, fuellt den Bogen
-           darunter; geaendert werden kann dort trotzdem alles. -->
-      <div class="heart-lifeskin-vorlage">
-        <textarea class="heart-lifeskin-eingabe" id="lifeskin-json" rows="3"
-                  placeholder="JSON der Analyse hier einfuegen — Anfuehrungszeichen und Vorrede sind egal"></textarea>
-        <!-- MIT ODER OHNE FOTO. Bestimmt den Prompt, den der Knopf kopiert,
-             und wie die Therapieseite spricht. Ohne Foto sagt sie "was Sie
-             uns erzaehlt haben" statt "was Dr. Gashi gesehen hat". Kommt
-             das Foto spaeter per WhatsApp: umschalten, neu kopieren, neu
-             freigeben. -->
-        <label class="heart-lifeskin-feld heart-analyse-art">
-          <span>Analyse-Art</span>
-          <select class="heart-lifeskin-eingabe" data-bogen-art>
-            <option value="foto"${analyseArt(sitzung, bericht) === "foto" ? " selected" : ""}>Mit Foto – Bildanalyse</option>
-            <option value="pa-foto"${analyseArt(sitzung, bericht) === "pa-foto" ? " selected" : ""}>Ohne Foto – nach seiner Beschreibung</option>
-          </select>
-        </label>
-        <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-prompt-kopieren">Prompt v8 für diesen Fall kopieren</button>
-        <textarea class="heart-lifeskin-eingabe" id="lifeskin-prompt-ausgabe" hidden readonly rows="5" aria-label="Vollständiger Prompt für diesen Fall"></textarea>
-        <div class="heart-lifeskin-vorlage__reihe">
-          <button type="button" class="heart-lifeskin-knopf"
-                  data-action="lifeskin-json-uebernehmen">Uebernehmen</button>
-          <p class="heart-lifeskin-vorlage__stand" id="lifeskin-vorlage-stand"></p>
+      ${schritt(1, "Therapie wählen", `
+        <p class="heart-befund__hilfe">Vor dem Prompt. Heart merkt sich die Auswahl auf diesem Gerät.</p>
+        <div class="heart-befund__produkte">
+          ${zeilen || `<p class="heart-lifeskin-leer">Noch kein Produkt angelegt. Erst unter „Mehr anzeigen → Produkte“ anlegen.</p>`}
         </div>
-      </div>
+        <div class="heart-befund__reihe">
+          <!-- MIT ODER OHNE FOTO. Bestimmt den Prompt und wie die
+               Therapieseite spricht. Kommt das Foto spaeter per WhatsApp:
+               umschalten, neu kopieren, neu freigeben. -->
+          <label class="heart-lifeskin-feld heart-analyse-art">
+            <span>Analyse-Art</span>
+            <select class="heart-lifeskin-eingabe" data-bogen-art>
+              <option value="foto"${art === "foto" ? " selected" : ""}>Mit Foto</option>
+              <option value="pa-foto"${art === "pa-foto" ? " selected" : ""}>Ohne Foto (Beschreibung)</option>
+            </select>
+          </label>
+          <label class="heart-lifeskin-feld heart-befund__preis">
+            <span>Setpreis €</span>
+            <input class="heart-lifeskin-eingabe" id="lifeskin-preis" type="number" inputmode="decimal"
+                   value="${escapeHtml(String(preis))}" />
+          </label>
+        </div>`)}
 
-      <!-- Der Bogen. Aufgeklappt, sobald etwas darin steht.
-           Er ist derselbe Bogen fuer beide Wege: Eingefuegtes JSON fuellt
-           ihn, und wer kein JSON hat, tippt hinein. Freigegeben wird, was
-           HIER steht - nicht das, was in der Zwischenablage lag. -->
-      <details class="heart-lifeskin-bogen" id="lifeskin-bogen"${bogenOffen ? " open" : ""}>
-        <summary>Details der Analyse${bogenOffen ? "" : " — leer"}</summary>
-        <label class="heart-lifeskin-feld"><input type="checkbox" data-raport-reviewed${raport.aerztlichGeprueft ? " checked" : ""} /> Dr. Violeta Gashi hat diesen Befund tatsächlich ärztlich geprüft. Nur nach erfolgter Prüfung bestätigen.</label>
+      ${schritt(2, "Prompt kopieren", `
+        <button type="button" class="heart-befund__knopf heart-befund__knopf--haupt" data-action="lifeskin-prompt-kopieren">Prompt für diesen Fall kopieren</button>
+        <textarea class="heart-lifeskin-eingabe" id="lifeskin-prompt-ausgabe" hidden readonly rows="5" aria-label="Vollständiger Prompt für diesen Fall"></textarea>`)}
+
+      ${schritt(3, "Antwort der KI einfügen", `
+        <div class="heart-lifeskin-vorlage">
+          <textarea class="heart-lifeskin-eingabe" id="lifeskin-json" rows="4"
+                    placeholder="JSON hier einfügen – Vorrede und Anführungszeichen sind egal"></textarea>
+          <button type="button" class="heart-befund__knopf" data-action="lifeskin-json-uebernehmen">Übernehmen</button>
+          <p class="heart-lifeskin-vorlage__stand" id="lifeskin-vorlage-stand"></p>
+        </div>`)}
+
+      ${schritt(4, "Therapieseite prüfen", `
+        <p class="heart-befund__hilfe">So steht es beim Patienten. Jedes Feld lässt sich ändern.</p>
+        ${renderShitjaFelder(raport.shitja, produkte, [...gewaehlt.keys()])}
+        ${renderBefundRaste(raste, bericht)}`)}
+
+      <!-- Die Analyse unten auf der Therapieseite ("Analiza e plotë"):
+           Diagnose, Zonen, Messwerte, Erklaerung. Kommt aus dem JSON;
+           hier nur zum Nachsehen und Korrigieren. -->
+      <details class="heart-lifeskin-bogen heart-befund__klapp" id="lifeskin-bogen"${bogenOffen ? " open" : ""}>
+        <summary>Analyse-Details${bogenOffen ? "" : " — leer"} <small>Diagnose, Zonen, Messwerte</small></summary>
         <textarea hidden data-raport-meta>${escapeHtml(JSON.stringify(raport || {}))}</textarea>
-        <label class="heart-lifeskin-feld">Begriffe und Erklärungen (JSON, vor Freigabe prüfen)
+        <label class="heart-lifeskin-feld">Begriffe und Erklärungen (JSON)
           <textarea class="heart-lifeskin-eingabe" rows="5" data-raport-terms>${escapeHtml(JSON.stringify(raport.termat || [], null, 2))}</textarea>
         </label>
-        ${renderShitjaFelder(raport.shitja, produkte, [...gewaehlt.keys()])}
 
         <div class="heart-lifeskin-bogen__leib">
           ${RAPORT_BOGEN.map((f) => `
@@ -2051,79 +2085,64 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({})) 
             <span>Matjet nga fotot — dhjetë parametrat</span>
             ${messBogen(raport.parametrat || [])}
           </div>
-
-          <!-- Die vier Wochen. Leer heisst: der Standardplan der Seite.
-               Ein halber eigener Plan waere schlechter als der ganze
-               Standardplan - deshalb zaehlt er nur vollstaendig. -->
-          <div class="heart-lifeskin-feld">
-            <span>Plani 4-javor — leer = Standardplan</span>
-            ${[1, 2, 3, 4].map((n) => `
-              <input class="heart-lifeskin-eingabe" type="text" data-zusatz="java_${n}"
-                     placeholder="Java ${n}" value="${escapeHtml(zusatz[`java_${n}`] || "")}" />`).join("")}
-          </div>
         </div>
       </details>
 
-      <!-- Der Schweregrad. Ein Klick, und aus einem Absatz Text wird eine
-           Einordnung. Ohne Angabe bleibt sie weg - lieber nichts als eine
-           erfundene. -->
-      <label class="heart-lifeskin-feld heart-lifeskin-feld--kurz">
-        <span>Schweregrad</span>
-        <select class="heart-lifeskin-eingabe" id="lifeskin-schwere">
-          ${[["", "— keine Angabe —"], ["leicht", "Leicht"], ["mittel", "Mittel"], ["schwer", "Schwer"]]
-            .map(([w, t]) => `<option value="${w}"${(bericht?.schwere || "") === w ? " selected" : ""}>${t}</option>`)
-            .join("")}
-      </select>
-      </label>
+      <!-- NUR FUER DIE ALTE ANALYSESEITE (/analiza?klasik=1). Die
+           Therapieseite liest nichts davon. Bleibt da, damit ein alter
+           Befund beim erneuten Freigeben nichts verliert. -->
+      <details class="heart-befund__klapp heart-befund__alt">
+        <summary>Alte Analyseseite <small>nicht mehr nötig</small></summary>
+        <label class="heart-lifeskin-feld heart-lifeskin-feld--kurz">
+          <span>Schweregrad</span>
+          <select class="heart-lifeskin-eingabe" id="lifeskin-schwere">
+            ${[["", "— keine Angabe —"], ["leicht", "Leicht"], ["mittel", "Mittel"], ["schwer", "Schwer"]]
+              .map(([w, t]) => `<option value="${w}"${(bericht?.schwere || "") === w ? " selected" : ""}>${t}</option>`)
+              .join("")}
+          </select>
+        </label>
+        <div class="heart-lifeskin-feld">
+          <span>Plani 4-javor — leer = Standardplan</span>
+          ${[1, 2, 3, 4].map((n) => `
+            <input class="heart-lifeskin-eingabe" type="text" data-zusatz="java_${n}"
+                   placeholder="Java ${n}" value="${escapeHtml(zusatz[`java_${n}`] || "")}" />`).join("")}
+        </div>
+        <div data-bogen="texte">
+          ${renderTexteEditor(bericht)}
+        </div>
+      </details>
 
-      <div class="heart-lifeskin-feld">
-        <span>Therapie — Produkte auswaehlen</span>
-        ${zeilen || `<p class="heart-lifeskin-leer">Noch kein Produkt angelegt. Erst unten anlegen, dann hier waehlen.</p>`}
-      </div>
+      </div><!-- /Bogen -->
 
-      <label class="heart-lifeskin-feld heart-lifeskin-feld--kurz">
-        <span>Setpreis in Euro</span>
-        <input class="heart-lifeskin-eingabe" id="lifeskin-preis" type="number" inputmode="decimal"
-               value="${escapeHtml(String(bericht?.preis || SET_PREIS))}" />
-      </label>
-
-      ${renderBefundRaste(raste, bericht)}
-
-      </div><!-- /Bogen Befund -->
-
-      <div data-bogen="texte" hidden>
-        ${renderTexteEditor(bericht)}
-      </div>
-
-      <!-- Der Fuss steht AUSSERHALB beider Boegen: Freigegeben wird immer
-           beides zusammen, egal welcher gerade offen ist. -->
-      <div class="heart-lifeskin-editor__fuss">
-        <!-- DER KNOPF HEISST, WAS ER FREIGIBT.
-             Bei einem Scan und bei einem Foto ist das ein Befund. Bei
-             Trup und Pytje ist es eine Antwort - dort wurde nichts
-             gemessen, und "Befund" waere ein Wort, das mehr behauptet
-             als dahinter steht. Derselbe Knopf, derselbe Weg, ein
-             anderes Wort. -->
-        <button type="button" class="heart-lifeskin-knopf heart-lifeskin-knopf--stark"
-                data-action="lifeskin-bericht-freigeben" data-id="${escapeHtml(sitzung.id)}">
-          ${fertig ? "Aenderungen freigeben"
-            : (["trup", "pytje"].includes(typVon(sitzung)) ? "Antwort freigeben" : "Befund freigeben")}
-        </button>
-        <!-- Erst ansehen, dann freigeben. Die Vorschau schreibt denselben
-             Befund, nur im Zustand "vorschau": Der Patient sieht weiter
-             seine Warteseite, wir sehen die fertige Seite. -->
-        <button type="button" class="heart-lifeskin-knopf"
-                data-action="lifeskin-bericht-vorschau" data-id="${escapeHtml(sitzung.id)}">
-          Nur fuer uns (Vorschau)
-        </button>
-        ${bericht?.status === "vorschau" ? `<a class="heart-lifeskin-link" href="/analiza/${escapeHtml(sitzung.id)}?vorschau=1" target="_blank" rel="noopener">Vorschau ansehen</a>` : ""}
-        ${fertig ? `<a class="heart-lifeskin-link" href="/analiza/${escapeHtml(sitzung.id)}" target="_blank" rel="noopener">Seite ansehen</a>` : ""}
-        ${bericht?.status === "vorschau" ? `<a class="heart-lifeskin-link" href="/terapia/${escapeHtml(sitzung.id)}?vorschau=1&amp;still=1" target="_blank" rel="noopener">Neue Therapieseite (Vorschau)</a>` : ""}
-        ${fertig && stand !== "vorschau" ? `<a class="heart-lifeskin-link" href="/terapia/${escapeHtml(sitzung.id)}?still=1" target="_blank" rel="noopener">Neue Therapieseite ansehen</a>` : ""}
-        ${fertig && bericht?.raport?.shitja?.whatsapp ? `<button type="button" class="heart-lifeskin-kopier"
-            data-action="lifeskin-text-kopieren" data-was="WhatsApp-Nachricht"
-            data-wert="${escapeHtml(whatsappNachricht(sitzung, bericht))}">WhatsApp-Nachricht kopieren</button>` : ""}
-      </div>
+      <!-- 5. FREIGEBEN. Die Bestaetigung der aerztlichen Pruefung steht
+           direkt ueber dem Knopf - dort, wo sie gebraucht wird. -->
+      <section class="heart-befund__schritt heart-befund__schritt--freigabe">
+        <h5 class="heart-befund__titel"><span class="heart-befund__nr">5</span>Freigeben</h5>
+        <label class="heart-befund__geprueft"><input type="checkbox" data-raport-reviewed${raport.aerztlichGeprueft ? " checked" : ""} />
+          <span>Dr. Violeta Gashi hat diesen Befund ärztlich geprüft.</span></label>
+        <!-- DER KNOPF HEISST, WAS ER FREIGIBT: Bei Trup und Pytje ist
+             es eine Antwort, sonst ein Befund. -->
+        <div class="heart-lifeskin-editor__fuss heart-befund__fuss">
+          <button type="button" class="heart-befund__knopf heart-befund__knopf--haupt"
+                  data-action="lifeskin-bericht-freigeben" data-id="${escapeHtml(sitzung.id)}">
+            ${fertig ? "Änderungen freigeben"
+              : (["trup", "pytje"].includes(typVon(sitzung)) ? "Antwort freigeben" : "Befund freigeben")}
+          </button>
+          <!-- Erst ansehen, dann freigeben: derselbe Befund im Zustand
+               "vorschau" - der Patient sieht weiter seine Warteseite. -->
+          <button type="button" class="heart-befund__knopf"
+                  data-action="lifeskin-bericht-vorschau" data-id="${escapeHtml(sitzung.id)}">
+            Nur für uns (Vorschau)
+          </button>
+          <div class="heart-befund__links">
+            ${bericht?.status === "vorschau" ? `<a class="heart-befund__link" href="/terapia/${escapeHtml(sitzung.id)}?vorschau=1&amp;still=1" target="_blank" rel="noopener">Vorschau ansehen ↗</a>` : ""}
+            ${fertig && stand !== "vorschau" ? `<a class="heart-befund__link" href="/terapia/${escapeHtml(sitzung.id)}?still=1" target="_blank" rel="noopener">Therapieseite ansehen ↗</a>` : ""}
+            ${fertig && bericht?.raport?.shitja?.whatsapp ? `<button type="button" class="heart-befund__link heart-lifeskin-kopier"
+                data-action="lifeskin-text-kopieren" data-was="WhatsApp-Nachricht"
+                data-wert="${escapeHtml(whatsappNachricht(sitzung, bericht))}">WhatsApp-Nachricht kopieren</button>` : ""}
+          </div>
+        </div>
+      </section>
 
       ${["bestellt", "versandt", "zugestellt"].includes(stand) ? `
       <div class="heart-lifeskin-editor__versand">

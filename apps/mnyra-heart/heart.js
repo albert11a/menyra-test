@@ -57,6 +57,7 @@ import { ladeLifeskin, horcheLive, ladeFotos, ladeErstesFoto, loescheAlleSitzung
   ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX,
   speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder } from "./heart-lifeskin-adapter.js";
 import { rasteListe, klappSetzen, rastiDom } from "./heart-lifeskin-raste.js";
+import { entwurfSchreiben, entwurfLoeschen, entwurfAusBogen } from "./heart-lifeskin-entwurf.js";
 import { rasteNormalisieren, rastiNormalisieren, neueRastiId, RASTI_PRODUKTE_MAX } from "../../shared/lifeskin-raste.js";
 import { aktualisiereLifeskinSitzungen } from "./heart-lifeskin-berechnung.js";
 import { baueLive } from "./heart-lifeskin-live.js";
@@ -2214,6 +2215,8 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff = false } = {}) {
     // ein Fach, das es nicht gibt: Die Liste war danach leer, bis jemand
     // einen Chip antippte.
     actions.patchLifeskin({ berichtStatus: "", ...(nurStaff ? {} : { fach: "ready" }) });
+    // Gespeichert ist gespeichert: der Entwurf auf dem Geraet hat ausgedient.
+    entwurfLoeschen(id);
     await ladeLifeskinBereich({ force: true });
     // Was am Bogen auffaellt, steht HINTER der Freigabe und nicht davor:
     // Es ist eine Beobachtung, keine Bedingung.
@@ -2417,8 +2420,23 @@ function lifeskinProduktWahlGeaendert(id, an) {
   const block = document.querySelector(`[data-produkt-block="${CSS.escape(String(id))}"]`);
   block?.classList.toggle("heart-lifeskin-pwahl__text--zu", !an);
   block?.closest(".heart-lifeskin-pwahl")?.classList.toggle("heart-lifeskin-pwahl--an", Boolean(an));
+  // Die drei Punkte "Çfarë merrni" dieses Produkts - nur, wenn es gewaehlt ist.
+  const punkte = document.querySelector(`[data-shitja-pblock="${CSS.escape(String(id))}"]`);
+  if (punkte) punkte.hidden = !an;
+  lifeskinEntwurfMerken();
   lifeskinTherapieFuellen();
   lifeskinPreisFolgen();
+}
+
+// Die Auswahl vor dem Prompt auf dem Geraet merken (heart-lifeskin-entwurf.js).
+// Nur solange der Fall noch nicht freigegeben ist - danach gilt der Befund.
+function lifeskinEntwurfMerken() {
+  const stand = store.getState().lifeskin || {};
+  const id = String(stand.offen || "").trim();
+  if (!id || !document.querySelector("[data-produkt-wahl]")) return;
+  const status = stand.berichte?.[id]?.status || "wartet";
+  if (status !== "wartet") return;
+  entwurfSchreiben(id, entwurfAusBogen(document));
 }
 
 // "Zuruecksetzen" - der Weg zurueck zur Automatik.
@@ -3103,6 +3121,7 @@ const operations = {
   lifeskinPrompt() { return lifeskinPromptKopieren(); },
   lifeskinProdukteAnlegen() { return lifeskinProdukteAnlegen(); },
   lifeskinProduktWahl(id, an) { return lifeskinProduktWahlGeaendert(id, an); },
+  lifeskinEntwurfMerken() { lifeskinEntwurfMerken(); },
   lifeskinProduktSatzNeu(id) { return lifeskinTherapieNeu(id); },
   setzeLifeskinVersand(id, stand) { return setzeLifeskinVersand(id, stand); },
   openView(viewKey) {

@@ -439,7 +439,7 @@ test("in Heart steht bei jedem Fall, was der Patient geantwortet hat", () => {
   assert.match(html, /Einige Monate/);
   // Und er steht VOR dem Befund: Er wird gelesen, bevor geschrieben wird -
   // und der Prompt-Knopf steht unmittelbar darunter.
-  assert.ok(html.indexOf("Seine Antworten") < html.indexOf("Prompt v8"),
+  assert.ok(html.indexOf("Seine Antworten") < html.indexOf("Prompt für diesen Fall"),
     "Die Antworten stehen hinter dem Befundbogen");
 
   // Ein Fall ohne Antworten laesst den Block nicht verschwinden: Ein

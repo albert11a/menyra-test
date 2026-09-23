@@ -5713,3 +5713,110 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
 
 /* MEHR ANZEIGEN: Karten mit Abstand, alle zugeklappt, bis man sie oeffnet. */
 .heart-lifeskin-mehr__karten { display: flex; flex-direction: column; gap: 12px; padding-top: 4px; }
+
+/* ══ DER BEFUND IN SCHRITTEN ═══════════════════════════════════════
+   Nummeriert in der Reihenfolge der Arbeit, mit Luft dazwischen, grossen
+   Knoepfen und Feldern in 16 px - darunter zoomt das iPhone beim Antippen
+   in das Feld hinein, und die Seite springt. */
+.heart-befund { gap: 0; padding: 16px; }
+.heart-befund .heart-lifeskin-editor__kopf { margin-bottom: 6px; }
+.heart-befund .heart-lifeskin-eingabe {
+  font-size: 16px; line-height: 1.45; padding: 12px 13px; border-radius: 12px; min-height: 48px;
+}
+.heart-befund textarea.heart-lifeskin-eingabe { min-height: 0; }
+.heart-befund .heart-lifeskin-feld { gap: 7px; }
+.heart-befund .heart-lifeskin-feld > span {
+  font-size: 12px; letter-spacing: .04em; text-transform: none; font-weight: 600;
+  color: var(--heart-text-soft, #c7c7c2);
+}
+.heart-befund__schritt {
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 18px 0; border-top: 1px solid var(--heart-line, #26292a);
+}
+.heart-befund__titel {
+  display: flex; align-items: center; gap: 10px; margin: 0;
+  font-size: 16px; font-weight: 700; color: var(--heart-text, #f7f7f2);
+}
+.heart-befund__nr {
+  width: 28px; height: 28px; flex: none; border-radius: 50%;
+  display: grid; place-items: center; font-size: 13px; font-weight: 800;
+  background: #3fbf9b26; color: #7fe0c3;
+}
+.heart-befund__hilfe { margin: -6px 0 0; font-size: 13px; color: var(--heart-muted, #8f918d); line-height: 1.45; }
+.heart-befund__zwischen {
+  margin: 8px 0 -4px; font-size: 12px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--heart-muted, #8f918d);
+}
+.heart-befund__produkte { display: flex; flex-direction: column; gap: 10px; }
+.heart-befund__reihe { display: grid; grid-template-columns: 1fr 110px; gap: 12px; }
+.heart-befund__preis input { text-align: right; }
+
+/* Knoepfe: gross genug fuer den Daumen, der wichtigste voll breit. */
+.heart-befund__knopf {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 52px; width: 100%; padding: 12px 18px; border-radius: 14px;
+  border: 1px solid var(--heart-line, #34383a); background: #ffffff0d;
+  color: var(--heart-text, #f7f7f2); font: inherit; font-size: 16px; font-weight: 700; cursor: pointer;
+}
+.heart-befund__knopf:active { transform: scale(.99); }
+.heart-befund__knopf--haupt { background: #3fbf9b; border-color: transparent; color: #06231b; }
+.heart-befund .heart-lifeskin-vorlage { border: 0; padding: 0; gap: 10px; }
+
+/* Produkte: die ganze Zeile ist die Flaeche zum Antippen. */
+.heart-befund .heart-lifeskin-pwahl { padding: 14px; border-radius: 14px; background: #ffffff06; }
+.heart-befund .heart-lifeskin-pwahl--an { background: #3fbf9b12; }
+.heart-befund .heart-lifeskin-pwahl__kopf { grid-template-columns: 26px 1fr; gap: 12px; align-items: center; min-height: 36px; }
+.heart-befund .heart-lifeskin-pwahl input[type="checkbox"] { width: 24px; height: 24px; margin: 0; }
+.heart-befund .heart-lifeskin-pwahl__leib b { font-size: 16px; }
+.heart-befund .heart-lifeskin-pwahl__leib small { font-size: 13px; }
+.heart-befund .heart-lifeskin-pwahl__text { margin-top: 12px; display: flex; flex-direction: column; gap: 12px; }
+.heart-befund .heart-lifeskin-pwahl__text--zu { display: none; }
+
+/* Zugeklappte Teile: klar als "mehr" erkennbar, nicht als Fehler. */
+.heart-befund__klapp, .heart-befund__rueckfall {
+  border: 1px solid var(--heart-line, #26292a); border-radius: 14px; padding: 0 14px;
+}
+.heart-befund__klapp { margin-top: 12px; }
+.heart-befund__klapp > summary, .heart-befund__rueckfall > summary {
+  cursor: pointer; list-style: none; padding: 14px 0; font-size: 14px; font-weight: 700;
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+}
+.heart-befund__klapp > summary::-webkit-details-marker,
+.heart-befund__rueckfall > summary::-webkit-details-marker { display: none; }
+.heart-befund__klapp > summary::before, .heart-befund__rueckfall > summary::before { content: "▸"; color: var(--heart-muted, #8f918d); }
+.heart-befund__klapp[open] > summary::before, .heart-befund__rueckfall[open] > summary::before { content: "▾"; }
+.heart-befund__klapp > summary small, .heart-befund__rueckfall > summary small { font-weight: 500; color: var(--heart-muted, #8f918d); }
+.heart-befund__klapp[open], .heart-befund__rueckfall[open] { padding-bottom: 14px; }
+.heart-befund__klapp[open] > * + *, .heart-befund__rueckfall[open] > * + * { margin-top: 12px; }
+.heart-befund__rueckfall > summary { font-size: 13px; font-weight: 600; color: var(--heart-text-soft, #c7c7c2); }
+
+/* Texte der Therapieseite */
+.heart-befund .heart-shitja { margin: 0; border: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.heart-befund .heart-shitja__karte { margin: 0; padding: 12px; gap: 10px; border-radius: 14px; background: #ffffff08; }
+.heart-befund .heart-shitja__karte > b { font-size: 13px; color: var(--heart-text-soft, #c7c7c2); }
+.heart-shitja__paar { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.heart-befund .heart-shitja__karte[hidden] { display: none; }
+
+/* Freigabe */
+.heart-befund__schritt--freigabe { padding-bottom: 4px; }
+.heart-befund__geprueft {
+  display: grid; grid-template-columns: 26px 1fr; gap: 12px; align-items: center;
+  padding: 12px 14px; border-radius: 14px; background: #ffffff08; font-size: 14px; line-height: 1.4; cursor: pointer;
+}
+.heart-befund__geprueft input { width: 24px; height: 24px; margin: 0; accent-color: #3fbf9b; }
+.heart-befund__fuss { flex-direction: column; align-items: stretch; gap: 10px; margin-top: 0; }
+.heart-befund__links { display: flex; flex-wrap: wrap; gap: 8px; }
+.heart-befund__link {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 10px 14px; border-radius: 12px;
+  border: 1px solid var(--heart-line, #34383a); background: transparent; color: #7fe0c3;
+  font: inherit; font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer;
+}
+@media (max-width: 380px) {
+  .heart-shitja__paar { grid-template-columns: 1fr; }
+}
+/* Aufklapper: Pfeil und Text in EINER Zeile. */
+.heart-befund__klapp > summary, .heart-befund__rueckfall > summary { display: block; }
+.heart-befund__klapp > summary::before, .heart-befund__rueckfall > summary::before { display: inline-block; width: 1.1em; }
+.heart-befund__klapp > summary small { margin-left: 6px; }
+/* Problem und Ort untereinander - nebeneinander wurden die Hinweise abgeschnitten. */
+.heart-shitja__paar { grid-template-columns: 1fr; }
