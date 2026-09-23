@@ -138,7 +138,10 @@ function produktFuerPrompt(p) {
   };
 }
 
-export function promptV8Fuellen(vorlage, sitzung, produkte = []) {
+// gewaehlt: die in Heart angehakten Produkte. Stehen welche da, ist die
+// Therapie entschieden, und der Prompt sagt das der Analyse - sonst
+// schreibt sie Texte fuer eine Auswahl, die die Seite nicht zeigt.
+export function promptV8Fuellen(vorlage, sitzung, produkte = [], gewaehlt = []) {
   const fall = sitzung || {};
   const anamnese = { pyetjet: anamneseFuerPrompt(fall.anamnese) };
   const geschrieben = String(fall.pyetja || fall.problemi || "").trim();
@@ -154,8 +157,11 @@ export function promptV8Fuellen(vorlage, sitzung, produkte = []) {
     GENDER: String(fall.gender || ""),
     AGE: String(fall.ageBand || ""),
     ANAMNESIS: JSON.stringify(anamnese, null, 2),
-    VERIFIED_PRODUCTS: JSON.stringify(katalog, null, 2)
+    VERIFIED_PRODUCTS: JSON.stringify(katalog, null, 2),
+    FIXED_PRODUCTS: (Array.isArray(gewaehlt) ? gewaehlt : []).length
+      ? gewaehlt.map((p, i) => `${i + 1}. ${String(p?.id || "")} (${String(p?.name || p?.id || "")})`).join("\n")
+      : "keine"
   };
-  return String(vorlage || "").replace(/\{\{(PATIENT_NAME|GENDER|AGE|ANAMNESIS|VERIFIED_PRODUCTS)\}\}/g,
+  return String(vorlage || "").replace(/\{\{(PATIENT_NAME|GENDER|AGE|ANAMNESIS|VERIFIED_PRODUCTS|FIXED_PRODUCTS)\}\}/g,
     (_, name) => werte[name]);
 }

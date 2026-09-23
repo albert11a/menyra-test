@@ -2353,7 +2353,8 @@ async function lifeskinPromptKopieren() {
     if (!response.ok) throw new Error('Die Promptvorlage konnte nicht geladen werden.');
     const vorlage = await response.text();
     if (store.getState().lifeskin?.offen !== session.id) return;
-    const text = promptV8Fuellen(vorlage, session, state.produkte || []);
+    // Die angehakten Produkte gehen als festgelegte Therapie mit.
+    const text = promptV8Fuellen(vorlage, session, state.produkte || [], lifeskinGewaehlteProdukte());
     const output = document.querySelector('#lifeskin-prompt-ausgabe');
     if (output) { output.value=text; output.hidden=false; }
     try { await navigator.clipboard.writeText(text); setToast('Prompt', 'Kopiert. Fehlende Angaben prüfen und mit den Gesichtsaufnahmen senden.', 'success'); }

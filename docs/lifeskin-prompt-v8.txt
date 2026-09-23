@@ -51,6 +51,25 @@ Verifizierte verfügbare Produkte (nur diese, nur diese Wirkungen):
 
 {{VERIFIED_PRODUCTS}}
 
+FESTGELEGTE THERAPIE (von Dr. Gashi vorab gewählt):
+
+{{FIXED_PRODUCTS}}
+
+Steht hier eine Liste, ist die Therapie ENTSCHIEDEN:
+- nevojat enthält GENAU diese Produkte, in dieser Reihenfolge,
+  jedes genau einmal – keines weglassen, keines hinzufügen.
+- shitja.produktet enthält GENAU diese Produkte.
+- shitja.problemet ordnet jedem dieser Produkte mindestens einen
+  sichtbaren Befund zu, den es adressiert oder unterstützt
+  (Barriere, Verträglichkeit, Vorbeugung).
+- shitja.hyrja nennt die richtige Anzahl Produkte.
+- Die Analyse (Teil A) bleibt davon unberührt: Befunde werden nicht
+  passend zu den Produkten erfunden oder vergrößert.
+- Einzige Ausnahme: Verbietet eine Sicherheitsangabe aus der Anamnese
+  (z. B. Schwangerschaft, Isotretinoin) ein festgelegtes Produkt, lässt
+  du es in nevojat und shitja weg. Dr. Gashi sieht das in Heart.
+Steht hier „keine", wählst du selbst nach Schritt 13.
+
 Bilder:
 
 Die zusammen mit diesem Prompt übergebenen Hautaufnahmen.
@@ -301,6 +320,10 @@ vleresimi.statusi:
 
 Erst jetzt die Produkte. Nur IDs aus {{VERIFIED_PRODUCTS}}, nur deren
 verifizierte Wirkungen.
+
+IST OBEN EINE FESTGELEGTE THERAPIE ANGEGEBEN, GILT SIE – dann entfällt
+die eigene Auswahl a)–d), und du begründest nur noch, welchen Befund
+jedes festgelegte Produkt adressiert.
 
 Der Patient kommt, um eine Therapie zu bekommen. Eine Analyse ohne
 Therapie ist für ihn eine Antwort ohne nächsten Schritt. Deshalb:
@@ -573,6 +596,8 @@ Therapie:
 9. Sicherheitsangaben der Anamnese beachtet?
 10. Jede produkt_id in shitja steht auch in nevojat – und umgekehrt
     hat jedes Produkt in nevojat einen Eintrag in shitja.produktet?
+10b. Bei festgelegter Therapie: nevojat und shitja.produktet enthalten
+    GENAU die festgelegten Produkte, und hyrja nennt ihre Anzahl?
 
 Texte:
 11. shitja enthält nichts, was Teil A nicht belegt?

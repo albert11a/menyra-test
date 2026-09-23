@@ -90,3 +90,21 @@ test("Therapieseite: kurze Befundzeilen und fette Probleme", async () => {
     "Për **poret e bllokuara** në ballë — dy produkte.");
   assert.equal(fettNachtragen("Për **x** dhe y.", [{ gjetja: "y y y" }]), "Për **x** dhe y.");
 });
+
+test("festgelegte Produkte gehen in den Prompt, sonst 'keine'", () => {
+  const mit = promptV8Fuellen(VORLAGE, { name: "A" }, [], [{ id: "lf-acne", name: "LF ACNE" }, { id: "lf-moistur", name: "LF MOISTUR" }]);
+  assert.match(mit, /1\. lf-acne \(LF ACNE\)\n2\. lf-moistur \(LF MOISTUR\)/);
+  assert.doesNotMatch(mit, /\{\{FIXED_PRODUCTS\}\}/);
+  assert.match(promptV8Fuellen(VORLAGE, { name: "A" }, [], []), /FESTGELEGTE THERAPIE[\s\S]*?\n\nkeine\n/);
+});
+
+test("Therapieseite: Produktzahl und Fettdruck im Einstiegssatz", async () => {
+  globalThis.__LIFESKIN_TEST__ = true;
+  const { hyrjaAbgleichen, fettNachtragen } = await import("../apps/lifeskin-verkauf/terapia.js");
+  const satz = "Për puçrrat aktive në faqe dhe skuqjen në mjekër — 1 produkt dhe një plan 28-ditor.";
+  const neu = hyrjaAbgleichen(satz, 2, ["lf-acne"]);
+  assert.equal(neu, "Për puçrrat aktive në faqe dhe skuqjen në mjekër — 2 produkte, një plan i qartë dhe Dr. Gashi pranë jush çdo javë.");
+  assert.equal(hyrjaAbgleichen(satz, 1, ["lf-acne"]), satz);
+  assert.match(fettNachtragen(neu, [{ gjetja: "Puçrra të kuqe" }]),
+    /^Për \*\*puçrrat aktive në faqe\*\* dhe \*\*skuqjen në mjekër\*\* — 2 produkte/);
+});

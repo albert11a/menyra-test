@@ -98,7 +98,28 @@ export function fettNachtragen(text, problemet = []) {
     const i = satz.toLowerCase().indexOf(wort.toLowerCase());
     if (i >= 0) satz = `${satz.slice(0, i)}**${satz.slice(i, i + wort.length)}**${satz.slice(i + wort.length)}`;
   }
-  return satz;
+  if (satz.includes("**")) return satz;
+  // Nichts wortgleich gefunden: Der Satz hat die Form "Për X dhe Y — ...",
+  // also sind X und Y die Probleme.
+  const form = /^(Për )(.+?)( — .*)$/.exec(satz);
+  if (!form) return satz;
+  const teile = form[2].split(" dhe ");
+  const probleme = teile.length >= 2
+    ? [teile[0], teile.slice(1).join(" dhe ")]
+    : [form[2]];
+  return `${form[1]}${probleme.map((x) => `**${x.trim()}**`).join(" dhe ")}${form[3]}`;
+}
+
+// Nennt der Satz eine andere Produktzahl, als die Seite zeigt (in Heart
+// wurde nach der Analyse etwas an- oder abgehakt), wird sein Schluss
+// ersetzt - "1 produkt" ueber zwei Produkten ist ein Widerspruch, den
+// jeder sieht.
+export function hyrjaAbgleichen(text, anzahl, imText = []) {
+  const satz = String(text || "");
+  if (!anzahl || imText.length === anzahl || !satz.includes(" — ")) return satz;
+  const vorne = satz.slice(0, satz.indexOf(" — "));
+  const rest = `${anzahl === 1 ? "një produkt" : `${anzahl} produkte`}, një plan i qartë dhe Dr. Gashi pranë jush çdo javë.`;
+  return `${vorne} — ${rest}`;
 }
 
 // Der Produktname steht vorn und gruen - wie in der Vorlage. Steht er
@@ -234,7 +255,10 @@ export class Terapia {
       ? (name ? `${name}, kjo është terapia juaj për ${TAGE} ditë.` : `Terapia juaj për ${TAGE} ditë është gati.`)
       : (name ? `${name}, analiza juaj është gati.` : "Analiza juaj është gati."));
     this.#mjeku();
-    mitFett($("#t-hyrja"), s.hyrja ? fettNachtragen(s.hyrja, s.problemet) : this.#hyrjaErsatz());
+    const imText = [...new Set((s.produktet || []).map((p) => p.produkt_id))];
+    mitFett($("#t-hyrja"), s.hyrja
+      ? fettNachtragen(hyrjaAbgleichen(s.hyrja, this.produkte.length, imText), s.problemet)
+      : this.#hyrjaErsatz());
     schreibe($("#t-shqetesimi"), s.shqetesimi || "");
     zeigen($("#t-shqetesimi"), Boolean(s.shqetesimi));
     zeigen($("#t-kontroll"), brauchtAbklaerung(r));
@@ -384,6 +408,14 @@ export class Terapia {
       eintraege = this.produkte.length
         ? this.produkte.map((p, i) => karte(jeProdukt.get(p.id) || befunde[i] || p.nenName || p.name, p))
         : befunde.map((b) => karte(b, null));
+    }
+    // JEDES PRODUKT DER SEITE HAT SEINE KARTE. Wurde in Heart ein Produkt
+    // angehakt, das die Analyse nicht kannte, bekaeme es sonst keine - und
+    // der Kunde saehe ein Produkt im Set, zu dem nirgends steht, wofuer.
+    const abgedeckt = new Set(eintraege.map((e) => e.produkt?.id).filter(Boolean));
+    for (const p of this.produkte) {
+      if (abgedeckt.has(p.id)) continue;
+      eintraege.push({ gjetja: p.nenName || p.name, ku: "", produkt: p, zgjidhja: satzteil(p.kurz || "") || p.satz });
     }
     const liste = $("#t-gjetjet");
     liste.replaceChildren(...eintraege.map((e) => {
