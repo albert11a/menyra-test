@@ -14,13 +14,22 @@ export function meldungAnstossen(kennung, fetchFn = globalThis.fetch) {
     if (!kennung || typeof fetchFn !== "function") return;
     if (!ort || !/^https?:$/.test(String(ort.protocol || ""))) return;
     if (globalThis.__mnyraStill === true) return;
-    const antwort = fetchFn(`${ort.origin}/api/lifeskin-meldung`, {
+    const senden = () => fetchFn(`${ort.origin}/api/lifeskin-meldung`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: String(kennung) }),
       keepalive: true
     });
-    antwort?.catch?.(() => {});
+    // Kurzzeitige Server-/Netzfehler wiederholen; derselbe Meldungsschluessel
+    // verhindert eine zweite Zustellung an bereits erreichte Geraete.
+    const versuch = async (nummer = 0) => {
+      try {
+        const antwort = await senden();
+        if (antwort?.ok || (antwort?.status >= 400 && antwort?.status < 500)) return;
+      } catch { /* unten erneut versuchen */ }
+      if (nummer < 3) globalThis.setTimeout(() => { void versuch(nummer + 1); }, [2000, 10000, 65000][nummer]);
+    };
+    void versuch();
   } catch {
     /* Eine Meldung, die nicht rausgeht, kostet nie eine Bestellung. */
   }

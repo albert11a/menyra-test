@@ -3,7 +3,7 @@ import { shitjaLesen } from "../../shared/lifeskin-shitja.js";
 // Was in die Promptvorlage eingesetzt wird - Name, Altersgruppe und die
 // Fragen samt Antworten, wortgleich wie im Trichter.
 import { promptV8Fuellen } from "./heart-lifeskin-prompt.js";
-import { meldeGeraetAn } from "./heart-push.js";
+import { meldeGeraetAn, meldeGeraetAb, istPushAngemeldet } from "./heart-push.js";
 import { kannPush } from "./heart-push-utils.js";
 import { createHeartGoAdapter } from "./heart-go-adapter.js";
 import {
@@ -2849,7 +2849,7 @@ const operations = {
     const fertig = await meldeGeraetAn(uid, { interaktiv: true, erzwingen: true });
     pushSchalterAuffrischen(root);
     if (fertig) {
-      setToast("Meldungen", "Dieses Geraet bekommt jetzt neue Analysen gemeldet.", "success");
+      setToast("Meldungen", "Dieses Geraet bekommt jetzt neue Analysen und Bestellungen gemeldet.", "success");
       return;
     }
     const stand = globalThis.Notification?.permission || "default";
@@ -2906,6 +2906,7 @@ const operations = {
   },
   async logout() {
     try {
+      await meldeGeraetAb(store.getState().auth?.user?.uid);
       await authController.logout();
     } catch (error) {
       setToast("Abmeldung", error?.message || "Abmeldung fehlgeschlagen.", "danger");
@@ -3736,21 +3737,21 @@ function pushSchalterAuffrischen(wurzel) {
   const text = kasten.querySelector("[data-push-text]");
   const knopf = kasten.querySelector("[data-push-knopf]");
 
-  // Kann das Geraet gar nicht, steht hier nichts. Ein Schalter, der nichts
-  // schaltet, ist schlimmer als keiner - besonders auf dem iPhone im
-  // Safari-Tab, wo Apple Web Push grundsaetzlich nicht zulaesst.
-  if (!kannPush()) { kasten.hidden = true; return; }
   kasten.hidden = false;
-
+  if (!kannPush()) {
+    if (text) text.textContent = "Auf dem iPhone Heart in Safari oeffnen, zum Home-Bildschirm hinzufuegen und dort starten. Push benoetigt einen unterstuetzten Browser und HTTPS.";
+    if (knopf) { knopf.textContent = "Nicht verfuegbar"; knopf.disabled = true; }
+    return;
+  }
   const stand = globalThis.Notification?.permission || "default";
-  // SCHON EINGESCHALTET HEISST: HIER IST NICHTS MEHR ZU TUN.
-  //
-  // Hier stand "Eingeschaltet auf diesem Geraet." neben einem Knopf
-  // "Aktiv", der nicht mehr zu druecken war - zwei Zeilen, die nichts
-  // anbieten und nichts melden, was nicht ohnehin jede Meldung zeigt. Der
-  // Schalter ist fuer den Fall da, dass die Erlaubnis noch fehlt; hat er
-  // seine Arbeit getan, tritt er ab.
-  if (stand === "granted") { kasten.hidden = true; return; }
+  if (stand === "granted") {
+    const aktiv = istPushAngemeldet(store.getState().auth?.user?.uid);
+    if (text) text.textContent = aktiv
+      ? "Neue Analysen und Bestellungen werden auf diesem Geraet gemeldet."
+      : "Erlaubnis vorhanden. Bitte dieses Geraet fuer Analysen und Bestellungen anmelden.";
+    if (knopf) { knopf.textContent = aktiv ? "Erneut anmelden" : "Anmelden"; knopf.disabled = false; }
+    return;
+  }
   if (stand === "denied") {
     // Ab hier hilft kein Knopf mehr: Der Browser fragt nicht noch einmal.
     if (text) {
@@ -3945,7 +3946,7 @@ store.subscribe((state) => {
     //
     // Der Rueckgabewert interessiert hier niemanden, und ein Fehlschlag
     // bleibt folgenlos: Heart ist ein Arbeitsplatz, keine Meldeanlage.
-    meldeGeraetAn(state.auth.user?.uid).catch(() => {});
+    meldeGeraetAn(state.auth.user?.uid).then(() => pushSchalterAuffrischen(root)).catch(() => {});
     // Start braucht die Landing-Sitzungen und die Leads fuer "Was gibt es
     // Neues". Die offene Ansicht kommt zusaetzlich dran, damit ein Neuladen auf
     // "#analytics" oder "#orte" dort ankommt, wo es hingehoert - und nicht in
@@ -3969,7 +3970,7 @@ scheduleMotivationTick();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    const serviceWorkerUrl = new URL("./sw.js?v=2026-08-05-heart-start-v10", import.meta.url);
+    const serviceWorkerUrl = new URL("./sw.js?v=2026-09-23-heart-push", import.meta.url);
     navigator.serviceWorker.register(serviceWorkerUrl).catch(() => {});
   });
 }

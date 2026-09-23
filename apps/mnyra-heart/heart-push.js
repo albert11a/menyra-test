@@ -49,6 +49,13 @@ const GERAETE_SCHLUESSEL = "mnyra_heart_push_device_id";
 const MERKER_SCHLUESSEL = "mnyra_heart_push_token_meta";
 
 let laeuft = null;
+let laufendesKonto = "";
+let aktivesKonto = "";
+let abmeldung = false;
+
+export function istPushAngemeldet(uid) {
+  return Boolean(uid) && aktivesKonto === uid;
+}
 
 function leseSpeicher(schluessel) {
   try {
@@ -117,10 +124,11 @@ const WARTEZEIT_MS = 8000;
 const SW_BEREICH = new URL("./", import.meta.url).toString();
 
 function mitFrist(versprechen, ms = WARTEZEIT_MS) {
+  let timer;
   return Promise.race([
     Promise.resolve(versprechen),
-    new Promise((fertig) => { globalThis.setTimeout?.(() => fertig(null), ms); })
-  ]).catch(() => null);
+    new Promise((fertig) => { timer = globalThis.setTimeout(() => fertig(null), ms); })
+  ]).catch(() => null).finally(() => globalThis.clearTimeout(timer));
 }
 
 // Warten, bis der Worker wirklich laeuft.
@@ -173,16 +181,17 @@ async function holeAnmeldung() {
   } catch {
     eigene = null;
   }
-  const aktiv = await wirdAktiv(eigene);
+  const aktiv = eigene?.scope === SW_BEREICH ? await wirdAktiv(eigene) : null;
   if (aktiv) return aktiv;
 
-  // Heart hat seinen Worker noch nicht angemeldet - heart.js tut das beim
-  // "load", und beim ersten Start kann die Anmeldung frueher dran sein.
-  // Dann nimmt sie, was diese Seite steuert: eine Meldung ueber den Worker
-  // der Hauptseite ist immer noch besser als keine, und beim naechsten
-  // Start steht Hearts eigener da und uebernimmt.
+  // Immer den eigenen Worker starten, auch wenn das load-Ereignis vorbei ist.
+  // serviceWorker.ready koennte den Social-Worker zurueckgeben.
   try {
-    return await mitFrist(globalThis.navigator.serviceWorker.ready);
+    const registriert = await mitFrist(globalThis.navigator.serviceWorker.register(
+      new URL("./sw.js?v=2026-09-23-heart-push", import.meta.url),
+      { scope: SW_BEREICH }
+    ));
+    return await wirdAktiv(registriert);
   } catch {
     return null;
   }
@@ -192,6 +201,7 @@ async function holeAnmeldung() {
 async function registriereWirklich(uid, { interaktiv = false, erzwingen = false } = {}) {
   const konto = String(uid || "").trim();
   if (!konto || !kannPush()) return false;
+  if (erzwingen) aktivesKonto = "";
   if (!(await holeErlaubnis({ interaktiv }))) return false;
 
   const anmeldung = await holeAnmeldung();
@@ -201,10 +211,10 @@ async function registriereWirklich(uid, { interaktiv = false, erzwingen = false 
   try {
     const messaging = await import("/shared/vendor/firebase/11.0.0/firebase-messaging.js");
     if (typeof messaging.isSupported === "function" && !(await messaging.isSupported())) return false;
-    token = String(await messaging.getToken(messaging.getMessaging(), {
+    token = String(await mitFrist(messaging.getToken(messaging.getMessaging(), {
       vapidKey: VAPID_KEY,
       serviceWorkerRegistration: anmeldung
-    }) || "").trim();
+    })) || "").trim();
   } catch {
     // Kein Push-Dienst erreichbar, Schluessel abgelehnt, Browser kann es
     // nicht: Heart laeuft weiter.
@@ -212,10 +222,10 @@ async function registriereWirklich(uid, { interaktiv = false, erzwingen = false 
   }
   if (!token) return false;
 
-  if (!erzwingen && istFrisch(leseMerker(), token)) return true;
+  if (!erzwingen && aktivesKonto === konto && istFrisch(leseMerker(), token, Date.now(), undefined, konto)) return true;
 
   try {
-    await setDoc(
+    const geschrieben = await mitFrist(setDoc(
       doc(db, "users", konto, "devices", geraeteId()),
       geraetePaket({
         token,
@@ -224,12 +234,14 @@ async function registriereWirklich(uid, { interaktiv = false, erzwingen = false 
         stempel: serverTimestamp()
       }),
       { merge: true }
-    );
+    ).then(() => true));
+    if (!geschrieben) return false;
   } catch {
     return false;
   }
 
-  schreibeSpeicher(MERKER_SCHLUESSEL, JSON.stringify({ token, ts: Date.now() }));
+  schreibeSpeicher(MERKER_SCHLUESSEL, JSON.stringify({ token, uid: konto, ts: Date.now() }));
+  aktivesKonto = konto;
   return true;
 }
 
@@ -239,10 +251,15 @@ async function registriereWirklich(uid, { interaktiv = false, erzwingen = false 
 // jeder Zustandsaenderung neu, und ohne das liefen fuenf Registrierungen
 // nebeneinander.
 export function meldeGeraetAn(uid, optionen = {}) {
-  if (laeuft) return laeuft;
+  if (abmeldung) return Promise.resolve(false);
+  if (laeuft) {
+    if (laufendesKonto === uid) return laeuft;
+    return laeuft.then(() => meldeGeraetAn(uid, optionen));
+  }
+  laufendesKonto = uid;
   laeuft = registriereWirklich(uid, optionen)
     .catch(() => false)
-    .finally(() => { laeuft = null; });
+    .finally(() => { laeuft = null; laufendesKonto = ""; });
   return laeuft;
 }
 
@@ -254,13 +271,19 @@ export function meldeGeraetAn(uid, optionen = {}) {
 export async function meldeGeraetAb(uid) {
   const konto = String(uid || "").trim();
   if (!konto) return;
+  abmeldung = true;
+  if (laeuft) await laeuft;
+  aktivesKonto = "";
+  schreibeSpeicher(MERKER_SCHLUESSEL, "");
   try {
-    await setDoc(
+    await mitFrist(setDoc(
       doc(db, "users", konto, "devices", geraeteId()),
       stilllegenPaket({ stempel: serverTimestamp() }),
       { merge: true }
-    );
+    ));
   } catch {
-    // Wer sich abmeldet, wartet nicht darauf.
+    // Die eigentliche Abmeldung muss auch ohne Verbindung moeglich bleiben.
+  } finally {
+    abmeldung = false;
   }
 }

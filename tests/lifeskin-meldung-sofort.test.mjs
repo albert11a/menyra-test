@@ -20,26 +20,41 @@ process.env.MNYRA_FIREBASE_ADMIN_KEY = JSON.stringify({
 
 const str = (v) => ({ stringValue: v });
 
-function googleNachbau({ sitzung }) {
+function googleNachbau({ sitzung, fcmFehler = [], queryFehler = false, tokens = ["geraet-1"] }) {
   const angelegt = new Set();
   const gesendet = [];
+  const dokumente = new Map();
+  const deaktiviert = [];
   globalThis.fetch = async (url, optionen = {}) => {
     const u = String(url);
     const json = (daten, status = 200) => ({ ok: status < 300, status, json: async () => daten });
     if (u.startsWith("https://oauth2.googleapis.com/token")) return json({ access_token: "tok", expires_in: 3600 });
     if (u.includes("/sessions/")) return sitzung ? json({ fields: sitzung }) : json({}, 404);
     if (u.includes("/superadmins")) return json({ documents: [] });
-    if (u.includes(":runQuery")) return json([{ document: { name: "projects/p/databases/(default)/documents/users/u/devices/d1", fields: { token: str("geraet-1"), enabled: { booleanValue: true } } } }]);
+    if (u.includes(":runQuery") && queryFehler) { queryFehler = false; return json({}, 503); }
+    if (u.includes(":runQuery")) return json(tokens.map((token, i) => ({ document: { name: `projects/p/databases/(default)/documents/users/u/devices/d${i}`, fields: { token: str(token), enabled: { booleanValue: true } } } })));
     if (u.includes("/notifications?documentId=")) {
       const id = decodeURIComponent(u.split("documentId=")[1]);
       if (angelegt.has(id)) return json({}, 409);
       angelegt.add(id);
+      dokumente.set(id, { fields: JSON.parse(optionen.body).fields, updateTime: "2026-09-23T00:00:00Z" });
       return json({});
     }
-    if (u.startsWith("https://fcm.googleapis.com/")) { gesendet.push(JSON.parse(optionen.body).message); return json({}); }
+    if (u.includes("/notifications/")) {
+      const id = u.split("/notifications/")[1].split("?")[0];
+      const dok = dokumente.get(id);
+      if (optionen.method === "PATCH") Object.assign(dok.fields, JSON.parse(optionen.body).fields);
+      return json(dok);
+    }
+    if (u.includes("/devices/") && optionen.method === "PATCH") { deaktiviert.push(u); return json({}); }
+    if (u.startsWith("https://fcm.googleapis.com/")) {
+      const fehler = fcmFehler.shift();
+      if (fehler) return json(fehler.body || {}, fehler.status);
+      gesendet.push(JSON.parse(optionen.body).message); return json({});
+    }
     throw new Error(`unerwartet: ${u}`);
   };
-  return { angelegt, gesendet };
+  return { angelegt, gesendet, dokumente, deaktiviert };
 }
 
 async function aufrufen(koerper, methode = "POST") {
@@ -113,4 +128,50 @@ test("jede Seite, die 'result' oder 'ordered' schreibt, stoesst die Meldung erst
   assert.match(lies("apps/lifeskin/lifeskin-session.js"), /geschrieben\.then\(\(antwort\) => \{ if \(antwort\?\.ok\) meldungAnstossen/);
   assert.match(lies("apps/lifeskin-astra/astra-daten.js"), /daten\?\.step === "ordered"[\s\S]{0,200}if \(ok\) meldungAnstossen/);
   assert.match(lies("apps/lifeskin-bericht/bericht.js"), /if \(gespeichert\?\.ok\) meldungAnstossen/);
+});
+
+
+test("FCM-Fehler bleiben wiederholbar und deaktivieren keinen gueltigen Token", async () => {
+  const g = googleNachbau({ sitzung: { step: str("result"), updatedAt: str(frisch()) },
+    fcmFehler: [{ status: 400 }] });
+  assert.equal((await aufrufen({ id: "retry123" })).status, 503);
+  assert.equal(g.deaktiviert.length, 0);
+  assert.equal((await aufrufen({ id: "retry123" })).status, 200);
+  assert.equal(g.gesendet.length, 1);
+  await aufrufen({ id: "retry123" });
+  assert.equal(g.gesendet.length, 1);
+  const dok = g.dokumente.get("lifeskin_analyse_retry123");
+  assert.equal(dok.fields.silent.booleanValue, true, "Cloud Trigger darf nicht parallel senden");
+  assert.equal(dok.fields.pushSent.booleanValue, true);
+});
+
+test("explizit unregistrierte Geraete werden stillgelegt", async () => {
+  const g = googleNachbau({ sitzung: { step: str("result"), updatedAt: str(frisch()) },
+    fcmFehler: [{ status: 404, body: { error: { details: [{
+      "@type": "type.googleapis.com/google.firebase.fcm.v1.FcmError", errorCode: "UNREGISTERED"
+    }] } } }] });
+  assert.equal((await aufrufen({ id: "invalid1" })).status, 503);
+  assert.equal(g.deaktiviert.length, 1);
+});
+
+test("ein Fehler beim Geraetelesen verbraucht die Meldung nicht", async () => {
+  const g = googleNachbau({ sitzung: { step: str("result"), updatedAt: str(frisch()) }, queryFehler: true });
+  assert.equal((await aufrufen({ id: "query123" })).status, 503);
+  assert.equal((await aufrufen({ id: "query123" })).status, 200);
+  assert.equal(g.gesendet.length, 1);
+});
+
+
+test("nach einem Teilerfolg bekommt nur das fehlende Geraet einen erneuten Push", async () => {
+  const g = googleNachbau({ sitzung: { step: str("result"), updatedAt: str(frisch()) },
+    tokens: ["geraet-1", "geraet-2"], fcmFehler: [null, { status: 503 }] });
+  assert.equal((await aufrufen({ id: "partial1" })).status, 503);
+  assert.equal((await aufrufen({ id: "partial1" })).status, 200);
+  assert.deepEqual(g.gesendet.map(m => m.token), ["geraet-1", "geraet-2"]);
+});
+
+test("parallele Anfragen senden eine Analyse nicht doppelt", async () => {
+  const g = googleNachbau({ sitzung: { step: str("result"), updatedAt: str(frisch()) } });
+  await Promise.all([aufrufen({ id: "parallel1" }), aufrufen({ id: "parallel1" })]);
+  assert.equal(g.gesendet.length, 1);
 });

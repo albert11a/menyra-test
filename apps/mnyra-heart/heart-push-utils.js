@@ -32,13 +32,14 @@ export function kannPush(umgebung = globalThis) {
 }
 
 // Steht derselbe Token schon frisch genug in Firestore?
-export function istFrisch(merker, token, jetzt = Date.now(), fensterMs = AUFFRISCHUNG_MS) {
+export function istFrisch(merker, token, jetzt = Date.now(), fensterMs = AUFFRISCHUNG_MS, uid = "") {
   if (!merker || typeof merker !== "object") return false;
+  if (uid && merker.uid !== uid) return false;
   const sauber = String(token || "").trim();
   if (!sauber) return false;
   if (String(merker.token || "").trim() !== sauber) return false;
   const stand = Math.max(0, Number(merker.ts || 0) || 0);
-  return (jetzt - stand) < fensterMs;
+  return stand > 0 && jetzt >= stand && (jetzt - stand) < fensterMs;
 }
 
 // Was in users/{uid}/devices/{id} steht.

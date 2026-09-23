@@ -142,18 +142,9 @@ test("der Knopf sagt die Wahrheit ueber dieses Geraet", () => {
   assert.match(HEART, /function pushSchalterAuffrischen\(/, "Der Knopf wird nie beschriftet");
   assert.match(HEART, /globalThis\.Notification\?\.permission/,
     "Der Stand kommt nicht aus dem Browser");
-  // Kann das Geraet gar nicht, verschwindet der Knopf ganz. Ein Schalter,
-  // der nichts schaltet, ist schlimmer als keiner.
-  assert.match(HEART, /if \(!kannPush\(\)\) \{ kasten\.hidden = true; return; \}/,
-    "Auf einem Geraet ohne Push steht trotzdem ein Schalter");
-  // Und ist die Erlaubnis da, verschwindet er ebenfalls. Hier standen
-  // "Eingeschaltet auf diesem Geraet." und ein Knopf "Aktiv", der nicht
-  // mehr zu druecken war: zwei Zeilen, die nichts anbieten.
-  assert.match(HEART, /if \(stand === "granted"\) \{ kasten\.hidden = true; return; \}/,
-    "Der erledigte Schalter steht weiter da");
-  const schalter = HEART.slice(HEART.indexOf("function pushSchalterAuffrischen("));
-  assert.ok(!/textContent = "Aktiv"/.test(schalter.slice(0, 2000)),
-    "Der Knopf wird weiter auf 'Aktiv' gestellt, statt zu verschwinden");
+  assert.match(HEART, /istPushAngemeldet\(store\.getState\(\)\.auth\?\.user\?\.uid\)/,
+    "Browser-Erlaubnis allein darf keinen Erfolg anzeigen");
+  assert.match(HEART, /Erneut anmelden/, "Eine fehlgeschlagene Anmeldung muss wiederholbar sein");
   // Bei "denied" hilft kein Knopf mehr - der Browser fragt nicht noch einmal.
   assert.match(HEART, /Einstellungen des Telefons/,
     "Bei abgelehnter Erlaubnis steht nicht da, wo man sie wieder einschaltet");
@@ -165,7 +156,7 @@ test("der Knopf sagt die Wahrheit ueber dieses Geraet", () => {
 test("ein Fehlschlag haelt Heart nicht an", () => {
   // Ein Arbeitsplatz, der wegen einer Benachrichtigung nicht aufgeht, ist
   // schlimmer als einer ohne Benachrichtigung.
-  assert.match(HEART, /meldeGeraetAn\([^)]*\)\.catch\(\(\) => \{\}\)/,
+  assert.match(HEART, /meldeGeraetAn\(state\.auth\.user\?\.uid\)\.then\([^\n]+\.catch\(\(\) => \{\}\)/,
     "Ein Fehler beim Anmelden schlaegt bis in Heart durch");
   assert.match(PUSH, /\.catch\(\(\) => false\)/, "meldeGeraetAn kann werfen");
   // Und jeder einzelne Schritt endet in false statt in einer Ausnahme.
@@ -336,8 +327,8 @@ test("keine Wartezeit ohne Ende", () => {
   // Knopf nicht mehr, und zwar still bis zum naechsten Neuladen.
   assert.match(PUSH, /const WARTEZEIT_MS = \d+;/, "Es gibt keine Frist mehr");
   assert.match(PUSH, /Promise\.race\(\[/, "Die Frist greift nicht");
-  assert.match(PUSH, /mitFrist\(globalThis\.navigator\.serviceWorker\.ready\)/,
-    "Der Rueckfall auf den Worker der Seite laeuft wieder ohne Frist");
+  assert.match(PUSH, /mitFrist\(globalThis\.navigator\.serviceWorker\.register\(/,
+    "Die Anmeldung des eigenen Workers braucht eine Frist");
 });
 
 test("das Antippen fuehrt nach Heart und macht kein zweites Fenster auf", () => {

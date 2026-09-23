@@ -802,7 +802,7 @@ function renderPushSchalter() {
   return `
       <div class="heart-lifeskin-push" data-push-schalter hidden>
         <div>
-          <b data-push-titel>Meldung bei neuer Analyse</b>
+          <b data-push-titel>Meldungen bei Analysen und Bestellungen</b>
           <small data-push-text></small>
         </div>
         <button type="button" class="heart-button heart-button--secondary"

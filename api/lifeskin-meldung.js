@@ -14,10 +14,10 @@
 // meldungs-regeln.mjs):
 //
 //   - nur Sitzungen, die wirklich bei "result"/"ordered" stehen,
-//   - nur innerhalb von 45 Minuten nach der letzten Aenderung,
+//   - nur innerhalb des Frischefensters nach der letzten Aenderung,
 //   - jede Meldung genau einmal: Das Meldungsdokument wird ANGELEGT, und
-//     steht es schon da (Waechter, Cloud Function oder ein zweiter Aufruf),
-//     wird nichts geschickt.
+//     bestaetigte Zustellungen werden uebersprungen, fehlgeschlagene
+//     Zustellungen mit einer zeitlich begrenzten Sperre wiederholt.
 //
 // Wer die Adresse kennt, kann also hoechstens eine echte, frische Meldung
 // frueher ausloesen - nie eine erfundene und nie eine doppelte.
@@ -46,6 +46,10 @@ const START = "https://mnyra.com";
 const ICON = "/apps/mnyra-heart/assets/icon-192.png?v=2026-03-20-heart-icon-normal-2";
 const KENNUNG = /^[A-Za-z0-9_-]{6,80}$/;
 
+function googleFetch(url, options = {}) {
+  return fetch(url, { ...options, signal: AbortSignal.timeout(10000) });
+}
+
 // ── Schluessel und Zugang ───────────────────────────────────────────────
 let zugang = { token: "", bis: 0 };
 
@@ -73,7 +77,7 @@ async function zugangHolen(k) {
     exp: jetzt + 3600
   });
   const signatur = crypto.createSign("RSA-SHA256").update(`${kopf}.${last}`).sign(k.private_key, "base64url");
-  const antwort = await fetch("https://oauth2.googleapis.com/token", {
+  const antwort = await googleFetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${kopf}.${last}.${signatur}`
@@ -108,7 +112,7 @@ function feld(v) {
 }
 
 async function lies(pfad, token) {
-  const antwort = await fetch(`${DOKUMENTE}/${pfad}`, { headers: { authorization: `Bearer ${token}` } });
+  const antwort = await googleFetch(`${DOKUMENTE}/${pfad}`, { headers: { authorization: `Bearer ${token}` } });
   if (antwort.status === 404) return null;
   if (!antwort.ok) throw new Error(`Lesen ${antwort.status}`);
   return antwort.json();
@@ -123,24 +127,51 @@ async function empfaenger(token) {
   return [...uids];
 }
 
-// Anlegen, nicht schreiben: 409 heisst "schon gemeldet".
+// Der direkte Sender besitzt die Zustellung. silent verhindert, dass der
+// bestehende onCreate-Trigger dieselbe Meldung parallel verschickt.
+const LEASE_MS = 60000;
+async function zustellungAendern(pfad, daten, token, updateTime = "") {
+  const maske = Object.keys(daten).map((k) => `updateMask.fieldPaths=${k}`).join("&");
+  const bedingung = updateTime ? `&currentDocument.updateTime=${encodeURIComponent(updateTime)}` : "";
+  const antwort = await googleFetch(`${DOKUMENTE}/${pfad}?${maske}${bedingung}`, {
+    method: "PATCH",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    body: JSON.stringify({ fields: Object.fromEntries(Object.entries(daten).map(([k, v]) => [k, feld(v)])) })
+  });
+  if (antwort.status === 409 || antwort.status === 412) return false;
+  if (!antwort.ok) throw new Error(`Zustellung speichern ${antwort.status}`);
+  return true;
+}
+
 async function meldungAnlegen(uid, kennung, nutzlast, token) {
-  const felder = Object.fromEntries(Object.entries(nutzlast).map(([k, v]) => [k, feld(v)]));
+  const pfad = `users/${uid}/notifications/${kennung}`;
+  const leaseUntil = Date.now() + LEASE_MS;
+  const felder = Object.fromEntries(Object.entries({ ...nutzlast, silent: true, leaseUntil, pushSent: false }).map(([k, v]) => [k, feld(v)]));
   const jetzt = new Date().toISOString();
   felder.createdAt = { timestampValue: jetzt };
   felder.updatedAt = { timestampValue: jetzt };
-  const antwort = await fetch(`${DOKUMENTE}/users/${uid}/notifications?documentId=${encodeURIComponent(kennung)}`, {
+  const antwort = await googleFetch(`${DOKUMENTE}/users/${uid}/notifications?documentId=${encodeURIComponent(kennung)}`, {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify({ fields: felder })
   });
-  if (antwort.status === 409) return false;
+  if (antwort.status === 409) {
+    const vorhanden = await lies(pfad, token);
+    const f = vorhanden?.fields || {};
+    // Alte Meldungen und von anderen Sendern angelegte Dokumente nie nachsenden.
+    if (wert(f.silent) !== true || wert(f.pushSent) !== false) return null;
+    if (Number(wert(f.leaseUntil)) > Date.now()) throw new Error("Zustellung laeuft");
+    if (!vorhanden?.updateTime || !(await zustellungAendern(pfad, { leaseUntil }, token, vorhanden.updateTime))) {
+      throw new Error("Zustellung bereits uebernommen");
+    }
+    return { pfad, erledigt: JSON.parse(wert(f.pushDone) || "[]") };
+  }
   if (!antwort.ok) throw new Error(`Meldung anlegen ${antwort.status}`);
-  return true;
+  return { pfad, erledigt: [] };
 }
 
 async function geraete(uid, token) {
-  const antwort = await fetch(`${DOKUMENTE}/users/${uid}:runQuery`, {
+  const antwort = await googleFetch(`${DOKUMENTE}/users/${uid}:runQuery`, {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify({ structuredQuery: {
@@ -149,7 +180,7 @@ async function geraete(uid, token) {
       limit: 30
     } })
   });
-  if (!antwort.ok) return [];
+  if (!antwort.ok) throw new Error(`Geraete lesen ${antwort.status}`);
   const zeilen = await antwort.json();
   const raus = new Map();
   for (const z of zeilen || []) {
@@ -159,10 +190,16 @@ async function geraete(uid, token) {
   return [...raus].map(([t, name]) => ({ token: t, name }));
 }
 
-async function schicken(uid, kennung, nutzlast, token) {
+async function schicken(uid, kennung, nutzlast, token, zustellung) {
   let gesendet = 0;
-  for (const g of await geraete(uid, token)) {
-    const antwort = await fetch(FCM, {
+  const liste = await geraete(uid, token);
+  if (!liste.length) throw new Error("Keine aktiven Geraete");
+  let fehlgeschlagen = false;
+  for (const g of liste) {
+    const hash = crypto.createHash("sha256").update(g.token).digest("hex");
+    if (zustellung.erledigt.includes(hash)) continue;
+    await zustellungAendern(zustellung.pfad, { leaseUntil: Date.now() + LEASE_MS }, token);
+    const antwort = await googleFetch(FCM, {
       method: "POST",
       headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
       body: JSON.stringify({ message: {
@@ -181,17 +218,29 @@ async function schicken(uid, kennung, nutzlast, token) {
         }
       } })
     });
-    if (antwort.ok) { gesendet += 1; continue; }
-    // Tote Geraete stilllegen, wie der Waechter.
-    if (antwort.status === 404 || antwort.status === 400) {
+    if (antwort.ok) {
+      gesendet += 1;
+      zustellung.erledigt.push(hash);
+      await zustellungAendern(zustellung.pfad, { pushDone: JSON.stringify(zustellung.erledigt) }, token);
+      continue;
+    }
+    fehlgeschlagen = true;
+    // Nur explizit unregistrierte Tokens stilllegen.
+    const fehler = await antwort.json().catch(() => ({}));
+    const ungueltig = fehler.error?.details?.some((detail) =>
+      detail["@type"] === "type.googleapis.com/google.firebase.fcm.v1.FcmError"
+      && detail.errorCode === "UNREGISTERED");
+    if (ungueltig) {
       const pfad = g.name.split("/documents/")[1];
-      await fetch(`${DOKUMENTE}/${pfad}?updateMask.fieldPaths=enabled&updateMask.fieldPaths=token&updateMask.fieldPaths=lastErrorCode`, {
+      await googleFetch(`${DOKUMENTE}/${pfad}?updateMask.fieldPaths=enabled&updateMask.fieldPaths=token&updateMask.fieldPaths=lastErrorCode`, {
         method: "PATCH",
         headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
         body: JSON.stringify({ fields: { enabled: { booleanValue: false }, token: { stringValue: "" }, lastErrorCode: { stringValue: `fcm-${antwort.status}` } } })
       }).catch(() => {});
     }
   }
+  if (fehlgeschlagen) throw new Error("FCM-Zustellung fehlgeschlagen");
+  await zustellungAendern(zustellung.pfad, { pushSent: true, leaseUntil: 0 }, token);
   return gesendet;
 }
 
@@ -232,21 +281,30 @@ export default async function lifeskinMeldung(req, res) {
     const sitzung = dok ? Object.fromEntries(Object.entries(dok.fields || {}).map(([f, v]) => [f, wert(v)])) : null;
     const faellig = sitzung ? meldungenFuer(sitzung) : [];
     let gemeldet = 0;
+    let fehlgeschlagen = false;
     if (faellig.length) {
       const ziele = await empfaenger(token);
       for (const vorlage of faellig) {
         const kennung = meldungsKennung(vorlage.type, id);
         for (const uid of ziele) {
           const nutzlast = { ...baueMeldung({ vorlage, sessionId: id, sitzung, uid }), source: "sofort" };
-          if (!(await meldungAnlegen(uid, kennung, nutzlast, token))) continue;
-          await schicken(uid, kennung, nutzlast, token);
+          let zustellung;
+          try {
+            zustellung = await meldungAnlegen(uid, kennung, nutzlast, token);
+            if (!zustellung) continue;
+            await schicken(uid, kennung, nutzlast, token, zustellung);
+          } catch (error) {
+            if (zustellung) await zustellungAendern(zustellung.pfad, { leaseUntil: 0 }, token).catch(() => {});
+            fehlgeschlagen = true;
+            continue;
+          }
           gemeldet += 1;
         }
       }
     }
-    res.statusCode = 200;
+    res.statusCode = fehlgeschlagen ? 503 : 200;
     res.setHeader("content-type", "application/json");
-    res.end(JSON.stringify({ ok: true, gemeldet }));
+    res.end(JSON.stringify({ ok: !fehlgeschlagen, gemeldet }));
   } catch (fehler) {
     console.error("[lifeskin-meldung]", fehler?.message || fehler);
     res.statusCode = 500;
