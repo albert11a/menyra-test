@@ -187,6 +187,10 @@ export class AnalyseDaten {
       // Der persoenliche Satz zuerst: Den hat Dr. Gashi fuer DIESEN Fall
       // geschrieben. Der Katalogtext ist nur der Rueckfall.
       satz: String(ausBericht.satz || sprachtext(stamm.kurztext, sprache) || "").trim(),
+      // Der kurze Satz aus dem Katalog ("Vepron mbi puçrrat aktive dhe
+      // bllokimin") - die Therapieseite braucht ihn fuer die Karten, wenn
+      // der Befund keine eigenen kurzen Saetze mitbringt.
+      kurz: sprachtext(stamm.kurztext, sprache),
       // Was das Mittel tut.
       //
       // ZUERST DAS, WAS IM BERICHT STEHT: Dr. Gashi hat es fuer diesen

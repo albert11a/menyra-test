@@ -51,6 +51,68 @@ function satzteil(text) {
   return t ? t.charAt(0).toLowerCase() + t.slice(1) : "";
 }
 
+// EIN LANGER BEFUNDSATZ, ZWEI ZEILEN: das Problem und wo es ist.
+//
+// "Pore të zgjeruara dhe mikroreliev i pabarabartë, më i dukshëm në faqet
+// pranë hundës" -> ["Pore të zgjeruara dhe mikroreliev i pabarabartë",
+// "më i dukshëm në faqet pranë hundës"]. Getrennt wird am ersten Komma,
+// Gedankenstrich oder " me " nach mindestens zwei Woertern. Nur fuer
+// Befunde ohne den Block "shitja" (Prompt vor v8) - v8 liefert beides
+// schon getrennt.
+export function kurzUndRest(text) {
+  const satz = String(text || "").trim().replace(/[.!]+$/, "");
+  let schnitt = -1;
+  let laenge = 0;
+  for (const trenner of [", ", " — ", " - ", " me "]) {
+    const i = satz.indexOf(trenner);
+    if (i > 0 && satz.slice(0, i).split(/\s+/).length >= 2 && (schnitt < 0 || i < schnitt)) {
+      schnitt = i;
+      laenge = trenner === " me " ? 1 : trenner.length;
+    }
+  }
+  if (schnitt < 0) return [satz, ""];
+  return [satz.slice(0, schnitt).trim(), satz.slice(schnitt + laenge).trim()];
+}
+
+// **fett** aus dem Prompt als <b>, alles andere als Text. Kein HTML aus
+// der Modellantwort erreicht die Seite.
+export function mitFett(knoten, text) {
+  if (!knoten) return;
+  knoten.replaceChildren();
+  String(text || "").split(/(\*\*[^*]+\*\*)/).forEach((teil) => {
+    if (!teil) return;
+    const fett = /^\*\*([^*]+)\*\*$/.exec(teil);
+    knoten.append(fett ? element("b", null, fett[1]) : teil);
+  });
+}
+
+// Vergisst die Analyse die Sterne, werden die Probleme aus den Karten
+// fett gesetzt, wo sie im Satz wortgleich vorkommen.
+export function fettNachtragen(text, problemet = []) {
+  let satz = String(text || "");
+  if (satz.includes("**")) return satz;
+  for (const p of problemet || []) {
+    const wort = String(p?.gjetja || "").trim();
+    if (wort.length < 4) continue;
+    const i = satz.toLowerCase().indexOf(wort.toLowerCase());
+    if (i >= 0) satz = `${satz.slice(0, i)}**${satz.slice(i, i + wort.length)}**${satz.slice(i + wort.length)}`;
+  }
+  return satz;
+}
+
+// Der Produktname steht vorn und gruen - wie in der Vorlage. Steht er
+// schon im Satz, wird er dort herausgenommen, damit er nicht zweimal
+// dasteht.
+function mitProduktVorn(knoten, name, satz) {
+  const text = String(satz || "").trim();
+  const i = text.toUpperCase().indexOf(String(name).toUpperCase());
+  let rest = text;
+  if (i === 0) rest = text.slice(name.length).trim();
+  else if (i > 0) rest = `${text.slice(0, i)}${text.slice(i + name.length)}`.replace(/\s{2,}/g, " ").trim();
+  if (rest && i !== 0) rest = rest.charAt(0).toLowerCase() + rest.slice(1);
+  knoten.replaceChildren(element("b", null, name), rest ? ` ${rest}` : "");
+}
+
 export function tageszeiten(koha) {
   const wort = String(koha || "").toLowerCase();
   return {
@@ -164,7 +226,7 @@ export class Terapia {
       ? (name ? `${name}, kjo është terapia juaj për ${TAGE} ditë.` : `Terapia juaj për ${TAGE} ditë është gati.`)
       : (name ? `${name}, analiza juaj është gati.` : "Analiza juaj është gati."));
     this.#mjeku();
-    schreibe($("#t-hyrja"), s.hyrja || this.#hyrjaErsatz());
+    mitFett($("#t-hyrja"), s.hyrja ? fettNachtragen(s.hyrja, s.problemet) : this.#hyrjaErsatz());
     schreibe($("#t-shqetesimi"), s.shqetesimi || "");
     zeigen($("#t-shqetesimi"), Boolean(s.shqetesimi));
     zeigen($("#t-kontroll"), brauchtAbklaerung(r));
@@ -210,8 +272,11 @@ export class Terapia {
   }
 
   #hyrjaErsatz() {
-    const teile = [satzteil(this.raport.gjetjaKryesore), satzteil(this.raport.gjetjaDyta)].filter(Boolean);
-    const fuer = teile.length ? `Për ${teile.join(" dhe ")}` : "";
+    // Nur der Kern jedes Befunds, fett - die Zone und der Rest stehen in
+    // den Karten darunter.
+    const teile = [this.raport.gjetjaKryesore, this.raport.gjetjaDyta]
+      .map((x) => satzteil(kurzUndRest(x)[0])).filter(Boolean);
+    const fuer = teile.length ? `Për ${teile.map((x) => `**${x}**`).join(" dhe ")}` : "";
     const n = this.produkte.length;
     if (!n) return fuer ? `${fuer}.` : String(this.raport.gjetjet || "").split(/(?<=\.)\s/)[0] || "";
     const rest = `${n === 1 ? "një produkt" : `${n} produkte`}, një plan i qartë dhe Dr. Gashi pranë jush çdo javë.`;
@@ -297,10 +362,20 @@ export class Terapia {
     const nachId = new Map(this.produkte.map((p) => [p.id, p]));
     let eintraege = (this.shitja?.problemet || []).map((p) => ({ ...p, produkt: nachId.get(p.produkt_id) || null }));
     if (!eintraege.length) {
+      // OHNE shitja (Befunde vor Prompt v8): kurze Zeilen aus dem, was da
+      // ist. Der Befund je Produkt kommt aus nevojat, sonst aus den zwei
+      // wichtigsten Befunden; der Satz darunter ist der kurze Katalogsatz
+      // des Produkts - nicht der lange Satz aus Heart.
+      const jeProdukt = new Map((Array.isArray(this.raport.nevojat) ? this.raport.nevojat : [])
+        .map((n) => [String(n?.produkt_id || ""), String(n?.gjetja || "").trim()]));
       const befunde = [this.raport.gjetjaKryesore, this.raport.gjetjaDyta].map((x) => String(x || "").trim()).filter(Boolean);
+      const karte = (roh, produkt) => {
+        const [kern, rest] = kurzUndRest(roh);
+        return { gjetja: kern, ku: rest, produkt, zgjidhja: produkt ? satzteil(produkt.kurz || "") || produkt.satz : "" };
+      };
       eintraege = this.produkte.length
-        ? this.produkte.map((p, i) => ({ gjetja: befunde[i] || p.nenName || p.name, ku: "", produkt: p, zgjidhja: p.satz }))
-        : befunde.map((b) => ({ gjetja: b, ku: "", produkt: null, zgjidhja: "" }));
+        ? this.produkte.map((p, i) => karte(jeProdukt.get(p.id) || befunde[i] || p.nenName || p.name, p))
+        : befunde.map((b) => karte(b, null));
     }
     const liste = $("#t-gjetjet");
     liste.replaceChildren(...eintraege.map((e) => {
@@ -317,11 +392,8 @@ export class Terapia {
       const satz = String(e.zgjidhja || "").trim();
       if (satz || e.produkt) {
         const p = element("p", "zgjidhja");
-        if (e.produkt && !satz.toUpperCase().includes(String(e.produkt.name).toUpperCase())) {
-          p.append(element("b", null, e.produkt.name), satz ? ` ${satz}` : "");
-        } else {
-          p.textContent = satz;
-        }
+        if (e.produkt) mitProduktVorn(p, e.produkt.name, satz);
+        else p.textContent = satz;
         li.append(p);
       }
       return li;

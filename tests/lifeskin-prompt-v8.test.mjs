@@ -74,3 +74,19 @@ test("pruefeShitja meldet Produkte, die nicht zusammenpassen", () => {
   assert.equal(shitjaLesen({}), null);
   assert.equal(shitjaLesen("text"), null);
 });
+
+test("Therapieseite: kurze Befundzeilen und fette Probleme", async () => {
+  globalThis.__LIFESKIN_TEST__ = true;
+  const { kurzUndRest, fettNachtragen } = await import("../apps/lifeskin-verkauf/terapia.js");
+  assert.deepEqual(
+    kurzUndRest("Pore të zgjeruara dhe mikroreliev i pabarabartë, më i dukshëm në faqet pranë hundës."),
+    ["Pore të zgjeruara dhe mikroreliev i pabarabartë", "më i dukshëm në faqet pranë hundës"]);
+  assert.deepEqual(
+    kurzUndRest("Errësim periorbital i dukshëm me vija të holla poshtë syve"),
+    ["Errësim periorbital i dukshëm", "me vija të holla poshtë syve"]);
+  assert.deepEqual(kurzUndRest("Pore të bllokuara"), ["Pore të bllokuara", ""]);
+  assert.equal(
+    fettNachtragen("Për poret e bllokuara në ballë — dy produkte.", [{ gjetja: "Poret e bllokuara" }]),
+    "Për **poret e bllokuara** në ballë — dy produkte.");
+  assert.equal(fettNachtragen("Për **x** dhe y.", [{ gjetja: "y y y" }]), "Për **x** dhe y.");
+});

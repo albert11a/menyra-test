@@ -284,6 +284,11 @@ export class Analiza {
 
     this.daten = await this.quelle.bericht();
     if (!this.daten) { this.#wegZeigen(); return; }
+    // DIE THERAPIESEITE IST DIE HAUPTSEITE (apps/lifeskin-verkauf).
+    // Ein freigegebener Befund geht dorthin, bevor hier etwas gezaehlt
+    // wird - sonst stuende jeder Besuch zweimal in Heart. Die alte
+    // Gestaltung bleibt mit ?klasik=1 erreichbar.
+    if (this.#zurTerapia()) return;
 
     this.sprache = this.daten.sprache === "de" ? "de" : "sq";
     // Und das Merkmal am Wurzelelement mit. Ohne diese Zeile stuende dort
@@ -377,8 +382,25 @@ export class Analiza {
     catch { return false; }
   }
 
+  // Freigegeben (oder die Vorschau mit ?vorschau=1): auf die Therapieseite,
+  // mit derselben Suche - still=1, vorschau=1 und kasse=1 gelten dort auch.
+  #zurTerapia() {
+    let suche;
+    try { suche = new URLSearchParams(this.ort?.search || ""); } catch { return false; }
+    if (suche.get("klasik") === "1") return false;
+    const status = String(this.daten?.status || "");
+    const frei = ["fertig", "bestellt", "versandt", "zugestellt"].includes(status)
+      || (status === "vorschau" && suche.get("vorschau") === "1");
+    if (!frei || !this.kennung || typeof this.ort?.replace !== "function") return false;
+    this.ort.replace(`/terapia/${this.kennung}${this.ort.search || ""}`);
+    return true;
+  }
+
   async #zeichnen() {
     if (this.daten.status === "wartet") { this.#pritZeigen(); return; }
+    // Die Warteseite fragt alle zwoelf Sekunden nach; wird der Befund
+    // waehrenddessen freigegeben, geht es von hier aus weiter.
+    if (this.#zurTerapia()) return;
     if (this.nurVorschau && !this.vorschauErlaubt) { this.#pritZeigen(); return; }
     this.produkte = await this.quelle.produkte(this.daten, this.sprache);
     this.#fertigZeigen();

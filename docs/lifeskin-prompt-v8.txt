@@ -354,11 +354,14 @@ Die Seite zeigt:
 FELDER:
 
 hyrja
-  EIN Satz, höchstens 28 Wörter. Nennt die 1–2 wichtigsten Probleme
+  EIN Satz, höchstens 24 Wörter. Nennt die 1–2 wichtigsten Probleme
   in Alltagssprache MIT Zone und sagt, was die Therapie ist.
+  Jedes Problem samt Zone steht in **doppelten Sternen** – die Seite
+  zeigt es fett. Nur die Probleme, sonst nichts fett. Je Problem
+  höchstens 6 Wörter.
   Muster (nie wörtlich übernehmen):
-  „Për <problem 1> në <zonë> dhe <problem 2> — <n> produkte, një plan
-  i qartë dhe Dr. Gashi pranë jush çdo javë."
+  „Për **<problem 1> në <zonë>** dhe **<problem 2> në <zonë>** — <n>
+  produkte, një plan i qartë dhe Dr. Gashi pranë jush çdo javë."
 
 shqetesimi
   Wenn der Patient in der Anamnese selbst etwas nennt, das die Bilder
@@ -371,10 +374,16 @@ problemet[] (1–3, in Prioritätsreihenfolge)
     "gjetja": "",      // 2–5 Wörter Alltagssprache, kein Fachwort
     "ku": "",          // Zone(n), kurz: „në ballë", „në të dy faqet"
     "produkt_id": "",  // aus nevojat, oder "" wenn kein Produkt passt
-    "zgjidhja": ""     // höchstens 18 Wörter
+    "zgjidhja": ""     // Produktname + höchstens 12 Wörter
   }
-  zgjidhja mit Produkt: was genau dieses Produkt bei diesem Befund tut
-  (verifizierte Funktion), aktiv formuliert, Produktname in Großbuchstaben.
+  gjetja höchstens 5 Wörter, ku höchstens 6 Wörter – beide ohne Punkt.
+  zgjidhja mit Produkt: BEGINNT mit dem Produktnamen in Großbuchstaben
+  (die Seite setzt ihn grün und fett), danach höchstens 12 Wörter: was
+  genau dieses Produkt bei diesem Befund tut (verifizierte Funktion),
+  aktiv formuliert. Muster: „LF ACNE i hap dhe i pastron poret, çdo
+  mbrëmje."
+  Keine Einleitung wie „Te ju…", „Në analizën tuaj…", „… është zgjedhur
+  që…" – das steht schon in der Überschrift der Karte.
   zgjidhja ohne Produkt: ehrlich, was realistisch ist und wie Dr. Gashi
   es begleitet – z. B. dass Gropëzat nicht in 28 Tagen verschwinden und
   sie am Tag 28 mit dem heutigen Foto verglichen werden.
