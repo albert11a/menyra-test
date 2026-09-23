@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { pfadPatch, pfadLesen, pfadKennung } from "../shared/lifeskin-klickpfad.js";
+import { ohnePfad } from "../apps/mnyra-heart/heart-lifeskin-live.js";
 import { klickpfadInteressen, renderSitzungDetail } from "../apps/mnyra-heart/heart-lifeskin-render.js";
 import { normalisiere } from "../apps/mnyra-heart/heart-lifeskin-berechnung.js";
 
@@ -8,8 +9,10 @@ test("der Klickpfad schreibt je Eintrag eine eigene Maske unter timings.pfad", (
   const { daten, masken } = pfadPatch([
     { id: "eabc01", t: "2026-09-23T10:00:00.000Z", s: "Therapieseite", e: "klick", d: "Fillo terapinë" },
     { id: "eabc02", t: "2026-09-23T10:00:05.000Z", s: "Therapieseite", e: "gesehen", d: "Fragen · 12 s" }
-  ], "2026-09-23T10:00:06.000Z");
-  assert.deepEqual(masken, ["updatedAt", "timings.pfad.eabc01", "timings.pfad.eabc02"]);
+  ]);
+  // Ohne updatedAt - sonst zieht jeder Stapel Heart in eine Neuberechnung.
+  assert.deepEqual(masken, ["timings.pfad.eabc01", "timings.pfad.eabc02"]);
+  assert.equal(daten.updatedAt, undefined);
   // Nie "timings" oder "timings.pfad" als Ganzes - das loeschte alles andere.
   assert.ok(!masken.includes("timings") && !masken.includes("timings.pfad"));
   assert.equal(daten.timings.pfad.eabc02.d, "Fragen · 12 s");
@@ -36,4 +39,12 @@ test("Heart liest den Pfad zeitlich und fasst die Interessen zusammen", () => {
   assert.match(html, /Klickpfad · 4 Ereignisse · 1 Klicks/);
   assert.match(html, /Am längsten gelesen/);
   assert.match(html, /1 min 10 s/);
+});
+
+test("Heart erkennt Aenderungen, die nur den Klickpfad betreffen", () => {
+  const a = { step: "result", timings: { live: "fertig", pfad: { e1: { t: "x" } } } };
+  const b = { step: "result", timings: { live: "fertig", pfad: { e1: { t: "x" }, e2: { t: "y" } } } };
+  assert.equal(JSON.stringify(ohnePfad(a)), JSON.stringify(ohnePfad(b)));
+  assert.notEqual(JSON.stringify(ohnePfad(a)), JSON.stringify(ohnePfad({ ...b, step: "ordered" })));
+  assert.equal(a.timings.pfad.e1.t, "x", "das Original bleibt unveraendert");
 });

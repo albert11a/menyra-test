@@ -220,3 +220,12 @@ export function baueLive(sitzungen, jetzt = Date.now(), fenster = LIVE_FENSTER_M
     stand: jetzt
   };
 }
+
+// Heart: eine Sitzung ohne ihren Klickpfad - fuer den Vergleich, ob sich
+// ausser dem Pfad etwas geaendert hat.
+export function ohnePfad(daten) {
+  if (!daten || typeof daten !== "object") return daten;
+  const timings = daten.timings && typeof daten.timings === "object" ? { ...daten.timings } : daten.timings;
+  if (timings && typeof timings === "object") delete timings.pfad;
+  return { ...daten, timings };
+}

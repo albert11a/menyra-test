@@ -45,7 +45,7 @@ import {
   where,
   writeBatch
 } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
-import { LIVE_FENSTER_MS } from "./heart-lifeskin-live.js";
+import { LIVE_FENSTER_MS, ohnePfad } from "./heart-lifeskin-live.js";
 
 const TENANT = "lifeskin";
 const SITZUNG_GRENZE = 3000;
@@ -94,8 +94,16 @@ export function horcheLive(beiAenderung, { fensterMs = LIVE_FENSTER_MS * 2 } = {
       collection(db, "lifeskin", TENANT, "sessions"),
       where("updatedAt", ">=", seit), orderBy("updatedAt", "desc")
     );
+    // Nur weitergeben, wenn sich mehr als der Klickpfad geaendert hat.
+    // Der Pfad wird alle paar Sekunden je Besucher geschrieben; jedes Mal
+    // alles neu zu rechnen und zu zeichnen, legte Heart lahm.
+    let zuletzt = "";
     abmelden = onSnapshot(abfrage, (snapshot) => {
-      if (lauf === generation) beiAenderung(snapshot.docs.map((d) => normalisiere(d.id, d.data())));
+      if (lauf !== generation) return;
+      const stand = JSON.stringify(snapshot.docs.map((d) => [d.id, ohnePfad(d.data())]));
+      if (stand === zuletzt) return;
+      zuletzt = stand;
+      beiAenderung(snapshot.docs.map((d) => normalisiere(d.id, d.data())));
     }, (fehler) => {
       globalThis.console?.warn?.("[heart] Live-Ansicht nicht verfuegbar:", fehler?.message);
       if (lauf === generation) beiAenderung(null);

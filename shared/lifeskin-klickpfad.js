@@ -39,14 +39,21 @@ export function pfadKennung(jetzt = Date.now()) {
 // Die Feldmasken und das Objekt fuer einen Schreibvorgang. Eigene
 // Funktion, damit beide Schreibwege (Trichter und Befundseiten) dieselbe
 // Form schreiben - und damit sie sich pruefen laesst.
-export function pfadPatch(eintraege, jetzt = new Date().toISOString()) {
+//
+// OHNE updatedAt, und das ist Absicht: Heart hoert live auf alle
+// Sitzungen, deren updatedAt frisch ist, und rechnet bei jeder Aenderung
+// alles neu. Mit updatedAt zog jeder Stapel (alle paar Sekunden je
+// Besucher) Heart in eine Dauerschleife - Freigeben hing. Der Pfad wird
+// gelesen, wenn Heart ohnehin laedt; live muss er nicht sein.
+export function pfadPatch(eintraege) {
   const pfad = {};
   for (const eintrag of eintraege || []) pfad[eintrag.id] = { t: eintrag.t, s: eintrag.s, e: eintrag.e, d: eintrag.d };
   return {
-    daten: { updatedAt: jetzt, timings: { pfad } },
-    masken: ["updatedAt", ...Object.keys(pfad).map((id) => `timings.pfad.${id}`)]
+    daten: { timings: { pfad } },
+    masken: Object.keys(pfad).map((id) => `timings.pfad.${id}`)
   };
 }
+
 
 // Heart: der Pfad einer Sitzung, zeitlich sortiert.
 export function pfadLesen(sitzung) {
