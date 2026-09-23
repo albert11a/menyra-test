@@ -816,13 +816,13 @@ export function entdopple(sitzungen) {
 // Stand als 43 fest im Code, waehrend das Set 53 kostet - jede Zahl "offen"
 // war um ein Fuenftel zu niedrig. Jetzt ein Wert mit Namen, den der Adapter
 // aus der Konfiguration setzen kann, und ein Test haelt ihn mit dem Preis
-// im Trichter zusammen.
-export const SET_PREIS = 53;
+// im Trichter zusammen. Seit 23.09.: 39 fuer zwei (shared/lifeskin-preise.js).
+export const SET_PREIS = 39;
 
 // Ein einzelnes Mittel. Verkauft wird ueberwiegend als Set - aber wenn nur
-// eines passt, kostet es 33 und nicht die Haelfte des Sets. Der Rueckfall,
+// eines passt, kostet es 29 und nicht die Haelfte des Sets. Der Rueckfall,
 // wenn in der Konfiguration keine Preistabelle steht.
-export const EINZELPREIS = 33;
+export const EINZELPREIS = 29;
 
 // Die Zeitraeume, zwischen denen die Kacheln umschalten.
 //

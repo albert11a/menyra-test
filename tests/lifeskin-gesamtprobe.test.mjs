@@ -243,7 +243,7 @@ test("die Abbrecherliste enthaelt nur, wer wirklich haengengeblieben ist", () =>
   ];
   const k = baueKennzahlen(alt);
   assert.equal(k.abbrecher.length, 2, "Wer bestellt hat, ist kein Abbrecher");
-  assert.equal(k.offenerBetrag, 106);
+  assert.equal(k.offenerBetrag, 78);
   for (const s of k.abbrecher) assert.ok(s.kasseGeoeffnet && !s.hatBestellt);
 });
 

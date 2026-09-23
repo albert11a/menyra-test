@@ -19,13 +19,14 @@ import { renderHeartIcon } from "./heart-icons.js";
 // Der Setpreis kommt aus derselben Quelle wie im Trichter. Zwei Zahlen an
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
-import { SET_PREIS, ZEITRAEUME, TYPEN, typVon, istAnalyse, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueZweige, baueMaintrichter, baueKauftrichter, ohneScanGelaufen, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
+import { ZEITRAEUME, TYPEN, typVon, istAnalyse, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueZweige, baueMaintrichter, baueKauftrichter, ohneScanGelaufen, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
 import { TEXT_ABSCHNITTE, TEXT_SCHLUESSEL, standardText } from "../lifeskin-astra/astra-texte-plan.js";
 // Die Antworten aus dem Trichter, uebersetzt - aus DERSELBEN Quelle, aus
 // der auch der Prompt gefuellt wird. Eine eigene Tabelle hier waere eine
 // Frage der Zeit: Wer im Trichter eine Antwort dazunimmt und hier nicht,
 // zeigt der Aerztin eine nackte Kennung ("yndyrshme") und laesst sie raten.
 import { anamneseFuerPrompt } from "./heart-lifeskin-prompt.js";
+import { preisFuerFall } from "../../shared/lifeskin-preise.js";
 // Die vorbereiteten Mittel. Dieselbe Liste, mit der gebaut und getestet
 // wird - was hier fehlt, kann Dr. Gashi mit einem Druck anlegen.
 import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
@@ -1870,7 +1871,9 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({})) 
   }
   for (const [id, text] of Object.entries(entwurf?.zweck || {})) zweck.set(id, String(text));
   const art = entwurf?.art || analyseArt(sitzung, bericht);
-  const preis = entwurf?.preis || bericht?.preis || SET_PREIS;
+  // Ohne Entwurf und ohne Befund: der Preis fuer die Zahl der gewaehlten
+  // Produkte - fuer Faelle von vor dem Umstieg der alte (lifeskin-preise.js).
+  const preis = entwurf?.preis || bericht?.preis || preisFuerFall(gewaehlt.size || 2, sitzung.createdAt);
 
   const marke = {
     wartet: ["heart-lifeskin-marke--offen", "wartet auf Befund"],
@@ -2065,6 +2068,7 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({})) 
           <label class="heart-lifeskin-feld heart-befund__preis">
             <span>Setpreis €</span>
             <input class="heart-lifeskin-eingabe" id="lifeskin-preis" type="number" inputmode="decimal"
+                   data-angelegt="${escapeHtml(String(sitzung.createdAt || ""))}"
                    value="${escapeHtml(String(preis))}" />
           </label>
         </div>`)}
@@ -2240,7 +2244,7 @@ function renderProduktEditor(produkt, status, entwurf) {
       ${feld("nenName_sq", "Untertitel (albanisch)", feldwert("nenName_sq", p.nenName?.sq), { hinweis: "z. B. Terapi kundër aknes" })}
       ${feld("nenName_de", "Untertitel (deutsch)", feldwert("nenName_de", p.nenName?.de))}
       ${feld("inhalt", "Inhalt", feldwert("inhalt", p.inhalt), { hinweis: "z. B. 30 ml" })}
-      ${feld("einzelpreis", "Einzelpreis in Euro", feldwert("einzelpreis", p.einzelpreis), { art: "number", hinweis: "Der Ankerpreis. Einzeln 33, zwei zusammen 53 - die Summe steht durchgestrichen ueber dem Setpreis." })}
+      ${feld("einzelpreis", "Einzelpreis in Euro", feldwert("einzelpreis", p.einzelpreis), { art: "number", hinweis: "Der Ankerpreis (33). Verkauft wird nach Staffel: 1 = 29, 2 = 39, 3 = 49, 4 = 59 - die Summe der Einzelpreise steht durchgestrichen ueber dem Setpreis." })}
       ${feld("order", "Reihenfolge", feldwert("order", p.order ?? 1), { art: "number" })}
 
       <!-- Art und Rolle.

@@ -162,8 +162,8 @@ test("der offene Betrag rechnet mit dem echten Setpreis", () => {
   })];
   const k = baueKennzahlen(roh);
   assert.equal(k.abbrecher.length, 1);
-  // Stand als 43 fest im Code, waehrend das Set 53 kostet.
-  assert.equal(k.offenerBetrag, 53);
+  // Stand als 43 fest im Code, waehrend das Set 53 kostete. Seit 23.09.: 39.
+  assert.equal(k.offenerBetrag, 39);
   assert.equal(SET_PREIS, STANDARD_KONFIG.setPreis,
     "Der Bericht rechnet mit einem anderen Preis als der Trichter verlangt");
 });

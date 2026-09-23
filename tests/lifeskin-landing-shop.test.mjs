@@ -15,6 +15,7 @@ import {
   FOTO_PRAEFIX, FOTOS_MAX, mittelBauen, summeVon, stueckVon, korbLesen
 } from "../apps/lifeskin-landing/shop.js";
 import { STANDARD_PRODUKTE } from "../apps/lifeskin/lifeskin-catalog.js";
+import { preisFuer, preisFuerFall, PREISE_AB } from "../shared/lifeskin-preise.js";
 
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
 const lies = (pfad) => readFileSync(join(wurzel, pfad), "utf8");
@@ -65,14 +66,10 @@ test("die Bilder liegen in einer Sammlung, die jeder lesen darf", () => {
 // 33 EUR stehen im Katalog UND als Satz unter dem Raster. Wer den
 // Katalog aendert und den Satz vergisst, hat eine Seite, die sich
 // selbst widerspricht - und der Widerspruch steht ausgerechnet am Preis.
-test("der Satz unter den Mitteln nennt denselben Preis wie der Katalog", () => {
-  const preise = new Set(STANDARD_PRODUKTE.map((p) => p.einzelpreis));
-  assert.equal(preise.size, 1, "Die Mittel kosten nicht mehr alle dasselbe");
-  const einzeln = [...preise][0];
-  const satz = /Çmimi për produkt është (\d+) €/.exec(aufbau);
-  assert.ok(satz, "Der Satz mit dem Preis steht nicht mehr im Aufbau");
-  assert.equal(Number(satz[1]), einzeln,
-    `Der Aufbau sagt ${satz[1]} €, der Katalog ${einzeln} €`);
+test("der Satz unter den Mitteln nennt dieselbe Staffel wie shared/lifeskin-preise.js", () => {
+  const satz = /1 produkt (\d+) €, 2 produkte (\d+) €, 3 produkte (\d+) €/.exec(aufbau.replace(/\s+/g, " "));
+  assert.ok(satz, "Der Satz mit den Preisen steht nicht mehr im Aufbau");
+  assert.deepEqual(satz.slice(1).map(Number), [preisFuer(1), preisFuer(2), preisFuer(3)]);
 });
 
 // ══ WAS INS RASTER KOMMT UND WAS NICHT ═══════════════════════════════
@@ -94,11 +91,13 @@ test("Firestore schlaegt den Katalog, der Katalog faengt den Ausfall auf", () =>
   const fotos = new Map([["lf-acne", ["data:image/jpeg;base64,x"]]]);
   const ausNetz = mittelBauen([{ id: "lf-acne", name: "LF NEU", einzelpreis: 41 }], fotos);
   assert.equal(ausNetz[0].name, "LF NEU", "Der Name aus Heart kommt nicht an");
-  assert.equal(ausNetz[0].cmimi, 41, "Der Preis aus Heart kommt nicht an");
+  // Der Einzelpreis aus Heart ist der Anker; verkauft wird nach Staffel.
+  assert.equal(ausNetz[0].anker, 41, "Der Preis aus Heart kommt nicht an");
+  assert.equal(ausNetz[0].cmimi, preisFuer(1));
 
   const ohneNetz = mittelBauen([], fotos);
   assert.equal(ohneNetz[0].name, "LF ACNE", "Ohne Firestore fehlt der Name");
-  assert.equal(ohneNetz[0].cmimi, 33, "Ohne Firestore fehlt der Preis");
+  assert.equal(ohneNetz[0].anker, 33, "Ohne Firestore fehlt der Preis");
 });
 
 test("mehr Bilder als erlaubt werden abgeschnitten", () => {
@@ -112,9 +111,12 @@ test("mehr Bilder als erlaubt werden abgeschnitten", () => {
 //
 // Sie steht an drei Stellen auf der Seite (Kopf, feste Leiste, Blatt)
 // und wird einmal gerechnet. Was hier stimmt, stimmt dort dreimal.
-test("die Summe rechnet Anzahl mal Preis", () => {
-  const mittel = [{ id: "a", cmimi: 33 }, { id: "b", cmimi: 33 }];
-  assert.equal(summeVon([{ id: "a", sasia: 2 }, { id: "b", sasia: 1 }], mittel), 99);
+test("die Summe folgt der Staffel: 1 = 29, 2 = 39, 3 = 49, 4 = 59", () => {
+  const mittel = [{ id: "a", cmimi: 29 }, { id: "b", cmimi: 29 }];
+  assert.equal(summeVon([{ id: "a", sasia: 1 }], mittel), 29);
+  assert.equal(summeVon([{ id: "a", sasia: 1 }, { id: "b", sasia: 1 }], mittel), 39);
+  assert.equal(summeVon([{ id: "a", sasia: 2 }, { id: "b", sasia: 1 }], mittel), 49);
+  assert.equal(summeVon([{ id: "a", sasia: 2 }, { id: "b", sasia: 2 }], mittel), 59);
   assert.equal(stueckVon([{ id: "a", sasia: 2 }, { id: "b", sasia: 1 }]), 3);
   // Ein Mittel, das es nicht mehr gibt, zaehlt null und wirft nicht.
   assert.equal(summeVon([{ id: "weg", sasia: 3 }], mittel), 0);
@@ -645,4 +647,14 @@ test("die Punkte liegen nicht mehr auf der Aufnahme", () => {
   // Der aktive Punkt hebt sich weiter ab, jetzt gegen den hellen Grund.
   assert.match(ohneNotizen, /\.mjeti__pika i\[data-an="ja"\] \{ width: 13px; background: var\(--basis\); \}/,
     "Der aktive Punkt ist nicht mehr zu erkennen");
+});
+
+// ══ DIE PREISE AB DEM 23.09. ═════════════════════════════════════════
+test("neue Staffel 29/39/49/59 - Faelle von vor dem Umstieg behalten die alten Preise", () => {
+  assert.deepEqual([1, 2, 3, 4, 5].map(preisFuer), [29, 39, 49, 59, 69]);
+  const vorher = new Date(Date.parse(PREISE_AB) - 60000).toISOString();
+  const nachher = new Date(Date.parse(PREISE_AB) + 60000).toISOString();
+  assert.deepEqual([1, 2, 3].map((n) => preisFuerFall(n, vorher)), [33, 53, 85]);
+  assert.deepEqual([1, 2, 3].map((n) => preisFuerFall(n, nachher)), [29, 39, 49]);
+  assert.equal(preisFuerFall(2, ""), 39, "Ohne Datum gilt der neue Preis");
 });

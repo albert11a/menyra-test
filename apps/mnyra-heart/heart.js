@@ -73,7 +73,8 @@ import { RAPORT_MESSWERTE, shitjaAusFeldern, shitjaInFelder } from "./heart-life
 // Wahrheit, und die erste Abweichung faellt niemandem auf.
 import { baueTerapi, ausAnalyse } from "../../shared/lifeskin-terapia.js";
 import { ohneSeite } from "../../shared/lifeskin-ohne-seite.js";
-import { SET_PREIS, EINZELPREIS, findeSitzung } from "./heart-lifeskin-berechnung.js";
+import { findeSitzung } from "./heart-lifeskin-berechnung.js";
+import { preisFuer, preisFuerFall, istPreisVorschlag } from "../../shared/lifeskin-preise.js";
 import { texteSaeubern } from "../lifeskin-astra/astra-texte-plan.js";
 import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 import {
@@ -1892,10 +1893,10 @@ async function lifeskinLandingbildSchieben(index, richtung) {
 // Liste sofort im Zustand - ohne den ganzen Bereich neu zu laden.
 
 // Der Vorschlag fuer den Preis, nach der Zahl der Produkte - dieselben
-// Zahlen wie im Befund. Drei Produkte: 85, wie auf der Landingpage.
+// Zahlen wie im Befund (shared/lifeskin-preise.js).
 function rastiPreisVorschlag(anzahl) {
   const tabelle = store.getState().lifeskin?.konfig?.preise || {};
-  return Number(tabelle[String(anzahl)]) || ({ 1: EINZELPREIS, 2: SET_PREIS, 3: 85 })[anzahl] || 0;
+  return Number(tabelle[String(anzahl)]) || preisFuer(anzahl);
 }
 
 // Was gerade im Editor steht - vor jedem Neuzeichnen in den Zustand, damit
@@ -2393,7 +2394,7 @@ function lifeskinStandZeigen(id, regel) {
 
 // Den Preis der Zahl der Mittel folgen lassen.
 //
-// Einzeln 33, zwei zusammen 53. Eine feste Zahl im Feld war schon einmal um
+// 1 Produkt 29, 2 zusammen 39, 3 49, 4 59. Eine feste Zahl im Feld war schon einmal um
 // zehn Euro daneben, ohne dass es jemand gemerkt hat - und wer den Preis von
 // Hand aendert, behaelt seine Zahl.
 function lifeskinPreisFolgen() {
@@ -2403,12 +2404,13 @@ function lifeskinPreisFolgen() {
   const tabelle = stand.konfig?.preise || {};
   const anzahl = document.querySelectorAll("[data-produkt-wahl]:checked").length;
   if (!anzahl) return;
-  const vorschlag = Number(tabelle[String(anzahl)]) || (anzahl === 1 ? EINZELPREIS : SET_PREIS);
+  // Neue Preise (29/39/49/59) - fuer Faelle von vor dem Umstieg die alten.
+  const vorschlag = Number(tabelle[String(anzahl)]) || preisFuerFall(anzahl, feld.dataset.angelegt);
   const jetzt = Number(feld.value);
   // Nur, solange dort noch ein Vorschlag steht - nicht ueber eine eigene Zahl.
   const warVorschlag = !feld.value
     || Object.values(tabelle).map(Number).includes(jetzt)
-    || [EINZELPREIS, SET_PREIS].includes(jetzt);
+    || istPreisVorschlag(jetzt);
   if (warVorschlag) feld.value = String(vorschlag);
 }
 

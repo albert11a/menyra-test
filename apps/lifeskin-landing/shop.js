@@ -61,6 +61,10 @@ import {
 } from "../lifeskin/lifeskin-config.js";
 import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 import { pixelKennungen } from "../lifeskin/lifeskin-pixel.js";
+import { preisFuer } from "../../shared/lifeskin-preise.js";
+
+/* Unter jeder Zeile im Korb: die Staffel statt "33 € për produkt". */
+const PREIS_ZEILE = `1 produkt ${preisFuer(1)} € · 2 produkte ${preisFuer(2)} € · 3 produkte ${preisFuer(3)} €`;
 
 const $ = (w, i = document) => i.querySelector(w);
 
@@ -186,7 +190,10 @@ export function mittelBauen(produkteAusFirestore, fotosJeMittel, sprache = "sq")
         name: String(n.name || k.name || id),
         nenName: String(nenName[sprache] || nenName.sq || ""),
         inhalt: String(n.inhalt || k.inhalt || ""),
-        cmimi: Number(n.einzelpreis ?? k.einzelpreis ?? 0),
+        /* Der Anker (Einzelpreis aus Heart). Verkauft wird nach der
+           Staffel in shared/lifeskin-preise.js: 1 = 29, 2 = 39 ... */
+        anker: Number(n.einzelpreis ?? k.einzelpreis ?? 0),
+        cmimi: preisFuer(1),
         rendi: Number(n.order ?? k.order ?? 99),
         fshehur: String(n.availability || k.availability || "visible") === "hidden",
         fotot,
@@ -206,7 +213,7 @@ export function mittelBauen(produkteAusFirestore, fotosJeMittel, sprache = "sq")
         }
       };
     })
-    .filter((m) => !m.fshehur && m.fotot.length > 0 && m.cmimi > 0)
+    .filter((m) => !m.fshehur && m.fotot.length > 0 && m.anker > 0)
     .sort((a, b) => a.rendi - b.rendi || a.name.localeCompare(b.name));
 }
 
@@ -249,8 +256,10 @@ export function korbSchreiben(speicher, korb) {
 /* Die Summe. Eine Zeile, damit sie an allen drei Stellen, an denen sie
  * steht, dieselbe ist. */
 export function summeVon(korb, mittel) {
-  const preise = new Map(mittel.map((m) => [m.id, m.cmimi]));
-  return korb.reduce((s, z) => s + (preise.get(z.id) || 0) * z.sasia, 0);
+  /* Nach der Staffel: 1 Stueck 29, 2 zusammen 39, 3 49, 4 59 - egal
+     welche. Mitgezaehlt wird nur, was es noch zu kaufen gibt. */
+  const da = new Set(mittel.map((m) => m.id));
+  return preisFuer(korb.reduce((s, z) => s + (da.has(z.id) ? z.sasia : 0), 0));
 }
 
 export function stueckVon(korb) {
@@ -709,7 +718,7 @@ export class Laden {
             ${m.fotot[0] ? `<img class="shporta__foto" src="${m.fotot[0]}" alt="" />` : ""}
             <span class="shporta__fjale">
               <strong>${escape(m.name)}</strong>
-              <small>${m.cmimi} € për produkt</small>
+              <small>${PREIS_ZEILE}</small>
             </span>
             <span class="shporta__sasia">
               <button type="button" data-sasia="-" data-id="${escape(z.id)}"

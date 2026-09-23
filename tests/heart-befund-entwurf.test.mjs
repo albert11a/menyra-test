@@ -67,3 +67,16 @@ test("Befund-Karte ist zugeklappt, unter den Texten steht die Vorschau wie auf d
   // Kein HTML aus dem Text erreicht die Vorschau.
   assert.doesNotMatch(vorschauInhalt("shqetesimi", { text: "<img src=x onerror=alert(1)>" }), /<img/);
 });
+
+test("Setpreis-Vorschlag: neue Faelle 39 (2 Produkte), Faelle von vor dem Umstieg 53", () => {
+  entwurfLoeschen("fall1");
+  const alt = renderSitzungDetail(sitzung, null, "", STANDARD_PRODUKTE, { status: "wartet" });
+  assert.match(alt, /id="lifeskin-preis"[^>]*value="53"/);
+  const neu = normalisiere("fall2", { createdAt: "2026-09-24T09:00:00.000Z", step: "done", name: "Neu" });
+  const html = renderSitzungDetail(neu, null, "", STANDARD_PRODUKTE, { status: "wartet" });
+  assert.match(html, /id="lifeskin-preis"[^>]*data-angelegt="2026-09-24T09:00:00.000Z"[^>]*value="39"/);
+  // Ein freigegebener Befund behaelt seinen gespeicherten Preis.
+  const frei = renderSitzungDetail(neu, null, "", STANDARD_PRODUKTE,
+    { status: "fertig", freigabeAt: "x", preis: 53, produkte: [{ id: "lf-acne", satz: "" }, { id: "lf-moistur", satz: "" }] });
+  assert.match(frei, /id="lifeskin-preis"[^>]*value="53"/);
+});

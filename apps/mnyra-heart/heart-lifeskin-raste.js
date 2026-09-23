@@ -175,7 +175,7 @@ export function renderRastiEditor(zustand, produkte) {
       <label class="heart-lifeskin-feld heart-lifeskin-feld--kurz">
         <span>Preis in Euro</span>
         <input class="heart-lifeskin-eingabe" id="rasti-cmimi" data-rastifeld="cmimi" type="number" inputmode="decimal" min="0"
-               placeholder="z. B. 53" value="${r.cmimi ? escapeHtml(String(r.cmimi)) : ""}" />
+               placeholder="z. B. 39" value="${r.cmimi ? escapeHtml(String(r.cmimi)) : ""}" />
       </label>
 
       <div class="heart-lifeskin-feld">

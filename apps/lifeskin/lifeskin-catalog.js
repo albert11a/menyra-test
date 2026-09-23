@@ -19,11 +19,13 @@ export const ALTERSGRUPPEN = Object.freeze(["18-24", "25-34", "35-44", "45-54", 
 export const STANDARD_KONFIG = Object.freeze({
   tenantId: "lifeskin",
   waehrung: "EUR",
-  // 53 EUR. Stand hier auf 43 - das war der Preis aus dem ersten Gespraech
+  // 39 EUR seit 23.09.2026 (vorher 53; die Staffel 29/39/49/59 steht in
+  // shared/lifeskin-preise.js). Freigegebene Befunde tragen ihren Preis
+  // selbst - dieser Wert ist nur der Rueckfall. Stand frueher auf 43 - das war der Preis aus dem ersten Gespraech
   // und ist seither ueberholt. Der Trichter haette zehn Euro je Set
   // verschenkt, ohne dass es irgendwo aufgefallen waere.
   // tests/lifeskin-zaehlung.test.mjs haelt ihn mit dem Bericht zusammen.
-  setPreis: 53,
+  setPreis: 39,
   setGroesse: 2,
   // Reichweite des Sets. 30 ml je Produkt reichen rund vier Wochen - daraus
   // faellt die Tagesrechnung im Angebot. Wird hier geaendert, aendert sich
@@ -59,11 +61,9 @@ export const STANDARD_KONFIG = Object.freeze({
 // ueberschreibt sie der CEO-Bereich aus Firestore. Deshalb hat jede Angabe
 // denselben Aufbau wie das Firestore-Dokument.
 //
-// Verkauft wird ueberwiegend als Set: zwei Mittel zu 53 EUR, einzeln 33 EUR.
-// Bei zwei Mitteln steht der Ankerpreis auf 66 und der Setpreis auf 53 -
-// dreizehn Euro oder zwanzig Prozent gespart, also im Band, das glaubwuerdig
-// bleibt. Bei einem einzelnen sind Anker und Preis gleich, und die Seite
-// laesst den durchgestrichenen Anker dann von selbst weg.
+// Verkauft wird ueberwiegend als Set: zwei Mittel zu 39 EUR, eines zu 29
+// (shared/lifeskin-preise.js). Der Einzelpreis hier (33) ist der Anker:
+// Bei zwei Mitteln steht "66" neben 39.
 //
 // Drei Felder tragen die Therapiebegruendung:
 //
