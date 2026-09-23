@@ -1837,14 +1837,26 @@ function vorname(sitzung) {
   return v ? v.charAt(0).toLocaleUpperCase("sq") + v.slice(1) : "";
 }
 
-export function vorabNachricht(sitzung) {
+// Wann die Analyse fertig ist - die vier Angaben, die am haeufigsten
+// gebraucht werden. Je eine Taste in der Reihe zum Wischen.
+export const VORAB_ZEITEN = Object.freeze([
+  { id: "30min", taste: "30 Min", satz: "pas rreth 30 minutash" },
+  { id: "1h", taste: "1 Stunde", satz: "pas rreth 1 ore" },
+  { id: "heute", taste: "Heute", satz: "gjatë ditës së sotme" },
+  { id: "morgen", taste: "Morgen", satz: "nesër gjatë ditës" }
+]);
+
+// Keine Frage zur Haut: Um eine Antwort wird mit einem Grund gebeten, den
+// jeder versteht - ein "Po" oder 👍, damit der Link sich oeffnet (von
+// einer unbekannten Nummer ist er sonst nicht antippbar).
+export function vorabNachricht(sitzung, zeit = "1h") {
   const name = vorname(sitzung);
+  const wann = (VORAB_ZEITEN.find((z) => z.id === zeit) || VORAB_ZEITEN[1]).satz;
   return [
     `Përshëndetje${name ? ` ${name}` : ""} 👋 Jam Dr. Violeta Gashi nga LifeSkin.`,
-    "E mora analizën e lëkurës suaj dhe po e shikoj personalisht. Planin tuaj jua dërgoj këtu në WhatsApp, zakonisht brenda 24 orëve.",
-    "Që ta bëj sa më të saktë, më tregoni shkurt: çfarë përdorni tani për fytyrën? (Edhe \"asgjë\" është përgjigje 🙂)",
-    "Ndërkohë, rezultatet para dhe pas të klientëve tanë i gjeni në Instagram: instagram.com/lifeskin.ks",
-    "Ju lutem ruajeni këtë numër, që linku i analizës t'ju hapet direkt."
+    `E mora analizën e lëkurës suaj dhe po e përgatis personalisht. Analiza dhe plani juaj do të jenë gati ${wann} – jua dërgoj këtu në WhatsApp.`,
+    "Që linku t'ju hapet direkt, ju lutem më shkruani një \"Po\" ose një 👍 këtu.",
+    "Ndërkohë, rezultatet para dhe pas të klientëve tanë i gjeni në Instagram: instagram.com/lifeskin.ks"
   ].join("\n\n");
 }
 
@@ -1862,19 +1874,34 @@ export function waNummer(nummer) {
 function renderPatientKnoepfe(sitzung, bericht, fertig) {
   const nummer = sitzung.phone || sitzung.address?.telefon || "";
   const endText = fertig ? whatsappNachricht(sitzung, bericht) : "";
-  const text = endText || vorabNachricht(sitzung);
   const wa = waNummer(nummer);
+  const waLink = (text) => `https://wa.me/${wa}?text=${encodeURIComponent(text)}`;
   return `
       <section class="heart-befund__patient">
         <span class="heart-befund__zwischen">An den Patienten</span>
+        <!-- 1. VORAB: sobald die Analyse da ist. Eine Taste je Zeitangabe,
+             in einer Reihe zum Wischen - jede oeffnet WhatsApp mit dem
+             fertigen Text. -->
+        <div class="heart-befund__waleiste">
+          <span class="heart-befund__walabel">${renderHeartIcon("send", "heart-befund__knopficon")}Vorab-Nachricht · fertig in …</span>
+          <div class="heart-befund__wareihe">
+            ${VORAB_ZEITEN.map((z) => wa
+              ? `<a class="heart-befund__wataste" href="${escapeHtml(waLink(vorabNachricht(sitzung, z.id)))}" target="_blank" rel="noopener">${escapeHtml(z.taste)}</a>`
+              : `<button type="button" class="heart-befund__wataste heart-befund__wataste--kopie" data-action="lifeskin-text-kopieren"
+                   data-wert="${escapeHtml(vorabNachricht(sitzung, z.id))}" data-was="Vorab-Nachricht">${escapeHtml(z.taste)} kopieren</button>`).join("")}
+          </div>
+        </div>
+        <!-- 2. FINAL: nach der Freigabe, mit Anrede und Link. -->
+        ${endText ? (wa ? `<a class="heart-befund__knopf heart-befund__knopf--wa" href="${escapeHtml(waLink(endText))}" target="_blank" rel="noopener">
+          ${renderHeartIcon("send", "heart-befund__knopficon")}Befund in WhatsApp senden<small>mit Anrede und Link</small></a>` : "")
+          : `<p class="heart-befund__hilfe">Nach der Freigabe erscheint hier „Befund in WhatsApp senden“.</p>`}
         <div class="heart-befund__zwei">
           <button type="button" class="heart-befund__knopf heart-befund__knopf--klein" data-action="lifeskin-text-kopieren"
                   data-wert="${escapeHtml(nummer)}" data-was="Nummer"${nummer ? "" : " disabled"}>${renderHeartIcon("copy", "heart-befund__knopficon")}Nummer kopieren<small>${escapeHtml(nummer || "keine Nummer")}</small></button>
           <button type="button" class="heart-befund__knopf heart-befund__knopf--klein" data-action="lifeskin-text-kopieren"
-                  data-wert="${escapeHtml(endText || vorabNachricht(sitzung))}" data-was="${endText ? "WhatsApp-Nachricht" : "Vorab-Nachricht"}">${renderHeartIcon("message", "heart-befund__knopficon")}Text kopieren<small>${endText ? "mit Befund-Link" : "Vorab-Nachricht"}</small></button>
+                  data-wert="${escapeHtml(endText || vorabNachricht(sitzung))}" data-was="${endText ? "WhatsApp-Nachricht" : "Vorab-Nachricht"}"
+                  >${renderHeartIcon("message", "heart-befund__knopficon")}Text kopieren<small>${endText ? "Befund mit Link" : "Vorab · 1 Stunde"}</small></button>
         </div>
-        ${wa ? `<a class="heart-befund__knopf heart-befund__knopf--wa" href="https://wa.me/${wa}?text=${encodeURIComponent(text)}" target="_blank" rel="noopener">
-          ${renderHeartIcon("send", "heart-befund__knopficon")}In WhatsApp öffnen<small>${endText ? "mit Befund-Link" : "mit Vorab-Text"}</small></a>` : ""}
       </section>`;
 }
 

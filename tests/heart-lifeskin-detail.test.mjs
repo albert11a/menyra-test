@@ -263,14 +263,25 @@ test("hier aufgehört steht am letzten erledigten Schritt", () => {
   assert.ok(html.indexOf('data-klapp="fall:schritte"') < html.indexOf("heart-befund"));
 });
 
-test("Vorab-Nachricht: Vorname gross, eine leichte Frage, Instagram, kein Preis", async () => {
-  const { vorabNachricht, waNummer } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
-  const text = vorabNachricht({ name: "sara krasniqi" });
+test("Vorab-Nachricht: vier Zeiten zum Wischen, Bitte um 'Po', keine Hautfrage, kein Preis", async () => {
+  const { vorabNachricht, waNummer, VORAB_ZEITEN } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
+  const text = vorabNachricht({ name: "sara krasniqi" }, "30min");
   assert.match(text, /^Përshëndetje Sara 👋/);
-  assert.match(text, /çfarë përdorni tani për fytyrën\?/);
+  assert.match(text, /gati pas rreth 30 minutash/);
+  assert.match(vorabNachricht({}, "morgen"), /gati nesër gjatë ditës/);
+  assert.match(text, /"Po" ose një 👍/);
+  assert.doesNotMatch(text, /ndjeshme|përdorni/);
   assert.match(text, /instagram\.com\/lifeskin\.ks/);
   assert.doesNotMatch(text, /€/);
+  assert.deepEqual(VORAB_ZEITEN.map((z) => z.id), ["30min", "1h", "heute", "morgen"]);
   assert.equal(waNummer("049 247 720"), "38349247720");
   assert.equal(waNummer("+383 44 123 456"), "38344123456");
   assert.equal(waNummer("12"), "");
+  // Im Befund: vier WhatsApp-Tasten vorab; die finale erst nach der Freigabe.
+  const offen = renderLifeskin(zustandMit([{ ...EINE, phone: "049247720" }], { offen: "abc" }));
+  assert.equal((offen.match(/class="heart-befund__wataste" href="https:\/\/wa\.me\/38349247720/g) || []).length, 4);
+  assert.doesNotMatch(offen, /heart-befund__knopf--wa/);
+  const frei = renderLifeskin(zustandMit([{ ...EINE, phone: "049247720" }], { offen: "abc",
+    berichte: { abc: { status: "fertig", freigabeAt: "x", raport: { shitja: { whatsapp: "Analiza juaj është gati." } } } } }));
+  assert.match(frei, /heart-befund__knopf--wa" href="https:\/\/wa\.me\/38349247720/);
 });

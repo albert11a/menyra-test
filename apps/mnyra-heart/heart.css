@@ -6138,3 +6138,18 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 .heart-befund__knopf--wa small { flex-basis: 100%; text-align: center; font-size: 12px; font-weight: 500; color: #0b4a26; margin-top: -2px; }
 .heart-befund__knopf--klein { flex-direction: column; gap: 3px; padding: 10px 8px; white-space: nowrap; font-size: 14.5px; }
 .heart-befund__knopf--klein small { font-size: 11.5px; font-weight: 500; color: var(--heart-muted, #8f918d); overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+/* Vorab-Nachricht: vier Tasten in einer Reihe zum Wischen */
+.heart-befund__waleiste { display: flex; flex-direction: column; gap: 8px; }
+.heart-befund__walabel { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: var(--heart-text-soft, #c7c7c2); }
+.heart-befund__wareihe {
+  display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: 2px;
+  margin: 0 -14px; padding-left: 14px; padding-right: 14px; scrollbar-width: none;
+}
+.heart-befund__wareihe::-webkit-scrollbar { display: none; }
+.heart-befund__wataste {
+  flex: 0 0 auto; scroll-snap-align: start; display: inline-flex; align-items: center; justify-content: center;
+  min-height: 46px; min-width: 96px; padding: 0 18px; border-radius: 999px; text-decoration: none; white-space: nowrap;
+  background: #25d366; color: #062b16; font: inherit; font-size: 15px; font-weight: 700; border: 0; cursor: pointer;
+}
+.heart-befund__wataste:active { transform: scale(.98); }
+.heart-befund__wataste--kopie { background: #ffffff12; color: var(--heart-text, #f7f7f2); border: 1px solid var(--heart-line, #34383a); }
