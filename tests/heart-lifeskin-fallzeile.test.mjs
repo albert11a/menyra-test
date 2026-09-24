@@ -150,19 +150,30 @@ function zeileVon(html, id) {
   return start < 0 ? "" : liste.slice(start, liste.indexOf("</button>", start));
 }
 
-test("die untere Zeile: Weg, Geöffnet, Kasse - erreichte hervorgehoben", () => {
-  const weit = zeileVon(zeichne({ sitzungen: [sitzung("weit", { typ: "scan", berichtGeoeffnet: true, kasseGeoeffnet: true })], fach: "kasse" }), "weit");
-  const kurz = zeileVon(zeichne({ sitzungen: [sitzung("kurz", { typ: "scan", berichtGeoeffnet: true })], fach: "seen",
-    berichte: { kurz: { status: "fertig", freigabeAt: "x" } } }), "kurz");
-  for (const stueck of [weit, kurz]) {
-    const fuss = stueck.slice(stueck.indexOf("__fuss"));
-    assert.ok(fuss.indexOf("Scan") < fuss.indexOf("Geöffnet") && fuss.indexOf("Geöffnet") < fuss.indexOf("Kasse"), "Reihenfolge Weg | Geöffnet | Kasse stimmt nicht");
-    assert.ok(!/WhatsApp|bestellt/.test(fuss), "WhatsApp oder bestellt steht wieder in der Zeile");
-  }
-  assert.ok(weit.includes("heart-lifeskin-pill--auf heart-lifeskin-pill--an"));
-  assert.ok(weit.includes("heart-lifeskin-pill--kasse heart-lifeskin-pill--an"));
-  assert.ok(kurz.includes("heart-lifeskin-pill--auf heart-lifeskin-pill--an"));
-  assert.ok(!kurz.includes("heart-lifeskin-pill--kasse heart-lifeskin-pill--an"), "Kasse leuchtet ohne Kasse");
+// Welche Chips in welchem Fach (Wunsch 24.09.).
+function chipsIn(fach, extra = {}, bericht = { status: "fertig", freigabeAt: "x", preis: 39 }) {
+  const html = zeichne({ sitzungen: [sitzung("c1", { typ: "scan", ...extra })], fach, berichte: { c1: bericht } });
+  const zeile = zeileVon(html, "c1");
+  const fuss = zeile.slice(zeile.indexOf("__fuss"));
+  return [...fuss.matchAll(/class="heart-lifeskin-(?:pill|art|fall__zeit)[^"]*">([^<]+)</g)].map((m) => m[1]);
+}
+
+test("jedes Fach zeigt seine Chips - Datum und Uhrzeit ueberall", () => {
+  const zeit = (liste) => liste.slice(-2).every((w) => /^\d{2}[.:]\d{2}$/.test(w));
+  const seen = chipsIn("seen", { berichtGeoeffnet: true });
+  assert.deepEqual(seen.slice(0, -2), ["Scan", "Geöffnet", "39 €"]);
+  const kasse = chipsIn("kasse", { berichtGeoeffnet: true, kasseGeoeffnet: true });
+  assert.deepEqual(kasse.slice(0, -2), ["Scan", "Kasse", "39 €"]);
+  // Bestellt: der Betrag der Bestellung, nicht der vorgeschlagene Preis.
+  const bestellt = chipsIn("bestellt", { berichtGeoeffnet: true, hatBestellt: true, order: { orderId: "o", total: 49 } });
+  assert.deepEqual(bestellt.slice(0, -2), ["Scan", "49 €"]);
+  const archiv = chipsIn("archiviert", { berichtGeoeffnet: true }, { status: "fertig", freigabeAt: "x", preis: 39, archiviert: true });
+  assert.deepEqual(archiv.slice(0, -2), ["Scan", "Geöffnet", "Kasse", "39 €"]);
+  const spaeter = chipsIn("spaeter", {}, { status: "fertig", freigabeAt: "x", spaeter: true });
+  assert.deepEqual(spaeter.slice(0, -2), ["Scan", "Geöffnet", "Kasse"]);
+  for (const liste of [seen, kasse, bestellt, archiv, spaeter]) assert.ok(zeit(liste), `Datum/Uhrzeit fehlen: ${liste}`);
+  // Ohne Preis ein blasser Platzhalter.
+  assert.ok(chipsIn("seen", { berichtGeoeffnet: true }, { status: "fertig", freigabeAt: "x" }).includes("– €"));
 });
 
 test("Datum und Uhrzeit stehen am Ende der unteren Zeile", () => {

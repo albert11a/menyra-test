@@ -6327,3 +6327,20 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 }
 @keyframes heart-foto-platz { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 @media (prefers-reduced-motion: reduce) { .heart-lifeskin-fotos--reihe .heart-lifeskin-foto--platz { animation: none; } }
+/* Chip "Wert" (Preis der Produkte bzw. Betrag der Bestellung). */
+.heart-faelle .heart-lifeskin-pill--wert.heart-lifeskin-pill--an { background: #3fbf9b2e; color: #7fe0c3; font-variant-numeric: normal; }
+/* Archiv traegt die meisten Chips. Passt die Reihe nicht, rutschen Datum
+   und Uhrzeit in eine zweite Zeile, statt aus dem Bild zu laufen. */
+.heart-faelle .heart-lifeskin-fall__fuss { flex-wrap: wrap; row-gap: 4px; }
+.heart-faelle .heart-lifeskin-fall__zeiten { display: inline-flex; gap: 4px; flex: none; }
+.heart-faelle .heart-lifeskin-fall__zeiten > .heart-lifeskin-fall__zeit {
+  display: inline-flex; align-items: center; box-sizing: border-box; height: 20px; flex: none;
+  padding: 0 6px; margin: 0; border-radius: 999px; line-height: 1; white-space: nowrap;
+  font-family: inherit; font-size: 10.5px; font-weight: 600; letter-spacing: 0; text-transform: none;
+  font-variant-numeric: normal; color: var(--heart-muted, #8f918d);
+  background: transparent; border: 1px solid var(--heart-line, #34383a);
+}
+@media (max-width: 370px) {
+  .heart-faelle .heart-lifeskin-fall__zeiten { gap: 3px; }
+  .heart-faelle .heart-lifeskin-fall__zeiten > .heart-lifeskin-fall__zeit { padding: 0 5px; }
+}

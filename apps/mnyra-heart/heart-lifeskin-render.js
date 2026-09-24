@@ -923,20 +923,39 @@ function vorschauFeld(sitzung, bild) {
 // wenn sie nicht erreicht sind - nur blass. So ist auf einen Blick zu sehen,
 // wo jemand haengengeblieben ist, ohne die Zeilen untereinander zu
 // vergleichen.
-function fallMarken(sitzung, fach = "") {
-  // Im Fach "Offen" ist noch nichts freigegeben - Geöffnet und Kasse
-  // koennen dort nie leuchten. An ihrer Stelle steht, ob der Prompt fuer
-  // diesen Fall schon gemacht ist.
-  // In "Ready" ist freigegeben, aber noch nicht geoeffnet - dort steht
-  // "Freigegeben" statt Geöffnet und Kasse.
-  const marken = fach === "alle"
-    ? [{ id: "prompt", label: "Prompt", an: promptGemacht(sitzung.id) }]
-    : fach === "ready"
-      ? [{ id: "frei", label: "Freigegeben", an: true }]
-      : [
-      { id: "auf", label: "Geöffnet", an: !!sitzung.berichtGeoeffnet },
-      { id: "kasse", label: "Kasse", an: !!(sitzung.kasseGeoeffnet || sitzung.hatBestellt) }
-    ];
+// Welche Chips in welchem Fach (Wunsch 24.09.) - Datum und Uhrzeit
+// stehen ueberall dahinter:
+//   Offen      Prompt
+//   Ready      Freigegeben
+//   Seen       Geöffnet, Wert
+//   Kasse      Kasse, Wert
+//   Bestellt   Wert (der Betrag der Bestellung)
+//   Später     Geöffnet, Kasse
+//   Archiv     Geöffnet, Kasse, Wert
+// Wert ist der Preis der Produkte aus dem Befund, bei einer Bestellung
+// ihr Betrag.
+function fallWert(sitzung, bericht) {
+  const betrag = Number(sitzung?.order?.total) || Number(bericht?.preis) || 0;
+  return betrag > 0 ? euro(betrag) : "";
+}
+
+function fallMarken(sitzung, fach = "", bericht = null) {
+  const wert = fallWert(sitzung, bericht);
+  const m = {
+    prompt: { id: "prompt", label: "Prompt", an: promptGemacht(sitzung.id) },
+    frei: { id: "frei", label: "Freigegeben", an: true },
+    auf: { id: "auf", label: "Geöffnet", an: !!sitzung.berichtGeoeffnet },
+    kasse: { id: "kasse", label: "Kasse", an: !!(sitzung.kasseGeoeffnet || sitzung.hatBestellt) },
+    wert: { id: "wert", label: wert || "– €", an: !!wert }
+  };
+  const marken = ({
+    alle: [m.prompt],
+    ready: [m.frei],
+    seen: [m.auf, m.wert],
+    kasse: [m.kasse, m.wert],
+    bestellt: [m.wert],
+    archiviert: [m.auf, m.kasse, m.wert]
+  })[fach] || [m.auf, m.kasse];
   const reihe = artMarke(sitzung)
     + (sitzung.nurBericht ? `<span class="heart-lifeskin-pill heart-lifeskin-pill--paskanim heart-lifeskin-pill--an" title="Die Sitzung kam nicht an, der Bericht schon - Kontaktdaten fehlen">nur Bericht</span>` : "")
     + marken.map((m) => `<span class="heart-lifeskin-pill heart-lifeskin-pill--${m.id}${m.an ? " heart-lifeskin-pill--an" : ""}">${escapeHtml(m.label)}</span>`).join("");
@@ -973,7 +992,7 @@ function fallMarken(sitzung, fach = "") {
 // Scan sieht man auf das Bild, bei einer Frage auf den Satz. Ein
 // getrennter Bereich je Art waere viermal dieselbe Liste - und dreimal
 // davon fast immer leer.
-function fallZeile(sitzung, fach = "") {
+function fallZeile(sitzung, fach = "", bericht = null) {
   const typ = typVon(sitzung);
   const text = String(sitzung.pyetja || sitzung.problemi || "").trim();
   // Datum und Uhrzeit als eigene Chips, gleich hoch wie die Marken und
@@ -981,7 +1000,9 @@ function fallZeile(sitzung, fach = "") {
   // Das Datum ohne Punkt am Ende: "24.09", nicht "24.09.".
   const zeit = [datumKurz(sitzung.createdAt).replace(/\.$/, ""), uhrzeit(sitzung.createdAt)].filter(Boolean)
     .map((w) => `<span class="heart-lifeskin-fall__zeit">${escapeHtml(w)}</span>`).join("");
-  const reihe = `<span class="heart-lifeskin-fall__fuss">${fallMarken(sitzung, fach)}${zeit}</span>`;
+  // Datum und Uhrzeit als Paar: Wird die Reihe zu lang (Archiv), rutschen
+  // beide zusammen in die zweite Zeile.
+  const reihe = `<span class="heart-lifeskin-fall__fuss">${fallMarken(sitzung, fach, bericht)}<span class="heart-lifeskin-fall__zeiten">${zeit}</span></span>`;
   if ((typ === "trup" || typ === "pytje") && text) {
     const kurz = text.length > 110 ? `${text.slice(0, 110).trimEnd()}…` : text;
     return `${reihe}<span class="heart-lifeskin-fall__text">${escapeHtml(kurz)}</span>`;
@@ -1064,7 +1085,7 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
           ${s.code ? `<span class="heart-lifeskin-code">${escapeHtml(s.code)}</span>` : ""}
           ${tel ? `<span class="heart-lifeskin-fall__tel">${escapeHtml(tel)}</span>` : ""}
         </span>
-        ${fallZeile(s, fach)}
+        ${fallZeile(s, fach, berichte[s.id])}
       </span>
       ${waehlen ? `<span class="heart-lifeskin-fall__wahl" aria-hidden="true">${an ? renderHeartIcon("check", "heart-lifeskin-fall__haken") : ""}</span>` : ""}
     </button>`;
