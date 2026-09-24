@@ -34,7 +34,7 @@ import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 // Aufklappen, das ein Neuzeichnen ueberlebt.
 import { renderRaste, renderRastiEditor, renderBefundRasteAuswahl, rasteListe } from "./heart-lifeskin-raste.js";
 import { klappAttr, alsKlapp } from "./heart-lifeskin-klapp.js";
-import { entwurfLesen } from "./heart-lifeskin-entwurf.js";
+import { entwurfLesen, promptGemacht } from "./heart-lifeskin-entwurf.js";
 import { vorschauKasten } from "./heart-lifeskin-vorschau.js";
 import { ohneSeite, ohneSeiteTief } from "../../shared/lifeskin-ohne-seite.js";
 
@@ -923,11 +923,16 @@ function vorschauFeld(sitzung, bild) {
 // wenn sie nicht erreicht sind - nur blass. So ist auf einen Blick zu sehen,
 // wo jemand haengengeblieben ist, ohne die Zeilen untereinander zu
 // vergleichen.
-function fallMarken(sitzung) {
-  const marken = [
-    { id: "auf", label: "Geöffnet", an: !!sitzung.berichtGeoeffnet },
-    { id: "kasse", label: "Kasse", an: !!(sitzung.kasseGeoeffnet || sitzung.hatBestellt) }
-  ];
+function fallMarken(sitzung, fach = "") {
+  // Im Fach "Offen" ist noch nichts freigegeben - Geöffnet und Kasse
+  // koennen dort nie leuchten. An ihrer Stelle steht, ob der Prompt fuer
+  // diesen Fall schon gemacht ist.
+  const marken = fach === "alle"
+    ? [{ id: "prompt", label: "Prompt", an: promptGemacht(sitzung.id) }]
+    : [
+      { id: "auf", label: "Geöffnet", an: !!sitzung.berichtGeoeffnet },
+      { id: "kasse", label: "Kasse", an: !!(sitzung.kasseGeoeffnet || sitzung.hatBestellt) }
+    ];
   const reihe = artMarke(sitzung)
     + (sitzung.nurBericht ? `<span class="heart-lifeskin-pill heart-lifeskin-pill--paskanim heart-lifeskin-pill--an" title="Die Sitzung kam nicht an, der Bericht schon - Kontaktdaten fehlen">nur Bericht</span>` : "")
     + marken.map((m) => `<span class="heart-lifeskin-pill heart-lifeskin-pill--${m.id}${m.an ? " heart-lifeskin-pill--an" : ""}">${escapeHtml(m.label)}</span>`).join("");
@@ -964,7 +969,7 @@ function fallMarken(sitzung) {
 // Scan sieht man auf das Bild, bei einer Frage auf den Satz. Ein
 // getrennter Bereich je Art waere viermal dieselbe Liste - und dreimal
 // davon fast immer leer.
-function fallZeile(sitzung) {
+function fallZeile(sitzung, fach = "") {
   const typ = typVon(sitzung);
   const text = String(sitzung.pyetja || sitzung.problemi || "").trim();
   // Datum und Uhrzeit als eigene Chips, gleich hoch wie die Marken und
@@ -972,7 +977,7 @@ function fallZeile(sitzung) {
   // Das Datum ohne Punkt am Ende: "24.09", nicht "24.09.".
   const zeit = [datumKurz(sitzung.createdAt).replace(/\.$/, ""), uhrzeit(sitzung.createdAt)].filter(Boolean)
     .map((w) => `<span class="heart-lifeskin-fall__zeit">${escapeHtml(w)}</span>`).join("");
-  const reihe = `<span class="heart-lifeskin-fall__fuss">${fallMarken(sitzung)}${zeit}</span>`;
+  const reihe = `<span class="heart-lifeskin-fall__fuss">${fallMarken(sitzung, fach)}${zeit}</span>`;
   if ((typ === "trup" || typ === "pytje") && text) {
     const kurz = text.length > 110 ? `${text.slice(0, 110).trimEnd()}…` : text;
     return `${reihe}<span class="heart-lifeskin-fall__text">${escapeHtml(kurz)}</span>`;
@@ -1055,7 +1060,7 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
           ${s.code ? `<span class="heart-lifeskin-code">${escapeHtml(s.code)}</span>` : ""}
           ${tel ? `<span class="heart-lifeskin-fall__tel">${escapeHtml(tel)}</span>` : ""}
         </span>
-        ${fallZeile(s)}
+        ${fallZeile(s, fach)}
       </span>
       ${waehlen ? `<span class="heart-lifeskin-fall__wahl" aria-hidden="true">${an ? renderHeartIcon("check", "heart-lifeskin-fall__haken") : ""}</span>` : ""}
     </button>`;

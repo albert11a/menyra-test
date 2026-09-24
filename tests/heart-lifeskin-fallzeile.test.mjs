@@ -152,7 +152,8 @@ function zeileVon(html, id) {
 
 test("die untere Zeile: Weg, Geöffnet, Kasse - erreichte hervorgehoben", () => {
   const weit = zeileVon(zeichne({ sitzungen: [sitzung("weit", { typ: "scan", berichtGeoeffnet: true, kasseGeoeffnet: true })], fach: "kasse" }), "weit");
-  const kurz = zeileVon(zeichne({ sitzungen: [sitzung("kurz", { typ: "scan" })], fach: "alle" }), "kurz");
+  const kurz = zeileVon(zeichne({ sitzungen: [sitzung("kurz", { typ: "scan" })], fach: "ready",
+    berichte: { kurz: { status: "fertig", freigabeAt: "x" } } }), "kurz");
   for (const stueck of [weit, kurz]) {
     const fuss = stueck.slice(stueck.indexOf("__fuss"));
     assert.ok(fuss.indexOf("Scan") < fuss.indexOf("Geöffnet") && fuss.indexOf("Geöffnet") < fuss.indexOf("Kasse"), "Reihenfolge Weg | Geöffnet | Kasse stimmt nicht");
@@ -286,4 +287,28 @@ test("die Gesichter flackern beim Neuzeichnen nicht", () => {
     && hook.indexOf("behalteLifeskinVorschau(root)") < hook.indexOf("beobachteLifeskinVorschau(root)"),
     "Die Bildknoten werden nach dem Zeichnen nicht wieder eingesetzt");
   assert.match(funktion(HEART, "behalteLifeskinVorschau"), /replaceWith/);
+});
+
+// Nur im Fach "Offen": der Chip Prompt, farbig sobald der Prompt fuer den
+// Fall kopiert oder eine Antwort eingefuegt wurde (auf dem Geraet gemerkt).
+test("im Fach Offen steht der Chip Prompt - farbig, sobald der Prompt gemacht ist", async () => {
+  const speicher = new Map();
+  globalThis.localStorage = { getItem: (k) => speicher.get(k) ?? null, setItem: (k, v) => speicher.set(k, String(v)), removeItem: (k) => speicher.delete(k) };
+  try {
+    const { promptMerken } = await import("../apps/mnyra-heart/heart-lifeskin-entwurf.js");
+    const vorher = zeileVon(zeichne({ sitzungen: [sitzung("p1")], fach: "alle" }), "p1");
+    assert.match(vorher, /heart-lifeskin-pill--prompt">Prompt</, "Im Fach Offen fehlt der Chip Prompt");
+    // An Stelle von Geöffnet und Kasse - die koennen in Offen nie leuchten.
+    const fuss = vorher.slice(vorher.indexOf("__fuss"));
+    assert.doesNotMatch(fuss, />Geöffnet<|>Kasse</);
+    promptMerken("p1");
+    const nachher = zeileVon(zeichne({ sitzungen: [sitzung("p1")], fach: "alle" }), "p1");
+    assert.match(nachher, /heart-lifeskin-pill--prompt heart-lifeskin-pill--an">Prompt</);
+    // In den anderen Faechern nicht.
+    const seen = zeichne({ sitzungen: [sitzung("p1", { berichtGeoeffnet: true })], fach: "seen",
+      berichte: { p1: { status: "fertig", freigabeAt: "x" } } });
+    assert.doesNotMatch(seen, /heart-lifeskin-pill--prompt/);
+  } finally {
+    delete globalThis.localStorage;
+  }
 });

@@ -57,7 +57,7 @@ import { ladeLifeskin, horcheLive, ladeFotos, ladeErstesFoto, loescheAlleSitzung
   ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX,
   speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder } from "./heart-lifeskin-adapter.js";
 import { rasteListe, klappSetzen, rastiDom } from "./heart-lifeskin-raste.js";
-import { entwurfSchreiben, entwurfLoeschen, entwurfAusBogen } from "./heart-lifeskin-entwurf.js";
+import { entwurfSchreiben, entwurfLoeschen, entwurfAusBogen, promptMerken } from "./heart-lifeskin-entwurf.js";
 import { befundStandAuffrischen, befundFelderAnpassen } from "./heart-lifeskin-befundstand.js";
 import { vorschauAuffrischen } from "./heart-lifeskin-vorschau.js";
 import { rasteNormalisieren, rastiNormalisieren, neueRastiId, RASTI_PRODUKTE_MAX } from "../../shared/lifeskin-raste.js";
@@ -2746,6 +2746,7 @@ async function lifeskinPromptKopieren() {
     // Das Feld darunter erscheint NUR, wenn das Kopieren scheitert.
     const output = document.querySelector('#lifeskin-prompt-ausgabe');
     if (output) { output.value=text; output.hidden=true; }
+    promptMerken(session.id);
     try { await navigator.clipboard.writeText(text); setToast('Prompt', 'Kopiert. Fehlende Angaben prüfen und mit den Gesichtsaufnahmen senden.', 'success'); }
     catch { if (output) output.hidden=false; output?.focus(); output?.select(); setToast('Prompt', 'Vorlage steht im Textfeld bereit. Vollständig kopieren.', 'success'); }
   } catch (error) { setToast('Prompt', error.message, 'danger'); }
@@ -2797,6 +2798,7 @@ async function lifeskinJsonUebernehmen() {
   let gelesen = {};
   try { gelesen = jsonLesen(text); } catch { gelesen = {}; }
 
+  promptMerken(store.getState().lifeskin?.offen);
   lifeskinAutomatik.clear();
   for (const el of document.querySelectorAll('[data-produkt-satz], [data-veprimi]')) el.value = '';
   lifeskinBogenFuellen(raport);

@@ -75,9 +75,9 @@ test("bei Trup und Pytje steht sein Text in der Zeile, unter den Marken", () => 
   const scan = teile.find((t) => t.includes('data-id="s1"')) || "";
   assert.match(trup, /Kam njolla te shpina/, "Der Text des Falls steht nicht in der Zeile");
   // Die Marken stehen bei jedem Weg (Wunsch 24.09.), der Text darunter.
-  assert.match(trup, /heart-lifeskin-pill--auf/, "Dem Trup-Fall fehlen seine Marken");
-  assert.ok(trup.indexOf("heart-lifeskin-pill--auf") < trup.indexOf("Kam njolla"), "Der Text steht nicht unter den Marken");
-  assert.match(scan, /heart-lifeskin-pill--auf/, "Dem Scan fehlen seine Marken");
+  assert.match(trup, /heart-lifeskin-pill--prompt/, "Dem Trup-Fall fehlen seine Marken");
+  assert.ok(trup.indexOf("heart-lifeskin-pill--prompt") < trup.indexOf("Kam njolla"), "Der Text steht nicht unter den Marken");
+  assert.match(scan, /heart-lifeskin-pill--prompt/, "Dem Scan fehlen seine Marken");
   assert.doesNotMatch(scan, /heart-lifeskin-fall__text/);
 
   // Ein langer Text wird gekuerzt, nicht umgebrochen: Die Liste bleibt

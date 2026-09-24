@@ -65,3 +65,34 @@ export function entwurfAusBogen(wurzel = globalThis.document) {
     preis: Number(wurzel.querySelector("#lifeskin-preis")?.value) || 0
   };
 }
+
+// PROMPT GEMACHT - je Fall auf dem Geraet gemerkt. Gesetzt, sobald der
+// Prompt kopiert oder eine Antwort eingefuegt wurde. Die Fallliste zeigt
+// daran im Fach "Offen" den Chip "Prompt" farbig.
+const PROMPT_SCHLUESSEL = "heart.lifeskin.prompt";
+
+function promptListe() {
+  const s = speicher();
+  if (!s) return {};
+  try {
+    const roh = JSON.parse(s.getItem(PROMPT_SCHLUESSEL) || "{}");
+    return roh && typeof roh === "object" ? roh : {};
+  } catch {
+    return {};
+  }
+}
+
+export function promptMerken(fallId) {
+  const s = speicher();
+  if (!s || !fallId) return;
+  const liste = promptListe();
+  if (liste[fallId]) return;
+  liste[fallId] = Date.now();
+  // Nicht endlos wachsen: Aelter als die Haltbarkeit eines Entwurfs faellt raus.
+  for (const [id, am] of Object.entries(liste)) if (Date.now() - Number(am || 0) > HALTBAR_MS) delete liste[id];
+  try { s.setItem(PROMPT_SCHLUESSEL, JSON.stringify(liste)); } catch { /* voll oder gesperrt */ }
+}
+
+export function promptGemacht(fallId) {
+  return Boolean(fallId && promptListe()[fallId]);
+}
