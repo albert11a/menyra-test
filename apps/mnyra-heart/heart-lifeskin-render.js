@@ -35,7 +35,7 @@ import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 import { renderRaste, renderRastiEditor, renderBefundRasteAuswahl, rasteListe } from "./heart-lifeskin-raste.js";
 import { klappAttr, alsKlapp } from "./heart-lifeskin-klapp.js";
 import { entwurfLesen, promptGemacht } from "./heart-lifeskin-entwurf.js";
-import { KLIENTET, klientetFuerBericht } from "../../shared/lifeskin-klientet.js";
+import { renderMedien, renderMediumEditor, renderMedienReaktionen, renderBefundMedienAuswahl } from "./heart-lifeskin-medien.js";
 import { vorschauKasten } from "./heart-lifeskin-vorschau.js";
 import { ohneSeite, ohneSeiteTief } from "../../shared/lifeskin-ohne-seite.js";
 
@@ -2061,23 +2061,6 @@ export function befundWeg(sitzung, art, gemerkt = "") {
   return typ === "scan" ? "skanim" : "foto";
 }
 
-// KUNDENFOTOS ("Nga klientët tanë") auf der Therapieseite - eigene
-// Sparte im Befund. Keines gewaehlt: Die Seite zeigt den Abschnitt nicht.
-// Die Bilder und Texte stehen in shared/lifeskin-klientet.js.
-function renderKlientetAuswahl(bericht) {
-  const an = new Set(klientetFuerBericht(bericht?.klientet));
-  return `
-    <p class="heart-befund__hilfe">Antippen zum Auswählen. Keines gewählt – die Seite zeigt den Abschnitt nicht.</p>
-    <div class="heart-rasti-wahl">
-      ${KLIENTET.map((k) => `
-      <label class="heart-rasti-wahl__karte">
-        <input type="checkbox" data-befund-klienti value="${escapeHtml(k.id)}"${an.has(k.id) ? " checked" : ""} />
-        <span class="heart-rasti-wahl__bilder heart-rasti-wahl__bilder--eins"><img src="${escapeHtml(k.bild)}" alt="" loading="lazy" /></span>
-        <span class="heart-rasti-wahl__text"><b>${escapeHtml(k.produkt)}</b><small>${escapeHtml(k.text)}</small></span>
-      </label>`).join("")}
-    </div>`;
-}
-
 function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({}), zustand = {}) {
   const stand = bericht?.status || "wartet";
   const fertig = stand !== "wartet" && stand !== "vorschau";
@@ -2277,7 +2260,7 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({}), 
 
       ${befundGruppe("raste", "Ergebnisse auf der Seite", renderBefundRasteAuswahl(raste, bericht, zustand), { hinweis: "Vorher / Nachher" })}
 
-      ${befundGruppe("klientet", "Kundenfotos", renderKlientetAuswahl(bericht), { hinweis: "Nga klientët tanë" })}
+      ${befundGruppe("klientet", "Kundenfotos & -videos", renderBefundMedienAuswahl(zustand, bericht), { hinweis: "Nga klientët tanë" })}
 
       ${befundGruppe("details", "Analyse-Details", `
         <textarea hidden data-raport-meta>${escapeHtml(JSON.stringify(raport || {}))}</textarea>
@@ -2811,6 +2794,10 @@ export function renderLifeskin(zustand) {
     return `<div class="heart-lifeskin">${renderRastiEditor(zustand, produkte || [])}</div>`;
   }
 
+  if (zustand.medienOffen) {
+    return `<div class="heart-lifeskin">${renderMediumEditor(zustand, produkte || [])}</div>`;
+  }
+
   if (zustand.produktOffen) {
     const produkt = zustand.produktOffen === "__neu"
       ? null
@@ -2866,6 +2853,7 @@ export function renderLifeskin(zustand) {
         zustand.vorschau || {}, { auswahl: zustand.auswahl ?? null, auswahlLoeschen: !!zustand.auswahlLoeschen })}
       ${renderBestellungen(sitzungen, zustand.bestellZeitraum || "heute")}
       ${renderNachfassen(zahlen)}
+      ${renderMedienReaktionen(zustand)}
 
       <!-- WAS NICHT JEDEN TAG GELESEN WIRD, STEHT NICHT JEDEN TAG IM WEG.
            Die Hauptflaeche beantwortet drei Fragen: Was ist neu? Was muss
@@ -2886,6 +2874,7 @@ export function renderLifeskin(zustand) {
           ${alsKlapp(renderHerkunft(baueHerkunft(imBlick)), "herkunft", { standard: false })}
           ${alsKlapp(renderProdukte(produkte), "produkte", { standard: false })}
           ${renderRaste(zustand)}
+          ${renderMedien(zustand)}
           ${alsKlapp(renderVerteilung(baueVerteilung(imBlick)), "verteilung", { standard: false })}
           ${alsKlapp(renderTests(zustand.tests, zustand.berichte || {}), "tests", { standard: false })}
           ${alsKlapp(renderAnbieter(zustand.konfig?.anbieter, zustand.anbieterStatus), "anbieter", { standard: false })}

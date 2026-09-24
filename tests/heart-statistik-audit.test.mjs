@@ -175,6 +175,7 @@ test("adapter paginates beyond 3,000 sessions and retains order dates from repor
       return match.slice(0, index) + `const { ${match.slice(index + 8).split("} from")[0]} } = globalThis.__heartFirestoreMock;`;
     });
   code = code.replace(/from "\.\/([^"]+)"/g, (_, path) => `from "${new URL(`apps/mnyra-heart/${path}`, root)}"`);
+  code = code.replace(/from "\.\.\/\.\.\/([^"]+)"/g, (_, path) => `from "${new URL(path, root)}"`);
   const docs = Array.from({ length: 3001 }, (_, i) => ({ id: `s${String(i).padStart(4, "0")}`, data: () => ({ createdAt: zeit(), step: "opened" }) }));
   let pageReads = 0;
   const listeners = [];

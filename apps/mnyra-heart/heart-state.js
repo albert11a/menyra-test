@@ -147,7 +147,18 @@ export function createHeartLifeskinInitialState() {
     // Formular neu geschrieben. Ein gewaehltes Produktfoto lebte bis
     // dahin NUR im Formular und war danach weg. Was hier liegt,
     // ueberlebt jedes Neuzeichnen.
-    produktEntwurf: null
+    produktEntwurf: null,
+    // Kundenfotos und -videos (heart-lifeskin-medien.js): welches Medium
+    // bearbeitet wird ("__neu" fuer ein neues), was im Editor steht, der
+    // Stand von Upload und Speichern. Die Kommentare kommen erst, wenn die
+    // Karte "Reaktionen" aufgeht: { medienId: [kommentar, ...] }.
+    medienOffen: "",
+    medienEntwurf: null,
+    medienStatus: "",
+    medienLoeschen: false,
+    medienKommentare: null,
+    medienKommentareStatus: "",
+    kommentarLoeschen: ""
   };
 }
 

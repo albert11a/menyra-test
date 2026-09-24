@@ -46,6 +46,7 @@ import {
   writeBatch
 } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import { LIVE_FENSTER_MS, ohnePfad } from "./heart-lifeskin-live.js";
+import { mediumNormalisieren } from "../../shared/lifeskin-medien.js";
 
 const TENANT = "lifeskin";
 const SITZUNG_GRENZE = 3000;
@@ -116,7 +117,7 @@ export function horcheLive(beiAenderung, { fensterMs = LIVE_FENSTER_MS * 2 } = {
 }
 
 export async function ladeLifeskin({ ausSpeicher = false } = {}) {
-  const [sitzungsDocs, produktDocs, konfigDocs, berichtDocs] = await Promise.all([
+  const [sitzungsDocs, produktDocs, konfigDocs, berichtDocs, medienDocs] = await Promise.all([
     ladeSammlung(["lifeskin", TENANT, "sessions"], ausSpeicher),
     ladeSammlung(["lifeskin", TENANT, "products"], ausSpeicher),
     // Die Konfiguration, wegen des Setpreises. Der offene Betrag in den
@@ -125,7 +126,9 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     ladeSammlung(["lifeskin", TENANT, "config"], ausSpeicher).catch(() => []),
     // Die Berichte. Klein genug, um sie mit der Liste zu holen: In ihnen
     // stehen Befundtext, Produktkennungen und Zustand - keine Bilder.
-    ladeSammlung(["lifeskin", TENANT, "reports"], ausSpeicher)
+    ladeSammlung(["lifeskin", TENANT, "reports"], ausSpeicher),
+    // Die Kundenfotos und -videos: nur Verweise und Zaehler, winzig.
+    ladeSammlung(["lifeskin", TENANT, "medien"], ausSpeicher).catch(() => [])
   ]);
 
   // DIE BILDER DER LANDINGPAGE BLEIBEN DRAUSSEN.
@@ -194,6 +197,8 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     konfig,
     // null: in Heart noch nie gespeichert - es gelten die Standardfaelle.
     raste: Array.isArray(rasteDok?.lista) ? rasteDok.lista : null,
+    // Leer: noch nie gespeichert - es gelten die vier Standardfotos.
+    medien: medienDocs.map((d) => mediumNormalisieren(d.data() || {}, d.id)),
     kennzahlen: baueKennzahlen(sitzungen, { setPreis }),
     trichter: baueTrichter(sitzungen),
     // Wie weit im Bericht gelesen wird. Eigene Rechnung, nicht im
@@ -552,4 +557,80 @@ export async function setzeVersand(sitzungId, { status, lieferVon, lieferBis }) 
 
 export async function loescheProdukt(id) {
   await deleteDoc(doc(db, "lifeskin", TENANT, "products", id));
+}
+
+// ── KUNDENFOTOS UND -VIDEOS ("Nga klientët tanë") ──────────────────────
+//
+// Die Dateien liegen im Media-CDN (Upload: heart-crm-admin-write-adapter.js),
+// hier nur die Eintraege lifeskin/{tenant}/medien/{id} und ihre Kommentare.
+// Aufbau: shared/lifeskin-medien.js.
+
+const medienSammlung = () => collection(db, "lifeskin", TENANT, "medien");
+
+export async function ladeMedien() {
+  const snapshot = await getDocs(medienSammlung());
+  return snapshot.docs.map((d) => mediumNormalisieren(d.data() || {}, d.id));
+}
+
+// Mehrere auf einmal (Anlegen der Standardfotos, neue Reihenfolge) - alles
+// oder nichts.
+export async function speichereMedien(liste = []) {
+  const stapel = writeBatch(db);
+  for (const roh of liste) {
+    const m = mediumNormalisieren(roh);
+    if (!m.id) continue;
+    const { id, ...felder } = m;
+    // Die Views zaehlt die Seite - Heart ueberschreibt sie nie.
+    delete felder.views;
+    stapel.set(doc(medienSammlung(), id), felder, { merge: true });
+  }
+  await stapel.commit();
+}
+
+export async function speichereMedium(roh) {
+  await speichereMedien([roh]);
+}
+
+// Mit allen Kommentaren - Firestore loescht Untersammlungen nicht mit.
+export async function loescheMedium(id) {
+  const kennung = String(id || "").trim();
+  if (!kennung) return;
+  const kommentare = await getDocs(collection(db, "lifeskin", TENANT, "medien", kennung, "kommentare"));
+  const stapel = writeBatch(db);
+  for (const k of kommentare.docs) stapel.delete(k.ref);
+  stapel.delete(doc(medienSammlung(), kennung));
+  await stapel.commit();
+}
+
+// Alle Kommentare (auch verborgene) je Medium, neueste oben.
+export async function ladeKommentare(ids = []) {
+  const paare = await Promise.all(ids.map(async (id) => {
+    try {
+      const snapshot = await getDocs(collection(db, "lifeskin", TENANT, "medien", id, "kommentare"));
+      const liste = snapshot.docs.map((d) => {
+        const k = d.data() || {};
+        return {
+          id: d.id,
+          medium: id,
+          name: String(k.name || "").slice(0, 40),
+          text: String(k.text || "").slice(0, 500),
+          createdAt: String(k.createdAt || ""),
+          verborgen: k.verborgen === true
+        };
+      }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      return [id, liste];
+    } catch {
+      return [id, []];
+    }
+  }));
+  return Object.fromEntries(paare);
+}
+
+export async function setzeKommentarVerborgen(medium, kommentar, verborgen) {
+  await setDoc(doc(db, "lifeskin", TENANT, "medien", medium, "kommentare", kommentar),
+    { verborgen: verborgen === true }, { merge: true });
+}
+
+export async function loescheKommentar(medium, kommentar) {
+  await deleteDoc(doc(db, "lifeskin", TENANT, "medien", medium, "kommentare", kommentar));
 }

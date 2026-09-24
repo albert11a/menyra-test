@@ -31,7 +31,7 @@ import { LIFESKIN_FIRESTORE_BASE, LIFESKIN_TENANT } from "../lifeskin/lifeskin-c
 import {
   RASTE_STANDARD, rasteLaden, rasteNormalisieren, rasteFuerBericht, rasteMitBildern, rastiProdukteText
 } from "../../shared/lifeskin-raste.js";
-import { klientetFuerBericht } from "../../shared/lifeskin-klientet.js";
+import { KundenMedien } from "./terapia-medien.js";
 
 const $ = (wahl) => document.querySelector(wahl);
 const $$ = (wahl) => Array.from(document.querySelectorAll(wahl));
@@ -218,6 +218,26 @@ export class Terapia {
     }));
   }
 
+  // DIE KUNDENFOTOS UND -VIDEOS (terapia-medien.js). Einmal gebaut; nach
+  // der Bestellung zeichnet die Seite neu, die Reihe bleibt stehen.
+  #medien(mitProdukten) {
+    const abschnitt = $("#klientet");
+    if (!mitProdukten) { zeigen(abschnitt, false); return; }
+    if (this.kundenMedien) return;
+    this.kundenMedien = new KundenMedien({
+      abschnitt,
+      reihe: $("#t-medien"),
+      basis: LIFESKIN_FIRESTORE_BASE,
+      tenant: LIFESKIN_TENANT,
+      fetchFn: this.quelle.fetchFn,
+      zaehlen: !this.nurVorschau && globalThis.__mnyraStill !== true,
+      name: this.daten?.name,
+      melde: (m) => this.klickpfad?.melde("kommentar", `${m.art === "video" ? "Video" : "Foto"} · ${m.produkt || m.id}`),
+      kaufen: this.mitAngebot ? { text: `Fillo terapinë — ${euro(this.preis)}`, tun: () => this.#porosia(true), gilt: () => this.mitAngebot } : null
+    });
+    this.kundenMedien.zeige(this.daten?.klientet);
+  }
+
   #weg() {
     zeigen($("#t-laedt"), false);
     zeigen($("#t-weg"), true);
@@ -294,18 +314,9 @@ export class Terapia {
     zeigen($("#merrni"), mitProdukten);
     zeigen($("#ditet"), mitProdukten);
     zeigen($("#rezultate"), mitProdukten && !this.rasteLeer);
-    // Kundenfotos: nur die, die Heart fuer diesen Befund gewaehlt hat, in
-    // dieser Reihenfolge. Keines gewaehlt: kein Abschnitt.
-    const klientet = klientetFuerBericht(this.daten?.klientet);
-    const reihe = $("#klientet .klientet__rreshti");
-    for (const id of klientet) {
-      const bild = reihe?.querySelector(`[data-klienti="${id}"]`);
-      if (bild) reihe.append(bild);
-    }
-    for (const bild of reihe?.querySelectorAll("[data-klienti]") || []) {
-      zeigen(bild, klientet.includes(bild.getAttribute("data-klienti")));
-    }
-    zeigen($("#klientet"), mitProdukten && klientet.length > 0);
+    // Kundenfotos und -videos: nur die, die Heart fuer diesen Befund
+    // gewaehlt hat, in dieser Reihenfolge. Keines gewaehlt: kein Abschnitt.
+    this.#medien(mitProdukten);
     zeigen($("#vendimi"), this.mitAngebot);
     schreibe($("#t-dita28"), s.dita_28 || this.produkte[0]?.synimi || "Krahasojmë lëkurën tuaj me foton e sotme.");
     schreibe($("#t-psetani"), s.pse_tani || "");

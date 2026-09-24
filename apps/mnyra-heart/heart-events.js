@@ -379,6 +379,40 @@ export function bindHeartEvents({
       await operations.lifeskinProdukteAnlegen?.();
       return;
     }
+    // Kundenfotos und -videos (heart-lifeskin-medien.js).
+    if (action === "lifeskin-medium") {
+      operations.openLifeskinMedium?.(target.getAttribute("data-id"));
+      return;
+    }
+    if (action === "lifeskin-medium-neu") {
+      // Ohne await davor: Die Dateiwahl muss im Griff des Fingers aufgehen.
+      operations.lifeskinMediumNeu?.(target.getAttribute("data-art"));
+      return;
+    }
+    if (action === "lifeskin-medium-datei") {
+      operations.lifeskinMediumDatei?.(target.getAttribute("data-art"));
+      return;
+    }
+    if (action === "lifeskin-medium-zu") {
+      operations.closeLifeskinMedium?.();
+      return;
+    }
+    if (action === "lifeskin-medium-speichern") {
+      await operations.speichereLifeskinMedium?.();
+      return;
+    }
+    if (action === "lifeskin-medium-loeschen") {
+      await operations.loescheLifeskinMedium?.();
+      return;
+    }
+    if (action === "lifeskin-medium-schieben") {
+      await operations.lifeskinMediumSchieben?.(target.getAttribute("data-id"), target.getAttribute("data-richtung"));
+      return;
+    }
+    if (action === "lifeskin-kommentar") {
+      await operations.lifeskinKommentar?.(target.getAttribute("data-was"), target.getAttribute("data-medium"), target.getAttribute("data-id"));
+      return;
+    }
     // Die Vorher/Nachher-Faelle (heart-lifeskin-raste.js).
     if (action === "lifeskin-rasti") {
       operations.openLifeskinRasti?.(target.getAttribute("data-id"));

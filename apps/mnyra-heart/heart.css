@@ -6362,3 +6362,76 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 .heart-befund__wataicon--viber { color: #8f7ff5; }
 .heart-befund__knopf--viber { flex-direction: row; flex-wrap: wrap; column-gap: 8px; background: #7360f2; border-color: transparent; color: #fff; }
 .heart-befund__knopf--viber small { flex-basis: 100%; text-align: center; font-size: 12px; font-weight: 500; color: #e6e1ff; margin-top: -2px; }
+
+/* Kundenfotos und -videos (heart-lifeskin-medien.js) - Kacheln im
+   Hochformat wie auf der Analyseseite. */
+.heart-medien { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; margin-top: 12px; }
+.heart-medium { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.heart-medium__oeffnen {
+  position: relative; display: block; width: 100%; aspect-ratio: 9 / 16; padding: 0; border: 0; border-radius: 12px;
+  overflow: hidden; background: #ffffff0d; cursor: pointer; contain: layout paint;
+}
+.heart-medium__bild { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 25%; display: block; }
+.heart-medium__bild--leer { background: #ffffff0d; }
+.heart-medium--aus .heart-medium__bild { opacity: .35; filter: grayscale(1); }
+.heart-medium__art {
+  position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%; background: #0008; color: #fff;
+  display: grid; place-items: center;
+}
+.heart-medium__art svg { width: 11px; height: 11px; fill: currentColor; }
+.heart-medium__aus {
+  position: absolute; top: 6px; left: 6px; padding: 1px 7px; border-radius: 999px; background: #000b; color: #fff;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .02em;
+}
+.heart-medium__views {
+  position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 4px; padding: 14px 7px 6px;
+  background: linear-gradient(to top, #000a, transparent); color: #fff; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.heart-medium__views svg { width: 12px; height: 12px; }
+.heart-medium__name { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.heart-medium__reihe { display: flex; gap: 4px; }
+.heart-medium__reihe .heart-rasti-mini { flex: 1; }
+.heart-medien__neu { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.heart-medien__neu .heart-lifeskin-neu { margin-top: 0; justify-content: center; }
+.heart-medien__neu .heart-lifeskin-neu[disabled] { opacity: .45; }
+
+.heart-medium-editor__buehne {
+  width: min(220px, 60vw); aspect-ratio: 9 / 16; margin: 6px auto 10px; border-radius: 14px; overflow: hidden; background: #000;
+}
+.heart-medium-editor__buehne img, .heart-medium-editor__buehne video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.heart-medium-editor__buehne video { object-fit: contain; }
+.heart-medium-editor__buehne .heart-rasti-fotoleer { height: 100%; }
+.heart-medium-editor__datei { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 12px; text-align: center; }
+.heart-medium-editor__datei small { font-size: 12px; color: var(--heart-muted, #8f918d); overflow-wrap: anywhere; }
+
+/* Reaktionen: Views und Kommentare */
+.heart-reaktionen { display: grid; gap: 6px; margin-top: 10px; }
+.heart-reaktion {
+  display: grid; grid-template-columns: 30px 1fr auto auto; gap: 10px; align-items: center;
+  padding: 6px 8px; border-radius: 10px; background: #ffffff08;
+}
+.heart-reaktion__bild { width: 30px; height: 44px; border-radius: 6px; object-fit: cover; display: block; background: #ffffff0d; }
+.heart-reaktion__name { display: flex; flex-direction: column; min-width: 0; }
+.heart-reaktion__name b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.heart-reaktion__name small { font-size: 11.5px; color: var(--heart-muted, #8f918d); }
+.heart-reaktion__zahl { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 44px; justify-content: flex-end; }
+.heart-reaktion__zahl svg { width: 14px; height: 14px; opacity: .7; }
+.heart-reaktionen__titel { margin: 16px 0 8px; font-size: 13px; letter-spacing: .02em; color: var(--heart-muted, #8f918d); text-transform: uppercase; }
+.heart-kommentare { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.heart-kommentar { display: grid; grid-template-columns: 30px 1fr; gap: 10px; padding: 10px; border-radius: 12px; background: #ffffff08; }
+.heart-kommentar--verborgen { opacity: .55; }
+.heart-kommentar__bild { width: 30px; height: 44px; border-radius: 6px; object-fit: cover; display: block; background: #ffffff0d; }
+.heart-kommentar__leib { min-width: 0; }
+.heart-kommentar__kopf { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; margin: 0; font-size: 13px; }
+.heart-kommentar__kopf span { font-size: 11.5px; color: var(--heart-muted, #8f918d); }
+.heart-kommentar__kopf em { font-style: normal; font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 999px; background: #ffffff1a; }
+.heart-kommentar__text { margin: 3px 0 8px; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; white-space: pre-line; }
+.heart-kommentar__knoepfe { display: flex; gap: 6px; flex-wrap: wrap; }
+.heart-kommentar__knoepfe .heart-lifeskin-knopf { min-height: 32px; padding: 4px 12px; font-size: 12.5px; }
+.heart-kommentar__weg { color: #ff8c7a; }
+
+/* Im Befund: Medien im Hochformat mit Video-Zeichen */
+.heart-rasti-wahl__karte--medium { flex-basis: 118px; }
+.heart-rasti-wahl__karte--medium .heart-rasti-wahl__bilder { position: relative; }
+.heart-rasti-wahl__karte--medium .heart-rasti-wahl__bilder img { aspect-ratio: 9 / 16; }
+.heart-rasti-wahl__karte--medium .heart-medium__art { top: auto; bottom: 6px; left: 6px; right: auto; }

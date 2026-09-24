@@ -163,21 +163,117 @@ a { color: var(--green); }
 .rasti figcaption { padding: 12px 14px; font-size: .85rem; color: var(--muted); }
 .rasti figcaption b { color: var(--green); }
 
-/* 5b. Kundenfotos - eine Reihe zum Wischen, die naechste Karte schaut
-   heraus. Nur sichtbar, wenn Heart sie fuer den Befund einschaltet. */
-.klientet__rreshti {
-  display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory;
-  margin: 0 -20px; padding: 0 20px 6px; scroll-padding: 0 20px;
-  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+/* 1b. Kundenfotos und -videos - eine schmale Reihe kleiner Hochformat-
+   Kacheln gleich unter dem Preis (terapia-medien.js). Feste Groesse:
+   Nichts springt, wenn Bilder oder Videos nachkommen. */
+.medien { padding: 24px 0 26px; }
+.medien .syri { margin-bottom: 4px; }
+.medien__titulli { font-size: 1.15rem; margin-bottom: 12px; }
+.medien__rreshti {
+  display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x proximity;
+  margin: 0 -20px; padding: 0 20px 2px; scroll-padding: 0 20px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;
 }
-.klientet__rreshti::-webkit-scrollbar { display: none; }
-.klienti {
-  flex: 0 0 72%; max-width: 280px; margin: 0; scroll-snap-align: start;
-  background: var(--white); border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+.medien__rreshti::-webkit-scrollbar { display: none; }
+.medium {
+  position: relative; flex: 0 0 104px; aspect-ratio: 9 / 16; padding: 0; margin: 0;
+  border: 0; border-radius: 12px; overflow: hidden; scroll-snap-align: start;
+  background: var(--green-soft); color: #fff; -webkit-tap-highlight-color: transparent;
+  contain: layout paint; isolation: isolate;
 }
-.klienti img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; object-position: 50% 22%; background: var(--green-soft); }
-.klienti figcaption { padding: 12px 14px 14px; font-size: .85rem; line-height: 1.45; color: var(--muted); }
-.klienti figcaption b { display: block; color: var(--green); font-size: .8rem; letter-spacing: .02em; margin-bottom: 2px; }
+.medium:focus-visible { outline: 3px solid var(--green); outline-offset: 2px; }
+.medium:active { transform: scale(.97); }
+.medium--leer { background: linear-gradient(100deg, var(--green-soft) 40%, #f6f8f5 50%, var(--green-soft) 60%) 0 0 / 300% 100%; animation: medium-laedt 1.4s linear infinite; }
+@keyframes medium-laedt { to { background-position: -150% 0; } }
+.medium__bild, .medium__schleife {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 25%;
+}
+.medium__schleife { opacity: 0; transition: opacity .25s ease; pointer-events: none; }
+.medium--laeuft .medium__schleife { opacity: 1; }
+/* Unten dunkel, damit der Produktname auf jedem Bild lesbar ist. */
+.medium::after {
+  content: ""; position: absolute; inset: 55% 0 0; z-index: 1;
+  background: linear-gradient(to top, rgba(0, 0, 0, .55), transparent); pointer-events: none;
+}
+.medium--leer::after { display: none; }
+.medium__produkt {
+  position: absolute; left: 8px; right: 8px; bottom: 7px; z-index: 2;
+  font-size: .7rem; font-weight: 700; line-height: 1.2; text-align: left;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.medium__spiel {
+  position: absolute; top: 7px; right: 7px; z-index: 2; width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(0, 0, 0, .38); display: grid; place-items: center;
+}
+.medium__spiel::before {
+  content: ""; margin-left: 2px; border-style: solid; border-width: 5px 0 5px 8px;
+  border-color: transparent transparent transparent #fff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .medium--leer { animation: none; }
+  .medium:active { transform: none; }
+}
+
+/* Der Betrachter - ganz ueber der Seite, oben das Medium, darunter
+   Text, Kaufknopf und Kommentare. Er scrollt als Ganzes. */
+.betrachter {
+  position: fixed; inset: 0; z-index: 60; overflow-y: auto; overscroll-behavior: contain;
+  background: #0d1412; color: #fff; -webkit-overflow-scrolling: touch;
+}
+.betrachter__kopf {
+  position: sticky; top: 0; z-index: 3; display: flex; justify-content: space-between; align-items: center;
+  max-width: 560px; margin: 0 auto; padding: max(10px, env(safe-area-inset-top)) 14px 8px;
+  background: linear-gradient(#0d1412 60%, transparent);
+}
+.betrachter__zaehler { font-size: .8rem; color: #ffffffb3; font-variant-numeric: tabular-nums; }
+.betrachter__zu {
+  width: 40px; height: 40px; border: 0; border-radius: 50%; background: #ffffff1f; color: #fff;
+  font-size: 1.6rem; line-height: 1; display: grid; place-items: center;
+}
+.betrachter__rahmen { --breite: calc(min(66vh, 620px) * 9 / 16); position: relative; max-width: min(560px, calc(var(--breite) + 28px)); margin: 0 auto; padding: 0 14px; }
+.betrachter__buehne {
+  position: relative; width: 100%; max-width: var(--breite); margin: 0 auto;
+  aspect-ratio: 9 / 16; border-radius: 14px; overflow: hidden; background: #000;
+}
+.betrachter__medium { display: block; width: 100%; height: 100%; object-fit: cover; background: #000; }
+video.betrachter__medium { object-fit: contain; }
+.betrachter__pfeil {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+  width: 38px; height: 38px; border: 0; border-radius: 50%; background: #ffffffe6; color: var(--ink);
+  font-size: 1.5rem; line-height: 1; display: grid; place-items: center; box-shadow: 0 2px 8px #0005;
+}
+.betrachter__pfeil--zurueck { left: 22px; }
+.betrachter__pfeil--weiter { right: 22px; }
+.betrachter__blatt { max-width: 560px; margin: 0 auto; padding: 16px 20px max(28px, env(safe-area-inset-bottom)); }
+.betrachter__text { font-size: .95rem; line-height: 1.5; color: #ffffffd9; }
+.betrachter__text b { display: block; color: #fff; font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 2px; }
+.betrachter__kauf { margin-top: 14px; }
+.betrachter__titel { font-size: .95rem; margin: 22px 0 10px; }
+.koment-forma { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.koment-forma input, .koment-forma textarea {
+  grid-column: 1 / -1; width: 100%; border: 1px solid #ffffff2e; border-radius: 12px;
+  background: #ffffff12; color: #fff; padding: 11px 12px; font: inherit; font-size: 16px; resize: none;
+}
+.koment-forma textarea { grid-column: 1; }
+.koment-forma input::placeholder, .koment-forma textarea::placeholder { color: #ffffff80; }
+.koment-forma input:focus, .koment-forma textarea:focus { outline: 2px solid #ffffff99; outline-offset: 0; }
+.koment-forma__dergo {
+  align-self: stretch; border: 0; border-radius: 12px; padding: 0 16px;
+  background: #fff; color: var(--green); font-weight: 700;
+}
+.koment-forma__dergo:disabled { opacity: .6; }
+.koment-forma__gabim { grid-column: 1 / -1; color: #ffb4a0; font-size: .85rem; }
+.komentet { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 14px; }
+.komentet__laedt, .komentet__bosh { color: #ffffff99; font-size: .88rem; }
+.koment { display: grid; grid-template-columns: 32px 1fr; gap: 10px; align-items: start; }
+.koment__shkronja {
+  width: 32px; height: 32px; border-radius: 50%; background: #ffffff21; color: #fff;
+  display: grid; place-items: center; font-weight: 700; font-size: .85rem;
+}
+.koment__kok { display: flex; gap: 8px; align-items: baseline; font-size: .85rem; }
+.koment__kok span { color: #ffffff80; font-size: .75rem; }
+.koment__text { font-size: .92rem; line-height: 1.45; color: #ffffffe0; overflow-wrap: anywhere; white-space: pre-line; }
 
 /* 6. Die Entscheidung */
 .vendimi { text-align: left; }

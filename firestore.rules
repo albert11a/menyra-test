@@ -968,6 +968,36 @@ service cloud.firestore {
         allow write: if isCeoActor();
       }
 
+      // FOTOS UND VIDEOS DER KUNDEN auf der Therapieseite (Heart ->
+      // Mehr anzeigen -> Fotos & Videos). Die Dateien liegen im Media-CDN
+      // (Cloudflare), hier nur Verweis, Text und Zaehler.
+      //
+      // Jeder darf lesen und die Views um GENAU EINS erhoehen - nichts
+      // sonst. Anlegen, aendern und loeschen darf nur Heart.
+      match /medien/{medienId} {
+        allow read: if true;
+        allow create, delete: if isCeoActor();
+        allow update: if isCeoActor()
+          || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(["views"])
+              && request.resource.data.views is int
+              && request.resource.data.views == resource.data.get("views", 0) + 1);
+
+        // KOMMENTARE - sofort sichtbar, Heart kann verbergen oder loeschen.
+        // Besucher lesen nur, was nicht verborgen ist (die Abfrage muss
+        // verborgen == false enthalten), und schreiben nur in dieser Form.
+        match /kommentare/{kommentarId} {
+          allow read: if isCeoActor() || resource.data.verborgen == false;
+          allow create: if request.resource.data.keys().hasOnly(["name", "text", "createdAt", "verborgen"])
+            && request.resource.data.name is string
+            && request.resource.data.name.size() >= 1 && request.resource.data.name.size() <= 40
+            && request.resource.data.text is string
+            && request.resource.data.text.size() >= 1 && request.resource.data.text.size() <= 500
+            && request.resource.data.verborgen == false
+            && request.resource.data.createdAt is string && request.resource.data.createdAt.size() <= 40;
+          allow update, delete: if isCeoActor();
+        }
+      }
+
       function lifeskinSessionShapeOk() {
         let data = request.resource.data;
         return data.keys().hasOnly([

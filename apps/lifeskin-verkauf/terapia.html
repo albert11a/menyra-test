@@ -69,6 +69,17 @@
         </div>
       </section>
 
+      <!-- 1b. KUNDENFOTOS UND -VIDEOS - eine schmale Reihe gleich unter dem
+           Preis, wie "In Aktion sehen" in grossen Shops. Nur die, die Heart
+           fuer diesen Befund gewaehlt hat (bericht.klientet); keines
+           gewaehlt: Der Abschnitt bleibt versteckt. Die Kacheln baut
+           terapia-medien.js, Antippen oeffnet Foto oder Video mit Kommentaren. -->
+      <section class="pjese medien" id="klientet" data-pfad="Kundenfotos" hidden>
+        <p class="syri">Nga klientët tanë</p>
+        <h2 class="medien__titulli">Klientë me produktet LifeSkin.</h2>
+        <div class="medien__rreshti" id="t-medien"></div>
+      </section>
+
       <!-- 2. WARUM DIESE THERAPIE -->
       <section class="pjese" id="pse" data-pfad="Warum diese Therapie">
         <p class="syri" id="t-psesyri">Pse pikërisht kjo terapi</p>
@@ -126,33 +137,6 @@
           </figure>
         </div>
         <p class="shenim">Çdo lëkurë reagon ndryshe. Prandaj Dr. Gashi ju ndjek çdo javë.</p>
-      </section>
-
-      <!-- 5b. KUNDENFOTOS - nur die, die Heart fuer diesen Befund gewaehlt hat
-           (bericht.klientet). Keines gewaehlt: Der Abschnitt bleibt versteckt.
-           Bilder und Texte wie in shared/lifeskin-klientet.js. -->
-      <section class="pjese klientet" id="klientet" data-pfad="Kundenfotos" hidden>
-        <p class="syri">Nga klientët tanë</p>
-        <h2>Klientë me produktet LifeSkin.</h2>
-        <div class="klientet__rreshti">
-          <figure class="klienti" data-klienti="klienti-1">
-            <img src="/apps/lifeskin-landing/fotot/klienti-1.jpg" alt="Kliente me Pore Control" loading="lazy" decoding="async">
-            <figcaption><b>Pore Control</b>Për poret e zgjeruara dhe lëkurën që shkëlqen nga yndyra.</figcaption>
-          </figure>
-          <figure class="klienti" data-klienti="klienti-2">
-            <img src="/apps/lifeskin-landing/fotot/klienti-2.jpg" alt="Kliente me Pore Control" loading="lazy" decoding="async">
-            <figcaption><b>Pore Control</b>Me acid lipo-hidroksi (LHA) – pastron poret pa e tharë lëkurën.</figcaption>
-          </figure>
-          <figure class="klienti" data-klienti="klienti-3">
-            <img src="/apps/lifeskin-landing/fotot/klienti-3.jpg" alt="Kliente me Pore Control" loading="lazy" decoding="async">
-            <figcaption><b>Pore Control</b>Hyn në rutinën e mbrëmjes, pas pastrimit të fytyrës.</figcaption>
-          </figure>
-          <figure class="klienti" data-klienti="klienti-4">
-            <img src="/apps/lifeskin-landing/fotot/klienti-4.jpg" alt="Kliente me Pore Control" loading="lazy" decoding="async">
-            <figcaption><b>Pore Control</b>Lëkurë më e lëmuar, pore më pak të dukshme.</figcaption>
-          </figure>
-        </div>
-        <p class="shenim">Fotot i kemi marrë nga klientët, me lejen e tyre.</p>
       </section>
 
       <!-- 6. DIE ENTSCHEIDUNG -->

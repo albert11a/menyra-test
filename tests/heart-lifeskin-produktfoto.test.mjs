@@ -65,7 +65,10 @@ test("das Feld fuer die Fotoauswahl entsteht an <body> und nicht im Kasten", () 
     "Das Feld haengt nicht an <body> - ein Neuzeichnen nimmt es dann weg");
   assert.match(block, /feld\.addEventListener\("change"/,
     "Das Feld bringt seinen eigenen Horcher nicht mehr mit");
-  assert.match(block, /accept = "image\/\*"/, "Es lassen sich wieder Nicht-Bilder waehlen");
+  // Standard: nur Bilder. Videos nur, wo es ausdruecklich verlangt ist
+  // (Kundenvideos in heart-lifeskin-medien.js).
+  assert.match(block, /annehmen = "image\/\*"/, "Es lassen sich wieder Nicht-Bilder waehlen");
+  assert.match(block, /feld\.accept = annehmen/);
 
   // .click() MUSS im Griff des Fingers passieren. Steht ein await
   // davor, haelt der Browser die Auswahl fuer nicht angefordert und

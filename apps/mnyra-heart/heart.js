@@ -55,8 +55,10 @@ import {
 import { landingOpenedSince } from "./heart-landing-render.js";
 import { ladeLifeskin, horcheLive, ladeFotos, ladeErstesFoto, loescheAlleSitzungen, loescheSitzung, setzeBerichtMarke, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand, speichereAnbieter,
   ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX,
-  speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder } from "./heart-lifeskin-adapter.js";
-import { rasteListe, klappSetzen, rastiDom } from "./heart-lifeskin-raste.js";
+  speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder,
+  ladeMedien, speichereMedien, speichereMedium, loescheMedium, ladeKommentare, setzeKommentarVerborgen, loescheKommentar } from "./heart-lifeskin-adapter.js";
+import { medienListe, mediumNormalisieren, neueMediumId } from "../../shared/lifeskin-medien.js";
+import { rasteListe, klappSetzen, klappOffen, rastiDom } from "./heart-lifeskin-raste.js";
 import { entwurfSchreiben, entwurfLoeschen, entwurfAusBogen, promptMerken } from "./heart-lifeskin-entwurf.js";
 import { befundStandAuffrischen, befundFelderAnpassen } from "./heart-lifeskin-befundstand.js";
 import { vorschauAuffrischen } from "./heart-lifeskin-vorschau.js";
@@ -997,6 +999,8 @@ async function ladeLifeskinBereich({ force = false } = {}) {
     Object.assign(frisch, aktualisiereLifeskinSitzungen(frisch, liveSitzungen));
     actions.setLifeskinData(frisch, "network");
     liveRechnen();
+    // "Reaktionen" war beim letzten Mal offen: gleich die Kommentare dazu.
+    if (klappOffen("reaktionen")) medienKommentareLaden();
   } catch (fehler) {
     // Ein gescheiterter Abgleich darf nicht loeschen, was schon dasteht.
     if (store.getState().lifeskin?.status === "ready") return;
@@ -1583,10 +1587,10 @@ function produktEntwurfLesen(zusatz = {}) {
  * sonst haelt der Browser die Auswahl fuer nicht angefordert und
  * oeffnet sie nicht. Der Aufruf steht deshalb am Ende dieser Funktion
  * und nicht hinter einem Versprechen. */
-function oeffneDateiwahl(mehrfach, weiter) {
+function oeffneDateiwahl(mehrfach, weiter, annehmen = "image/*") {
   const feld = document.createElement("input");
   feld.type = "file";
-  feld.accept = "image/*";
+  feld.accept = annehmen;
   if (mehrfach) feld.multiple = true;
   feld.setAttribute("aria-hidden", "true");
   feld.tabIndex = -1;
@@ -2208,6 +2212,208 @@ async function lifeskinRastiSchieben(id, richtung) {
   if (index < 0 || ziel < 0 || ziel >= liste.length) return;
   [liste[index], liste[ziel]] = [liste[ziel], liste[index]];
   await rasteSchreiben(liste, "");
+}
+
+// ── KUNDENFOTOS UND -VIDEOS ───────────────────────────────────────────
+// Ansicht: heart-lifeskin-medien.js. Daten: shared/lifeskin-medien.js.
+//
+// Die gewaehlte Datei liegt hier und nie im Zustand (der wird bereinigt und
+// koennte sie nicht halten); im Zustand steht nur ihre Vorschau-Adresse.
+const MEDIUM_VIDEO_MAX = 50 * 1024 * 1024;
+let medienDatei = null;
+let medienVorschauUrl = "";
+
+function medienVorschauFrei() {
+  if (medienVorschauUrl) {
+    try { URL.revokeObjectURL(medienVorschauUrl); } catch {}
+  }
+  medienVorschauUrl = "";
+  medienDatei = null;
+}
+
+function medienEntwurfLesen(zusatz = {}) {
+  const stand = store.getState().lifeskin || {};
+  const entwurf = { ...(stand.medienEntwurf || {}) };
+  for (const feld of document.querySelectorAll("[data-mediumfeld]")) entwurf[feld.dataset.mediumfeld] = String(feld.value ?? "");
+  for (const feld of document.querySelectorAll("[data-mediumfeld-an]")) entwurf[feld.dataset.mediumfeldAn] = feld.checked;
+  return { ...entwurf, ...zusatz };
+}
+
+// Die vier Standardfotos stehen bis zur ersten Aenderung nur im Code - dann
+// werden sie angelegt, damit die Aenderung sich auf etwas beziehen kann.
+async function medienSicherstellen() {
+  const liste = medienListe(store.getState().lifeskin?.medien);
+  if (!liste.some((m) => m.standard)) return liste;
+  const jetzt = new Date().toISOString();
+  const angelegt = liste.map((m, i) => ({ ...m, standard: false, reihe: i, createdAt: jetzt }));
+  await speichereMedien(angelegt);
+  actions.patchLifeskin({ medien: angelegt });
+  return angelegt;
+}
+
+// Die Dateiwahl geht im Griff des Fingers auf - kein await davor.
+function lifeskinMediumDatei(art, neu = false) {
+  const video = art === "video";
+  oeffneDateiwahl(false, (dateien) => {
+    const datei = dateien[0];
+    if (!datei) return;
+    const istVideo = String(datei.type || "").startsWith("video/");
+    if (istVideo !== video) {
+      setToast("Fotos & Videos", video ? "Bitte ein Video wählen." : "Bitte ein Foto wählen.", "danger");
+      return;
+    }
+    if (istVideo && datei.size > MEDIUM_VIDEO_MAX) {
+      setToast("Fotos & Videos", "Das Video ist größer als 50 MB. Bitte kürzen oder kleiner exportieren.", "danger");
+      return;
+    }
+    const entwurf = neu ? { aktiv: true } : medienEntwurfLesen();
+    medienVorschauFrei();
+    medienDatei = datei;
+    medienVorschauUrl = URL.createObjectURL(datei);
+    const zusatz = { art: istVideo ? "video" : "foto", vorschau: medienVorschauUrl, datei: String(datei.name || "").slice(0, 80), groesse: datei.size };
+    actions.patchLifeskin(neu
+      ? { medienOffen: "__neu", medienEntwurf: { ...entwurf, ...zusatz }, medienStatus: "", medienLoeschen: false }
+      : { medienEntwurf: { ...entwurf, ...zusatz } });
+  }, video ? "video/*" : "image/*");
+}
+
+function lifeskinMediumZu() {
+  if (store.getState().lifeskin?.medienStatus) return;
+  medienVorschauFrei();
+  klappSetzen("mehr", true);
+  klappSetzen("medien", true);
+  actions.patchLifeskin({ medienOffen: "", medienEntwurf: null, medienStatus: "", medienLoeschen: false });
+}
+
+async function speichereLifeskinMedium() {
+  const stand = store.getState().lifeskin || {};
+  const offen = stand.medienOffen;
+  if (!offen || stand.medienStatus) return;
+  const neu = offen === "__neu";
+  const e = medienEntwurfLesen();
+  if (neu && !medienDatei) {
+    setToast("Fotos & Videos", "Bitte zuerst ein Foto oder Video wählen.", "danger");
+    return;
+  }
+  const datei = medienDatei;
+  actions.patchLifeskin({ medienEntwurf: e, medienStatus: datei ? "hochladen" : "speichern" });
+  try {
+    const dateien = datei ? await crmAdminWriteAdapter.uploadLifeskinMedium(datei) : {};
+    actions.patchLifeskin({ medienStatus: "speichern" });
+    const liste = await medienSicherstellen();
+    const alt = neu ? null : liste.find((m) => m.id === offen);
+    if (!neu && !alt) throw new Error("Dieses Foto oder Video gibt es nicht mehr.");
+    const id = neu ? neueMediumId() : offen;
+    // Neues steht vorn - das Frischeste zuerst.
+    const reihe = neu ? Math.min(0, ...liste.map((m) => m.reihe)) - 1 : alt.reihe;
+    const medium = mediumNormalisieren({
+      ...(alt || {}), ...dateien,
+      produkt: e.produkt ?? alt?.produkt ?? "",
+      text: e.text ?? alt?.text ?? "",
+      aktiv: e.aktiv !== false,
+      reihe,
+      createdAt: alt?.createdAt || new Date().toISOString()
+    }, id);
+    await speichereMedium(medium);
+    const rest = medienListe(store.getState().lifeskin?.medien).filter((m) => !m.standard && m.id !== id);
+    medienVorschauFrei();
+    klappSetzen("mehr", true);
+    klappSetzen("medien", true);
+    actions.patchLifeskin({ medien: [...rest, medium], medienOffen: "", medienEntwurf: null, medienStatus: "", medienLoeschen: false });
+    setToast("Fotos & Videos", neu ? (medium.art === "video" ? "Video hochgeladen." : "Foto hochgeladen.") : "Gespeichert.", "success");
+  } catch (fehler) {
+    actions.patchLifeskin({ medienStatus: "" });
+    setToast("Fotos & Videos", fehler?.message || "Speichern fehlgeschlagen.", "danger");
+  }
+}
+
+async function loescheLifeskinMedium() {
+  const stand = store.getState().lifeskin || {};
+  const id = stand.medienOffen;
+  if (!id || id === "__neu" || stand.medienStatus) return;
+  if (!stand.medienLoeschen) {
+    actions.patchLifeskin({ medienEntwurf: medienEntwurfLesen(), medienLoeschen: true });
+    return;
+  }
+  actions.patchLifeskin({ medienStatus: "speichern" });
+  try {
+    await medienSicherstellen();
+    await loescheMedium(id);
+    const jetzt = store.getState().lifeskin || {};
+    const kommentare = { ...(jetzt.medienKommentare || {}) };
+    delete kommentare[id];
+    medienVorschauFrei();
+    klappSetzen("mehr", true);
+    klappSetzen("medien", true);
+    actions.patchLifeskin({
+      medien: medienListe(jetzt.medien).filter((m) => !m.standard && m.id !== id),
+      ...(jetzt.medienKommentare ? { medienKommentare: kommentare } : {}),
+      medienOffen: "", medienEntwurf: null, medienStatus: "", medienLoeschen: false
+    });
+    setToast("Fotos & Videos", "Gelöscht.", "success");
+  } catch (fehler) {
+    actions.patchLifeskin({ medienStatus: "", medienLoeschen: false });
+    setToast("Fotos & Videos", fehler?.message || "Löschen fehlgeschlagen.", "danger");
+  }
+}
+
+async function lifeskinMediumSchieben(id, richtung) {
+  const stand = store.getState().lifeskin || {};
+  if (stand.medienStatus) return;
+  const vorher = stand.medien;
+  const liste = medienListe(vorher);
+  const index = liste.findIndex((m) => m.id === id);
+  const ziel = richtung === "hoch" ? index - 1 : index + 1;
+  if (index < 0 || ziel < 0 || ziel >= liste.length) return;
+  [liste[index], liste[ziel]] = [liste[ziel], liste[index]];
+  const neu = liste.map((m, i) => ({ ...m, standard: false, reihe: i, createdAt: m.createdAt || new Date().toISOString() }));
+  // Sofort umgestellt; scheitert das Schreiben, springt es zurueck.
+  actions.patchLifeskin({ medien: neu, medienStatus: "speichern" });
+  try {
+    await speichereMedien(neu);
+    actions.patchLifeskin({ medienStatus: "" });
+  } catch (fehler) {
+    actions.patchLifeskin({ medien: vorher, medienStatus: "" });
+    setToast("Fotos & Videos", fehler?.message || "Speichern fehlgeschlagen.", "danger");
+  }
+}
+
+// Views frisch und alle Kommentare - erst, wenn "Reaktionen" aufgeht.
+async function medienKommentareLaden() {
+  const stand = store.getState().lifeskin || {};
+  if (stand.medienKommentareStatus === "laedt") return;
+  actions.patchLifeskin({ medienKommentareStatus: "laedt" });
+  try {
+    const medien = await ladeMedien().catch(() => null);
+    const liste = medienListe(medien ?? stand.medien).filter((m) => !m.standard);
+    const kommentare = await ladeKommentare(liste.map((m) => m.id));
+    actions.patchLifeskin({ ...(medien ? { medien } : {}), medienKommentare: kommentare, medienKommentareStatus: "" });
+  } catch {
+    actions.patchLifeskin({ medienKommentareStatus: "" });
+  }
+}
+
+async function lifeskinKommentar(was, medium, id) {
+  const stand = store.getState().lifeskin || {};
+  if (!medium || !id || !["verbergen", "zeigen", "loeschen"].includes(was)) return;
+  const schluessel = `${medium}/${id}`;
+  if (was === "loeschen" && stand.kommentarLoeschen !== schluessel) {
+    actions.patchLifeskin({ kommentarLoeschen: schluessel });
+    return;
+  }
+  const vorher = stand.medienKommentare || {};
+  const liste = vorher[medium] || [];
+  const neu = was === "loeschen"
+    ? liste.filter((k) => k.id !== id)
+    : liste.map((k) => (k.id === id ? { ...k, verborgen: was === "verbergen" } : k));
+  actions.patchLifeskin({ medienKommentare: { ...vorher, [medium]: neu }, kommentarLoeschen: "" });
+  try {
+    if (was === "loeschen") await loescheKommentar(medium, id);
+    else await setzeKommentarVerborgen(medium, id, was === "verbergen");
+  } catch (fehler) {
+    actions.patchLifeskin({ medienKommentare: { ...(store.getState().lifeskin?.medienKommentare || {}), [medium]: liste } });
+    setToast("Kommentare", fehler?.message || "Das hat nicht geklappt.", "danger");
+  }
 }
 
 async function speichereLifeskinProdukt() {
@@ -3278,6 +3484,7 @@ const operations = {
     // Die Chips ueber Trichter und Faellen verschwinden mit ihrer Karte -
     // das macht das Stilblatt (:has). Hier nichts neu zeichnen.
     if (name === "raste" && offen) lifeskinRasteBilderLaden();
+    if (name === "reaktionen" && offen) medienKommentareLaden();
   },
   openLifeskinRasti(id) { oeffneLifeskinRasti(id); },
   neuesLifeskinRasti() {
@@ -3289,6 +3496,20 @@ const operations = {
     actions.patchLifeskin({ rastOffen: "", rastEntwurf: null, rastLoeschen: false, rastStatus: "" });
   },
   lifeskinRastiFoto(seite) { lifeskinRastiFoto(seite); },
+  // Kundenfotos und -videos.
+  openLifeskinMedium(id) {
+    const kennung = String(id || "").trim();
+    if (!kennung) return;
+    medienVorschauFrei();
+    actions.patchLifeskin({ medienOffen: kennung, medienEntwurf: null, medienStatus: "", medienLoeschen: false });
+  },
+  lifeskinMediumNeu(art) { lifeskinMediumDatei(art, true); },
+  lifeskinMediumDatei(art) { lifeskinMediumDatei(art, false); },
+  closeLifeskinMedium() { lifeskinMediumZu(); },
+  speichereLifeskinMedium() { return speichereLifeskinMedium(); },
+  loescheLifeskinMedium() { return loescheLifeskinMedium(); },
+  lifeskinMediumSchieben(id, richtung) { return lifeskinMediumSchieben(id, richtung); },
+  lifeskinKommentar(was, medium, id) { return lifeskinKommentar(was, medium, id); },
   speichereLifeskinRasti() { return speichereLifeskinRasti(); },
   loescheLifeskinRasti() { return loescheLifeskinRasti(); },
   lifeskinRastiOrt(id, ort) { return lifeskinRastiOrt(id, ort); },

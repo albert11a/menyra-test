@@ -1554,6 +1554,66 @@ export function createHeartCrmAdminWriteAdapter({
     return url;
   }
 
+  // LIFESKIN: Kundenfotos und -videos (Heart -> Mehr anzeigen -> Fotos &
+  // Videos). Derselbe CDN-Weg wie in mnyra:
+  //   Foto  -> komprimiert (1080 px), unter der eigenen uid.
+  //   Video -> unveraendert ueber den Story-Upload (hoechstens 50 MB), dazu
+  //            ein Standbild aus dem Video - das steht auf der Seite sofort,
+  //            bevor ein einziges Byte Video geladen ist.
+  // Der Story-Upload verlangt einen Betrieb, den das Konto fuehrt (nicht die
+  // uid). Genommen wird ein Betrieb, den das CEO-Konto angelegt hat - einmal
+  // gesucht, danach auf dem Geraet gemerkt.
+  const LIFESKIN_VIDEO_MAX = 50 * 1024 * 1024;
+  const LIFESKIN_BESITZER_MERKEN = "heart.lifeskin.videoBesitzer";
+  let lifeskinVideoBesitzer = "";
+
+  async function lifeskinVideoBesitzerFinden(uid) {
+    if (lifeskinVideoBesitzer) return lifeskinVideoBesitzer;
+    try {
+      const gemerkt = JSON.parse(globalThis.localStorage?.getItem(LIFESKIN_BESITZER_MERKEN) || "null");
+      if (gemerkt?.uid === uid && gemerkt?.id) return (lifeskinVideoBesitzer = String(gemerkt.id));
+    } catch {}
+    const treffer = await getDocs(query(collection(db, "restaurants"), where("createdByUid", "==", uid), limit(1)));
+    const id = asText(treffer.docs[0]?.id);
+    if (!id) throw new Error("Für Videos fehlt ein Betrieb unter diesem Konto.");
+    lifeskinVideoBesitzer = id;
+    try { globalThis.localStorage?.setItem(LIFESKIN_BESITZER_MERKEN, JSON.stringify({ uid, id })); } catch {}
+    return id;
+  }
+
+  async function uploadLifeskinMedium(file) {
+    if (!file) throw new Error("Bitte ein Foto oder Video auswählen.");
+    ensureRuntimeController();
+    if (!mediaUploadRuntime) throw new Error("Media Upload ist nicht verfügbar.");
+    const uid = asText(runtimeState.user?.uid || auth.currentUser?.uid);
+    if (!uid) throw new Error("Bitte zuerst anmelden.");
+    const typ = String(file.type || "").toLowerCase();
+
+    if (typ.startsWith("image/")) {
+      const bild = await mediaUploadRuntime.uploadCompressedImage(file, uid, { maxSize: 1080, quality: 0.84, mimeType: "image/jpeg" });
+      const url = asText(bild?.cdnUrl || bild?.url);
+      if (!url) throw new Error("Upload fehlgeschlagen.");
+      return { art: "foto", bild: url, video: "" };
+    }
+    if (!typ.startsWith("video/")) throw new Error("Nur Fotos oder Videos.");
+    if (file.size > LIFESKIN_VIDEO_MAX) throw new Error("Das Video ist größer als 50 MB. Bitte kürzen oder kleiner exportieren.");
+
+    // Standbild und Video gleichzeitig - der langsame Teil ist das Video.
+    const [besitzer, standbild] = await Promise.all([
+      lifeskinVideoBesitzerFinden(uid),
+      mediaUploadRuntime.captureVideoPosterFile(file).catch(() => null)
+    ]);
+    if (!standbild) throw new Error("Aus diesem Video ließ sich kein Standbild lesen. Bitte als MP4 exportieren.");
+    const [bild, video] = await Promise.all([
+      mediaUploadRuntime.uploadCompressedImage(standbild, uid, { maxSize: 720, quality: 0.8, mimeType: "image/jpeg" }),
+      mediaUploadRuntime.uploadRawMediaFile(file, besitzer, { maxBytes: LIFESKIN_VIDEO_MAX })
+    ]);
+    const bildUrl = asText(bild?.cdnUrl || bild?.url);
+    const videoUrl = asText(video?.cdnUrl || video?.url);
+    if (!bildUrl || !videoUrl) throw new Error("Upload fehlgeschlagen.");
+    return { art: "video", bild: bildUrl, video: videoUrl };
+  }
+
   function setStaffAvatarFile(file) {
     const controller = ensureRuntimeController();
     controller.syncStaffFormFromDom();
@@ -1590,6 +1650,7 @@ export function createHeartCrmAdminWriteAdapter({
     setLeadTitleImageFile,
     setCustomerLogoFile,
     setStaffAvatarFile,
-    uploadDestinationImage
+    uploadDestinationImage,
+    uploadLifeskinMedium
   });
 }
