@@ -170,7 +170,7 @@ test("Datum und Uhrzeit stehen am Ende der unteren Zeile", () => {
   });
   const zeile = zeileVon(html, "alt");
   const fuss = zeile.slice(zeile.indexOf("__fuss"));
-  assert.match(fuss, /__zeit">\d{2}\.\d{2}\.<\/span><span class="heart-lifeskin-fall__zeit">\d{2}:\d{2}</, "Datum und Uhrzeit fehlen als eigene Chips");
+  assert.match(fuss, /__zeit">\d{2}\.\d{2}<\/span><span class="heart-lifeskin-fall__zeit">\d{2}:\d{2}</, "Datum und Uhrzeit fehlen als eigene Chips");
   // Oben in einer Zeile: Name, Fallnummer, Telefon.
   const kopf = zeile.slice(zeile.indexOf("__kopf"), zeile.indexOf("__fuss"));
   assert.ok(kopf.includes("<b>alt</b>") && kopf.includes("LS-alt"));

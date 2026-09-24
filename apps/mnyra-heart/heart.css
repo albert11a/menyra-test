@@ -6311,3 +6311,5 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
   .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-art,
   .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-fall__zeit { padding: 0 5px; }
 }
+/* Datum und Uhrzeit direkt nach "Kasse", nicht an den rechten Rand. */
+.heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-fall__zeit:nth-last-child(2) { margin-left: 0; }

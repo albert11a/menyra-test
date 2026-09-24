@@ -962,8 +962,10 @@ function fallMarken(sitzung) {
 function fallZeile(sitzung) {
   const typ = typVon(sitzung);
   const text = String(sitzung.pyetja || sitzung.problemi || "").trim();
-  // Datum und Uhrzeit als eigene Chips, gleich hoch wie die Marken.
-  const zeit = [datumKurz(sitzung.createdAt), uhrzeit(sitzung.createdAt)].filter(Boolean)
+  // Datum und Uhrzeit als eigene Chips, gleich hoch wie die Marken und
+  // direkt nach ihnen in der Reihe.
+  // Das Datum ohne Punkt am Ende: "24.09", nicht "24.09.".
+  const zeit = [datumKurz(sitzung.createdAt).replace(/\.$/, ""), uhrzeit(sitzung.createdAt)].filter(Boolean)
     .map((w) => `<span class="heart-lifeskin-fall__zeit">${escapeHtml(w)}</span>`).join("");
   const reihe = `<span class="heart-lifeskin-fall__fuss">${fallMarken(sitzung)}${zeit}</span>`;
   if ((typ === "trup" || typ === "pytje") && text) {
