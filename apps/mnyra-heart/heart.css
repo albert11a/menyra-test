@@ -6249,3 +6249,43 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
   .heart-faelle .heart-lifeskin-fall__fuss .heart-lifeskin-art { padding: 3px 6px; }
   .heart-faelle .heart-lifeskin-fall__zeit { padding-left: 2px; letter-spacing: -.01em; }
 }
+
+/* Fallzeile, Runde 2 (24.09.): oben Name · Fallnummer · Telefon in EINER
+   Zeile, darunter alle Chips gleich hoch und in derselben Schrift -
+   Weg, Geöffnet, Kasse, Datum, Uhrzeit. */
+.heart-faelle .heart-lifeskin-fall__leib { gap: 8px; }
+.heart-faelle .heart-lifeskin-fall__kopf { display: flex; align-items: baseline; gap: 8px; min-width: 0; overflow: hidden; white-space: nowrap; }
+.heart-faelle .heart-lifeskin-fall__kopf b { flex: 0 3 auto; min-width: 2.5em; overflow: hidden; text-overflow: ellipsis; }
+.heart-faelle .heart-lifeskin-fall__kopf .heart-lifeskin-code { flex: none; font-size: 12.5px; letter-spacing: .01em; font-variant-numeric: tabular-nums; }
+.heart-faelle .heart-lifeskin-fall__kopf .heart-lifeskin-fall__tel { flex: none; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.heart-faelle .heart-lifeskin-fall__fuss { display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; min-width: 0; }
+.heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-pill,
+.heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-art,
+.heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-fall__zeit {
+  display: inline-flex; align-items: center; box-sizing: border-box; height: 24px; flex: none;
+  padding: 0 6px; margin: 0; border-radius: 999px; line-height: 1; white-space: nowrap;
+  font-family: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none;
+}
+/* Der Weg: fuer jede Art dieselbe Farbe - er sagt, was es ist, nicht wie weit. */
+.heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-art {
+  border: 1px solid var(--heart-line, #3a3e40); background: #ffffff0f; color: var(--heart-text, #f7f7f2); opacity: 1;
+}
+.heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-fall__zeit {
+  border: 1px solid var(--heart-line, #34383a); background: transparent; color: var(--heart-text-soft, #c7c7c2);
+  font-variant-numeric: tabular-nums;
+}
+.heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-fall__zeit:nth-last-child(2) { margin-left: auto; }
+/* Gemessen: bei 390-402 px bleiben fuer die Chips ~262 px. Kompakt ist
+   darum der Normalfall, luftiger erst ab 430 px, noch enger unter 370. */
+@media (min-width: 430px) {
+  .heart-faelle .heart-lifeskin-fall__fuss { gap: 5px; }
+  .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-pill,
+  .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-art,
+  .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-fall__zeit { padding: 0 8px; font-size: 11.5px; }
+}
+@media (max-width: 370px) {
+  .heart-faelle .heart-lifeskin-fall__fuss { gap: 3px; }
+  .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-pill,
+  .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-art,
+  .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-fall__zeit { padding: 0 5px; }
+}

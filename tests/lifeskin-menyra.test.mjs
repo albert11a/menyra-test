@@ -567,8 +567,8 @@ test("Heart zeigt an jedem Fall, welche Arbeit er bedeutet", () => {
   const marke = render.slice(render.indexOf("function artMarke("),
     render.indexOf("function vorschauFeld("));
   assert.match(marke, /typVon\(sitzung\)/, "Die Art wird nicht aus dem Fall gelesen");
-  assert.match(marke, /toUpperCase\(\)/,
-    "Die Art steht klein geschrieben neben der Fallnummer und geht darin unter");
+  // Seit 24.09. ein Chip in derselben Schrift wie die anderen.
+  assert.match(marke, /heart-lifeskin-art--/, "Die Art hat keine eigene Klasse");
   assert.match(lies("apps/mnyra-heart/heart.css"), /\.heart-lifeskin-art \{/,
     "Die Art hat keine eigene Form - dann liest sie sich wie ein Teil der Fallnummer");
 

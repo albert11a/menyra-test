@@ -875,15 +875,14 @@ function imFach(sitzung, bericht, fach) {
   return fachVon(sitzung, bericht) === fach;
 }
 
-// Wie die Art am einzelnen Fall steht: klein, gross geschrieben, neben
-// der Fallnummer. "#LS-2009-K4M7P · FOTO" - damit ist am Telefon und in
-// WhatsApp in einem Wort klar, worum es geht.
+// Wie die Art am einzelnen Fall steht: als erster Chip der unteren Zeile,
+// in derselben Schrift wie die anderen ("Scan", "Foto", ...).
 function artMarke(sitzung) {
   const typ = typVon(sitzung);
   const eintrag = TYPEN.find((t) => t.id === typ);
   if (!eintrag) return "";
   return `<span class="heart-lifeskin-art heart-lifeskin-art--${escapeHtml(typ)}">${
-    escapeHtml(eintrag.label.toUpperCase())}</span>`;
+    escapeHtml(eintrag.label)}</span>`;
 }
 
 // EIN GESICHT LIEST SICH SCHNELLER ALS EINE FALLNUMMER.
@@ -913,11 +912,6 @@ function vorschauFeld(sitzung, bild) {
   return `<span class="heart-lifeskin-fall__bild" data-vorschau="${escapeHtml(sitzung.id)}">
     <span class="heart-lifeskin-fall__buchstabe">${escapeHtml(buchstabe)}</span>${zahl}
   </span>`;
-}
-
-// Die Zeitangabe der Fallzeile: Datum und Uhrzeit, am Ende der Marken.
-function fallZeit(sitzung) {
-  return `${datumKurz(sitzung.createdAt)} ${uhrzeit(sitzung.createdAt)}`;
 }
 
 // Die Marken der unteren Zeile: der Weg, dann Geöffnet und Kasse. Sie stehen IMMER da, auch
@@ -968,7 +962,10 @@ function fallMarken(sitzung) {
 function fallZeile(sitzung) {
   const typ = typVon(sitzung);
   const text = String(sitzung.pyetja || sitzung.problemi || "").trim();
-  const reihe = `<span class="heart-lifeskin-fall__fuss">${fallMarken(sitzung)}<span class="heart-lifeskin-fall__zeit">${escapeHtml(fallZeit(sitzung))}</span></span>`;
+  // Datum und Uhrzeit als eigene Chips, gleich hoch wie die Marken.
+  const zeit = [datumKurz(sitzung.createdAt), uhrzeit(sitzung.createdAt)].filter(Boolean)
+    .map((w) => `<span class="heart-lifeskin-fall__zeit">${escapeHtml(w)}</span>`).join("");
+  const reihe = `<span class="heart-lifeskin-fall__fuss">${fallMarken(sitzung)}${zeit}</span>`;
   if ((typ === "trup" || typ === "pytje") && text) {
     const kurz = text.length > 110 ? `${text.slice(0, 110).trimEnd()}…` : text;
     return `${reihe}<span class="heart-lifeskin-fall__text">${escapeHtml(kurz)}</span>`;
@@ -1039,14 +1036,15 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
   const gewaehltSet = new Set(waehlen ? auswahl : []);
   const zeilen = gewaehlt.map((s) => {
     const an = gewaehltSet.has(s.id);
-    const tel = s.phone || s.address?.telefon || "";
+    // Ohne Leerzeichen - so bleibt neben der Nummer Platz fuer den Namen.
+    const tel = String(s.phone || s.address?.telefon || "").replace(/\s+/g, "");
     return `
     <button type="button" class="heart-lifeskin-fall${waehlen ? " heart-lifeskin-fall--waehlen" : ""}${an ? " heart-lifeskin-fall--an" : ""}"
             data-action="${waehlen ? "lifeskin-auswahl-fall" : "lifeskin-sitzung"}" data-id="${escapeHtml(s.id)}"${waehlen ? ` aria-pressed="${an}"` : ""}>
       ${vorschauFeld(s, vorschau[s.id])}
       <span class="heart-lifeskin-fall__leib">
-        <span class="heart-lifeskin-fall__kopf"><b>${escapeHtml(s.name || "—")}</b></span>
-        <span class="heart-lifeskin-fall__nummern">
+        <span class="heart-lifeskin-fall__kopf">
+          <b>${escapeHtml(s.name || "—")}</b>
           ${s.code ? `<span class="heart-lifeskin-code">${escapeHtml(s.code)}</span>` : ""}
           ${tel ? `<span class="heart-lifeskin-fall__tel">${escapeHtml(tel)}</span>` : ""}
         </span>

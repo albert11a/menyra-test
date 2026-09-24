@@ -49,14 +49,14 @@ function zeichne(zusatz = {}) {
 // 1. Die Case Card
 // ---------------------------------------------------------------------------
 
-test("die Fallnummer traegt ihre Art - LS-1548 · FOTO", () => {
+test("der Fall traegt seine Art als Chip - Foto, Pytje", () => {
   // Damit sich ein Fall am Telefon oder in WhatsApp in einem Wort
   // benennen laesst: "Der Fotofall von heute Mittag".
   const html = zeichne({
     sitzungen: [fall("f1", { typ: "foto", photos: ["zona"] }), fall("p1", { typ: "pytje" })]
   });
-  assert.match(html, /heart-lifeskin-art heart-lifeskin-art--foto">FOTO</);
-  assert.match(html, /heart-lifeskin-art heart-lifeskin-art--pytje">PYTJE</);
+  assert.match(html, /heart-lifeskin-art heart-lifeskin-art--foto">Foto</);
+  assert.match(html, /heart-lifeskin-art heart-lifeskin-art--pytje">Pytje</);
   assert.match(html, /LS-f1/, "Die Fallnummer steht nicht mehr da");
 });
 
