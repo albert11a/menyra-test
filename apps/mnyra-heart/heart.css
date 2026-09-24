@@ -6347,3 +6347,12 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 /* Kundenfotos im Befund: ein Bild je Karte. */
 .heart-rasti-wahl__bilder--eins { grid-template-columns: 1fr; }
 .heart-rasti-wahl__bilder--eins img { aspect-ratio: 4 / 5; object-position: 50% 22%; }
+/* Live: wer gerade dabei ist - antippen oeffnet den Fall. */
+.heart-live__leute { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.heart-live__person {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px;
+  border: 1px solid var(--heart-line, #34383a); background: #ffffff0a; color: var(--heart-text, #f7f7f2);
+  font: inherit; font-size: 13px; cursor: pointer;
+}
+.heart-live__person b { font-weight: 600; }
+.heart-live__person span { color: #7fe0c3; font-size: 12px; }

@@ -170,6 +170,28 @@ function punktFuer(punkte, sitzung) {
   return null;
 }
 
+// WANN BESTELLT WURDE - aus timings.ereignisse (shared/lifeskin-statistik.js
+// schreibt dort je Tag die Zeit der Bestellung). 0, wenn unbekannt.
+function bestellZeit(sitzung) {
+  let spaetestens = 0;
+  for (const tag of Object.values(sitzung?.timings?.ereignisse || {})) {
+    spaetestens = Math.max(spaetestens, zeitAus(tag?.hatBestellt));
+  }
+  return spaetestens;
+}
+
+// "CASH" HEISST: HAT GERADE BESTELLT - nicht "hat irgendwann bestellt und
+// schaut gerade wieder auf seine Seite". Die Therapieseite schreibt bei
+// jedem Oeffnen (berichtGeoeffnet), und damit stand ein Kunde von gestern,
+// der nachsieht, wo sein Paket bleibt, als "1 Person gerade dabei" im
+// Kaufweg. Ist die Zeit der Bestellung bekannt und aelter als das Fenster,
+// zaehlt er hier nicht. (Bestellungen aus dem Laden tragen keine Zeit -
+// sie zaehlen wie bisher nach dem letzten Schreibvorgang.)
+function bestelltVorhin(sitzung, jetzt, fenster) {
+  const zeit = bestellZeit(sitzung);
+  return Boolean(zeit) && jetzt - zeit > fenster;
+}
+
 // Eine Reihe von Punkten, mit der Zahl derer, die gerade dort stehen.
 //
 // `gesamt` ist die Zahl aller gerade Aktiven in dieser Reihe - sie steht im
@@ -178,6 +200,7 @@ function punktFuer(punkte, sitzung) {
 // beantwortet.
 export function baueLiveReihe(punkte, sitzungen, jetzt = Date.now(), fenster = LIVE_FENSTER_MS) {
   const zahl = new Map(punkte.map((p) => [p.id, 0]));
+  const leute = [];
   let gesamt = 0;
   for (const sitzung of Array.isArray(sitzungen) ? sitzungen : []) {
     if (istTest(sitzung) || !istGeradeAktiv(sitzung, jetzt, fenster)) continue;
@@ -189,11 +212,15 @@ export function baueLiveReihe(punkte, sitzungen, jetzt = Date.now(), fenster = L
     if (punkte === LIVE_ANALYSE_PUNKTE && punktFuer(LIVE_BESTELL_PUNKTE, sitzung)) continue;
     const wo = punktFuer(punkte, sitzung);
     if (!wo) continue;
+    if (wo === "bestellt" && bestelltVorhin(sitzung, jetzt, fenster)) continue;
     zahl.set(wo, zahl.get(wo) + 1);
     gesamt += 1;
+    // WER - damit "1 Person ist gerade dabei" einen Namen hat.
+    leute.push({ id: String(sitzung.id || ""), name: String(sitzung.name || "").trim(), punkt: wo });
   }
   return {
     gesamt,
+    leute,
     punkte: punkte.map((p) => ({
       id: p.id,
       label: p.label,

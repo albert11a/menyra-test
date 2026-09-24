@@ -304,6 +304,20 @@ function renderLiveReihe(reihe, art) {
 //
 // Jetzt stehen beide untereinander: oben der Weg zur Analyse, darunter
 // der Weg zum Kauf. Zwei Fragen, zwei Antworten, kein Griff dazwischen.
+// WER GERADE DABEI IST - Name und Punkt, antippen oeffnet den Fall.
+function renderLiveLeute(reihe) {
+  const leute = reihe?.leute || [];
+  if (!leute.length) return "";
+  const name = (id) => (reihe.punkte || []).find((p) => p.id === id)?.label || "";
+  return `
+      <div class="heart-live__leute">
+        ${leute.slice(0, 8).map((l) => `
+        <button type="button" class="heart-live__person" data-action="lifeskin-sitzung" data-id="${escapeHtml(l.id)}">
+          <b>${escapeHtml(l.name || "Ohne Namen")}</b><span>${escapeHtml(name(l.punkt))}</span>
+        </button>`).join("")}
+      </div>`;
+}
+
 function renderLiveKarte(reihe, art, titel) {
   const still = !(reihe?.gesamt > 0);
   // Zugeklappt: wer gerade wo ist, in einer Zeile ("1 Landing · 2 Foto").
@@ -317,6 +331,7 @@ function renderLiveKarte(reihe, art, titel) {
       <p class="heart-lifeskin-block__fuss">${still
         ? "Gerade ist niemand unterwegs."
         : `${reihe.gesamt} ${reihe.gesamt === 1 ? "Person ist" : "Personen sind"} gerade dabei.`}</p>
+      ${renderLiveLeute(reihe)}
     </section>`, `live-${art}`, {
     zahl, ton: still ? "" : "offen", blink: art === "bestellungen" && !still
   });
