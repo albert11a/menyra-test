@@ -152,7 +152,7 @@ function zeileVon(html, id) {
 
 test("die untere Zeile: Weg, Geöffnet, Kasse - erreichte hervorgehoben", () => {
   const weit = zeileVon(zeichne({ sitzungen: [sitzung("weit", { typ: "scan", berichtGeoeffnet: true, kasseGeoeffnet: true })], fach: "kasse" }), "weit");
-  const kurz = zeileVon(zeichne({ sitzungen: [sitzung("kurz", { typ: "scan" })], fach: "ready",
+  const kurz = zeileVon(zeichne({ sitzungen: [sitzung("kurz", { typ: "scan", berichtGeoeffnet: true })], fach: "seen",
     berichte: { kurz: { status: "fertig", freigabeAt: "x" } } }), "kurz");
   for (const stueck of [weit, kurz]) {
     const fuss = stueck.slice(stueck.indexOf("__fuss"));
@@ -161,7 +161,8 @@ test("die untere Zeile: Weg, Geöffnet, Kasse - erreichte hervorgehoben", () => 
   }
   assert.ok(weit.includes("heart-lifeskin-pill--auf heart-lifeskin-pill--an"));
   assert.ok(weit.includes("heart-lifeskin-pill--kasse heart-lifeskin-pill--an"));
-  assert.ok(!kurz.includes("heart-lifeskin-pill--an"), "Eine Zeile ohne Fortschritt zeigt eine Marke als erreicht");
+  assert.ok(kurz.includes("heart-lifeskin-pill--auf heart-lifeskin-pill--an"));
+  assert.ok(!kurz.includes("heart-lifeskin-pill--kasse heart-lifeskin-pill--an"), "Kasse leuchtet ohne Kasse");
 });
 
 test("Datum und Uhrzeit stehen am Ende der unteren Zeile", () => {
@@ -311,4 +312,12 @@ test("im Fach Offen steht der Chip Prompt - farbig, sobald der Prompt gemacht is
   } finally {
     delete globalThis.localStorage;
   }
+});
+
+test("im Fach Ready steht Freigegeben statt Geöffnet und Kasse", () => {
+  const html = zeichne({ sitzungen: [sitzung("r1", { typ: "scan" })], fach: "ready",
+    berichte: { r1: { status: "fertig", freigabeAt: "x" } } });
+  const zeile = zeileVon(html, "r1");
+  assert.match(zeile, /heart-lifeskin-pill--frei heart-lifeskin-pill--an">Freigegeben</);
+  assert.doesNotMatch(zeile.slice(zeile.indexOf("__fuss")), />Geöffnet<|>Kasse<|>Prompt</);
 });

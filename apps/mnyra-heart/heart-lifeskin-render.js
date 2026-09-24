@@ -927,9 +927,13 @@ function fallMarken(sitzung, fach = "") {
   // Im Fach "Offen" ist noch nichts freigegeben - Geöffnet und Kasse
   // koennen dort nie leuchten. An ihrer Stelle steht, ob der Prompt fuer
   // diesen Fall schon gemacht ist.
+  // In "Ready" ist freigegeben, aber noch nicht geoeffnet - dort steht
+  // "Freigegeben" statt Geöffnet und Kasse.
   const marken = fach === "alle"
     ? [{ id: "prompt", label: "Prompt", an: promptGemacht(sitzung.id) }]
-    : [
+    : fach === "ready"
+      ? [{ id: "frei", label: "Freigegeben", an: true }]
+      : [
       { id: "auf", label: "Geöffnet", an: !!sitzung.berichtGeoeffnet },
       { id: "kasse", label: "Kasse", an: !!(sitzung.kasseGeoeffnet || sitzung.hatBestellt) }
     ];
