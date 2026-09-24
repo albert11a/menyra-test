@@ -272,3 +272,18 @@ test("ein Fehlschlag wird gemerkt, damit die Zeile nicht immer wieder fragt", ()
   assert.match(quelle, /catch\s*\{/);
   assert.match(quelle, /gefunden\[id\]\s*=\s*""/);
 });
+
+// KEIN FLACKERN: Heart zeichnet die Liste bei jeder Aenderung neu. Die
+// schon dekodierten Gesichter werden danach wieder eingesetzt, statt neu
+// geladen zu werden - vor dem Beobachter, im selben Takt wie das Zeichnen.
+test("die Gesichter flackern beim Neuzeichnen nicht", () => {
+  const html = zeichne({ sitzungen: [sitzung("a")], vorschau: { a: "data:image/jpeg;base64,XYZ" } });
+  assert.match(html, /<img [^>]*data-vorschau-bild="a"/);
+  assert.doesNotMatch(html, /data-vorschau-bild="a"[^>]*loading="lazy"|loading="lazy"[^>]*data-vorschau-bild/,
+    "Ein Bild aus dem Speicher wartet auf lazy-loading und blinkt");
+  const hook = HEART.slice(HEART.indexOf("store.subscribe((state) => {"));
+  assert.ok(hook.indexOf("behalteLifeskinVorschau(root)") > -1
+    && hook.indexOf("behalteLifeskinVorschau(root)") < hook.indexOf("beobachteLifeskinVorschau(root)"),
+    "Die Bildknoten werden nach dem Zeichnen nicht wieder eingesetzt");
+  assert.match(funktion(HEART, "behalteLifeskinVorschau"), /replaceWith/);
+});

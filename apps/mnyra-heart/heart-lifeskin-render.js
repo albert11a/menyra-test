@@ -906,7 +906,7 @@ function vorschauFeld(sitzung, bild) {
     : "";
   if (bild) {
     return `<span class="heart-lifeskin-fall__bild">
-      <img src="${escapeHtml(bild)}" alt="" loading="lazy" decoding="async">${zahl}
+      <img src="${escapeHtml(bild)}" alt="" decoding="sync" data-vorschau-bild="${escapeHtml(sitzung.id)}">${zahl}
     </span>`;
   }
   return `<span class="heart-lifeskin-fall__bild" data-vorschau="${escapeHtml(sitzung.id)}">

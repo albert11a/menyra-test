@@ -1122,6 +1122,32 @@ function vorschauMerken(id) {
   vorschauTakt = setTimeout(() => { vorschauHolen().catch(() => {}); }, VORSCHAU_SAMMELN_MS);
 }
 
+// KEIN FLACKERN DER GESICHTER.
+//
+// Heart schreibt die Liste bei jeder Zustandsaenderung neu - beim
+// Chipwechsel, bei jeder Live-Zahl, bei jedem nachgeladenen Schub von
+// Vorschauen. Jedes <img> war danach ein neues und wurde neu dekodiert:
+// ein Bild lang leer, dann wieder da. Darum merkt sich Heart die fertig
+// dekodierten Bildknoten je Fall und setzt sie nach dem Zeichnen - noch
+// vor dem naechsten Bild auf dem Schirm - an die Stelle der neuen.
+const vorschauKnoten = new Map();
+function behalteLifeskinVorschau(wurzel) {
+  // Steht ein Fall zweimal auf der Seite, bekommt nur die erste Stelle den
+  // alten Knoten - ein Knoten kann nicht an zwei Stellen stehen.
+  const vergeben = new Set();
+  for (const img of wurzel?.querySelectorAll?.("img[data-vorschau-bild]") || []) {
+    const id = img.getAttribute("data-vorschau-bild");
+    const alt = vorschauKnoten.get(id);
+    if (vergeben.has(id)) continue;
+    vergeben.add(id);
+    if (alt && alt !== img && alt.getAttribute("src") === img.getAttribute("src")) {
+      img.replaceWith(alt);
+    } else {
+      vorschauKnoten.set(id, img);
+    }
+  }
+}
+
 // Nach jedem Zeichnen neu einhaengen: Heart schreibt den ganzen Bereich neu,
 // die alten Knoten gibt es danach nicht mehr. disconnect zuerst, sonst haelt
 // der Beobachter jede Zeile fest, die je gezeichnet wurde.
@@ -4022,6 +4048,7 @@ store.subscribe((state) => {
   }
   if (state.shell.activeView === "lifeskin") {
     try {
+      behalteLifeskinVorschau(root);
       beobachteLifeskinVorschau(root);
       lifeskinMarkenAuffrischen(root);
       befundStandAuffrischen(root);

@@ -6289,3 +6289,15 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
   .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-art,
   .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-fall__zeit { padding: 0 5px; }
 }
+/* Runde 3 (24.09.): Name, Fallnummer und Telefon gleich gross. Datum und
+   Uhrzeit sehen aus wie die anderen Chips - gleiche Schrift, gleiche
+   Ziffern (keine breiten Tabellenziffern), gleiche Farbe wie der Weg. */
+.heart-faelle .heart-lifeskin-fall__kopf b,
+.heart-faelle .heart-lifeskin-fall__kopf .heart-lifeskin-code,
+.heart-faelle .heart-lifeskin-fall__kopf .heart-lifeskin-fall__tel { font-size: 14px; line-height: 1.25; }
+.heart-faelle .heart-lifeskin-fall__kopf .heart-lifeskin-code { font-weight: 600; letter-spacing: 0; }
+.heart-faelle .heart-lifeskin-fall__kopf .heart-lifeskin-fall__tel { font-weight: 500; }
+.heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-fall__zeit {
+  font-variant-numeric: normal; font-weight: 600; letter-spacing: 0;
+  color: var(--heart-muted, #8f918d); background: transparent; border-color: var(--heart-line, #34383a);
+}
