@@ -41,8 +41,14 @@
   if (!an) return;
 
   var echtesFetch = window.fetch ? window.fetch.bind(window) : null;
+  // batchGet und runQuery kommen als POST, lesen aber nur (Kundenfotos,
+  // Kommentare) - die gehen durch, sonst fehlt im stillen Modus, was jeder
+  // Besucher sieht.
+  function nurLesen(url) {
+    return /:(batchGet|runQuery|runAggregationQuery)(\?|$)/.test(url.split("#")[0]);
+  }
   function schreibtStats(url, methode) {
-    return /firestore\.googleapis\.com/.test(url) && methode !== "GET" && methode !== "HEAD";
+    return /firestore\.googleapis\.com/.test(url) && methode !== "GET" && methode !== "HEAD" && !nurLesen(url);
   }
   // EINE BESTELLUNG IST KEINE STATISTIK.
   //

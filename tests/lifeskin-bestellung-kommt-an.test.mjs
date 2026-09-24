@@ -139,6 +139,18 @@ test("stiller Modus: Statistik wird verschluckt, eine Bestellung geht durch (mit
   assert.equal(gesendet.length, 2);
 });
 
+test("stiller Modus: Lesen per POST (Kundenfotos, Kommentare) geht durch, Views und Kommentare nicht", async () => {
+  const gesendet = [];
+  const fenster = stillFenster(async (url) => { gesendet.push(url); return { ok: true, status: 200 }; });
+  const basis = "https://firestore.googleapis.com/v1/projects/p/databases/(default)/documents";
+  await fenster.fetch(`${basis}:batchGet`, { method: "POST", body: "{}" });
+  await fenster.fetch(`${basis}/lifeskin/lifeskin/medien/m1:runQuery`, { method: "POST", body: "{}" });
+  assert.equal(gesendet.length, 2, "Die Seite zeigt im stillen Modus nur die Standardfotos");
+  await fenster.fetch(`${basis}:commit`, { method: "POST", body: "{}" });
+  await fenster.fetch(`${basis}/lifeskin/lifeskin/medien/m1/kommentare`, { method: "POST", body: "{}" });
+  assert.equal(gesendet.length, 2, "Ein View oder Kommentar ging im stillen Modus raus");
+});
+
 test("Heart zeigt Faelle, von denen nur der Bericht ankam, und schneidet 'Offen' nie ab", () => {
   const adapter = ohneKommentare(lies("apps/mnyra-heart/heart-lifeskin-adapter.js"));
   assert.match(adapter, /nurBericht: true/);
