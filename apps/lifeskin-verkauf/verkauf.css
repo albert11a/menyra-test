@@ -292,3 +292,42 @@ img.produkt__ikona { object-fit: cover; padding: 0; }
 /* Ohne Foto: die Einladung, eines nachzureichen */
 .foto-ftese { margin-top: 18px; padding: 16px; border-radius: 14px; background: var(--green-soft); border: 1px solid #cfe0d3; display: grid; gap: 12px; }
 .foto-ftese p { font-size: .92rem; }
+
+/* 9. Instagram - zwei Profile nebeneinander wie die Vorschlagskarten in
+   Instagram, darunter die Summe. Immer sichtbar, ganz unten. */
+.insta__profile { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.insta__profil {
+  background: var(--white); border: 1px solid var(--line); border-radius: 16px;
+  padding: 16px 12px 12px; display: grid; justify-items: center; text-align: center; gap: 8px; min-width: 0;
+}
+.insta__name { font-weight: 700; font-size: .95rem; line-height: 1.2; }
+.insta__ort { font-size: .78rem; color: var(--muted); margin-top: 2px; }
+.insta__zahlen { display: grid; grid-template-columns: 1fr 1fr; width: 100%; border-top: 1px solid var(--line); padding-top: 8px; }
+.insta__zahlen span { display: flex; flex-direction: column; font-size: .7rem; color: var(--muted); line-height: 1.25; }
+.insta__zahlen b { font-size: 1rem; color: var(--ink); white-space: nowrap; }
+.insta__zahlen span + span { border-left: 1px solid var(--line); }
+.insta__folgen {
+  width: 100%; display: flex; align-items: center; justify-content: center; min-height: 36px; border-radius: 9px;
+  background: #0095f6; color: #fff; font-weight: 700; font-size: .88rem; text-decoration: none;
+}
+.insta__folgen:focus-visible { outline: 3px solid #0095f6; outline-offset: 2px; }
+.insta__logo {
+  width: 64px; height: 64px; border-radius: 50%; padding: 3px;
+  background: conic-gradient(from 200deg, #feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5, #feda75);
+}
+.insta__innen { width: 100%; height: 100%; border-radius: 50%; display: grid; place-items: center; border: 3px solid var(--white); }
+.insta__logo--al .insta__innen { background: #6aa9cf; }
+.insta__logo--ks .insta__innen { background: #fff; }
+.insta__zeichen { color: #fff; font-weight: 700; font-size: 7.5px; letter-spacing: .04em; line-height: 1.1; }
+.insta__zeichen i { display: block; font-style: normal; font-size: 11px; line-height: 1; margin-bottom: 1px; }
+.insta__quadrat { width: 66%; height: 66%; background: #4fa8d3; display: grid; place-items: center; }
+.insta__logo--ks .insta__zeichen { font-size: 5.5px; letter-spacing: .01em; }
+.insta__logo--ks .insta__zeichen i { font-size: 8px; }
+.insta__beweis {
+  margin-top: 10px; background: var(--green); color: #fff; border-radius: 16px; padding: 14px 16px;
+  display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center;
+}
+.insta__summe { font-size: 1.9rem; font-weight: 700; letter-spacing: -.03em; line-height: 1; }
+.insta__summe small { display: block; font-size: .72rem; font-weight: 400; letter-spacing: 0; opacity: .8; margin-top: 4px; }
+.insta__fakten { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 1px solid #ffffff38; display: grid; gap: 3px; font-size: .8rem; line-height: 1.3; }
+@media (max-width: 350px) { .insta__beweis { grid-template-columns: 1fr; } .insta__fakten { border-left: 0; padding-left: 0; } }
