@@ -270,10 +270,10 @@ test("Vorab-Nachricht: vier Zeiten in einer Reihe, Frage zum Antworten, keine Ha
   assert.match(text, /gati pas rreth 30 minutash/);
   assert.match(vorabNachricht({}, "morgen"), /gati nesër gjatë ditës/);
   // Am Ende eine Frage, die jeder mit "Po" beantwortet.
-  assert.match(text, /A mund t'jua dërgoj rezultatin këtu në WhatsApp sapo të jetë gati\?$/);
+  assert.match(text, /A jua dërgoj rezultatin këtu\?$/);
+  assert.match(text, /terapinë LifeSkin që i përshtatet lëkurës suaj/);
   assert.deepEqual(VORAB_ZEITEN.map((z) => z.taste), ["30 min", "1 orë", "Sot", "Nesër"]);
   assert.doesNotMatch(text, /ndjeshme|përdorni/);
-  assert.match(text, /instagram\.com\/lifeskin\.ks/);
   assert.doesNotMatch(text, /€/);
   assert.deepEqual(VORAB_ZEITEN.map((z) => z.id), ["30min", "1h", "heute", "morgen"]);
   assert.equal(waNummer("049 247 720"), "38349247720");
@@ -299,10 +299,11 @@ test("die Akte: Fallnummer und Telefon offen, Name, Alter, Datum, Weg zum Aufkla
   assert.doesNotMatch(akte.slice(mehr, mehr + 40), / open/, "Der Teil ist nicht von Anfang an zu");
 });
 
-test("die finale Nachricht: Anrede mit Vorname, Text, Link, offene Frage", async () => {
+test("die finale Nachricht: Anrede, Text, Link, direkt bestellen", async () => {
   const { whatsappNachricht } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
-  const text = whatsappNachricht({ id: "x1", name: "sara krasniqi" }, { raport: { shitja: { whatsapp: "Analiza juaj është gati." } } });
-  assert.match(text, /^Përshëndetje Sara,\n\nAnaliza juaj është gati\.\n\nAnaliza juaj: https:\/\/www\.mnyra\.com\/analiza\/x1\n\nNëse keni ndonjë pyetje, më shkruani këtu\.$/);
-  const mitFrage = whatsappNachricht({ id: "x1" }, { raport: { shitja: { whatsapp: "A e keni parë?" } } });
-  assert.doesNotMatch(mitFrage, /Nëse keni/);
+  const text = whatsappNachricht({ id: "x1", name: "sara krasniqi" }, { raport: { shitja: { whatsapp: "Lëkura juaj ka nevojë për hidratim." } } });
+  assert.equal(text, "Përshëndetje Sara, analiza juaj është gati.\n\nLëkura juaj ka nevojë për hidratim.\n\n"
+    + "Këtu e shihni analizën e plotë dhe produktet që ju rekomandoj: https://www.mnyra.com/analiza/x1\n\n"
+    + "Porosinë mund ta bëni direkt në faqe, ose më shkruani këtu dhe e rregullojmë bashkë.");
+  assert.equal(whatsappNachricht({ id: "x1" }, {}), "");
 });

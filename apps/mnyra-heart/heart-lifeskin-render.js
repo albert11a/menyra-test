@@ -1326,10 +1326,14 @@ export function whatsappNachricht(sitzung, bericht) {
   if (!text) return "";
   const name = vorname(sitzung);
   const link = `https://www.mnyra.com/analiza/${sitzung?.id || ""}`;
-  // Ruhig und sachlich: Anrede, der Text der Analyse, der Link, und am
-  // Ende eine offene Tuer statt Druck - ausser der Text fragt schon selbst.
-  const frage = /\?\s*$/.test(text) ? "" : "\n\nNëse keni ndonjë pyetje, më shkruani këtu.";
-  return `Përshëndetje${name ? ` ${name}` : ""},\n\n${text}\n\nAnaliza juaj: ${link}${frage}`;
+  // Anrede, der Text der Analyse, der Link - und dass man direkt
+  // bestellen kann, ohne zu draengen.
+  return [
+    `Përshëndetje${name ? ` ${name}` : ""}, analiza juaj është gati.`,
+    text,
+    `Këtu e shihni analizën e plotë dhe produktet që ju rekomandoj: ${link}`,
+    "Porosinë mund ta bëni direkt në faqe, ose më shkruani këtu dhe e rregullojmë bashkë."
+  ].join("\n\n");
 }
 
 // ══ DIE AKTE EINES FALLS ═══════════════════════════════════════════
@@ -1855,17 +1859,16 @@ export const VORAB_ZEITEN = Object.freeze([
   { id: "morgen", taste: "Nesër", satz: "nesër gjatë ditës" }
 ]);
 
-// Keine Frage zur Haut, kein Verkauf. Am Ende eine Frage, die jeder mit
-// "Po" beantwortet - und die Antwort macht den Link spaeter antippbar
-// (von einer unbekannten Nummer ist er es sonst nicht).
+// Kein Preis, keine Frage zur Haut - nur wozu die Analyse da ist. Am Ende
+// eine Frage, die jeder mit "Po" beantwortet; die Antwort macht den Link
+// spaeter antippbar (von einer unbekannten Nummer ist er es sonst nicht).
 export function vorabNachricht(sitzung, zeit = "1h") {
   const name = vorname(sitzung);
   const wann = (VORAB_ZEITEN.find((z) => z.id === zeit) || VORAB_ZEITEN[1]).satz;
   return [
     `Përshëndetje${name ? ` ${name}` : ""}, jam Dr. Violeta Gashi nga LifeSkin.`,
-    `E kemi pranuar analizën e lëkurës suaj. Po e shqyrtoj personalisht dhe rezultati, së bashku me planin tuaj, do të jetë gati ${wann}.`,
-    "Ndërkohë, rezultate para dhe pas nga klientët tanë mund t'i shihni në instagram.com/lifeskin.ks",
-    "A mund t'jua dërgoj rezultatin këtu në WhatsApp sapo të jetë gati?"
+    `Po e bëj analizën e lëkurës suaj personalisht, që t'ju gjejmë terapinë LifeSkin që i përshtatet lëkurës suaj dhe ju sjell rezultate të dukshme. Analiza do të jetë gati ${wann}.`,
+    "Analiza është falas. A jua dërgoj rezultatin këtu?"
   ].join("\n\n");
 }
 

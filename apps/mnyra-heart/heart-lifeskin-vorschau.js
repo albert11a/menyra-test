@@ -92,7 +92,7 @@ const BAUER = {
   },
   whatsapp(w) {
     if (!w.text) return leer("Leer – der Knopf „WhatsApp-Nachricht kopieren“ erscheint nicht.");
-    return `<p class="heart-tv__wa">${escapeHtml(w.patient ? `Përshëndetje ${w.patient}! ` : "Përshëndetje! ")}${escapeHtml(w.text)}</p>`;
+    return `<p class="heart-tv__wa">${escapeHtml(`Përshëndetje${w.patient ? ` ${w.patient}` : ""}, analiza juaj është gati. `)}${escapeHtml(w.text)}</p>`;
   }
 };
 
