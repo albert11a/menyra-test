@@ -151,7 +151,7 @@ function zeileVon(html, id) {
 }
 
 test("die untere Zeile: Weg, Geöffnet, Kasse - erreichte hervorgehoben", () => {
-  const weit = zeileVon(zeichne({ sitzungen: [sitzung("weit", { typ: "scan", berichtGeoeffnet: true, kasseGeoeffnet: true })], fach: "alle" }), "weit");
+  const weit = zeileVon(zeichne({ sitzungen: [sitzung("weit", { typ: "scan", berichtGeoeffnet: true, kasseGeoeffnet: true })], fach: "kasse" }), "weit");
   const kurz = zeileVon(zeichne({ sitzungen: [sitzung("kurz", { typ: "scan" })], fach: "alle" }), "kurz");
   for (const stueck of [weit, kurz]) {
     const fuss = stueck.slice(stueck.indexOf("__fuss"));

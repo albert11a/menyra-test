@@ -236,10 +236,10 @@ test("es gibt nur noch eine Chipreihe, und die sagt, wie weit ein Fall ist", () 
   const html = zeichne({ sitzungen, zeitraum: "max", fach: "alle" });
   assert.ok(!html.includes('data-action="lifeskin-art"'), "Die Chipreihe nach Art steht noch da");
 
-  // Sechs Chips, in dieser Reihenfolge.
+  // Sieben Chips, in dieser Reihenfolge.
   const chips = [...html.matchAll(/data-action="lifeskin-fach" data-wert="([a-z]+)"/g)]
     .map((m) => m[1]);
-  assert.deepEqual(chips, ["alle", "ready", "seen", "bestellt", "spaeter", "archiviert"]);
+  assert.deepEqual(chips, ["alle", "ready", "seen", "kasse", "bestellt", "spaeter", "archiviert"]);
 
   // "Alle" heisst: jeder Weg. Es heisst NICHT: jeder Zustand - ein Fall
   // liegt in genau einem Fach und wandert weiter, sobald sich etwas an
@@ -315,6 +315,25 @@ test("der Chip Bestellt zeigt die Faelle, aus denen ein Kauf wurde", () => {
   const drin = [...block.matchAll(/data-action="lifeskin-sitzung" data-id="([^"]+)"/g)]
     .map((m) => m[1]);
   assert.deepEqual(drin, ["k1"]);
+});
+
+// KASSE: Wer an der Kasse war und nicht bestellt hat, wandert aus Seen
+// in sein eigenes Fach. Bestellt er danach, wandert er weiter.
+test("der Chip Kasse zeigt, wer an der Kasse war und nicht bestellt hat", () => {
+  const sitzungen = [
+    sitzung("k1", { berichtGeoeffnet: true, kasseGeoeffnet: true }),
+    sitzung("b1", { berichtGeoeffnet: true, kasseGeoeffnet: true, hatBestellt: true, order: { orderId: "o1", total: 39 } }),
+    sitzung("s1", { berichtGeoeffnet: true })
+  ];
+  const berichte = { k1: { status: "fertig", freigabeAt: "x" }, b1: { status: "fertig", freigabeAt: "x" }, s1: { status: "fertig", freigabeAt: "x" } };
+  const html = zeichne({ sitzungen, berichte, fach: "kasse" });
+  assert.match(html, /data-action="lifeskin-fach" data-wert="kasse"[\s\S]{0,160}<span>1<\/span>/);
+  const block = html.slice(html.indexOf(">Fälle<"), html.indexOf(">Bestellungen<"));
+  const drin = [...block.matchAll(/data-action="lifeskin-sitzung" data-id="([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(drin, ["k1"]);
+  // Zurueckgelegt schlaegt auch Kasse.
+  const spaeter = zeichne({ sitzungen, berichte: { ...berichte, k1: { ...berichte.k1, spaeter: true } }, fach: "kasse" });
+  assert.match(spaeter, /data-action="lifeskin-fach" data-wert="kasse"[\s\S]{0,160}<span>0<\/span>/);
 });
 
 // WAS ZURUECKGELEGT ODER ABGEHAKT IST, LIEGT NICHT MEHR IM WEG.

@@ -827,6 +827,7 @@ export function renderPushSchalter() {
 //               drin, waere "Alle" eine Liste, die nur waechst.
 //   Ready       Beantwortet und freigegeben. Der Kunde KANN es sehen.
 //   Seen        Der Kunde HAT es geoeffnet.
+//   Kasse       Er war an der Kasse, hat aber (noch) nicht bestellt.
 //   Bestellt    Und er hat danach bestellt.
 //   Später      Von Hand zurueckgelegt.
 //   Archiv      Von Hand abgehakt. Liegt nicht mehr im Weg, ist aber
@@ -835,6 +836,7 @@ const FAECHER = Object.freeze([
   { id: "alle", label: "Offen" },
   { id: "ready", label: "Ready" },
   { id: "seen", label: "Seen" },
+  { id: "kasse", label: "Kasse" },
   { id: "bestellt", label: "Bestellt" },
   { id: "spaeter", label: "Später" },
   { id: "archiviert", label: "Archiv" }
@@ -866,6 +868,9 @@ function fachVon(sitzung, bericht) {
   const zustand = zustandVon(sitzung, bericht);
   if (zustand === "archiviert" || zustand === "spaeter") return zustand;
   if (sitzung?.hatBestellt === true) return "bestellt";
+  // An der Kasse gewesen, aber nicht bestellt: der Fall, bei dem sich
+  // Nachfragen am meisten lohnt.
+  if (sitzung?.kasseGeoeffnet === true) return "kasse";
   // "neu" heisst hier "noch nicht beantwortet" - und das ist das Fach,
   // mit dem die Liste aufmacht.
   return zustand === "neu" ? "alle" : zustand;
@@ -1060,6 +1065,7 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
     alle: "Nichts offen — alles beantwortet, zurueckgelegt oder abgehakt.",
     ready: "Nichts freigegeben, das noch niemand geoeffnet hat.",
     seen: "Noch hat niemand seine Antwort geoeffnet.",
+    kasse: "Niemand steht an der Kasse, ohne bestellt zu haben.",
     bestellt: "Noch hat niemand bestellt.",
     spaeter: "Nichts zurueckgelegt.",
     archiviert: "Nichts abgehakt."
