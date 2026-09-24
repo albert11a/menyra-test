@@ -231,7 +231,7 @@ test("die Akte zeigt Fallnummer und Telefon, beides kopierbar", () => {
   assert.match(akte, /data-action="lifeskin-text-kopieren" data-wert="LS-1809-ZBCTL"/);
   assert.match(akte, /data-action="lifeskin-text-kopieren" data-wert="\+38344123456"/);
   // Kein Telefon-Symbol mehr in der Akte (Wunsch 24.09.) - dafuer unten
-  // im Befund "Nummer kopieren" und "In WhatsApp öffnen".
+  // im Befund die WhatsApp-Tasten.
   assert.doesNotMatch(akte, /href="tel:/);
   assert.match(html, /href="https:\/\/wa\.me\/38344123456\?text=/);
 });
@@ -263,13 +263,15 @@ test("hier aufgehört steht am letzten erledigten Schritt", () => {
   assert.ok(html.indexOf('data-klapp="fall:schritte"') < html.indexOf("heart-befund"));
 });
 
-test("Vorab-Nachricht: vier Zeiten zum Wischen, Bitte um 'Po', keine Hautfrage, kein Preis", async () => {
+test("Vorab-Nachricht: vier Zeiten in einer Reihe, Frage zum Antworten, keine Hautfrage, kein Preis", async () => {
   const { vorabNachricht, waNummer, VORAB_ZEITEN } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
   const text = vorabNachricht({ name: "sara krasniqi" }, "30min");
-  assert.match(text, /^Përshëndetje Sara 👋/);
+  assert.match(text, /^Përshëndetje Sara, jam Dr\. Violeta Gashi/);
   assert.match(text, /gati pas rreth 30 minutash/);
   assert.match(vorabNachricht({}, "morgen"), /gati nesër gjatë ditës/);
-  assert.match(text, /"Po" ose një 👍/);
+  // Am Ende eine Frage, die jeder mit "Po" beantwortet.
+  assert.match(text, /A mund t'jua dërgoj rezultatin këtu në WhatsApp sapo të jetë gati\?$/);
+  assert.deepEqual(VORAB_ZEITEN.map((z) => z.taste), ["30 min", "1 orë", "Sot", "Nesër"]);
   assert.doesNotMatch(text, /ndjeshme|përdorni/);
   assert.match(text, /instagram\.com\/lifeskin\.ks/);
   assert.doesNotMatch(text, /€/);
@@ -280,8 +282,27 @@ test("Vorab-Nachricht: vier Zeiten zum Wischen, Bitte um 'Po', keine Hautfrage, 
   // Im Befund: vier WhatsApp-Tasten vorab; die finale erst nach der Freigabe.
   const offen = renderLifeskin(zustandMit([{ ...EINE, phone: "049247720" }], { offen: "abc" }));
   assert.equal((offen.match(/class="heart-befund__wataste" href="https:\/\/wa\.me\/38349247720/g) || []).length, 4);
+  // Kopieren braucht es nicht mehr, die Tasten oeffnen WhatsApp.
+  assert.doesNotMatch(offen.slice(offen.indexOf("heart-befund__patient")), />[^<]*(Nummer kopieren|Text kopieren)|Vorab-Nachricht · fertig/);
   assert.doesNotMatch(offen, /heart-befund__knopf--wa/);
   const frei = renderLifeskin(zustandMit([{ ...EINE, phone: "049247720" }], { offen: "abc",
     berichte: { abc: { status: "fertig", freigabeAt: "x", raport: { shitja: { whatsapp: "Analiza juaj është gati." } } } } }));
   assert.match(frei, /heart-befund__knopf--wa" href="https:\/\/wa\.me\/38349247720/);
+});
+
+test("die Akte: Fallnummer und Telefon offen, Name, Alter, Datum, Weg zum Aufklappen", () => {
+  const html = renderLifeskin(zustandMit([{ ...EINE, phone: "049247720" }], { offen: "abc" }));
+  const akte = html.slice(html.indexOf("heart-akte"), html.indexOf("heart-lifeskin-fotos"));
+  const mehr = akte.indexOf('data-klapp="fall:akte"');
+  assert.ok(mehr > akte.indexOf("049247720"), "Das Telefon steht im zugeklappten Teil");
+  assert.ok(mehr < akte.indexOf("<span>Name</span>"), "Der Name steht nicht im Teil zum Aufklappen");
+  assert.doesNotMatch(akte.slice(mehr, mehr + 40), / open/, "Der Teil ist nicht von Anfang an zu");
+});
+
+test("die finale Nachricht: Anrede mit Vorname, Text, Link, offene Frage", async () => {
+  const { whatsappNachricht } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
+  const text = whatsappNachricht({ id: "x1", name: "sara krasniqi" }, { raport: { shitja: { whatsapp: "Analiza juaj është gati." } } });
+  assert.match(text, /^Përshëndetje Sara,\n\nAnaliza juaj është gati\.\n\nAnaliza juaj: https:\/\/www\.mnyra\.com\/analiza\/x1\n\nNëse keni ndonjë pyetje, më shkruani këtu\.$/);
+  const mitFrage = whatsappNachricht({ id: "x1" }, { raport: { shitja: { whatsapp: "A e keni parë?" } } });
+  assert.doesNotMatch(mitFrage, /Nëse keni/);
 });

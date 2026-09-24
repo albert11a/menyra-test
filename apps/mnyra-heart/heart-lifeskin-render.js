@@ -1324,9 +1324,12 @@ export function analyseArt(sitzung, bericht) {
 export function whatsappNachricht(sitzung, bericht) {
   const text = String(bericht?.raport?.shitja?.whatsapp || "").trim();
   if (!text) return "";
-  const name = String(sitzung?.name || "").trim();
+  const name = vorname(sitzung);
   const link = `https://www.mnyra.com/analiza/${sitzung?.id || ""}`;
-  return `${name ? `Përshëndetje ${name}! ` : "Përshëndetje! "}${text}\n\n${link}`;
+  // Ruhig und sachlich: Anrede, der Text der Analyse, der Link, und am
+  // Ende eine offene Tuer statt Druck - ausser der Text fragt schon selbst.
+  const frage = /\?\s*$/.test(text) ? "" : "\n\nNëse keni ndonjë pyetje, më shkruani këtu.";
+  return `Përshëndetje${name ? ` ${name}` : ""},\n\n${text}\n\nAnaliza juaj: ${link}${frage}`;
 }
 
 // ══ DIE AKTE EINES FALLS ═══════════════════════════════════════════
@@ -1580,10 +1583,16 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
         <div class="heart-akte__feld heart-akte__feld--gross"><span>Telefon</span>${nummer
           ? kopierWert(nummer, "Nummer")
           : `<span class="heart-akte__leer">${escapeHtml(sitzung.waClick || sitzung.waSent ? "keine — hat auf WhatsApp geschrieben" : "keine — nicht erreichbar")}</span>`}</div>
-        <div class="heart-akte__feld"><span>Name</span>${kopierWert(sitzung.name, "Name")}</div>
-        <div class="heart-akte__feld"><span>Alter</span><b>${escapeHtml(sitzung.ageBand || "—")}</b></div>
-        <div class="heart-akte__feld"><span>Datum</span><b>${escapeHtml(datumKurz(sitzung.createdAt))} ${escapeHtml(uhrzeit(sitzung.createdAt))}</b></div>
-        <div class="heart-akte__feld"><span>Weg</span><b>${escapeHtml(WEG_NAMEN[typ] || typ || "—")}</b></div>
+        <!-- Der Rest zum Aufklappen - gemerkt wie jede Karte. -->
+        <details class="heart-akte__mehr" ${klappAttr("fall:akte", false)}>
+          <summary class="heart-akte__mehrkopf">Name, Alter, Datum, Weg</summary>
+          <div class="heart-akte__mehrleib">
+            <div class="heart-akte__feld"><span>Name</span>${kopierWert(sitzung.name, "Name")}</div>
+            <div class="heart-akte__feld"><span>Alter</span><b>${escapeHtml(sitzung.ageBand || "—")}</b></div>
+            <div class="heart-akte__feld"><span>Datum</span><b>${escapeHtml(datumKurz(sitzung.createdAt))} ${escapeHtml(uhrzeit(sitzung.createdAt))}</b></div>
+            <div class="heart-akte__feld"><span>Weg</span><b>${escapeHtml(WEG_NAMEN[typ] || typ || "—")}</b></div>
+          </div>
+        </details>
       </div>
 
       ${freiwillig ? fallKarte("anliegen", typ === "pytje" ? "Seine Frage" : "Sein Hautproblem", renderAnliegenInhalt(sitzung),
@@ -1838,25 +1847,25 @@ function vorname(sitzung) {
 }
 
 // Wann die Analyse fertig ist - die vier Angaben, die am haeufigsten
-// gebraucht werden. Je eine Taste in der Reihe zum Wischen.
+// gebraucht werden. Je eine Taste, alle vier in einer Reihe.
 export const VORAB_ZEITEN = Object.freeze([
-  { id: "30min", taste: "30 Min", satz: "pas rreth 30 minutash" },
-  { id: "1h", taste: "1 Stunde", satz: "pas rreth 1 ore" },
-  { id: "heute", taste: "Heute", satz: "gjatë ditës së sotme" },
-  { id: "morgen", taste: "Morgen", satz: "nesër gjatë ditës" }
+  { id: "30min", taste: "30 min", satz: "pas rreth 30 minutash" },
+  { id: "1h", taste: "1 orë", satz: "pas rreth një ore" },
+  { id: "heute", taste: "Sot", satz: "sot gjatë ditës" },
+  { id: "morgen", taste: "Nesër", satz: "nesër gjatë ditës" }
 ]);
 
-// Keine Frage zur Haut: Um eine Antwort wird mit einem Grund gebeten, den
-// jeder versteht - ein "Po" oder 👍, damit der Link sich oeffnet (von
-// einer unbekannten Nummer ist er sonst nicht antippbar).
+// Keine Frage zur Haut, kein Verkauf. Am Ende eine Frage, die jeder mit
+// "Po" beantwortet - und die Antwort macht den Link spaeter antippbar
+// (von einer unbekannten Nummer ist er es sonst nicht).
 export function vorabNachricht(sitzung, zeit = "1h") {
   const name = vorname(sitzung);
   const wann = (VORAB_ZEITEN.find((z) => z.id === zeit) || VORAB_ZEITEN[1]).satz;
   return [
-    `Përshëndetje${name ? ` ${name}` : ""} 👋 Jam Dr. Violeta Gashi nga LifeSkin.`,
-    `E mora analizën e lëkurës suaj dhe po e përgatis personalisht. Analiza dhe plani juaj do të jenë gati ${wann} – jua dërgoj këtu në WhatsApp.`,
-    "Që linku t'ju hapet direkt, ju lutem më shkruani një \"Po\" ose një 👍 këtu.",
-    "Ndërkohë, rezultatet para dhe pas të klientëve tanë i gjeni në Instagram: instagram.com/lifeskin.ks"
+    `Përshëndetje${name ? ` ${name}` : ""}, jam Dr. Violeta Gashi nga LifeSkin.`,
+    `E kemi pranuar analizën e lëkurës suaj. Po e shqyrtoj personalisht dhe rezultati, së bashku me planin tuaj, do të jetë gati ${wann}.`,
+    "Ndërkohë, rezultate para dhe pas nga klientët tanë mund t'i shihni në instagram.com/lifeskin.ks",
+    "A mund t'jua dërgoj rezultatin këtu në WhatsApp sapo të jetë gati?"
   ].join("\n\n");
 }
 
@@ -1878,30 +1887,22 @@ function renderPatientKnoepfe(sitzung, bericht, fertig) {
   const waLink = (text) => `https://wa.me/${wa}?text=${encodeURIComponent(text)}`;
   return `
       <section class="heart-befund__patient">
-        <span class="heart-befund__zwischen">An den Patienten</span>
-        <!-- 1. VORAB: sobald die Analyse da ist. Eine Taste je Zeitangabe,
-             in einer Reihe zum Wischen - jede oeffnet WhatsApp mit dem
-             fertigen Text. -->
-        <div class="heart-befund__waleiste">
-          <span class="heart-befund__walabel">${renderHeartIcon("send", "heart-befund__knopficon")}Vorab-Nachricht · fertig in …</span>
-          <div class="heart-befund__wareihe">
-            ${VORAB_ZEITEN.map((z) => wa
-              ? `<a class="heart-befund__wataste" href="${escapeHtml(waLink(vorabNachricht(sitzung, z.id)))}" target="_blank" rel="noopener">${escapeHtml(z.taste)}</a>`
-              : `<button type="button" class="heart-befund__wataste heart-befund__wataste--kopie" data-action="lifeskin-text-kopieren"
-                   data-wert="${escapeHtml(vorabNachricht(sitzung, z.id))}" data-was="Vorab-Nachricht">${escapeHtml(z.taste)} kopieren</button>`).join("")}
-          </div>
+        <span class="heart-befund__zwischen heart-befund__zwischen--icon">${renderHeartIcon("message", "heart-befund__knopficon")}An den Patienten</span>
+        <!-- 1. VORAB: sobald die Analyse da ist. Vier Tasten in einer Reihe,
+             jede oeffnet WhatsApp mit dem fertigen Text. Ohne Nummer
+             kopiert die Taste den Text. -->
+        <div class="heart-befund__wareihe">
+          ${VORAB_ZEITEN.map((z) => wa
+            ? `<a class="heart-befund__wataste" href="${escapeHtml(waLink(vorabNachricht(sitzung, z.id)))}" target="_blank" rel="noopener">${renderHeartIcon("send", "heart-befund__wataicon")}${escapeHtml(z.taste)}</a>`
+            : `<button type="button" class="heart-befund__wataste heart-befund__wataste--kopie" data-action="lifeskin-text-kopieren"
+                 data-wert="${escapeHtml(vorabNachricht(sitzung, z.id))}" data-was="Vorab-Nachricht">${renderHeartIcon("copy", "heart-befund__wataicon")}${escapeHtml(z.taste)}</button>`).join("")}
         </div>
         <!-- 2. FINAL: nach der Freigabe, mit Anrede und Link. -->
         ${endText ? (wa ? `<a class="heart-befund__knopf heart-befund__knopf--wa" href="${escapeHtml(waLink(endText))}" target="_blank" rel="noopener">
-          ${renderHeartIcon("send", "heart-befund__knopficon")}Befund in WhatsApp senden<small>mit Anrede und Link</small></a>` : "")
+          ${renderHeartIcon("send", "heart-befund__knopficon")}Befund in WhatsApp senden<small>mit Anrede und Link</small></a>`
+          : `<button type="button" class="heart-befund__knopf" data-action="lifeskin-text-kopieren" data-wert="${escapeHtml(endText)}"
+               data-was="WhatsApp-Nachricht">${renderHeartIcon("copy", "heart-befund__knopficon")}Befund-Nachricht kopieren</button>`)
           : `<p class="heart-befund__hilfe">Nach der Freigabe erscheint hier „Befund in WhatsApp senden“.</p>`}
-        <div class="heart-befund__zwei">
-          <button type="button" class="heart-befund__knopf heart-befund__knopf--klein" data-action="lifeskin-text-kopieren"
-                  data-wert="${escapeHtml(nummer)}" data-was="Nummer"${nummer ? "" : " disabled"}>${renderHeartIcon("copy", "heart-befund__knopficon")}Nummer kopieren<small>${escapeHtml(nummer || "keine Nummer")}</small></button>
-          <button type="button" class="heart-befund__knopf heart-befund__knopf--klein" data-action="lifeskin-text-kopieren"
-                  data-wert="${escapeHtml(endText || vorabNachricht(sitzung))}" data-was="${endText ? "WhatsApp-Nachricht" : "Vorab-Nachricht"}"
-                  >${renderHeartIcon("message", "heart-befund__knopficon")}Text kopieren<small>${endText ? "Befund mit Link" : "Vorab · 1 Stunde"}</small></button>
-        </div>
       </section>`;
 }
 
