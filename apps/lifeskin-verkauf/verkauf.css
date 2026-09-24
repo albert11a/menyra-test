@@ -163,6 +163,22 @@ a { color: var(--green); }
 .rasti figcaption { padding: 12px 14px; font-size: .85rem; color: var(--muted); }
 .rasti figcaption b { color: var(--green); }
 
+/* 5b. Kundenfotos - eine Reihe zum Wischen, die naechste Karte schaut
+   heraus. Nur sichtbar, wenn Heart sie fuer den Befund einschaltet. */
+.klientet__rreshti {
+  display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory;
+  margin: 0 -20px; padding: 0 20px 6px; scroll-padding: 0 20px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.klientet__rreshti::-webkit-scrollbar { display: none; }
+.klienti {
+  flex: 0 0 72%; max-width: 280px; margin: 0; scroll-snap-align: start;
+  background: var(--white); border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+}
+.klienti img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; object-position: 50% 22%; background: var(--green-soft); }
+.klienti figcaption { padding: 12px 14px 14px; font-size: .85rem; line-height: 1.45; color: var(--muted); }
+.klienti figcaption b { display: block; color: var(--green); font-size: .8rem; letter-spacing: .02em; margin-bottom: 2px; }
+
 /* 6. Die Entscheidung */
 .vendimi { text-align: left; }
 .cmimi--madh strong { font-size: 2.6rem; }

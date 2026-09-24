@@ -2013,6 +2013,17 @@ export function befundWeg(sitzung, art, gemerkt = "") {
   return typ === "scan" ? "skanim" : "foto";
 }
 
+// KUNDENFOTOS ("Nga klientët tanë") auf der Therapieseite - aus, bis
+// Dr. Gashi sie fuer diesen Befund einschaltet. Die Fotos selbst stehen
+// fest in apps/lifeskin-verkauf/terapia.html.
+function renderKlientetSchalter(bericht) {
+  return `
+        <label class="heart-befund__schalter">
+          <input type="checkbox" data-befund-klientet${bericht?.klientet === true ? " checked" : ""} />
+          <span><b>Kundenfotos zeigen</b><small>„Nga klientët tanë“ – vier Fotos mit Pore Control, vor dem Preis</small></span>
+        </label>`;
+}
+
 function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({}), zustand = {}) {
   const stand = bericht?.status || "wartet";
   const fertig = stand !== "wartet" && stand !== "vorschau";
@@ -2210,7 +2221,7 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({}), 
         <p class="heart-befund__hilfe">So steht es beim Patienten. Jedes Feld lässt sich ändern.</p>
         ${renderShitjaFelder(raport.shitja, produkte, [...gewaehlt.keys()], { patient: String(sitzung.name || "").trim(), ohneFoto })}`)}
 
-      ${befundGruppe("raste", "Ergebnisse auf der Seite", renderBefundRasteAuswahl(raste, bericht, zustand), { hinweis: "Vorher / Nachher" })}
+      ${befundGruppe("raste", "Ergebnisse auf der Seite", renderBefundRasteAuswahl(raste, bericht, zustand) + renderKlientetSchalter(bericht), { hinweis: "Vorher / Nachher" })}
 
       ${befundGruppe("details", "Analyse-Details", `
         <textarea hidden data-raport-meta>${escapeHtml(JSON.stringify(raport || {}))}</textarea>

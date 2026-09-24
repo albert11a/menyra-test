@@ -6344,3 +6344,12 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
   .heart-faelle .heart-lifeskin-fall__zeiten { gap: 3px; }
   .heart-faelle .heart-lifeskin-fall__zeiten > .heart-lifeskin-fall__zeit { padding: 0 5px; }
 }
+/* Schalter "Kundenfotos zeigen" im Befund. */
+.heart-befund__schalter {
+  display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 12px 14px;
+  border: 1px solid var(--heart-line, #34383a); border-radius: 14px; background: #ffffff08; cursor: pointer;
+}
+.heart-befund__schalter input { width: 22px; height: 22px; flex: none; margin: 0; accent-color: #3fbf9b; }
+.heart-befund__schalter span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.heart-befund__schalter b { font-size: 14.5px; color: var(--heart-text, #f7f7f2); }
+.heart-befund__schalter small { font-size: 12.5px; color: var(--heart-muted, #8f918d); line-height: 1.35; }

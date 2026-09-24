@@ -293,6 +293,8 @@ export class Terapia {
     zeigen($("#merrni"), mitProdukten);
     zeigen($("#ditet"), mitProdukten);
     zeigen($("#rezultate"), mitProdukten && !this.rasteLeer);
+    // Kundenfotos nur, wenn Heart sie fuer diesen Befund eingeschaltet hat.
+    zeigen($("#klientet"), mitProdukten && this.daten?.klientet === true);
     zeigen($("#vendimi"), this.mitAngebot);
     schreibe($("#t-dita28"), s.dita_28 || this.produkte[0]?.synimi || "Krahasojmë lëkurën tuaj me foton e sotme.");
     schreibe($("#t-psetani"), s.pse_tani || "");

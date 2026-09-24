@@ -2342,6 +2342,8 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff = false } = {}) {
     // Die Vorher/Nachher-Faelle dieser Seite, in der gewaehlten Reihenfolge.
     raste: [...new Set([...document.querySelectorAll("[data-befund-rasti]")]
       .filter((w) => w.type !== "checkbox" || w.checked).map((w) => String(w.value || "")).filter(Boolean))],
+    // Kundenfotos auf der Seite: nur wenn der Schalter an ist.
+    klientet: document.querySelector("[data-befund-klientet]")?.checked === true,
     nurStaff,
     analyse: {
       javet: [1, 2, 3, 4].map((n) => zusatz[`java_${n}`] || "")
