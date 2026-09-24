@@ -374,12 +374,25 @@ export class Terapia {
     const [von, bis] = STANDARD_KONFIG.lieferzeitTage || [];
     const tage = Number(STANDARD_KONFIG.rueckgabeTage) || 0;
     const nachnahme = (STANDARD_KONFIG.zahlarten || []).includes("nachnahme");
-    const kurz = [
-      nachnahme ? "Pagesë në dorëzim" : "",
-      tage ? `${tage} ditë garanci` : "",
-      von && bis ? `Dërgesa ${von}–${bis} ditë` : ""
+    // DIE VIER ANTWORTEN, DIREKT UNTER DEM PREIS (oben und unten).
+    //
+    // Gemessen (22.-24.09.): Drei von vier Kaeufern hatten vorher genau
+    // diese Fragen aufgeklappt - passt es zu mir, wann sehe ich etwas,
+    // wie zahle ich, und wenn es nicht wirkt. Die anderen verliessen die
+    // Seite nach vier Minuten, ohne die Antworten je gesehen zu haben.
+    // Garantie und Zahlung kommen aus der Konfiguration, nie aus dem Text.
+    const antworten = [
+      ["Për lëkurën tuaj", this.ohneFoto ? "Dr. Gashi e zgjodhi sipas përshkrimit tuaj." : "Dr. Gashi e zgjodhi sipas fotove tuaja."],
+      ["Ndryshimi", "Pas disa javësh – ju kontrollojmë çdo javë."],
+      nachnahme ? ["Pagesa", "Te dera, kur pakoja është në dorën tuaj."] : null,
+      tage ? ["Garancia", `${tage} ditë – ose ju kthejmë paratë.`] : null
     ].filter(Boolean);
-    $("#t-siguria").replaceChildren(...kurz.map((x) => element("li", null, x)));
+    const antwortenBauen = () => antworten.map(([frage, antwort]) => {
+      const zelle = element("div");
+      zelle.append(element("b", null, frage), element("span", null, antwort));
+      return zelle;
+    });
+    $("#t-siguria")?.replaceChildren(...antwortenBauen());
     schreibe($("#t-porosisiguria"), [nachnahme ? "Paguani kur ta merrni" : "", tage ? `${tage} ditë garanci` : "", "Transport falas"].filter(Boolean).join(" · "));
     schreibe($("#t-leistegaranci"), tage ? `${tage} ditë garanci` : "");
 
@@ -387,7 +400,11 @@ export class Terapia {
     if (nachnahme) lang.push(["Sot nuk jepni asnjë kartë.", " Paguani te dera, kur pakoja është në dorën tuaj."]);
     if (tage) lang.push([`${tage} ditë garanci kthimi parash.`, " Nëse nuk jeni të kënaqur, na shkruani dhe ju kthejmë shumën e paguar."]);
     lang.push(["Transport falas,", von && bis ? ` dërgesa ${von}–${bis} ditë.` : ""]);
-    $("#t-premtimet").replaceChildren(...lang.map(([fett, rest]) => {
+    // Unten dieselben vier Antworten; "lang" bleibt fuer den Fall, dass
+    // die Seite noch eine alte Liste traegt (zwischengespeichertes HTML).
+    const unten = $("#t-premtimet");
+    if (unten?.classList.contains("pergjigjet")) unten.replaceChildren(...antwortenBauen());
+    else unten?.replaceChildren(...lang.map(([fett, rest]) => {
       const li = element("li");
       li.append(element("b", null, fett), rest);
       return li;
