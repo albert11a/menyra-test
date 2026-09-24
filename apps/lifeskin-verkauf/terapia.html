@@ -128,25 +128,26 @@
         <p class="shenim">Çdo lëkurë reagon ndryshe. Prandaj Dr. Gashi ju ndjek çdo javë.</p>
       </section>
 
-      <!-- 5b. KUNDENFOTOS - nur wenn Heart sie fuer diesen Befund einschaltet
-           (bericht.klientet). Sonst bleibt der Abschnitt versteckt. -->
+      <!-- 5b. KUNDENFOTOS - nur die, die Heart fuer diesen Befund gewaehlt hat
+           (bericht.klientet). Keines gewaehlt: Der Abschnitt bleibt versteckt.
+           Bilder und Texte wie in shared/lifeskin-klientet.js. -->
       <section class="pjese klientet" id="klientet" data-pfad="Kundenfotos" hidden>
         <p class="syri">Nga klientët tanë</p>
         <h2>Klientë të vërtetë, me produktet LifeSkin.</h2>
         <div class="klientet__rreshti">
-          <figure class="klienti">
+          <figure class="klienti" data-klienti="klienti-1">
             <img src="/apps/lifeskin-landing/fotot/klienti-1.jpg" alt="Kliente me Pore Control" loading="lazy" decoding="async">
             <figcaption><b>Pore Control</b>Për poret e zgjeruara dhe lëkurën që shkëlqen nga yndyra.</figcaption>
           </figure>
-          <figure class="klienti">
+          <figure class="klienti" data-klienti="klienti-2">
             <img src="/apps/lifeskin-landing/fotot/klienti-2.jpg" alt="Kliente me Pore Control" loading="lazy" decoding="async">
             <figcaption><b>Pore Control</b>Me acid lipo-hidroksi (LHA) – pastron poret pa e tharë lëkurën.</figcaption>
           </figure>
-          <figure class="klienti">
+          <figure class="klienti" data-klienti="klienti-3">
             <img src="/apps/lifeskin-landing/fotot/klienti-3.jpg" alt="Kliente me Pore Control" loading="lazy" decoding="async">
             <figcaption><b>Pore Control</b>Hyn në rutinën e mbrëmjes, pas pastrimit të fytyrës.</figcaption>
           </figure>
-          <figure class="klienti">
+          <figure class="klienti" data-klienti="klienti-4">
             <img src="/apps/lifeskin-landing/fotot/klienti-4.jpg" alt="Kliente me Pore Control" loading="lazy" decoding="async">
             <figcaption><b>Pore Control</b>Lëkurë më e lëmuar, pore më pak të dukshme.</figcaption>
           </figure>

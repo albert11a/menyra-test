@@ -456,7 +456,7 @@ export async function speichereProdukt(produkt) {
 // "?vorschau=1" dahinter. So wird geprueft, was er wirklich zu sehen
 // bekommt, und nicht eine Nachbildung davon; und keine Zahl bewegt sich,
 // weil die Seite in der Vorschau nichts zaehlt.
-export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport, texte, ohneBild = false, raste = [], klientet = false, nurStaff = false }) {
+export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport, texte, ohneBild = false, raste = [], klientet = [], nurStaff = false }) {
   if (!sitzungId) throw new Error("Bericht ohne Kennung");
   await setDoc(doc(db, "lifeskin", TENANT, "reports", sitzungId), {
     status: nurStaff ? "vorschau" : "fertig",
@@ -502,9 +502,9 @@ export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwe
     ohneBild: ohneBild === true,
     // Welche Vorher/Nachher-Faelle die Seite zeigt, in dieser Reihenfolge.
     raste: (Array.isArray(raste) ? raste : []).map((x) => String(x || "").slice(0, 40)).filter(Boolean).slice(0, 12),
-    // Die Kundenbilder ("Nga klientët tanë") - nur wenn in Heart
-    // eingeschaltet. Ohne das Feld bleibt der Abschnitt versteckt.
-    klientet: klientet === true,
+    // Die Kundenbilder ("Nga klientët tanë"), die Heart gewaehlt hat.
+    // Leer: Die Seite zeigt den Abschnitt nicht.
+    klientet: (Array.isArray(klientet) ? klientet : []).map((x) => String(x || "").slice(0, 40)).filter(Boolean).slice(0, 12),
     // Die Messwerte. Sie tragen auf der Patientenseite die Balken - und
     // ein Balken ist das Einzige auf der Seite, das sich nicht wegdiskutieren
     // laesst. Was ohne erkennbare Stufe hereinkommt, behaelt seinen Text und

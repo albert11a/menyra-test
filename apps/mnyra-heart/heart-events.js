@@ -646,7 +646,7 @@ export function bindHeartEvents({
     }
     // Auswahlfelder der Analyse-Details (Stufe, Niveli) und der Ergebnisse:
     // Vorschau und Zeichen im Kopf nachziehen.
-    if (event.target?.matches?.("[data-raport], [data-par-shkalla], [data-befund-rasti]")) {
+    if (event.target?.matches?.("[data-raport], [data-par-shkalla], [data-befund-rasti], [data-befund-klienti]")) {
       operations.lifeskinMarkenAuffrischen?.();
       operations.lifeskinVorschau?.();
       return;

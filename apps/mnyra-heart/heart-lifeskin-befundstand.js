@@ -36,6 +36,8 @@ export function befundStandAuffrischen(wurzel = document) {
   };
   for (const [name, ja] of Object.entries(stand)) setze(name, ja);
   setze("gesamt", Object.values(stand).every((ja) => ja !== false));
+  // Kundenfotos sind freiwillig: gewaehlt -> Haken, sonst kein Zeichen.
+  setze("klientet", bogen.querySelectorAll("[data-befund-klienti]:checked").length ? true : null);
 }
 
 // Textfelder so hoch wie ihr Text: kein Scrollen IM Feld, Teile lassen

@@ -35,6 +35,7 @@ import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 import { renderRaste, renderRastiEditor, renderBefundRasteAuswahl, rasteListe } from "./heart-lifeskin-raste.js";
 import { klappAttr, alsKlapp } from "./heart-lifeskin-klapp.js";
 import { entwurfLesen, promptGemacht } from "./heart-lifeskin-entwurf.js";
+import { KLIENTET, klientetFuerBericht } from "../../shared/lifeskin-klientet.js";
 import { vorschauKasten } from "./heart-lifeskin-vorschau.js";
 import { ohneSeite, ohneSeiteTief } from "../../shared/lifeskin-ohne-seite.js";
 
@@ -2013,15 +2014,21 @@ export function befundWeg(sitzung, art, gemerkt = "") {
   return typ === "scan" ? "skanim" : "foto";
 }
 
-// KUNDENFOTOS ("Nga klientët tanë") auf der Therapieseite - aus, bis
-// Dr. Gashi sie fuer diesen Befund einschaltet. Die Fotos selbst stehen
-// fest in apps/lifeskin-verkauf/terapia.html.
-function renderKlientetSchalter(bericht) {
+// KUNDENFOTOS ("Nga klientët tanë") auf der Therapieseite - eigene
+// Sparte im Befund. Keines gewaehlt: Die Seite zeigt den Abschnitt nicht.
+// Die Bilder und Texte stehen in shared/lifeskin-klientet.js.
+function renderKlientetAuswahl(bericht) {
+  const an = new Set(klientetFuerBericht(bericht?.klientet));
   return `
-        <label class="heart-befund__schalter">
-          <input type="checkbox" data-befund-klientet${bericht?.klientet === true ? " checked" : ""} />
-          <span><b>Kundenfotos zeigen</b><small>„Nga klientët tanë“ – vier Fotos mit Pore Control, vor dem Preis</small></span>
-        </label>`;
+    <p class="heart-befund__hilfe">Antippen zum Auswählen. Keines gewählt – die Seite zeigt den Abschnitt nicht.</p>
+    <div class="heart-rasti-wahl">
+      ${KLIENTET.map((k) => `
+      <label class="heart-rasti-wahl__karte">
+        <input type="checkbox" data-befund-klienti value="${escapeHtml(k.id)}"${an.has(k.id) ? " checked" : ""} />
+        <span class="heart-rasti-wahl__bilder heart-rasti-wahl__bilder--eins"><img src="${escapeHtml(k.bild)}" alt="" loading="lazy" /></span>
+        <span class="heart-rasti-wahl__text"><b>${escapeHtml(k.produkt)}</b><small>${escapeHtml(k.text)}</small></span>
+      </label>`).join("")}
+    </div>`;
 }
 
 function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({}), zustand = {}) {
@@ -2221,7 +2228,9 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({}), 
         <p class="heart-befund__hilfe">So steht es beim Patienten. Jedes Feld lässt sich ändern.</p>
         ${renderShitjaFelder(raport.shitja, produkte, [...gewaehlt.keys()], { patient: String(sitzung.name || "").trim(), ohneFoto })}`)}
 
-      ${befundGruppe("raste", "Ergebnisse auf der Seite", renderBefundRasteAuswahl(raste, bericht, zustand) + renderKlientetSchalter(bericht), { hinweis: "Vorher / Nachher" })}
+      ${befundGruppe("raste", "Ergebnisse auf der Seite", renderBefundRasteAuswahl(raste, bericht, zustand), { hinweis: "Vorher / Nachher" })}
+
+      ${befundGruppe("klientet", "Kundenfotos", renderKlientetAuswahl(bericht), { hinweis: "Nga klientët tanë" })}
 
       ${befundGruppe("details", "Analyse-Details", `
         <textarea hidden data-raport-meta>${escapeHtml(JSON.stringify(raport || {}))}</textarea>

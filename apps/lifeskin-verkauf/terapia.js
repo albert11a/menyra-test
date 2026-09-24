@@ -31,6 +31,7 @@ import { LIFESKIN_FIRESTORE_BASE, LIFESKIN_TENANT } from "../lifeskin/lifeskin-c
 import {
   RASTE_STANDARD, rasteLaden, rasteNormalisieren, rasteFuerBericht, rasteMitBildern, rastiProdukteText
 } from "../../shared/lifeskin-raste.js";
+import { klientetFuerBericht } from "../../shared/lifeskin-klientet.js";
 
 const $ = (wahl) => document.querySelector(wahl);
 const $$ = (wahl) => Array.from(document.querySelectorAll(wahl));
@@ -293,8 +294,18 @@ export class Terapia {
     zeigen($("#merrni"), mitProdukten);
     zeigen($("#ditet"), mitProdukten);
     zeigen($("#rezultate"), mitProdukten && !this.rasteLeer);
-    // Kundenfotos nur, wenn Heart sie fuer diesen Befund eingeschaltet hat.
-    zeigen($("#klientet"), mitProdukten && this.daten?.klientet === true);
+    // Kundenfotos: nur die, die Heart fuer diesen Befund gewaehlt hat, in
+    // dieser Reihenfolge. Keines gewaehlt: kein Abschnitt.
+    const klientet = klientetFuerBericht(this.daten?.klientet);
+    const reihe = $("#klientet .klientet__rreshti");
+    for (const id of klientet) {
+      const bild = reihe?.querySelector(`[data-klienti="${id}"]`);
+      if (bild) reihe.append(bild);
+    }
+    for (const bild of reihe?.querySelectorAll("[data-klienti]") || []) {
+      zeigen(bild, klientet.includes(bild.getAttribute("data-klienti")));
+    }
+    zeigen($("#klientet"), mitProdukten && klientet.length > 0);
     zeigen($("#vendimi"), this.mitAngebot);
     schreibe($("#t-dita28"), s.dita_28 || this.produkte[0]?.synimi || "Krahasojmë lëkurën tuaj me foton e sotme.");
     schreibe($("#t-psetani"), s.pse_tani || "");

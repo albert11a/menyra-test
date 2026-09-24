@@ -43,11 +43,11 @@ function dokumentBauen(werte) {
   // Befunds selbst ist davon unberuehrt.
   // ohneBild kam mit der Analyse ohne Foto dazu (nach seiner Beschreibung).
   // raste: die Vorher/Nachher-Faelle der Seite, in gewaehlter Reihenfolge.
-  // klientet: die Kundenbilder auf der Therapieseite, nur wenn eingeschaltet.
+  // klientet: die gewaehlten Kundenbilder der Therapieseite.
   const bauen = new Function("befund", "produkte", "preis", "schwere", "analyse", "raport", "texte", "nurStaff", "ohneBild", "raste", "klientet",
     `return (${literal});`);
   return bauen(werte.befund, werte.produkte, werte.preis, werte.schwere, werte.analyse, werte.raport,
-    werte.texte || {}, false, false, werte.raste || [], werte.klientet === true);
+    werte.texte || {}, false, false, werte.raste || [], werte.klientet || []);
 }
 
 const raport = raportLesen(
