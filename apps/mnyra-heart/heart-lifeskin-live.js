@@ -216,7 +216,7 @@ export function baueLiveReihe(punkte, sitzungen, jetzt = Date.now(), fenster = L
     zahl.set(wo, zahl.get(wo) + 1);
     gesamt += 1;
     // WER - damit "1 Person ist gerade dabei" einen Namen hat.
-    leute.push({ id: String(sitzung.id || ""), name: String(sitzung.name || "").trim(), punkt: wo });
+    leute.push({ id: String(sitzung.id || ""), name: String(sitzung.name || "").trim(), punkt: wo, source: sitzung.source || {} });
   }
   return {
     gesamt,

@@ -305,16 +305,22 @@ function renderLiveReihe(reihe, art) {
 // Jetzt stehen beide untereinander: oben der Weg zur Analyse, darunter
 // der Weg zum Kauf. Zwei Fragen, zwei Antworten, kein Griff dazwischen.
 // WER GERADE DABEI IST - Name und Punkt, antippen oeffnet den Fall.
+// Ohne Namen (noch auf der Landingpage, noch nichts eingegeben) steht
+// "Besucher" und woher er kam - antippen geht dort nicht, es gibt noch
+// keinen Fall.
 function renderLiveLeute(reihe) {
   const leute = reihe?.leute || [];
   if (!leute.length) return "";
   const name = (id) => (reihe.punkte || []).find((p) => p.id === id)?.label || "";
   return `
       <div class="heart-live__leute">
-        ${leute.slice(0, 8).map((l) => `
+        ${leute.slice(0, 8).map((l) => l.name ? `
         <button type="button" class="heart-live__person" data-action="lifeskin-sitzung" data-id="${escapeHtml(l.id)}">
-          <b>${escapeHtml(l.name || "Ohne Namen")}</b><span>${escapeHtml(name(l.punkt))}</span>
-        </button>`).join("")}
+          <b>${escapeHtml(l.name)}</b><span>${escapeHtml(name(l.punkt))}</span>
+        </button>` : `
+        <span class="heart-live__person heart-live__person--anonym">
+          <b>Besucher</b><span>${escapeHtml([name(l.punkt), herkunftVon({ source: l.source }).quelle].filter(Boolean).join(" · "))}</span>
+        </span>`).join("")}
       </div>`;
 }
 

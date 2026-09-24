@@ -18,7 +18,7 @@ const cash = (live) => live.bestellungen.punkte.find((p) => p.id === "bestellt")
 test("wer gerade bestellt hat, steht bei Cash - mit Namen", () => {
   const live = baueLive([bestellt("Arta", 1)], jetzt);
   assert.equal(cash(live), 1);
-  assert.deepEqual(live.bestellungen.leute, [{ id: "Arta", name: "Arta", punkt: "bestellt" }]);
+  assert.deepEqual(live.bestellungen.leute.map(({ id, name, punkt }) => ({ id, name, punkt })), [{ id: "Arta", name: "Arta", punkt: "bestellt" }]);
 });
 
 test("wer vorhin bestellt hat und nur wieder schaut, steht nicht bei Cash", () => {
@@ -46,4 +46,19 @@ test("die Live-Karte nennt die Leute, antippen oeffnet den Fall", async () => {
     live: baueLive([bestellt("Arta", 1)], jetzt)
   });
   assert.match(html, /class="heart-live__person" data-action="lifeskin-sitzung" data-id="Arta">\s*<b>Arta<\/b><span>Cash<\/span>/);
+});
+
+test("ohne Namen: Besucher mit Quelle, nicht antippbar", async () => {
+  const { renderLifeskin } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
+  const b = await import("../apps/mnyra-heart/heart-lifeskin-berechnung.js");
+  const besucher = { id: "v1", step: "opened", source: { utmSource: "ig" }, updatedAt: vor(1), createdAt: vor(1) };
+  const html = renderLifeskin({
+    status: "ready", loadedFrom: "network", sitzungen: [], tests: [], berichte: {}, produkte: [], abdeckung: [],
+    kennzahlen: b.baueKennzahlen([]), trichter: b.baueTrichter([]), lesetiefe: b.baueLesetiefe([]), herkunft: b.baueHerkunft([]),
+    verteilung: b.baueVerteilung([]), verlauf: [], offen: "", fotos: {}, zeitraum: "heute", fach: "alle", vorschau: {},
+    live: baueLive([besucher], jetzt)
+  });
+  assert.match(html, /heart-live__person--anonym">\s*<b>Besucher<\/b><span>Landing · [^<]+<\/span>/);
+  assert.doesNotMatch(html, /Ohne Namen/);
+  assert.doesNotMatch(html, /data-action="lifeskin-sitzung" data-id="v1"/);
 });
