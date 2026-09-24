@@ -383,6 +383,20 @@ export const OBERFLAECHE = Object.freeze({
   },
   telPlatzhalter: { sq: "044 123 456", de: "044 123 456" },
   telKnopf: { sq: "Merrni analizën në WhatsApp", de: "Analyse per WhatsApp erhalten" },
+  // WER KEIN WHATSAPP HAT: ein kleiner Link unter dem Feld, der ein
+  // zweites Feld fuer Viber aufklappt. Der Bildschirm bleibt, wie er ist -
+  // wer WhatsApp hat, sieht nur eine Zeile mehr.
+  viberLink: { sq: "Nuk keni WhatsApp?", de: "Kein WhatsApp?" },
+  viberTitel: { sq: "Numri i Viber-it", de: "Ihre Viber-Nummer" },
+  viberInfo: {
+    sq: "Nëse nuk keni WhatsApp, Dr. Gashi ju shkruan në Viber.",
+    de: "Wenn Sie kein WhatsApp haben, schreibt Dr. Gashi Ihnen auf Viber."
+  },
+  telInfoViber: {
+    sq: "Ju shkruajmë vetëm në Viber. Nuk ju telefonojmë.",
+    de: "Wir schreiben Ihnen ausschließlich über Viber. Wir rufen Sie nicht an."
+  },
+  telKnopfViber: { sq: "Merrni analizën në Viber", de: "Analyse per Viber erhalten" },
   uebergabeLaeuft: { sq: "Po dërgojmë të dhënat tuaja…", de: "Ihre Angaben werden gesendet…" },
   uebergabeFehler: {
     sq: "Dërgimi nuk është konfirmuar ende. Kontrolloni internetin dhe provoni sërish. Mos e mbyllni këtë faqe; nuk keni nevojë t’i plotësoni të dhënat përsëri.",

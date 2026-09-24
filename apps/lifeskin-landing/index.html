@@ -1594,6 +1594,19 @@
       <input class="ls-eingabe" id="ls-telfeld" type="tel" name="tel"
              autocomplete="tel" inputmode="tel" enterkeyhint="done"
              aria-labelledby="ls-teltitel" aria-describedby="ls-telunter ls-telinfo ls-telfehler" data-platzhalter="telPlatzhalter" />
+      <!-- Kein WhatsApp? Ein Link klappt ein Feld fuer Viber auf. -->
+      <button type="button" class="ls-viberlink" id="ls-viberlink" data-text="viberLink"
+              aria-expanded="false" aria-controls="ls-viberbox"></button>
+      <div class="ls-viberbox" id="ls-viberbox" hidden>
+        <label class="ls-viberlabel" for="ls-viberfeld">
+          <svg class="ls-viberlogo" viewBox="0 0 32 32" width="24" height="24" aria-hidden="true"><rect x="1" y="1" width="30" height="30" rx="9" fill="#7360F2"/><path d="M11.2 9.6c.3-.3.8-.3 1.1 0l1.6 2c.3.3.3.8 0 1.1l-.8.9c.6 1.4 1.8 2.7 3.3 3.4l.9-.8c.3-.3.8-.3 1.1 0l2 1.6c.3.3.3.8 0 1.1l-.9 1c-.6.6-1.5.8-2.3.5-3.4-1.2-6-3.9-7.2-7.3-.3-.8-.1-1.7.5-2.3z" fill="#fff"/></svg>
+          <span data-text="viberTitel"></span>
+        </label>
+        <input class="ls-eingabe" id="ls-viberfeld" type="tel" name="viber"
+               autocomplete="tel" inputmode="tel" enterkeyhint="done"
+               aria-describedby="ls-viberinfo ls-telfehler" data-platzhalter="telPlatzhalter" />
+        <p class="ls-klein" id="ls-viberinfo" data-text="viberInfo"></p>
+      </div>
       <p class="ls-klein" id="ls-telinfo" data-text="telInfo"></p>
       <p class="ls-fragefehler" id="ls-telfehler" role="alert" hidden></p>
       <button type="button" class="ls-knopf" id="ls-telweiter" data-text="telKnopf" aria-disabled="true"></button>

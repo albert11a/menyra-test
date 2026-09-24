@@ -1258,6 +1258,18 @@ async function lifeskinTextKopieren(wert, was) {
   }
 }
 
+// VIBER: Text kopieren (im selben Tipp, sonst verweigert der Browser die
+// Zwischenablage), dann den Chat oeffnen. Viber nimmt keinen Text im Link.
+function lifeskinViber(text, nummer) {
+  const n = String(nummer || "").replace(/\D/g, "");
+  if (!n) return;
+  const kopiert = navigator.clipboard?.writeText?.(String(text || ""));
+  Promise.resolve(kopiert).then(
+    () => setToast("Viber", "Text kopiert – im Chat einfügen.", "success"),
+    () => setToast("Viber", "Kopieren ging nicht – Text bitte von Hand kopieren.", "danger"));
+  globalThis.setTimeout(() => { globalThis.location.href = `viber://chat?number=%2B${n}`; }, 150);
+}
+
 async function lifeskinLinkKopieren(sitzungId) {
   const id = String(sitzungId || "").trim();
   if (!id) return;
@@ -3249,6 +3261,7 @@ const operations = {
   markiereLifeskinSitzung(id, marken) { return markiereLifeskinSitzung(id, marken); },
   lifeskinLinkKopieren(id) { return lifeskinLinkKopieren(id); },
   lifeskinTextKopieren(wert, was) { return lifeskinTextKopieren(wert, was); },
+  lifeskinViber(text, nummer) { lifeskinViber(text, nummer); },
   lifeskinMarkenAuffrischen() { lifeskinMarkenAuffrischen(); },
   loescheLifeskinSitzung(id) { return loescheLifeskinSitzung(id); },
   openLifeskinProdukt(id) {

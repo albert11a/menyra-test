@@ -282,7 +282,12 @@ test("die Nummer steht zuletzt und auf einem eigenen Bildschirm", () => {
   // Browser selbst einsetzt (Autofill, Einfuegen ueber das
   // Kontextmenue), loest kein input-Ereignis aus - der Besucher sah
   // seine Nummer stehen und einen Knopf, der nichts tat.
-  assert.match(weiter, /telefonPruefen\(this\.#telLesen\(\), LIFESKIN_TELEFON_VORWAHL\)/);
+  // Seit Viber dazukam (24.09.) prueft #nummernPruefen beide Felder -
+  // WhatsApp weiter direkt aus dem Feld gelesen.
+  assert.match(weiter, /this\.#nummernPruefen\(\)/);
+  const pruefen = methode(APP, "#nummernPruefen");
+  assert.match(pruefen, /const wa = this\.#telLesen\(\);/);
+  assert.match(pruefen, /telefonPruefen\(wa, LIFESKIN_TELEFON_VORWAHL\)/);
   // Die Einwilligung geht mit, wie auf dem Weg mit Scan: Er hat die
   // Nummer selbst und ausdruecklich dafuer hinterlassen, dass sich
   // jemand meldet. Ohne sie stuende jeder Fall dieser zwei Wege in Heart

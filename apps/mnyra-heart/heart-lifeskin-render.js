@@ -1699,7 +1699,7 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
       <!-- DIE AKTE: kompakt, zwei Spalten, jeder Wert mit einem Tipp kopierbar. -->
       <div class="heart-akte">
         <div class="heart-akte__feld heart-akte__feld--gross"><span>Fallnummer</span>${kopierWert(sitzung.code, "Fallnummer")}</div>
-        <div class="heart-akte__feld heart-akte__feld--gross"><span>Telefon</span>${nummer
+        <div class="heart-akte__feld heart-akte__feld--gross"><span>${nurViber(sitzung) ? "Telefon · Viber" : "Telefon"}</span>${nummer
           ? kopierWert(nummer, "Nummer")
           : `<span class="heart-akte__leer">${escapeHtml(sitzung.waClick || sitzung.waSent ? "keine — hat auf WhatsApp geschrieben" : "keine — nicht erreichbar")}</span>`}</div>
         <!-- Der Rest zum Aufklappen - gemerkt wie jede Karte. -->
@@ -1998,11 +1998,37 @@ export function waNummer(nummer) {
   return n.length >= 9 ? n : "";
 }
 
+// NUR VIBER: Wer "Nuk keni WhatsApp?" angetippt und keine WhatsApp-Nummer
+// eingetragen hat, hat in "phone" dieselbe Nummer wie in "viber".
+export function nurViber(sitzung) {
+  const vb = waNummer(sitzung?.viber);
+  return Boolean(vb) && vb === waNummer(sitzung?.phone || sitzung?.address?.telefon || "");
+}
+
 function renderPatientKnoepfe(sitzung, bericht, fertig) {
   const nummer = sitzung.phone || sitzung.address?.telefon || "";
   const endText = fertig ? whatsappNachricht(sitzung, bericht) : "";
   const wa = waNummer(nummer);
   const waLink = (text) => `https://wa.me/${wa}?text=${encodeURIComponent(text)}`;
+  // Viber nimmt ueber den Link keinen Text mit: Der Knopf kopiert den Text
+  // und oeffnet dann den Chat - dort nur noch einfuegen.
+  if (nurViber(sitzung)) {
+    const vb = waNummer(sitzung.viber);
+    const taste = (text, inhalt, klasse) => `<button type="button" class="${klasse}" data-action="lifeskin-viber"
+        data-wert="${escapeHtml(text)}" data-nummer="${escapeHtml(vb)}">${inhalt}</button>`;
+    return `
+      <section class="heart-befund__patient">
+        <span class="heart-befund__zwischen heart-befund__zwischen--icon">${renderHeartIcon("message", "heart-befund__knopficon")}An den Patienten · Viber</span>
+        <p class="heart-befund__hilfe">Hat kein WhatsApp. Antippen kopiert den Text und öffnet Viber – dort nur einfügen.</p>
+        <div class="heart-befund__wareihe">
+          ${VORAB_ZEITEN.map((z) => taste(vorabNachricht(sitzung, z.id),
+            `${renderHeartIcon("send", "heart-befund__wataicon heart-befund__wataicon--viber")}${escapeHtml(z.taste)}`, "heart-befund__wataste")).join("")}
+        </div>
+        ${endText ? taste(endText, `${renderHeartIcon("send", "heart-befund__knopficon")}Befund in Viber senden<small>Text wird kopiert</small>`,
+          "heart-befund__knopf heart-befund__knopf--viber")
+          : `<p class="heart-befund__hilfe">Nach der Freigabe erscheint hier „Befund in Viber senden“.</p>`}
+      </section>`;
+  }
   return `
       <section class="heart-befund__patient">
         <span class="heart-befund__zwischen heart-befund__zwischen--icon">${renderHeartIcon("message", "heart-befund__knopficon")}An den Patienten</span>

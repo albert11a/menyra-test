@@ -976,6 +976,9 @@ service cloud.firestore {
           "metrics", "ratios", "skinType", "findings",
           "recommended", "photoConsent", "photoRefs",
           "phone", "phoneConsent", "phoneConsentMarketing",
+          // Die Viber-Nummer - nur, wer "Nuk keni WhatsApp?" angetippt
+          // hat. Ohne WhatsApp steht dieselbe Nummer auch in "phone".
+          "viber",
           "address", "order", "timings",
           // Wie die Aufnahme zustande kam.
           //
@@ -1093,6 +1096,7 @@ service cloud.firestore {
           && (!("ageBand" in data) || (data.ageBand is string && data.ageBand.size() <= 12))
           && (!("sprache" in data) || (data.sprache is string && data.sprache.size() <= 5))
           && (!("phone" in data) || (data.phone is string && data.phone.size() <= 40))
+          && (!("viber" in data) || (data.viber is string && data.viber.size() <= 40))
           && (!("skinType" in data) || (data.skinType is string && data.skinType.size() <= 40))
           && (!("metrics" in data) || data.metrics is map)
           && (!("ratios" in data) || data.ratios is map)

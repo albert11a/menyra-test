@@ -685,7 +685,9 @@ export class Trichter {
         alter: $$("#ls-alterwahl [data-gruppe]")
           .find((knopf) => knopf.getAttribute("aria-pressed") === "true")?.dataset.gruppe || "",
         anliegen: $("#ls-anliegenfeld")?.value || "",
-        tel: $("#ls-telfeld")?.value || ""
+        tel: $("#ls-telfeld")?.value || "",
+        viber: $("#ls-viberfeld")?.value || "",
+        viberOffen: $("#ls-viberbox")?.hidden === false
       }));
     } catch {
       // Ohne Speicher laeuft der Trichter wie bisher. Kein Grund,
@@ -752,6 +754,8 @@ export class Trichter {
     setzen("#ls-namefeld", stand.name);
     setzen("#ls-anliegenfeld", stand.anliegen);
     setzen("#ls-telfeld", stand.tel);
+    setzen("#ls-viberfeld", stand.viber);
+    if (stand.viberOffen === true) this.#viberOeffnen(false);
     if (stand.alter) {
       for (const knopf of $$("#ls-alterwahl [data-gruppe]")) {
         knopf.setAttribute("aria-pressed",
@@ -1491,6 +1495,14 @@ export class Trichter {
       });
     }
     $("#ls-telweiter")?.addEventListener("click", () => this.#telWeiter());
+    // Kein WhatsApp? Der Link klappt das Feld fuer Viber auf.
+    $("#ls-viberlink")?.addEventListener("click", () => this.#viberOeffnen(true));
+    for (const ereignisName of ["input", "change", "blur"]) {
+      $("#ls-viberfeld")?.addEventListener(ereignisName, () => {
+        this.#telPruefen();
+        this.#telFehler(null);
+      });
+    }
 
     $("#ls-frageweiter")?.addEventListener("click", () => this.#frageWeiter());
     $("#ls-fragefeld")?.addEventListener("input", (ereignis) => {
@@ -2011,15 +2023,60 @@ export class Trichter {
     return String(this.zustand.telefon || "");
   }
 
+  // VIBER - nur, wenn jemand "Nuk keni WhatsApp?" angetippt hat.
+  #viberOffen() {
+    return $("#ls-viberbox")?.hidden === false;
+  }
+
+  #viberLesen() {
+    return this.#viberOffen() ? String($("#ls-viberfeld")?.value || "").trim() : "";
+  }
+
+  #viberOeffnen(fokus = true) {
+    const box = $("#ls-viberbox");
+    if (!box) return;
+    box.hidden = false;
+    $("#ls-viberlink")?.setAttribute("aria-expanded", "true");
+    if (fokus) $("#ls-viberfeld")?.focus({ preventScroll: true });
+    this.#telPruefen();
+  }
+
+  // Welche Nummer gilt: WhatsApp, wenn eingetragen - sonst Viber. Steht
+  // WhatsApp da, aber falsch, gilt der Fehler dort (kein stilles
+  // Ausweichen auf Viber).
+  #nummernPruefen() {
+    const wa = this.#telLesen();
+    const vb = this.#viberLesen();
+    const waGeprueft = telefonPruefen(wa, LIFESKIN_TELEFON_VORWAHL);
+    const vbGeprueft = vb ? telefonPruefen(vb, LIFESKIN_TELEFON_VORWAHL) : null;
+    if (wa) {
+      return { ok: waGeprueft.ok, grund: waGeprueft.grund, nummer: waGeprueft.nummer, feld: "#ls-telfeld",
+        viber: vbGeprueft?.ok ? vbGeprueft.nummer : "", nurViber: false };
+    }
+    if (vbGeprueft) {
+      return { ok: vbGeprueft.ok, grund: vbGeprueft.grund, nummer: vbGeprueft.nummer, feld: "#ls-viberfeld",
+        viber: vbGeprueft.ok ? vbGeprueft.nummer : "", nurViber: true };
+    }
+    return { ok: false, grund: waGeprueft.grund || "leer", nummer: "", feld: this.#viberOffen() ? "#ls-viberfeld" : "#ls-telfeld", viber: "", nurViber: false };
+  }
+
   #telPruefen() {
-    this.#knopfBereit($("#ls-telweiter"),
-      telefonPruefen(this.#telLesen(), LIFESKIN_TELEFON_VORWAHL).ok);
+    const geprueft = this.#nummernPruefen();
+    this.#knopfBereit($("#ls-telweiter"), geprueft.ok);
+    // Nur Viber: Hinweis und Knopf sprechen von Viber.
+    const viber = geprueft.nurViber;
+    const knopf = $("#ls-telweiter");
+    const knopfText = this.text(viber ? "telKnopfViber" : "telKnopf");
+    if (knopf && knopfText) schreibe(knopf, knopfText);
+    const info = $("#ls-telinfo");
+    const infoText = this.text(viber ? "telInfoViber" : "telInfo");
+    if (info && infoText) schreibe(info, infoText);
   }
 
   #telWeiter() {
-    const geprueft = telefonPruefen(this.#telLesen(), LIFESKIN_TELEFON_VORWAHL);
+    const geprueft = this.#nummernPruefen();
     if (!geprueft.ok) {
-      this.#telFehler(geprueft.grund);
+      this.#telFehler(geprueft.grund, geprueft.feld);
       return;
     }
     this.#telFehler(null);
@@ -2035,6 +2092,11 @@ export class Trichter {
     this.zustand.nummerGegeben = true;
     try {
       this.sitzung.ergaenze({ phone: geprueft.nummer, phoneConsent: true });
+      // DIE VIBER-NUMMER IN EINEM EIGENEN SCHREIBVORGANG. Kennt die
+      // Firestore-Regel das Feld (noch) nicht, weist sie nur diesen
+      // Vorgang ab - die Nummer oben steht trotzdem. Ohne WhatsApp ist
+      // "phone" dieselbe Nummer, und daran erkennt Heart den Viber-Fall.
+      if (geprueft.viber) this.sitzung.ergaenze({ viber: geprueft.viber });
       this.pixel.meldeAbgabe("telefon");
       // Das Ereignis, auf das die Anzeigen optimieren. Es faellt auf
       // JEDEM Weg genau einmal - der Pixel sperrt jedes Ereignis nach
@@ -2059,13 +2121,14 @@ export class Trichter {
   // Jeder Grund sagt, was zu tun ist. "Ungueltig" sagt das nicht, und ein
   // Feld, das rot wird, ohne zu sagen warum, wird nicht korrigiert,
   // sondern verlassen.
-  #telFehler(grund) {
+  #telFehler(grund, feld = "#ls-telfeld") {
     const schluessel = grund
       ? ({ leer: "telLeer", kurz: "telKurz", lang: "telLang", zeichen: "telZeichen" }[grund]
         || "telLeer")
       : null;
     const zeile = $("#ls-telfehler");
-    $("#ls-telfeld")?.setAttribute("aria-invalid", schluessel ? "true" : "false");
+    $("#ls-telfeld")?.setAttribute("aria-invalid", schluessel && feld === "#ls-telfeld" ? "true" : "false");
+    $("#ls-viberfeld")?.setAttribute("aria-invalid", schluessel && feld === "#ls-viberfeld" ? "true" : "false");
     if (!zeile) return;
     zeile.hidden = !schluessel;
     schreibe(zeile, schluessel ? t(FRAGEN_TEXTE[schluessel], this.sprache) : "");

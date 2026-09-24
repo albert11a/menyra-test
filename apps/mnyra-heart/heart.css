@@ -6358,3 +6358,7 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 .heart-live__person span { color: #7fe0c3; font-size: 12px; }
 .heart-live__person--anonym { cursor: default; }
 .heart-live__person--anonym b { color: var(--heart-text-soft, #c7c7c2); }
+/* Viber statt WhatsApp (Patient ohne WhatsApp). */
+.heart-befund__wataicon--viber { color: #8f7ff5; }
+.heart-befund__knopf--viber { flex-direction: row; flex-wrap: wrap; column-gap: 8px; background: #7360f2; border-color: transparent; color: #fff; }
+.heart-befund__knopf--viber small { flex-basis: 100%; text-align: center; font-size: 12px; font-weight: 500; color: #e6e1ff; margin-top: -2px; }

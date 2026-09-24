@@ -491,6 +491,10 @@ export function bindHeartEvents({
       }
       return;
     }
+    if (action === "lifeskin-viber") {
+      operations.lifeskinViber?.(target.getAttribute("data-wert"), target.getAttribute("data-nummer"));
+      return;
+    }
     if (action === "lifeskin-text-kopieren") {
       await operations.lifeskinTextKopieren?.(target.getAttribute("data-wert"),
         target.getAttribute("data-was"));
