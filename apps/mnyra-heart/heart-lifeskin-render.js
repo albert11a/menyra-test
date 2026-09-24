@@ -915,29 +915,22 @@ function vorschauFeld(sitzung, bild) {
   </span>`;
 }
 
-// Die Zeitangabe der Fallzeile - kurz, weil daneben drei Marken stehen.
-//
-// Von heute reicht die Uhrzeit: Das Datum ist dann dasselbe wie in jeder
-// anderen Zeile und sagt nichts. Aelteres traegt sein Datum, und die
-// Uhrzeit von vorletzter Woche interessiert niemanden mehr - sie steht
-// beim Aufklappen. So passt die zweite Zeile auch auf ein Telefon.
+// Die Zeitangabe der Fallzeile: Datum und Uhrzeit, am Ende der Marken.
 function fallZeit(sitzung) {
-  return sitzung.tag === heuteSchluessel(0)
-    ? uhrzeit(sitzung.createdAt)
-    : datumKurz(sitzung.createdAt);
+  return `${datumKurz(sitzung.createdAt)} ${uhrzeit(sitzung.createdAt)}`;
 }
 
-// Die drei Marken der zweiten Zeile. Sie stehen IMMER alle drei da, auch
+// Die Marken der unteren Zeile: der Weg, dann Geöffnet und Kasse. Sie stehen IMMER da, auch
 // wenn sie nicht erreicht sind - nur blass. So ist auf einen Blick zu sehen,
 // wo jemand haengengeblieben ist, ohne die Zeilen untereinander zu
 // vergleichen.
 function fallMarken(sitzung) {
   const marken = [
-    { id: "wa", label: "WhatsApp", an: !!(sitzung.waSent || sitzung.waClick) },
-    { id: "auf", label: "geoeffnet", an: !!sitzung.berichtGeoeffnet },
-    { id: "kauf", label: "bestellt", an: !!sitzung.hatBestellt }
+    { id: "auf", label: "Geöffnet", an: !!sitzung.berichtGeoeffnet },
+    { id: "kasse", label: "Kasse", an: !!(sitzung.kasseGeoeffnet || sitzung.hatBestellt) }
   ];
-  const reihe = (sitzung.nurBericht ? `<span class="heart-lifeskin-pill heart-lifeskin-pill--paskanim heart-lifeskin-pill--an" title="Die Sitzung kam nicht an, der Bericht schon - Kontaktdaten fehlen">nur Bericht</span>` : "")
+  const reihe = artMarke(sitzung)
+    + (sitzung.nurBericht ? `<span class="heart-lifeskin-pill heart-lifeskin-pill--paskanim heart-lifeskin-pill--an" title="Die Sitzung kam nicht an, der Bericht schon - Kontaktdaten fehlen">nur Bericht</span>` : "")
     + marken.map((m) => `<span class="heart-lifeskin-pill heart-lifeskin-pill--${m.id}${m.an ? " heart-lifeskin-pill--an" : ""}">${escapeHtml(m.label)}</span>`).join("");
 
   // OHNE SCAN STEHT ES VORNE UND IMMER AN - ABER NUR NOCH AN EINEM FALL
@@ -975,15 +968,48 @@ function fallMarken(sitzung) {
 function fallZeile(sitzung) {
   const typ = typVon(sitzung);
   const text = String(sitzung.pyetja || sitzung.problemi || "").trim();
+  const reihe = `<span class="heart-lifeskin-fall__fuss">${fallMarken(sitzung)}<span class="heart-lifeskin-fall__zeit">${escapeHtml(fallZeit(sitzung))}</span></span>`;
   if ((typ === "trup" || typ === "pytje") && text) {
     const kurz = text.length > 110 ? `${text.slice(0, 110).trimEnd()}…` : text;
-    return `<span class="heart-lifeskin-fall__text">${escapeHtml(kurz)}</span>`;
+    return `${reihe}<span class="heart-lifeskin-fall__text">${escapeHtml(kurz)}</span>`;
   }
-  return fallMarken(sitzung);
+  return reihe;
+}
+
+// AUSWAHL: Das Zahnrad oben rechts schaltet sie ein. Dann waehlt ein Tipp
+// den Fall statt ihn zu oeffnen, und oben stehen Alle, Archivieren,
+// Später und Löschen (zweimal tippen - es gibt kein Zurueck).
+function renderAuswahlLeiste(fach, ids, auswahl, loeschGefragt) {
+  const gewaehlt = auswahl.filter((id) => ids.includes(id));
+  const alle = ids.length > 0 && gewaehlt.length === ids.length;
+  const aus = gewaehlt.length ? "" : " disabled";
+  const archiv = fach === "archiviert"
+    ? { wert: "archiv-weg", text: "Zurückholen", icon: "undo" }
+    : { wert: "archiv", text: "Archivieren", icon: "archive" };
+  const spaeter = fach === "spaeter"
+    ? { wert: "spaeter-weg", text: "Zurück", icon: "undo" }
+    : { wert: "spaeter", text: "Später", icon: "clock" };
+  const taste = (t, extra = "") => `<button type="button" class="heart-faelle-wahl__taste${extra}" data-action="lifeskin-auswahl-tun"
+      data-wert="${t.wert}"${aus}>${renderHeartIcon(t.icon, "heart-faelle-wahl__icon")}<span>${escapeHtml(t.text)}</span></button>`;
+  return `
+      <div class="heart-faelle-wahl">
+        <div class="heart-faelle-wahl__kopf">
+          <button type="button" class="heart-faelle-wahl__alle" data-action="lifeskin-auswahl-alle"
+                  data-wert="${alle ? "" : escapeHtml(ids.join(","))}">${alle ? "Keine" : "Alle auswählen"}</button>
+          <span class="heart-faelle-wahl__zahl">${gewaehlt.length} ausgewählt</span>
+          <button type="button" class="heart-faelle-wahl__fertig" data-action="lifeskin-auswahl">Fertig</button>
+        </div>
+        <div class="heart-faelle-wahl__tasten">
+          ${taste(archiv)}
+          ${taste(spaeter)}
+          ${taste({ wert: "loeschen", text: loeschGefragt && gewaehlt.length ? `Wirklich ${gewaehlt.length} löschen?` : "Löschen", icon: "trash" },
+            ` heart-faelle-wahl__taste--scharf${loeschGefragt ? " heart-faelle-wahl__taste--frage" : ""}`)}
+        </div>
+      </div>`;
 }
 
 function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle", fuss = "",
-  vorschau = {}) {
+  vorschau = {}, { auswahl = null, auswahlLoeschen = false } = {}) {
   // ALLE WEGE IN EINER LISTE. Ein Fall ist ein Fall, egal ueber welchen
   // Weg er hereinkam - "abgegeben" heisst auf jedem Weg dasselbe.
   // Dieselbe Definition wie die Kennzahl: auch spaetere Schritte und
@@ -1009,20 +1035,26 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
     return alsKlapp(leererBlock(titel, "Noch kein abgeschlossener Fall."), "faelle", { zahl });
   }
 
-  const zeilen = gewaehlt.map((s) => `
-    <button type="button" class="heart-lifeskin-fall" data-action="lifeskin-sitzung" data-id="${escapeHtml(s.id)}">
+  const waehlen = Array.isArray(auswahl);
+  const gewaehltSet = new Set(waehlen ? auswahl : []);
+  const zeilen = gewaehlt.map((s) => {
+    const an = gewaehltSet.has(s.id);
+    const tel = s.phone || s.address?.telefon || "";
+    return `
+    <button type="button" class="heart-lifeskin-fall${waehlen ? " heart-lifeskin-fall--waehlen" : ""}${an ? " heart-lifeskin-fall--an" : ""}"
+            data-action="${waehlen ? "lifeskin-auswahl-fall" : "lifeskin-sitzung"}" data-id="${escapeHtml(s.id)}"${waehlen ? ` aria-pressed="${an}"` : ""}>
       ${vorschauFeld(s, vorschau[s.id])}
       <span class="heart-lifeskin-fall__leib">
-        <span class="heart-lifeskin-fall__kopf">
-          <b>${escapeHtml(s.name || "—")}</b>
-          ${s.ageBand ? `<span class="heart-lifeskin-fall__alter">${escapeHtml(s.ageBand)}</span>` : ""}
+        <span class="heart-lifeskin-fall__kopf"><b>${escapeHtml(s.name || "—")}</b></span>
+        <span class="heart-lifeskin-fall__nummern">
           ${s.code ? `<span class="heart-lifeskin-code">${escapeHtml(s.code)}</span>` : ""}
-          ${artMarke(s)}
-          <span class="heart-lifeskin-fall__zeit">${escapeHtml(fallZeit(s))}</span>
+          ${tel ? `<span class="heart-lifeskin-fall__tel">${escapeHtml(tel)}</span>` : ""}
         </span>
-        <span class="heart-lifeskin-fall__fuss">${fallZeile(s)}</span>
+        ${fallZeile(s)}
       </span>
-    </button>`).join("");
+      ${waehlen ? `<span class="heart-lifeskin-fall__wahl" aria-hidden="true">${an ? renderHeartIcon("check", "heart-lifeskin-fall__haken") : ""}</span>` : ""}
+    </button>`;
+  }).join("");
 
   const leerFach = {
     alle: "Nichts offen — alles beantwortet, zurueckgelegt oder abgehakt.",
@@ -1033,16 +1065,20 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
     archiviert: "Nichts abgehakt."
   }[fach] || "Nichts hier.";
 
-  // DIE CHIPS STEHEN UEBER DER KARTE, wie beim Trichter.
+  // DIE CHIPS STEHEN UEBER DER KARTE, wie beim Trichter. Oben rechts im
+  // Kopf das Zahnrad fuer die Auswahl.
+  const zahnrad = `<button type="button" class="heart-faelle-zahnrad${waehlen ? " heart-faelle-zahnrad--an" : ""}"
+      data-action="lifeskin-auswahl" aria-label="Fälle auswählen" aria-pressed="${waehlen}">${renderHeartIcon("zahnrad", "heart-faelle-zahnrad__icon")}</button>`;
   return alsKlapp(`
     ${chips}
-    <section class="heart-lifeskin-block">
+    <section class="heart-lifeskin-block heart-faelle">
       <h3 class="heart-lifeskin-block__titel">${escapeHtml(titel)}</h3>
-      <p class="heart-lifeskin-block__fuss">${escapeHtml(fuss || "Abgegebene Faelle aus allen Wegen, die neuesten oben. Antippen zeigt alles Weitere.")}</p>
+      ${fuss ? `<p class="heart-lifeskin-block__fuss">${escapeHtml(fuss)}</p>` : ""}
+      ${waehlen ? renderAuswahlLeiste(fach, gewaehlt.map((s) => s.id), auswahl, auswahlLoeschen) : ""}
       ${zeilen ? `<div class="heart-lifeskin-faelle">${zeilen}</div>`
         : `<p class="heart-lifeskin-leer">${escapeHtml(leerFach)}</p>`}
       ${mehr > 0 ? `<p class="heart-lifeskin-leer">+ ${mehr} ältere in diesem Fach.</p>` : ""}
-    </section>`, "faelle", { zahl, ton: neu ? "offen" : "" });
+    </section>`, "faelle", { zahl, ton: neu ? "offen" : "", kopfExtra: zahnrad });
 }
 
 // Die eigenen Laeufe. Sie stehen ganz unten und in keiner Zahl darueber.
@@ -2703,7 +2739,7 @@ export function renderLifeskin(zustand) {
         : renderLive(zustand.live)}
       ${renderTrichter(trichterListe, zustand.trichterOffen || "main")}
       ${renderAnalysen(sitzungen, zustand.berichte || {}, zustand.fach || "alle", "Fälle", "",
-        zustand.vorschau || {})}
+        zustand.vorschau || {}, { auswahl: zustand.auswahl ?? null, auswahlLoeschen: !!zustand.auswahlLoeschen })}
       ${renderBestellungen(sitzungen, zustand.bestellZeitraum || "heute")}
       ${renderNachfassen(zahlen)}
 

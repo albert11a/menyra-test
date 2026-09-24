@@ -1596,6 +1596,64 @@ async function loescheLifeskinSitzung(id) {
   }
 }
 
+// AUSWAHL IN DER FALLLISTE - mehrere Faelle auf einmal archivieren,
+// zuruecklegen oder loeschen.
+function lifeskinAuswahl() {
+  const an = Array.isArray(store.getState().lifeskin?.auswahl);
+  // Einschalten klappt die Karte auf - sonst waehlt man in einer
+  // zugeklappten Liste.
+  if (!an) {
+    klappSetzen("faelle", true);
+    const karte = globalThis.document?.querySelector?.('details[data-klapp="faelle"]');
+    if (karte) karte.open = true;
+  }
+  actions.patchLifeskin({ auswahl: an ? null : [], auswahlLoeschen: false });
+}
+
+function lifeskinAuswahlFall(id) {
+  const kennung = String(id || "").trim();
+  const jetzt = store.getState().lifeskin?.auswahl;
+  if (!kennung || !Array.isArray(jetzt)) return;
+  const neu = jetzt.includes(kennung) ? jetzt.filter((x) => x !== kennung) : [...jetzt, kennung];
+  actions.patchLifeskin({ auswahl: neu, auswahlLoeschen: false });
+}
+
+function lifeskinAuswahlAlle(ids) {
+  const liste = String(ids || "").split(",").map((x) => x.trim()).filter(Boolean);
+  actions.patchLifeskin({ auswahl: liste, auswahlLoeschen: false });
+}
+
+async function lifeskinAuswahlTun(was, knopf) {
+  const stand = store.getState().lifeskin || {};
+  const ids = Array.isArray(stand.auswahl) ? [...stand.auswahl] : [];
+  if (!ids.length) return;
+  const marken = { archiv: { archiviert: true }, "archiv-weg": { archiviert: false },
+    spaeter: { spaeter: true }, "spaeter-weg": { spaeter: false } }[was];
+  if (was === "loeschen" && !stand.auswahlLoeschen) {
+    actions.patchLifeskin({ auswahlLoeschen: true });
+    return;
+  }
+  if (!marken && was !== "loeschen") return;
+  if (knopf) knopf.disabled = true;
+  let fertig = 0;
+  try {
+    for (const id of ids) {
+      if (was === "loeschen") await loescheSitzung(id);
+      else await setzeBerichtMarke(id, marken);
+      fertig += 1;
+    }
+    actions.patchLifeskin({ auswahl: [], auswahlLoeschen: false });
+    await ladeLifeskinBereich({ force: true });
+    const wort = { archiv: "archiviert", "archiv-weg": "zurückgeholt", spaeter: "für später zurückgelegt",
+      "spaeter-weg": "zurück in der Liste", loeschen: "gelöscht - mit Fotos und Befund" }[was];
+    setToast("Fälle", `${fertig} ${fertig === 1 ? "Fall" : "Fälle"} ${wort}.`, "success");
+  } catch (fehler) {
+    actions.patchLifeskin({ auswahlLoeschen: false });
+    await ladeLifeskinBereich({ force: true }).catch(() => {});
+    setToast("Fälle", `${fertig} von ${ids.length} erledigt. ${fehler?.message || "Der Rest ging nicht."}`, "danger");
+  }
+}
+
 // Die vorbereiteten Mittel anlegen.
 //
 // Fuenf Formulare mit Wirkstoffen, Anwendung und Regeln von Hand
@@ -3110,8 +3168,13 @@ const operations = {
     actions.patchLifeskin({ trichterOffen: String(id || "main").trim() });
   },
   setLifeskinFach(id) {
-    actions.patchLifeskin({ fach: String(id || "alle").trim() });
+    const auswahl = store.getState().lifeskin?.auswahl;
+    actions.patchLifeskin({ fach: String(id || "alle").trim(), auswahl: Array.isArray(auswahl) ? [] : null, auswahlLoeschen: false });
   },
+  lifeskinAuswahl() { lifeskinAuswahl(); },
+  lifeskinAuswahlFall(id) { lifeskinAuswahlFall(id); },
+  lifeskinAuswahlAlle(ids) { lifeskinAuswahlAlle(ids); },
+  lifeskinAuswahlTun(was, knopf) { return lifeskinAuswahlTun(was, knopf); },
   setLifeskinBestellZeitraum(id) {
     actions.patchLifeskin({ bestellZeitraum: String(id || "heute").trim() });
   },

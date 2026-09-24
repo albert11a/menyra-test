@@ -133,6 +133,10 @@ export function createHeartLifeskinInitialState() {
     // Zweite Stufe beim Loeschen einer einzelnen Analyse: die Kennung, nach
     // der gefragt wurde. Firestore kennt keinen Papierkorb.
     loeschGefragt: "",
+    // Die Auswahl in der Fallliste: null = aus, sonst die gewaehlten
+    // Kennungen. auswahlLoeschen ist die zweite Stufe beim Loeschen.
+    auswahl: null,
+    auswahlLoeschen: false,
     // Welches Produkt bearbeitet wird ("__neu" fuer ein neues).
     produktOffen: "",
     produktStatus: "",

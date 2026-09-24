@@ -449,6 +449,22 @@ export function bindHeartEvents({
       operations.starteDeploy?.(target);
       return;
     }
+    if (action === "lifeskin-auswahl") {
+      operations.lifeskinAuswahl?.();
+      return;
+    }
+    if (action === "lifeskin-auswahl-fall") {
+      operations.lifeskinAuswahlFall?.(target.getAttribute("data-id"));
+      return;
+    }
+    if (action === "lifeskin-auswahl-alle") {
+      operations.lifeskinAuswahlAlle?.(target.getAttribute("data-wert"));
+      return;
+    }
+    if (action === "lifeskin-auswahl-tun") {
+      await operations.lifeskinAuswahlTun?.(target.getAttribute("data-wert"), target);
+      return;
+    }
     if (action === "lifeskin-fach") {
       operations.setLifeskinFach?.(target.getAttribute("data-wert"));
       return;

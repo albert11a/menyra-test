@@ -129,80 +129,67 @@ test("der Chip fuehrt zu einer Operation, die es gibt", () => {
 // Die Fallzeile
 // ---------------------------------------------------------------------------
 
-test("die Zeile traegt Name, Alter, Fallnummer und Anzahl der Fotos", () => {
+test("die Zeile traegt Name, Fallnummer, Telefon und Anzahl der Fotos - kein Alter", () => {
   const html = zeichne({
-    sitzungen: [sitzung("a", { name: "Arta", ageBand: "25-34", code: "LS-77", photos: Array(10).fill("x") })]
+    sitzungen: [sitzung("a", { name: "Arta", ageBand: "25-34", code: "LS-77", phone: "049111222", photos: Array(10).fill("x") })]
   });
-  const zeile = html.slice(html.indexOf('class="heart-lifeskin-fall"'));
+  const zeile = html.slice(html.indexOf('class="heart-lifeskin-fall'), html.indexOf("</button>", html.indexOf('class="heart-lifeskin-fall')));
   assert.ok(zeile.includes("Arta"));
-  assert.ok(zeile.includes("25-34"));
   assert.ok(zeile.includes("LS-77"));
-  // Die Anzahl sitzt auf dem Bild: GEMESSEN - neben dem Bild bleiben auf
-  // einem 390-Punkte-Telefon 264 Punkte, und mit ihr in der ersten Zeile
-  // blieben fuer den Namen keine 50 mehr.
+  assert.ok(zeile.includes("049111222"));
+  assert.ok(!zeile.includes("25-34"), "Das Alter steht wieder in der Zeile");
+  // Die Anzahl sitzt auf dem Bild.
   assert.ok(zeile.includes('class="heart-lifeskin-fall__anzahl" title="10 Fotos">10<'));
 });
 
-test("die zweite Zeile zeigt alle drei Marken - erreichte hervorgehoben", () => {
-  const html = zeichne({
-    sitzungen: [
-      sitzung("weit", { waSent: true, berichtGeoeffnet: true, hatBestellt: true }),
-      sitzung("kurz")
-    ],
-    // Beide Zeilen nebeneinander: "weit" hat bestellt und liegt damit in
-    // seinem eigenen Fach - ein Fall liegt in genau einem.
-    fach: "bestellt"
-  });
-  const offen = zeichne({ sitzungen: [sitzung("kurz")], fach: "alle" });
-  // Nur den Analysenblock ansehen: "weit" steht auch oben bei den
-  // Bestellungen, und dort sieht die Zeile anders aus.
-  const analysen = html.slice(html.indexOf(">Fälle<"));
-  const teile = analysen.split('class="heart-lifeskin-fall"');
-  const weit = teile.find((t) => t.includes('data-id="weit"')) || "";
-  const kurz = offen.slice(offen.indexOf(">Fälle<"))
-    .split('class="heart-lifeskin-fall"').find((t) => t.includes('data-id="kurz"')) || "";
+// Unten: Weg | Geöffnet | Kasse, rechts Datum und Uhrzeit. Kein
+// WhatsApp-Chip und kein "bestellt" - das hat sein eigenes Fach.
+function zeileVon(html, id) {
+  const liste = html.slice(html.indexOf(">Fälle<"));
+  const start = liste.indexOf(`data-id="${id}"`);
+  return start < 0 ? "" : liste.slice(start, liste.indexOf("</button>", start));
+}
 
-  // Beide Zeilen tragen alle drei Marken. Nur so liest sich auf einen
-  // Blick, WO jemand haengengeblieben ist.
+test("die untere Zeile: Weg, Geöffnet, Kasse - erreichte hervorgehoben", () => {
+  const weit = zeileVon(zeichne({ sitzungen: [sitzung("weit", { typ: "scan", berichtGeoeffnet: true, kasseGeoeffnet: true })], fach: "alle" }), "weit");
+  const kurz = zeileVon(zeichne({ sitzungen: [sitzung("kurz", { typ: "scan" })], fach: "alle" }), "kurz");
   for (const stueck of [weit, kurz]) {
-    assert.ok(stueck.includes("WhatsApp"));
-    assert.ok(stueck.includes("geoeffnet"));
-    assert.ok(stueck.includes("bestellt"));
+    const fuss = stueck.slice(stueck.indexOf("__fuss"));
+    assert.ok(fuss.indexOf("SCAN") < fuss.indexOf("Geöffnet") && fuss.indexOf("Geöffnet") < fuss.indexOf("Kasse"), "Reihenfolge Weg | Geöffnet | Kasse stimmt nicht");
+    assert.ok(!/WhatsApp|bestellt/.test(fuss), "WhatsApp oder bestellt steht wieder in der Zeile");
   }
-  assert.ok(weit.includes("heart-lifeskin-pill--wa heart-lifeskin-pill--an"));
-  assert.ok(weit.includes("heart-lifeskin-pill--kauf heart-lifeskin-pill--an"));
+  assert.ok(weit.includes("heart-lifeskin-pill--auf heart-lifeskin-pill--an"));
+  assert.ok(weit.includes("heart-lifeskin-pill--kasse heart-lifeskin-pill--an"));
   assert.ok(!kurz.includes("heart-lifeskin-pill--an"), "Eine Zeile ohne Fortschritt zeigt eine Marke als erreicht");
 });
 
-test("es bleiben zwei Zeilen: oben wer, unten wie weit", () => {
+test("Datum und Uhrzeit stehen am Ende der unteren Zeile", () => {
   const html = zeichne({
-    sitzungen: [sitzung("a", { waSent: true, berichtGeoeffnet: true, hatBestellt: true })],
-    fach: "bestellt"
-  });
-  const zeile = html.slice(html.indexOf('class="heart-lifeskin-fall"'));
-  const kopf = zeile.slice(zeile.indexOf("__kopf"), zeile.indexOf("__fuss"));
-  const fuss = zeile.slice(zeile.indexOf("__fuss"));
-  // Die Zeit gehoert nach oben. Unten stehen drei Marken, und die fuellen
-  // auf einem Telefon die Zeile bereits ganz aus - GEMESSEN: 237 von 244
-  // Punkten. Mit der Zeit dazu wurden es drei Zeilen statt zwei.
-  assert.ok(kopf.includes("heart-lifeskin-fall__zeit"), "Die Zeit steht nicht in der ersten Zeile");
-  assert.ok(!fuss.includes("heart-lifeskin-fall__zeit"));
-  assert.ok(fuss.includes("heart-lifeskin-pill"));
-  // Links steht jetzt das Bild - die alte Zeitspalte der Analysenzeile ist weg.
-  assert.ok(!zeile.slice(0, zeile.indexOf("heart-lifeskin-fall__leib")).includes("heart-lifeskin-zeile__zeit"));
-});
-
-test("von heute die Uhrzeit, aelteres traegt sein Datum", () => {
-  const html = zeichne({
-    sitzungen: [sitzung("heute"), sitzung("alt", { tag: tagVor(4), createdAt: new Date(Date.now() - 4 * 864e5).toISOString() })],
+    sitzungen: [sitzung("alt", { tag: tagVor(4), createdAt: new Date(Date.now() - 4 * 864e5).toISOString() })],
     fach: "alle"
   });
-  const analysen = html.slice(html.indexOf(">Fälle<"));
-  const teile = analysen.split('class="heart-lifeskin-fall"');
-  const heute = teile.find((t) => t.includes('data-id="heute"')) || "";
-  const alt = teile.find((t) => t.includes('data-id="alt"')) || "";
-  assert.match(heute, /__zeit">\d{2}:\d{2}</, "Von heute fehlt die Uhrzeit");
-  assert.match(alt, /__zeit">\d{2}\.\d{2}\.</, "Aelteres traegt kein Datum");
+  const zeile = zeileVon(html, "alt");
+  const fuss = zeile.slice(zeile.indexOf("__fuss"));
+  assert.match(fuss, /__zeit">\d{2}\.\d{2}\. \d{2}:\d{2}</, "Datum und Uhrzeit fehlen");
+  assert.ok(!zeile.slice(zeile.indexOf("__kopf"), zeile.indexOf("__fuss")).includes("__zeit"));
+});
+
+test("das Zahnrad schaltet die Auswahl: alle, archivieren, später, löschen", () => {
+  const aus = zeichne({ sitzungen: [sitzung("a"), sitzung("b")], fach: "alle" });
+  assert.match(aus, /data-action="lifeskin-auswahl" aria-label="Fälle auswählen"/);
+  assert.match(aus, /data-action="lifeskin-sitzung" data-id="a"/);
+  assert.doesNotMatch(aus, /heart-faelle-wahl"/);
+  // Der Satz "Abgegebene Faelle ..." ist weg.
+  assert.doesNotMatch(aus, /Abgegebene Faelle/);
+
+  const an = zeichne({ sitzungen: [sitzung("a"), sitzung("b")], fach: "alle", auswahl: ["a"] });
+  assert.match(an, /data-action="lifeskin-auswahl-fall" data-id="a" aria-pressed="true"/);
+  assert.match(an, /data-action="lifeskin-auswahl-fall" data-id="b" aria-pressed="false"/);
+  assert.match(an, /1 ausgewählt/);
+  assert.match(an, /data-action="lifeskin-auswahl-alle"\s+data-wert="(a,b|b,a)"/);
+  for (const wert of ["archiv", "spaeter", "loeschen"]) assert.match(an, new RegExp(`data-wert="${wert}"`));
+  const frage = zeichne({ sitzungen: [sitzung("a")], fach: "alle", auswahl: ["a"], auswahlLoeschen: true });
+  assert.match(frage, /Wirklich 1 löschen\?/);
 });
 
 // ---------------------------------------------------------------------------
@@ -227,10 +214,11 @@ test("liegt das Bild vor, steht es da - und die Zeile fragt nicht noch einmal", 
 
 test("das Bild ist rund geschnitten und fuellt seinen Platz", () => {
   const block = CSS.slice(CSS.indexOf(".heart-lifeskin-fall__bild"));
-  assert.match(block, /border-radius:\s*15px/);
+  assert.match(block, /border-radius:\s*1[56]px/);
   assert.match(block, /object-fit:\s*cover/);
   // Feste Groesse, sonst springt die Liste beim Nachladen.
   assert.match(block, /width:\s*48px;\s*height:\s*48px/);
+  assert.match(CSS, /\.heart-faelle \.heart-lifeskin-fall__bild \{ width: 56px; height: 56px;/);
 });
 
 test("die Marken sind so gross wie der Text daneben", () => {

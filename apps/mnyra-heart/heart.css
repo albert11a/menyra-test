@@ -6167,3 +6167,85 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 }
 .heart-akte__mehr[open] > .heart-akte__mehrkopf::after { transform: rotate(225deg) translateY(-2px); }
 .heart-akte__mehrleib { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; padding: 2px 14px 14px; }
+
+/* ══ FALLLISTE (Upgrade 24.09.) ══════════════════════════════════════
+   Bild, Name; darunter Fallnummer und Telefon; darunter Weg | Geöffnet |
+   Kasse und rechts Datum und Uhrzeit. Kein Alter, kein WhatsApp-Chip,
+   kein "bestellt" - das hat sein eigenes Fach. */
+.heart-faelle .heart-klapp__kopf { min-height: 36px; }
+.heart-faelle-zahnrad {
+  display: grid; place-items: center; width: 36px; height: 36px; flex: none; margin: -4px -6px -4px 0;
+  border-radius: 12px; border: 0; background: transparent; color: var(--heart-muted, #8f918d); cursor: pointer;
+}
+.heart-faelle-zahnrad:active { background: #ffffff14; }
+.heart-faelle-zahnrad--an { background: #3fbf9b26; color: #7fe0c3; }
+.heart-faelle-zahnrad__icon { width: 19px; height: 19px; }
+
+.heart-faelle .heart-lifeskin-fall {
+  grid-template-columns: 56px minmax(0, 1fr); gap: 14px; padding: 14px 0; align-items: center;
+  border-bottom-color: var(--heart-line, #26292a);
+}
+.heart-faelle .heart-lifeskin-fall:first-child { padding-top: 6px; }
+.heart-faelle .heart-lifeskin-fall__bild { width: 56px; height: 56px; border-radius: 16px; }
+.heart-faelle .heart-lifeskin-fall__leib { gap: 6px; }
+.heart-faelle .heart-lifeskin-fall__kopf b { font-size: 16px; font-weight: 700; color: var(--heart-text, #f7f7f2); }
+.heart-lifeskin-fall__nummern {
+  display: flex; align-items: baseline; gap: 12px; min-width: 0; white-space: nowrap; overflow: hidden;
+  font-size: 13px; font-variant-numeric: tabular-nums;
+}
+.heart-lifeskin-fall__nummern .heart-lifeskin-code { font-size: 13px; flex: none; letter-spacing: .02em; }
+.heart-lifeskin-fall__tel { color: var(--heart-text-soft, #c7c7c2); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.heart-faelle .heart-lifeskin-fall__fuss { gap: 6px; flex-wrap: nowrap; min-width: 0; }
+.heart-faelle .heart-lifeskin-fall__fuss .heart-lifeskin-art {
+  font-size: 10px; padding: 3px 7px; border-radius: 999px; line-height: 1.2; flex: none;
+}
+.heart-faelle .heart-lifeskin-pill { padding: 2px 8px; line-height: 1.35; opacity: .6; border-color: var(--heart-line, #34383a); flex: none; }
+.heart-faelle .heart-lifeskin-pill--an { opacity: 1; border-color: transparent; }
+.heart-faelle .heart-lifeskin-pill--auf.heart-lifeskin-pill--an { background: #5b8def2e; color: #a9c4ff; }
+.heart-faelle .heart-lifeskin-pill--kasse.heart-lifeskin-pill--an { background: #f4b9422e; color: #f6cd7a; }
+.heart-faelle .heart-lifeskin-fall__zeit { margin-left: auto; padding-left: 6px; }
+.heart-faelle .heart-lifeskin-fall__text { -webkit-line-clamp: 1; }
+
+/* Auswahl */
+/* Der Kreis sitzt mitten auf dem Foto - so braucht die Zeile keine
+   eigene Spalte dafuer und bleibt so breit wie sonst. */
+.heart-faelle .heart-lifeskin-fall__bild { grid-row: 1; grid-column: 1; }
+.heart-faelle .heart-lifeskin-fall__leib { grid-row: 1; grid-column: 2; }
+.heart-lifeskin-fall__wahl {
+  grid-row: 1; grid-column: 1; justify-self: center; align-self: center; z-index: 1;
+  width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  border: 2px solid #fff; background: #0000004d; box-shadow: 0 1px 4px #00000066;
+}
+.heart-lifeskin-fall--waehlen:not(.heart-lifeskin-fall--an) .heart-lifeskin-fall__bild { opacity: .7; }
+.heart-lifeskin-fall--an .heart-lifeskin-fall__wahl { background: #3fbf9b; border-color: #3fbf9b; color: #06231b; }
+.heart-lifeskin-fall__haken { width: 14px; height: 14px; stroke-width: 3; }
+.heart-faelle-wahl {
+  display: flex; flex-direction: column; gap: 10px; padding: 10px 0 12px;
+  border-bottom: 1px solid var(--heart-line, #26292a);
+}
+.heart-faelle-wahl__kopf { display: flex; align-items: center; gap: 10px; }
+.heart-faelle-wahl__alle, .heart-faelle-wahl__fertig {
+  border: 0; background: transparent; font: inherit; font-size: 14px; font-weight: 700; color: #7fe0c3; padding: 6px 0; cursor: pointer;
+}
+.heart-faelle-wahl__zahl { flex: 1; text-align: center; font-size: 13px; color: var(--heart-muted, #8f918d); }
+.heart-faelle-wahl__tasten { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.heart-faelle-wahl__taste {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  min-height: 56px; padding: 6px 4px; border-radius: 14px; white-space: nowrap;
+  border: 1px solid var(--heart-line, #34383a); background: #ffffff0d;
+  color: var(--heart-text, #f7f7f2); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer;
+}
+.heart-faelle-wahl__taste:disabled { opacity: .4; cursor: default; }
+.heart-faelle-wahl__icon { width: 18px; height: 18px; }
+.heart-faelle-wahl__taste--scharf { color: #ff8a80; }
+.heart-faelle-wahl__taste--frage { background: #e5484d; border-color: transparent; color: #fff; white-space: normal; text-align: center; }
+/* Schmale Telefone (bis 380 px): etwas enger, damit Datum und Uhrzeit in
+   der Zeile bleiben. */
+@media (max-width: 380px) {
+  .heart-faelle .heart-lifeskin-fall { grid-template-columns: 50px minmax(0, 1fr); gap: 12px; }
+  .heart-faelle .heart-lifeskin-fall__bild { width: 50px; height: 50px; border-radius: 15px; }
+  .heart-faelle .heart-lifeskin-fall__fuss { gap: 5px; }
+  .heart-faelle .heart-lifeskin-pill { padding: 2px 6px; }
+  .heart-faelle .heart-lifeskin-fall__fuss .heart-lifeskin-art { padding: 3px 6px; }
+  .heart-faelle .heart-lifeskin-fall__zeit { padding-left: 2px; letter-spacing: -.01em; }
+}

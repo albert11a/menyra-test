@@ -56,7 +56,8 @@ export function klappZuruecksetzen() { stand = new Map(); sichern(); }
 //   zahl       die Live-Zahl im Kopf - steht nur, wenn zugeklappt
 //   blink      der Rand blinkt, solange zugeklappt (Live · Kauf)
 //   standard   ob die Karte offen ist, solange niemand sie angefasst hat
-export function alsKlapp(html, name, { standard = true, zahl = "", blink = false, ton = "" } = {}) {
+//   kopfExtra  HTML rechts im Kopf, immer sichtbar (z. B. ein Knopf)
+export function alsKlapp(html, name, { standard = true, zahl = "", blink = false, ton = "", kopfExtra = "" } = {}) {
   const auf = /<section class="heart-lifeskin-block([^"]*)"([^>]*)>/;
   const titel = /<h3 class="heart-lifeskin-block__titel">([\s\S]*?)<\/h3>/;
   if (!auf.test(html) || !titel.test(html)) return html;
@@ -68,5 +69,5 @@ export function alsKlapp(html, name, { standard = true, zahl = "", blink = false
     .replace(auf, (_, klassen, rest) =>
       `<details class="heart-lifeskin-block${klassen} heart-klapp${blink ? " heart-klapp--blink" : ""}"${rest} ${klappAttr(name, standard)}>`)
     .replace(titel, (_, text) =>
-      `<summary class="heart-klapp__kopf"><h3 class="heart-lifeskin-block__titel">${text}</h3>${kopfZahl}</summary>`);
+      `<summary class="heart-klapp__kopf"><h3 class="heart-lifeskin-block__titel">${text}</h3>${kopfZahl}${kopfExtra}</summary>`);
 }
