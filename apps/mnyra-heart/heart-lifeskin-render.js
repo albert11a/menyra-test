@@ -1608,12 +1608,33 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
     ...BLICK_REIHENFOLGE.filter((blick) => alleBlicke.includes(blick)),
     ...alleBlicke.filter((blick) => !BLICK_REIHENFOLGE.includes(blick)).sort()
   ];
-  const bilder = vorhanden.map((blick) => `
+  // data-vorschau-bild: Heart setzt nach jedem Neuzeichnen die schon
+  // dekodierten Bildknoten wieder ein (heart.js) - eine Aufnahme wiegt bis
+  // zu 900 KB, und sie bei jeder Aenderung neu zu dekodieren, liess die
+  // Seite stocken und blinken.
+  let bilder = vorhanden.map((blick) => `
     <figure class="heart-lifeskin-fotokasten">
       <img class="heart-lifeskin-foto" src="${escapeHtml(fotos[blick].jpeg)}"
-           alt="${escapeHtml(blickName(blick))}" loading="lazy" />
+           alt="${escapeHtml(blickName(blick))}" decoding="async" data-vorschau-bild="${escapeHtml(`${sitzung.id}:${blick}`)}" />
       <figcaption>${escapeHtml(blickName(blick))}</figcaption>
     </figure>`).join("");
+  // WAEHREND DES LADENS STEHT DER PLATZ SCHON DA - eine Kachel je Blick,
+  // gleich gross wie das Bild spaeter. Vorher stand hier eine Textzeile,
+  // und sobald die Bilder kamen, sprang die ganze Seite nach unten.
+  // Ohne Blicke (Trup/Pytje ohne Foto) bleibt die Textzeile - sie ist so
+  // hoch wie die, die danach dort steht.
+  if (!bilder && fotosStatus === "loading" && (sitzung.photos || []).length) {
+    const blicke = (sitzung.photos || []).map(String);
+    const reihe = [
+      ...BLICK_REIHENFOLGE.filter((blick) => blicke.includes(blick)),
+      ...blicke.filter((blick) => !BLICK_REIHENFOLGE.includes(blick)).sort()
+    ];
+    bilder = reihe.map((blick) => `
+    <figure class="heart-lifeskin-fotokasten heart-lifeskin-fotokasten--platz" aria-hidden="true">
+      <span class="heart-lifeskin-foto heart-lifeskin-foto--platz"></span>
+      <figcaption>${escapeHtml(blickName(blick))}</figcaption>
+    </figure>`).join("");
+  }
   const typ = typVon(sitzung);
   const freiwillig = ["trup", "pytje"].includes(typ);
   const ohneBild = fotosStatus === "loading" ? "Fotos werden geladen …"

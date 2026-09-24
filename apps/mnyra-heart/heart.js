@@ -1026,7 +1026,8 @@ async function oeffneLifeskinSitzung(sitzungId = "") {
 
   actions.patchLifeskin({ fotosStatus: "loading" });
   try {
-    const bilder = await ladeFotos(id);
+    const erwartet = (findeSitzung(stand, id)?.photos || []).length;
+    const bilder = await ladeFotos(id, erwartet);
     actions.patchLifeskin({
       fotos: { ...(store.getState().lifeskin?.fotos || {}), [id]: bilder },
       fotosStatus: "ready"
@@ -1081,19 +1082,50 @@ async function bildVerkleinern(jpeg, kante = VORSCHAU_KANTE) {
   return leinwand.toDataURL("image/jpeg", 0.72);
 }
 
+// DIE KLEINEN BILDER BLEIBEN AUF DEM GERAET. Eine Vorschau wiegt ein paar
+// Kilobyte, die Aufnahme dahinter bis zu 900 KB. Einmal verkleinert, wird
+// sie hier gemerkt und nie wieder geholt - auch nicht nach einem Neuladen.
+const VORSCHAU_SPEICHER = "heart.lifeskin.vorschau";
+const VORSCHAU_SPEICHER_MAX = 400;
+function vorschauSpeicherLesen() {
+  try { return JSON.parse(globalThis.localStorage?.getItem(VORSCHAU_SPEICHER) || "{}") || {}; } catch { return {}; }
+}
+function vorschauSpeichern(neu) {
+  const eintraege = Object.entries({ ...vorschauSpeicherLesen(), ...neu }).filter(([, bild]) => bild);
+  const behalten = Object.fromEntries(eintraege.slice(-VORSCHAU_SPEICHER_MAX));
+  try { globalThis.localStorage?.setItem(VORSCHAU_SPEICHER, JSON.stringify(behalten)); } catch { /* voll - dann eben nicht */ }
+}
+
 async function vorschauHolen() {
   const offen = [...vorschauWartet];
   vorschauWartet.clear();
   const stand = store.getState().lifeskin || {};
-  const zuHolen = offen.filter((id) => id && !(stand.vorschau || {})[id] && !vorschauUnterwegs.has(id));
+  let zuHolen = offen.filter((id) => id && !(stand.vorschau || {})[id] && !vorschauUnterwegs.has(id));
+  if (!zuHolen.length) return;
+
+  // Was auf dem Geraet liegt, steht sofort da.
+  const gemerkt = vorschauSpeicherLesen();
+  const vomGeraet = Object.fromEntries(zuHolen.filter((id) => gemerkt[id]).map((id) => [id, gemerkt[id]]));
+  if (Object.keys(vomGeraet).length) {
+    actions.patchLifeskin({ vorschau: { ...(store.getState().lifeskin?.vorschau || {}), ...vomGeraet } });
+    zuHolen = zuHolen.filter((id) => !vomGeraet[id]);
+  }
   if (!zuHolen.length) return;
   for (const id of zuHolen) vorschauUnterwegs.add(id);
 
   // In kleinen Schueben, nicht alle auf einmal: Vierzig gleichzeitige
   // Abfragen bremsen jede andere, die Heart in dem Moment sonst noch macht.
-  const gefunden = {};
+  // Jeder Schub steht da, sobald er fertig ist - nicht erst am Ende.
   for (let i = 0; i < zuHolen.length; i += VORSCHAU_GLEICHZEITIG) {
+    // Ist ein Fall offen, hat er Vorrang: Seine Aufnahmen sollen nicht
+    // hinter den Vorschauen der Liste warten. Der Rest kommt beim
+    // naechsten Blick auf die Liste.
+    if (store.getState().lifeskin?.offen) {
+      for (const id of zuHolen.slice(i)) vorschauUnterwegs.delete(id);
+      return;
+    }
     const schub = zuHolen.slice(i, i + VORSCHAU_GLEICHZEITIG);
+    const gefunden = {};
     await Promise.all(schub.map(async (id) => {
       try {
         const jpeg = await ladeErstesFoto(id);
@@ -1106,10 +1138,11 @@ async function vorschauHolen() {
         vorschauUnterwegs.delete(id);
       }
     }));
+    vorschauSpeichern(gefunden);
+    actions.patchLifeskin({
+      vorschau: { ...(store.getState().lifeskin?.vorschau || {}), ...gefunden }
+    });
   }
-  actions.patchLifeskin({
-    vorschau: { ...(store.getState().lifeskin?.vorschau || {}), ...gefunden }
-  });
 }
 
 function vorschauMerken(id) {
@@ -1145,6 +1178,11 @@ function behalteLifeskinVorschau(wurzel) {
     } else {
       vorschauKnoten.set(id, img);
     }
+  }
+  // Die grossen Aufnahmen eines Falls ("id:blick") nur behalten, solange
+  // sie auf der Seite stehen - die kleinen der Liste duerfen bleiben.
+  for (const id of [...vorschauKnoten.keys()]) {
+    if (id.includes(":") && !vergeben.has(id)) vorschauKnoten.delete(id);
   }
 }
 

@@ -211,9 +211,12 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
 // Erst hier, nicht mit der Liste. Die Bilder liegen in einer Untersammlung,
 // damit der Reiter beim Oeffnen nicht alle Fotos aller Sitzungen zieht -
 // bei ein paar hundert Analysen am Tag waeren das Hunderte Megabyte.
-export async function ladeFotos(sitzungId) {
-  if (!sitzungId) return {};
-  const docs = await getDocs(collection(db, "lifeskin", TENANT, "sessions", sitzungId, "photos"));
+// ZUERST VOM GERAET. Eine Aufnahme aendert sich nach dem Hochladen nie
+// mehr, und seit 20.09. wiegt eine bis zu 900 KB - ein Scan mit sieben
+// Blicken sind mehrere Megabyte. Firestore haelt sie nach dem ersten
+// Oeffnen im Speicher des Geraets; von dort sind sie sofort da. Zum Server
+// geht es nur, wenn dort weniger liegen, als der Fall Blicke hat.
+function bilderAus(docs) {
   const bilder = {};
   for (const d of docs.docs) {
     const daten = d.data() || {};
@@ -222,6 +225,18 @@ export async function ladeFotos(sitzungId) {
     }
   }
   return bilder;
+}
+
+export async function ladeFotos(sitzungId, erwartet = 0) {
+  if (!sitzungId) return {};
+  const sammlung = collection(db, "lifeskin", TENANT, "sessions", sitzungId, "photos");
+  if (erwartet > 0) {
+    try {
+      const vomGeraet = bilderAus(await getDocsFromCache(sammlung));
+      if (Object.keys(vomGeraet).length >= erwartet) return vomGeraet;
+    } catch { /* kein Speicher auf dem Geraet - dann vom Server */ }
+  }
+  return bilderAus(await getDocs(sammlung));
 }
 
 // Das erste Bild einer Sitzung - und nur dieses eine.
@@ -237,10 +252,14 @@ export async function ladeFotos(sitzungId) {
 // paar Dutzend Megabyte ueber ein Mobilfunknetz.
 export async function ladeErstesFoto(sitzungId) {
   if (!sitzungId) return "";
-  const docs = await getDocs(query(
+  const abfrage = query(
     collection(db, "lifeskin", TENANT, "sessions", sitzungId, "photos"),
     limit(1)
-  ));
+  );
+  // Zuerst vom Geraet (siehe ladeFotos), dann vom Server.
+  let docs = null;
+  try { docs = await getDocsFromCache(abfrage); } catch { docs = null; }
+  if (!docs || !docs.docs.length) docs = await getDocs(abfrage);
   for (const d of docs.docs) {
     const jpeg = (d.data() || {}).jpeg;
     if (typeof jpeg === "string" && jpeg.startsWith("data:image/")) return jpeg;

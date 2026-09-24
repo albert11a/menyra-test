@@ -6317,3 +6317,13 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 .heart-faelle .heart-lifeskin-pill--prompt.heart-lifeskin-pill--an { background: #3fbf9b2e; color: #7fe0c3; }
 /* Chip "Freigegeben" (nur im Fach Ready). */
 .heart-faelle .heart-lifeskin-pill--frei.heart-lifeskin-pill--an { background: #3fbf9b2e; color: #7fe0c3; }
+
+/* Platzhalter fuer die Aufnahmen, solange sie laden - gleich gross wie das
+   Bild, damit die Seite nicht springt. */
+.heart-lifeskin-fotos--reihe .heart-lifeskin-foto--platz {
+  display: block; width: 100%; aspect-ratio: 3 / 4; border-radius: 12px;
+  background: linear-gradient(100deg, #ffffff08 30%, #ffffff14 50%, #ffffff08 70%);
+  background-size: 200% 100%; animation: heart-foto-platz 1.2s ease-in-out infinite;
+}
+@keyframes heart-foto-platz { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .heart-lifeskin-fotos--reihe .heart-lifeskin-foto--platz { animation: none; } }

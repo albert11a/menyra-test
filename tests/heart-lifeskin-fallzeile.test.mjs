@@ -321,3 +321,34 @@ test("im Fach Ready steht Freigegeben statt Geöffnet und Kasse", () => {
   assert.match(zeile, /heart-lifeskin-pill--frei heart-lifeskin-pill--an">Freigegeben</);
   assert.doesNotMatch(zeile.slice(zeile.indexOf("__fuss")), />Geöffnet<|>Kasse<|>Prompt</);
 });
+
+// FOTOS SCHNELLER UND OHNE SPRINGEN (24.09.)
+test("die Aufnahmen kommen zuerst vom Geraet, dann vom Server", () => {
+  const fotos = ohneKommentare(funktion(ADAPTER, "ladeFotos"));
+  assert.match(fotos, /getDocsFromCache\(sammlung\)/);
+  assert.match(fotos, />= erwartet/, "Vom Geraet nur, wenn alle Blicke da sind");
+  assert.match(ohneKommentare(funktion(ADAPTER, "ladeErstesFoto")), /getDocsFromCache/);
+  assert.match(ohneKommentare(funktion(HEART, "oeffneLifeskinSitzung")), /ladeFotos\(id, erwartet\)/);
+});
+
+test("die kleinen Bilder bleiben auf dem Geraet und kommen schubweise", () => {
+  const quelle = ohneKommentare(funktion(HEART, "vorschauHolen"));
+  assert.match(quelle, /vorschauSpeicherLesen\(\)/);
+  assert.match(quelle, /vorschauSpeichern\(gefunden\)/);
+  // Jeder Schub steht sofort da: patchLifeskin in der Schleife.
+  const schleife = quelle.slice(quelle.indexOf("for (let i = 0"));
+  assert.match(schleife, /patchLifeskin/);
+  // Ein offener Fall hat Vorrang.
+  assert.match(schleife, /lifeskin\?\.offen/);
+});
+
+test("waehrend die Aufnahmen laden, steht ihr Platz schon da", async () => {
+  const { renderSitzungDetail } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
+  const html = renderSitzungDetail({ id: "x", typ: "scan", photos: ["gerade", "links", "rechts"], createdAt: new Date().toISOString() }, null, "loading");
+  assert.equal((html.match(/heart-lifeskin-foto--platz/g) || []).length, 3, "Nicht je Blick eine Kachel");
+  assert.doesNotMatch(html, /Fotos werden geladen/);
+  const fertig = renderSitzungDetail({ id: "x", typ: "scan", photos: ["gerade"], createdAt: new Date().toISOString() },
+    { gerade: { jpeg: "data:image/jpeg;base64,AAA" } }, "ready");
+  assert.match(fertig, /data-vorschau-bild="x:gerade"/);
+  assert.doesNotMatch(fertig, /heart-lifeskin-foto--platz/);
+});

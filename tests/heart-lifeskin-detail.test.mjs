@@ -102,8 +102,11 @@ test("die drei Aufnahmen erscheinen mit Beschriftung", () => {
 });
 
 test("fehlende Fotos werden benannt, nicht verschwiegen", () => {
-  const laedt = renderLifeskin(zustandMit([EINE], { offen: "abc", fotosStatus: "loading" }));
-  assert.match(laedt, /Fotos werden geladen/);
+  // Beim Laden steht je Blick eine Kachel (kein Springen), ohne Blicke die Zeile.
+  const laedt = renderLifeskin(zustandMit([{ ...EINE, photos: ["gerade"] }], { offen: "abc", fotosStatus: "loading" }));
+  assert.match(laedt, /heart-lifeskin-foto--platz/);
+  const ohne = renderLifeskin(zustandMit([{ ...EINE, photos: [] }], { offen: "abc", fotosStatus: "loading" }));
+  assert.match(ohne, /Fotos werden geladen/);
 
   // WAS "KEIN FOTO" HEISST, HAENGT AM WEG.
   //
