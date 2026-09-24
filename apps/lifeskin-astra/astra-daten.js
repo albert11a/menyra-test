@@ -261,8 +261,9 @@ export class AnalyseDaten {
     // Ordered writes prevent an older screen/address update overtaking purchase.
     this.schreibkette = (this.schreibkette || Promise.resolve()).then(async () =>
       (await schreiben()) || schreiben());
-    // Eine Bestellung: sofort melden, sobald sie in Firestore steht.
-    if (daten?.step === "ordered") {
+    // Eine Bestellung oder die geoeffnete Kasse: sofort melden, sobald es
+    // in Firestore steht. Ob gemeldet wird, entscheidet die Funktion.
+    if (daten?.step === "ordered" || daten?.kasseGeoeffnet === true) {
       const kennung = this.kennung;
       this.schreibkette.then((ok) => { if (ok) meldungAnstossen(kennung, this.fetchFn); });
     }

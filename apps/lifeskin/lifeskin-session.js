@@ -19,6 +19,8 @@ import { meldungAnstossen } from "../../shared/lifeskin-melden.js";
 
 // Nach diesen Schritten geht eine Meldung an Dr. Gashi (api/lifeskin-meldung.js).
 const MELDE_SCHRITTE = new Set("result ordered".split(" "));
+// Und sobald eine dieser Marken zum ersten Mal steht (Warenkorb, Kasse).
+const MELDE_MARKEN = "imKorb kasseGeoeffnet".split(" ");
 import {
   LIFESKIN_FIRESTORE_BASE,
   LIFESKIN_TENANT
@@ -803,7 +805,14 @@ export class Sitzung {
   // "Anschrift da, aber nicht bestellt" - die wertvollste im Bericht.
   ergaenze(daten) {
     const mit = { updatedAt: jetzt(), ...daten };
+    const neu = MELDE_MARKEN.some((f) => daten?.[f] === true && this.stand?.[f] !== true);
     Object.assign(this.stand, daten);
-    return this.#reihen(() => this.#schreiben(mit, Object.keys(mit)));
+    const geschrieben = this.#reihen(() => this.#schreiben(mit, Object.keys(mit)));
+    // Warenkorb oder Kasse zum ersten Mal: melden, sobald es in Firestore steht.
+    if (neu) {
+      const id = this.id;
+      geschrieben.then((antwort) => { if (antwort?.ok) meldungAnstossen(id, this.fetchFn); });
+    }
+    return geschrieben;
   }
 }

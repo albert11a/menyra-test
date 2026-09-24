@@ -47,8 +47,29 @@ export const MELDUNGEN = Object.freeze([
     schritt: "ordered",
     type: "lifeskin_porosia",
     text: (name) => (name ? `Neue Bestellung, ${name}` : "Neue Bestellung")
+  },
+  // WARENKORB UND KASSE - keine Stufen, sondern Marken an der Sitzung
+  // (imKorb aus dem Laden, kasseGeoeffnet von Therapie- und Analyseseite
+  // und aus dem Laden). Gemeldet nur, solange noch nicht bestellt wurde:
+  // Wer schon bestellt hat, bekommt die Bestellmeldung, nicht diese.
+  {
+    feld: "imKorb",
+    type: "lifeskin_korb",
+    text: (name, daten = {}) => {
+      const wert = Number(daten.korbWert) > 0 ? ` (${Math.round(Number(daten.korbWert))} €)` : "";
+      return name ? `Warenkorb${wert}, ${name}` : `Jemand hat etwas in den Warenkorb gelegt${wert}`;
+    }
+  },
+  {
+    feld: "kasseGeoeffnet",
+    type: "lifeskin_kasse",
+    text: (name) => (name ? `An der Kasse, ${name}` : "Jemand ist an der Kasse")
   }
 ]);
+
+function schonBestellt(daten) {
+  return daten.hatBestellt === true || Boolean(daten.order?.orderId) || schrittIndex(daten.step) >= schrittIndex("ordered");
+}
 
 // Wie weit zurueck geschaut wird.
 //
@@ -117,13 +138,16 @@ export function faelligeMeldungen(sitzung = {}, { jetzt = Date.now(), fensterMs 
   // dahinter ungemeldet.
   const daten = sitzung && typeof sitzung === "object" ? sitzung : {};
   const stand = schrittIndex(daten.step);
-  if (stand < 0) return [];
+  const mitMarke = MELDUNGEN.some((v) => v.feld && daten[v.feld] === true);
+  if (stand < 0 && !mitMarke) return [];
   const zeit = sitzungsZeit(daten);
   // Ohne Zeit keine Meldung. Eine Sitzung ohne Zeitstempel ist entweder
   // uralt oder kaputt, und beides ist kein Grund, ein Telefon zu wecken.
   if (!zeit) return [];
   if (jetzt - zeit > fensterMs) return [];
-  return MELDUNGEN.filter((vorlage) => schrittIndex(vorlage.schritt) <= stand);
+  return MELDUNGEN.filter((vorlage) => (vorlage.feld
+    ? daten[vorlage.feld] === true && !schonBestellt(daten)
+    : stand >= 0 && schrittIndex(vorlage.schritt) <= stand));
 }
 
 // Der fertige Satz und das Dokument dazu. Dieselben Felder, die
@@ -133,7 +157,7 @@ export function faelligeMeldungen(sitzung = {}, { jetzt = Date.now(), fensterMs 
 export function baueMeldung({ vorlage, sessionId = "", sitzung = {}, uid = "" }) {
   const daten = sitzung && typeof sitzung === "object" ? sitzung : {};
   const name = String(daten.name || "").trim().slice(0, 120);
-  const text = vorlage.text(name);
+  const text = vorlage.text(name, daten);
   return {
     type: vorlage.type,
     user: "",

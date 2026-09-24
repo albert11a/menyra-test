@@ -805,6 +805,9 @@ export class Laden {
        begonnener Kauf. */
     if (auf && this.korb.length) {
       this.trichterFn()?.pixel?.meldeKasse?.(summeVon(this.korb, this.mittel));
+      /* Dieselbe Marke wie auf der Therapieseite - Heart zaehlt sie, und
+         die Meldung "An der Kasse" haengt daran. Einmal je Besuch. */
+      this.#merke({ kasseGeoeffnet: true, kasseGeoeffnetAt: new Date().toISOString() }, "kasseGeoeffnet");
     }
     blatt.hidden = !auf;
     /* Hinter einem offenen Blatt soll die Seite nicht mitscrollen. */
