@@ -6301,3 +6301,13 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
   font-variant-numeric: normal; font-weight: 600; letter-spacing: 0;
   color: var(--heart-muted, #8f918d); background: transparent; border-color: var(--heart-line, #34383a);
 }
+/* Runde 4 (24.09.): Chips kleiner - 20 px hoch, 10.5 px Schrift. */
+.heart-faelle .heart-lifeskin-fall__fuss { gap: 4px; }
+.heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-pill,
+.heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-art,
+.heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-fall__zeit { height: 20px; padding: 0 6px; font-size: 10.5px; }
+@media (max-width: 370px) {
+  .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-pill,
+  .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-art,
+  .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-fall__zeit { padding: 0 5px; }
+}
