@@ -248,6 +248,7 @@ export class Terapia {
       zaehlen: !this.nurVorschau && globalThis.__mnyraStill !== true,
       name: this.daten?.name,
       melde: (m) => this.klickpfad?.melde("kommentar", `${m.art === "video" ? "Video" : "Foto"} · ${m.produkt || m.id}`),
+      nachSchliessen: () => this.untenNachziehen?.(),
       kaufen: this.mitAngebot ? { text: `Fillo terapinë — ${euro(this.preis)}`, tun: () => this.#porosia(true), gilt: () => this.mitAngebot } : null
     });
     this.kundenMedien.zeige(this.daten?.klientet);
@@ -679,6 +680,8 @@ export class Terapia {
     if (!auf) {
       blatt.hidden = true;
       document.body.classList.remove("pa-rreshqitje");
+      document.activeElement?.blur?.();
+      this.untenNachziehen?.();
       this.leistePruefen?.();
       return;
     }
@@ -802,7 +805,40 @@ export class Terapia {
     }
     window.addEventListener("resize", pruefen, { passive: true });
     globalThis.visualViewport?.addEventListener("resize", pruefen, { passive: true });
+    this.#untenNachziehen(pruefen);
     pruefen();
+  }
+
+  // iOS (Safari, Instagram, Facebook) RECHNET "UNTEN" NACH DER TASTATUR
+  // NICHT NEU: Schliesst sich die Tastatur (Bestellschirm, Kommentar) oder
+  // ein Vollbild, blieben die Leiste und alles andere, was unten festhaengt,
+  // mitten im Bildschirm stehen - bis man weiterwischte. Ein Scroll um
+  // einen Punkt hin und zurueck zwingt iOS, neu zu rechnen; man sieht ihn
+  // nicht. Nur wenn kein Feld mehr den Fokus hat, sonst springt die
+  // Tastatur.
+  #untenNachziehen(pruefen) {
+    const nachziehen = () => {
+      if (document.activeElement?.matches?.("input, textarea, select")) return;
+      requestAnimationFrame(() => {
+        const x = window.scrollX;
+        const y = window.scrollY;
+        window.scrollTo(x, y + 1);
+        window.scrollTo(x, y);
+        pruefen();
+      });
+    };
+    this.untenNachziehen = nachziehen;
+    document.addEventListener("focusout", (e) => {
+      if (e.target instanceof Element && e.target.matches("input, textarea, select")) setTimeout(nachziehen, 150);
+    });
+    // Waechst der sichtbare Bereich deutlich (Tastatur zu), ebenfalls -
+    // aber nicht bei den kleinen Spruengen der Browserleiste beim Wischen.
+    const vv = globalThis.visualViewport;
+    let hoehe = vv?.height || 0;
+    vv?.addEventListener("resize", () => {
+      if (vv.height - hoehe > 120) setTimeout(nachziehen, 80);
+      hoehe = vv.height;
+    }, { passive: true });
   }
 
   #lesemarken() {

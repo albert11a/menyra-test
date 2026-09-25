@@ -61,7 +61,7 @@ export class KundenMedien {
   // zaehlen: false in Vorschau und stillem Modus (keine Views).
   // melde(medium): ein Kommentar ist geschrieben (fuer den Klickpfad - das
   // Antippen zaehlt der Klickpfad schon selbst).
-  constructor({ abschnitt, reihe, basis, tenant, fetchFn, zaehlen = true, name = "", melde, kaufen } = {}) {
+  constructor({ abschnitt, reihe, basis, tenant, fetchFn, zaehlen = true, name = "", melde, kaufen, nachSchliessen } = {}) {
     this.abschnitt = abschnitt;
     this.reihe = reihe;
     this.optionen = { basis, tenant, fetchFn };
@@ -69,6 +69,7 @@ export class KundenMedien {
     this.vorname = String(name || "").trim().split(/\s+/)[0] || "";
     this.melde = melde || (() => {});
     this.kaufen = kaufen || null;
+    this.nachSchliessen = nachSchliessen || null;
     this.medien = [];
     this.kommentare = new Map();
     this.gezaehlt = new Set();
@@ -253,6 +254,8 @@ export class KundenMedien {
     b.buehne.replaceChildren();
     b.hinten.hidden = true;
     document.body.classList.remove("pa-rreshqitje");
+    document.activeElement?.blur?.();
+    this.nachSchliessen?.();
     if (this.imVerlauf && !ausVerlauf) {
       this.imVerlauf = false;
       try { history.back(); } catch { /* egal */ }
