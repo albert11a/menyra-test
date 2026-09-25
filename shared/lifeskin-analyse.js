@@ -630,6 +630,54 @@ function jsonFlach(knoten, werte, fertig, tiefe = 0) {
 // legen einen ```json-Zaun herum und schreiben gern einen Satz davor.
 // Nichts davon ist ein Fehler der Aerztin - also raeumen wir es weg,
 // statt sie damit stehen zu lassen.
+// Jedes Zeichen, das ChatGPT, Notizen oder die iPhone-Tastatur statt "
+// setzen.
+const ANF = /["\u201C\u201D\u201E\u201F\u2033\u00AB\u00BB]/;
+const WERT_ANFANG = /["\u201C\u201D\u201E\u201F\u2033\u00AB\u00BB{[\]}]/;
+const LITERAL = /^(?:true|false|null|-?\d[\d.eE+-]*)\s*[,}\]]/;
+
+function naechstes(t, j) {
+  while (j < t.length && /\s/.test(t[j])) j += 1;
+  return j;
+}
+
+// Schliesst das Anfuehrungszeichen an Stelle i den Text? Ja, wenn danach
+// (ohne Leerraum) das Ende, eine schliessende Klammer, ein Doppelpunkt mit
+// Wert oder ein Komma mit dem naechsten Wert kommt. Sonst steht es IM Text.
+function schliesst(t, i) {
+  const j = naechstes(t, i + 1);
+  const c = t[j];
+  if (c === undefined || c === "}" || c === "]") return true;
+  if (c !== ":" && c !== ",") return false;
+  const k = naechstes(t, j + 1);
+  if (k >= t.length) return c === ",";
+  return WERT_ANFANG.test(t[k]) || LITERAL.test(t.slice(k));
+}
+
+export function anfuehrungReparieren(text) {
+  const t = String(text || "");
+  let raus = "";
+  let imText = false;
+  for (let i = 0; i < t.length; i += 1) {
+    const c = t[i];
+    if (!imText) {
+      if (ANF.test(c)) { raus += '"'; imText = true; } else raus += c;
+      continue;
+    }
+    if (c === "\\") { raus += c + (t[i + 1] ?? ""); i += 1; continue; }
+    if (ANF.test(c)) {
+      if (schliesst(t, i)) { raus += '"'; imText = false; }
+      // Im Text: das typografische Zeichen bleibt, ein gerades wird maskiert.
+      else raus += c === '"' ? '\\"' : c;
+      continue;
+    }
+    if (c === "\n") { raus += "\\n"; continue; }
+    if (c === "\r" || c === "\t") { raus += " "; continue; }
+    raus += c;
+  }
+  return raus;
+}
+
 const JSON_KUREN = [
   // Zaun und Vorrede: alles vor der ersten { und hinter der letzten }.
   (t) => {
@@ -637,6 +685,11 @@ const JSON_KUREN = [
     const zu = t.lastIndexOf("}");
     return auf >= 0 && zu > auf ? t.slice(auf, zu + 1) : t;
   },
+  // Typografische Anfuehrungszeichen, KLUG: Nur die, die ein Feld oeffnen
+  // oder schliessen, werden zu "; die IM Text (Na shkruat: “…”) bleiben
+  // stehen. Die grobe Kur darunter machte aus beiden " - und zerbrach
+  // damit jedes JSON, das im Text selbst etwas zitiert (25.09.).
+  (t) => anfuehrungReparieren(t),
   // Typografische Zeichen zurueck auf die geraden.
   (t) => t
     .replace(/[\u201C\u201D\u201E\u201F\u2033\u00AB\u00BB]/g, '"')
