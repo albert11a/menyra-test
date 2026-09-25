@@ -44,7 +44,7 @@ export function befundStandAuffrischen(wurzel = document) {
 // sich auf dem Telefon markieren und kopieren. Zugeklappte Felder haben
 // keine Hoehe - sie folgen beim Aufklappen (heart-events.js, toggle).
 export function befundFelderAnpassen(wurzel = document) {
-  for (const feld of wurzel?.querySelectorAll?.(".heart-befund textarea:not([hidden])") || []) {
+  for (const feld of wurzel?.querySelectorAll?.(".heart-befund textarea:not([hidden]):not([data-fest])") || []) {
     if (!feld.offsetParent) continue;
     feld.style.height = "auto";
     feld.style.height = `${feld.scrollHeight + 2}px`;

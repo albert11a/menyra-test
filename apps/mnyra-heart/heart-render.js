@@ -528,12 +528,24 @@ export function renderHeartApp(rootNode, state, runtime = {}) {
 // zurueckgesetzt - mit allem, was darin getippt, eingefuegt oder
 // angehakt ist. Nur wenn sich sein Schluessel aendert (der gespeicherte
 // Stand dahinter ist ein anderer), steht er neu da.
+//
+// UND AUCH, WENN MAN ZWISCHENDURCH WEGGEHT (25.09.): Wer im Befund
+// arbeitete, zur Fallliste zurueckging und den Fall wieder oeffnete, fand
+// einen leeren Bogen - der Knoten stand im Neuzeichnen davor nicht mehr
+// im Bild und war damit weg. Jetzt liegt jeder bewahrte Knoten in einem
+// Archiv, bis sein Schluessel wieder erscheint - die zuletzt benutzten
+// BEWAHRT_MAX, damit das Archiv nicht endlos waechst.
+const BEWAHRT_MAX = 12;
+const bewahrtArchiv = new Map();
+
 function captureBewahrt(rootNode) {
-  const stand = new Map();
   for (const knoten of rootNode.querySelectorAll?.("[data-bewahren]") || []) {
-    stand.set(knoten.getAttribute("data-bewahren"), knoten);
+    const schluessel = knoten.getAttribute("data-bewahren");
+    bewahrtArchiv.delete(schluessel);
+    bewahrtArchiv.set(schluessel, knoten);
   }
-  return stand;
+  while (bewahrtArchiv.size > BEWAHRT_MAX) bewahrtArchiv.delete(bewahrtArchiv.keys().next().value);
+  return bewahrtArchiv;
 }
 
 function restoreBewahrt(rootNode, stand) {

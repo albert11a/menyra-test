@@ -603,6 +603,10 @@ export function bindHeartEvents({
       await operations.gibLifeskinBerichtFrei?.(target.getAttribute("data-id"), { nurStaff: true });
       return;
     }
+    if (action === "lifeskin-bericht-bereit") {
+      await operations.gibLifeskinBerichtFrei?.(target.getAttribute("data-id"), { bereit: true });
+      return;
+    }
     if (action === "lifeskin-bericht-freigeben") {
       await operations.gibLifeskinBerichtFrei?.(target.getAttribute("data-id"));
       return;
@@ -773,7 +777,7 @@ export function bindHeartEvents({
 
   // Ein Textfeld im Befund waechst mit seinem Text - kein Scrollen im Feld.
   function feldAnpassen(feld) {
-    if (!feld?.matches?.(".heart-befund textarea")) return;
+    if (!feld?.matches?.(".heart-befund textarea:not([data-fest])")) return;
     feld.style.height = "auto";
     feld.style.height = `${feld.scrollHeight + 2}px`;
   }

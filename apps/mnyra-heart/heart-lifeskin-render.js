@@ -965,13 +965,15 @@ function fallMarken(sitzung, fach = "", bericht = null) {
   const wert = fallWert(sitzung, bericht);
   const m = {
     prompt: { id: "prompt", label: "Prompt", an: promptGemacht(sitzung.id) },
+    // Mit "Bereit" gespeichert: fertig vorbereitet, wartet nur aufs Freigeben.
+    bereit: { id: "bereit", label: "Bereit", an: bericht?.bereit === true && bericht?.status === "vorschau" },
     frei: { id: "frei", label: "Freigegeben", an: true },
     auf: { id: "auf", label: "Geöffnet", an: !!sitzung.berichtGeoeffnet },
     kasse: { id: "kasse", label: "Kasse", an: !!(sitzung.kasseGeoeffnet || sitzung.hatBestellt) },
     wert: { id: "wert", label: wert || "– €", an: !!wert }
   };
   const marken = ({
-    alle: [m.prompt],
+    alle: [m.prompt, m.bereit],
     ready: [m.frei],
     seen: [m.auf, m.wert],
     kasse: [m.kasse, m.wert],
@@ -2352,7 +2354,7 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({}), 
           <textarea class="heart-lifeskin-eingabe" id="lifeskin-prompt-ausgabe" hidden readonly rows="5" aria-label="Vollständiger Prompt für diesen Fall"></textarea>`)}
         ${schritt(3, "Antwort einfügen", `
           <div class="heart-lifeskin-vorlage">
-            <textarea class="heart-lifeskin-eingabe" id="lifeskin-json" rows="3"
+            <textarea class="heart-lifeskin-eingabe" id="lifeskin-json" rows="3" data-fest
                       placeholder="Antwort der KI hier einfügen"></textarea>
             <button type="button" class="heart-befund__knopf" data-action="lifeskin-json-uebernehmen">Übernehmen</button>
             <p class="heart-lifeskin-vorlage__stand" id="lifeskin-vorlage-stand"></p>
@@ -2395,8 +2397,17 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({}), 
           ${fertig ? "Änderungen freigeben"
             : (["trup", "pytje"].includes(typVon(sitzung)) ? "Antwort freigeben" : "Befund freigeben")}
         </button>
-        <button type="button" class="heart-befund__knopf heart-befund__knopf--leise"
-                data-action="lifeskin-bericht-vorschau" data-id="${escapeHtml(sitzung.id)}">Nur für uns (Vorschau)</button>
+        ${fertig ? `<button type="button" class="heart-befund__knopf heart-befund__knopf--leise"
+                data-action="lifeskin-bericht-vorschau" data-id="${escapeHtml(sitzung.id)}">Nur für uns (Vorschau)</button>` : `
+        <!-- BEREIT: alles speichern, der Patient sieht noch nichts - in der
+             Fallliste steht danach "Bereit", der Fall wartet nur noch aufs
+             Freigeben. -->
+        <div class="heart-befund__zwei">
+          <button type="button" class="heart-befund__knopf heart-befund__knopf--bereit${bericht?.bereit === true && stand === "vorschau" ? " heart-befund__knopf--bereit-an" : ""}"
+                  data-action="lifeskin-bericht-bereit" data-id="${escapeHtml(sitzung.id)}">${bericht?.bereit === true && stand === "vorschau" ? "✓ Bereit" : "Bereit"}</button>
+          <button type="button" class="heart-befund__knopf heart-befund__knopf--leise"
+                  data-action="lifeskin-bericht-vorschau" data-id="${escapeHtml(sitzung.id)}">Nur für uns</button>
+        </div>`}
         ${stand !== "wartet" ? `<a class="heart-befund__textlink" href="/terapia/${escapeHtml(sitzung.id)}?${stand === "vorschau" ? "vorschau=1&amp;" : ""}still=1" target="_blank" rel="noopener">
           ${stand === "vorschau" ? "Vorschau ansehen" : "Therapieseite ansehen"} ${renderHeartIcon("externalLink", "heart-befund__linkicon")}<small>ohne Statistik</small></a>` : ""}
       </section>

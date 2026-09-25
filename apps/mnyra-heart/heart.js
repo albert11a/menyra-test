@@ -61,6 +61,7 @@ import { medienListe, mediumNormalisieren, neueMediumId } from "../../shared/lif
 import { rasteListe, klappSetzen, klappOffen, rastiDom } from "./heart-lifeskin-raste.js";
 import { entwurfSchreiben, entwurfLoeschen, entwurfAusBogen, promptMerken } from "./heart-lifeskin-entwurf.js";
 import { befundStandAuffrischen, befundFelderAnpassen } from "./heart-lifeskin-befundstand.js";
+import { bogenMerken, bogenVergessen, bogenWiederherstellen } from "./heart-lifeskin-bogenspeicher.js";
 import { vorschauAuffrischen } from "./heart-lifeskin-vorschau.js";
 import { rasteNormalisieren, rastiNormalisieren, neueRastiId, RASTI_PRODUKTE_MAX } from "../../shared/lifeskin-raste.js";
 import { aktualisiereLifeskinSitzungen } from "./heart-lifeskin-berechnung.js";
@@ -2447,7 +2448,10 @@ async function speichereLifeskinProdukt() {
 // Zustand geschrieben: Ein Neuzeichnen je Buchstabe wuerde den Schreibfluss
 // zerreissen - und geschrieben wird hier laenger als irgendwo sonst in
 // Heart.
-async function gibLifeskinBerichtFrei(sitzungId, { nurStaff = false } = {}) {
+async function gibLifeskinBerichtFrei(sitzungId, { nurStaff: nurStaffGewaehlt = false, bereit = false } = {}) {
+  // "Bereit" speichert alles wie "Nur fuer uns" und markiert den Fall als
+  // fertig vorbereitet.
+  const nurStaff = nurStaffGewaehlt || bereit;
   const id = String(sitzungId || "").trim();
   if (!id) return;
 
@@ -2546,9 +2550,10 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff = false } = {}) {
   // Speichern und Neuladen sekundenlang unveraendert - man tippte zwei-,
   // dreimal. Jetzt: gesperrt, mit "Wird gespeichert …", bis es fertig ist.
   if (store.getState().lifeskin?.berichtStatus === "laeuft") return;
-  const knoepfe = [...document.querySelectorAll('[data-action="lifeskin-bericht-freigeben"], [data-action="lifeskin-bericht-vorschau"]')];
+  const knoepfe = [...document.querySelectorAll('[data-action="lifeskin-bericht-freigeben"], [data-action="lifeskin-bericht-vorschau"], [data-action="lifeskin-bericht-bereit"]')];
   const vorher = knoepfe.map((k) => k.textContent);
-  const gedrueckt = knoepfe.find((k) => k.getAttribute("data-action") === (nurStaff ? "lifeskin-bericht-vorschau" : "lifeskin-bericht-freigeben"));
+  const gedrueckt = knoepfe.find((k) => k.getAttribute("data-action") === (bereit ? "lifeskin-bericht-bereit"
+    : nurStaff ? "lifeskin-bericht-vorschau" : "lifeskin-bericht-freigeben"));
   for (const k of knoepfe) k.disabled = true;
   if (gedrueckt) gedrueckt.textContent = "Wird gespeichert …";
   const knoepfeZurueck = () => knoepfe.forEach((k, i) => { k.disabled = false; k.textContent = vorher[i]; });
@@ -2563,6 +2568,7 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff = false } = {}) {
     // Die gewaehlten Kundenfotos, in der Reihenfolge der Karten.
     klientet: [...document.querySelectorAll("[data-befund-klienti]:checked")].map((w) => String(w.value || "")).filter(Boolean),
     nurStaff,
+    bereit,
     analyse: {
       javet: [1, 2, 3, 4].map((n) => zusatz[`java_${n}`] || "")
     } });
@@ -2576,6 +2582,7 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff = false } = {}) {
     actions.patchLifeskin({ berichtStatus: "", ...(nurStaff ? {} : { fach: "ready" }) });
     // Gespeichert ist gespeichert: der Entwurf auf dem Geraet hat ausgedient.
     entwurfLoeschen(id);
+    bogenVergessen(id);
     knoepfeZurueck();
     if (gedrueckt) gedrueckt.textContent = "✓ Gespeichert";
     await ladeLifeskinBereich({ force: true });
@@ -2584,7 +2591,9 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff = false } = {}) {
     const nachsatz = bogenHinweise.length
       ? ` Zum Nachsehen: ${bogenHinweise.slice(0, 2).join(" ")}${bogenHinweise.length > 2 ? ` (+${bogenHinweise.length - 2})` : ""}`
       : "";
-    setToast("Befund", (nurStaff
+    setToast("Befund", (bereit
+      ? "Bereit - alles gespeichert. Der Patient sieht weiter seine Warteseite, bis du freigibst."
+      : nurStaff
       ? "Als Vorschau gespeichert. Der Patient sieht weiter seine Warteseite."
       : "Freigegeben. Der Patient sieht ihn innerhalb einer Minute.") + nachsatz, "success");
   } catch (fehler) {
@@ -3117,7 +3126,26 @@ async function lifeskinJsonUebernehmen() {
   );
   befundStandAuffrischen(document);
   befundFelderAnpassen(document);
+  befundBogenSichern();
 }
+
+// Was im Befund geaendert wurde, auch auf dem Geraet merken
+// (heart-lifeskin-bogenspeicher.js) - fuer ein Neuladen mitten in der Arbeit.
+let bogenSichernTakt = 0;
+function befundBogenSichern(sofort = true) {
+  clearTimeout(bogenSichernTakt);
+  const tun = () => { for (const knoten of document.querySelectorAll(".heart-befund[data-bewahren]")) bogenMerken(knoten); };
+  if (sofort) tun();
+  else bogenSichernTakt = setTimeout(tun, 500);
+}
+for (const art of ["input", "change"]) {
+  document.addEventListener(art, (event) => {
+    if (event.target?.closest?.(".heart-befund[data-bewahren]")) befundBogenSichern(false);
+  }, true);
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") befundBogenSichern();
+});
 
 async function setzeLifeskinVersand(sitzungId, stand) {
   const id = String(sitzungId || "").trim();
@@ -4328,6 +4356,7 @@ store.subscribe((state) => {
       behalteLifeskinVorschau(root);
       beobachteLifeskinVorschau(root);
       lifeskinMarkenAuffrischen(root);
+      bogenWiederherstellen(root);
       befundStandAuffrischen(root);
       befundFelderAnpassen(root);
     } catch {}

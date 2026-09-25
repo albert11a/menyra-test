@@ -44,10 +44,11 @@ function dokumentBauen(werte) {
   // ohneBild kam mit der Analyse ohne Foto dazu (nach seiner Beschreibung).
   // raste: die Vorher/Nachher-Faelle der Seite, in gewaehlter Reihenfolge.
   // klientet: die gewaehlten Kundenbilder der Therapieseite.
-  const bauen = new Function("befund", "produkte", "preis", "schwere", "analyse", "raport", "texte", "nurStaff", "ohneBild", "raste", "klientet",
+  // bereit: "Bereit" speichert wie eine Vorschau mit Marke - hier false.
+  const bauen = new Function("befund", "produkte", "preis", "schwere", "analyse", "raport", "texte", "nurStaff", "ohneBild", "raste", "klientet", "bereit",
     `return (${literal});`);
   return bauen(werte.befund, werte.produkte, werte.preis, werte.schwere, werte.analyse, werte.raport,
-    werte.texte || {}, false, false, werte.raste || [], werte.klientet || []);
+    werte.texte || {}, false, false, werte.raste || [], werte.klientet || [], false);
 }
 
 const raport = raportLesen(

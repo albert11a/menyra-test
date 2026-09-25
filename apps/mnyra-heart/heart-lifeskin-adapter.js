@@ -461,10 +461,15 @@ export async function speichereProdukt(produkt) {
 // "?vorschau=1" dahinter. So wird geprueft, was er wirklich zu sehen
 // bekommt, und nicht eine Nachbildung davon; und keine Zahl bewegt sich,
 // weil die Seite in der Vorschau nichts zaehlt.
-export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport, texte, ohneBild = false, raste = [], klientet = [], nurStaff = false }) {
+export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport, texte, ohneBild = false, raste = [], klientet = [], nurStaff = false, bereit = false }) {
   if (!sitzungId) throw new Error("Bericht ohne Kennung");
   await setDoc(doc(db, "lifeskin", TENANT, "reports", sitzungId), {
-    status: nurStaff ? "vorschau" : "fertig",
+    status: nurStaff || bereit ? "vorschau" : "fertig",
+    // BEREIT: gespeichert wie eine Vorschau (der Patient sieht weiter seine
+    // Warteseite), aber als fertig vorbereitet markiert - die Fallliste
+    // zeigt im Fach Offen den Chip "Bereit". Beim Freigeben faellt die
+    // Marke weg, der Bericht ist dann "fertig".
+    bereit: bereit === true,
     befund: String(befund || "").slice(0, 4000),
     produkte: (produkte || []).map((p) => ({
       id: String(p.id),
