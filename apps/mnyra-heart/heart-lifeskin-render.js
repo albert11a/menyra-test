@@ -1430,6 +1430,89 @@ export function whatsappNachricht(sitzung, bericht) {
   ].join("\n\n");
 }
 
+// ══ NACHFASSEN PER WHATSAPP - DREI LAGEN, DREI NACHRICHTEN ════════════
+//
+// Kurz, in der Stimme von Dr. Gashi, und jede tut dasselbe in derselben
+// Reihenfolge - so wirken Nachrichten, die gelesen und beantwortet werden:
+//   1. VON IHR, MIT NAMEN: Ein Mensch schreibt, kein System. Wer beim
+//      Namen genannt wird und seinen EIGENEN Befund liest, fuehlt sich
+//      verstanden (Personalisierung, Reziprozitaet: "ich habe es selbst
+//      gemacht").
+//   2. DAS ZIEL, NICHT DER KAUF: "largimi i plotë brenda 4 javëve" - man
+//      kauft das Ergebnis, nicht die Flaschen.
+//   3. DAS RISIKO WEG: bezahlt wird an der Tuer, sie kontrolliert jede
+//      Woche - Sicherheit und Geborgenheit statt Druck.
+//   4. EIN WINZIGER SCHRITT: "Po" oder die Adresse als Antwort. Eine
+//      Antwort ist leichter als ein Formular, und wer einmal "Po" gesagt
+//      hat, bleibt dabei (Mikro-Zusage). Die Antwort macht ausserdem den
+//      Link antippbar.
+//
+// BEWUSST NICHT: erfundene Fristen, "nur noch 3 Sets", Angst um die Haut.
+// Das kostet Vertrauen, und WhatsApp sperrt Nummern, die als Spam gemeldet
+// werden - der teuerste Kanal, den es gibt.
+export const NACHFASS_ARTEN = Object.freeze([
+  { id: "gesehen", taste: "Analyse gesehen", hilfe: "hat die Analyse geöffnet, nicht bestellt" },
+  { id: "ungesehen", taste: "Nicht gesehen", hilfe: "hat die Analyse noch nicht geöffnet" },
+  { id: "kasse", taste: "An der Kasse", hilfe: "war an der Kasse, nicht bestellt" }
+]);
+
+const ZAHLWORT = ["", "një", "dy", "tri", "katër", "pesë"];
+
+function nachfassProbleme(bericht) {
+  const liste = bericht?.raport?.shitja?.problemet || [];
+  return [...new Set(liste
+    .map((p) => [p?.gjetja, p?.ku].map((x) => ohneSeite(String(x || "").trim())).filter(Boolean).join(" "))
+    .filter(Boolean)
+    .map((x) => x.charAt(0).toLocaleLowerCase("sq") + x.slice(1)))];
+}
+
+export function istBestellt(sitzung, bericht) {
+  return sitzung?.hatBestellt === true || ["bestellt", "versandt", "zugestellt"].includes(String(bericht?.status || ""));
+}
+
+// Welche Lage passt: Kasse vor "gesehen", "gesehen" vor "nicht gesehen".
+export function nachfassArt(sitzung, bericht) {
+  if (istBestellt(sitzung, bericht)) return "";
+  if (sitzung?.kasseGeoeffnet === true) return "kasse";
+  if (sitzung?.berichtGeoeffnet === true) return "gesehen";
+  return "ungesehen";
+}
+
+export function nachfassNachricht(sitzung, bericht, art) {
+  const name = vorname(sitzung);
+  const link = `https://www.mnyra.com/analiza/${sitzung?.id || ""}`;
+  const gruss = `Përshëndetje${name ? ` ${name}` : ""}, Dr. Gashi këtu.`;
+  const probleme = nachfassProbleme(bericht);
+  if (art === "kasse") {
+    return [
+      gruss,
+      "Porosia e terapisë suaj mbeti pa u përfunduar – a u ngatërrua diçka?",
+      "Nëse doni, e bëj unë për ju: më dërgoni vetëm adresën këtu. Paguani vetëm kur pakoja është në dorën tuaj.",
+      `Ose përfundojeni vetë këtu: ${link}`
+    ].join("\n\n");
+  }
+  if (art === "ungesehen") {
+    const plan = probleme.length >= 2
+      ? `Gjeta ${ZAHLWORT[Math.min(probleme.length, 5)]} gjëra që duhen trajtuar dhe kam një plan të qartë për t'i larguar plotësisht.`
+      : probleme.length === 1
+        ? `Për ${probleme[0]} kam një plan të qartë për ta larguar plotësisht.`
+        : "Kam një plan të qartë për lëkurën tuaj.";
+    return [
+      gruss,
+      `Analiza e lëkurës suaj është gati – e bëra personalisht. ${plan}`,
+      `E keni këtu, ju merr vetëm 2 minuta: ${link}`,
+      "Më tregoni çfarë mendoni."
+    ].join("\n\n");
+  }
+  const per = probleme.length ? ` për ${probleme.slice(0, 2).join(" dhe ")}` : "";
+  return [
+    gruss,
+    `Terapinë${per} e zgjodha vetë për lëkurën tuaj – synimi ynë është largimi i plotë brenda 4 javëve.`,
+    "Pa asnjë rrezik: paguani te dera, dhe çdo javë e kontrolloj vetë lëkurën tuaj.",
+    `Më shkruani vetëm „Po“ dhe e porosis unë për ju. Ose direkt këtu: ${link}`
+  ].join("\n\n");
+}
+
 // ══ DIE AKTE EINES FALLS ═══════════════════════════════════════════
 //
 // Oben die Akte (immer offen, alles mit einem Tipp kopierbar), dann die
@@ -2027,6 +2110,7 @@ function renderPatientKnoepfe(sitzung, bericht, fertig) {
         ${endText ? taste(endText, `${renderHeartIcon("send", "heart-befund__knopficon")}Befund in Viber senden<small>Text wird kopiert</small>`,
           "heart-befund__knopf heart-befund__knopf--viber")
           : `<p class="heart-befund__hilfe">Nach der Freigabe erscheint hier „Befund in Viber senden“.</p>`}
+        ${renderNachfassen3(sitzung, bericht, fertig, (text, inhalt, klasse) => taste(text, inhalt, klasse))}
       </section>`;
   }
   return `
@@ -2047,7 +2131,27 @@ function renderPatientKnoepfe(sitzung, bericht, fertig) {
           : `<button type="button" class="heart-befund__knopf" data-action="lifeskin-text-kopieren" data-wert="${escapeHtml(endText)}"
                data-was="WhatsApp-Nachricht">${renderHeartIcon("copy", "heart-befund__knopficon")}Befund-Nachricht kopieren</button>`)
           : `<p class="heart-befund__hilfe">Nach der Freigabe erscheint hier „Befund in WhatsApp senden“.</p>`}
+        ${renderNachfassen3(sitzung, bericht, fertig, (text, inhalt, klasse) => wa
+          ? `<a class="${klasse}" href="${escapeHtml(waLink(text))}" target="_blank" rel="noopener">${inhalt}</a>`
+          : `<button type="button" class="${klasse} heart-befund__wataste--kopie" data-action="lifeskin-text-kopieren"
+               data-wert="${escapeHtml(text)}" data-was="Nachfass-Nachricht">${inhalt}</button>`)}
       </section>`;
+}
+
+// 3. NACHFASSEN: erst nach der Freigabe, nie nach der Bestellung. Drei
+// Tasten, die passende hervorgehoben - Heart weiss, wie weit er kam.
+function renderNachfassen3(sitzung, bericht, fertig, taste) {
+  if (!fertig || istBestellt(sitzung, bericht)) return "";
+  const passt = nachfassArt(sitzung, bericht);
+  const lage = NACHFASS_ARTEN.find((a) => a.id === passt);
+  return `
+        <span class="heart-befund__zwischen heart-befund__zwischen--icon">${renderHeartIcon("send", "heart-befund__knopficon")}Nachfassen</span>
+        ${lage ? `<p class="heart-befund__hilfe">Passend: <b>${escapeHtml(lage.taste)}</b> – ${escapeHtml(lage.hilfe)}.</p>` : ""}
+        <div class="heart-befund__wareihe heart-befund__wareihe--drei">
+          ${NACHFASS_ARTEN.map((a) => taste(nachfassNachricht(sitzung, bericht, a.id),
+            `${renderHeartIcon("send", "heart-befund__wataicon")}${escapeHtml(a.taste)}`,
+            `heart-befund__wataste${a.id === passt ? " heart-befund__wataste--passt" : ""}`)).join("")}
+        </div>`;
 }
 
 // Welcher Weg: vier Wege, zwei Arten von Analyse (mit oder ohne Foto).

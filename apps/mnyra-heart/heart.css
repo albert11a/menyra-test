@@ -6152,6 +6152,10 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 .heart-befund__wataste:active { transform: scale(.97); background: #25d3661a; }
 .heart-befund__wataicon { width: 17px; height: 17px; flex: none; color: #25d366; }
 .heart-befund__wataste--kopie .heart-befund__wataicon { color: var(--heart-muted, #8f918d); }
+/* Nachfassen: drei Tasten, die passende gruen umrandet. */
+.heart-befund__wareihe--drei { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.heart-befund__wareihe--drei .heart-befund__wataste { font-size: 13.5px; white-space: normal; text-align: center; line-height: 1.2; }
+.heart-befund__wataste--passt { border-color: #25d366; background: #25d36614; }
 
 /* Akte: Fallnummer und Telefon immer sichtbar, der Rest zum Aufklappen. */
 .heart-akte__mehr { grid-column: 1 / -1; border-top: 1px solid var(--heart-line, #26292a); margin: 2px -14px -14px; }
