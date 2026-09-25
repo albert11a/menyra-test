@@ -1453,9 +1453,9 @@ export function whatsappNachricht(sitzung, bericht) {
 // Das kostet Vertrauen, und WhatsApp sperrt Nummern, die als Spam gemeldet
 // werden - der teuerste Kanal, den es gibt.
 export const NACHFASS_ARTEN = Object.freeze([
-  { id: "gesehen", taste: "Analyse gesehen", hilfe: "hat die Analyse geöffnet, nicht bestellt" },
+  { id: "gesehen", taste: "Gesehen", hilfe: "hat die Analyse geöffnet, nicht bestellt" },
   { id: "ungesehen", taste: "Nicht gesehen", hilfe: "hat die Analyse noch nicht geöffnet" },
-  { id: "kasse", taste: "An der Kasse", hilfe: "war an der Kasse, nicht bestellt" }
+  { id: "kasse", taste: "Kasse", hilfe: "war an der Kasse, nicht bestellt" }
 ]);
 
 const ZAHLWORT = ["", "një", "dy", "tri", "katër", "pesë"];
@@ -2053,6 +2053,7 @@ function vorname(sitzung) {
 // Wann die Analyse fertig ist - die vier Angaben, die am haeufigsten
 // gebraucht werden. Je eine Taste, alle vier in einer Reihe.
 export const VORAB_ZEITEN = Object.freeze([
+  { id: "10min", taste: "10 min", satz: "pas rreth 10 minutash" },
   { id: "30min", taste: "30 min", satz: "pas rreth 30 minutash" },
   { id: "1h", taste: "1 orë", satz: "pas rreth një ore" },
   { id: "heute", taste: "Sot", satz: "sot gjatë ditës" },
@@ -2064,7 +2065,7 @@ export const VORAB_ZEITEN = Object.freeze([
 // spaeter antippbar (von einer unbekannten Nummer ist er es sonst nicht).
 export function vorabNachricht(sitzung, zeit = "1h") {
   const name = vorname(sitzung);
-  const wann = (VORAB_ZEITEN.find((z) => z.id === zeit) || VORAB_ZEITEN[1]).satz;
+  const wann = (VORAB_ZEITEN.find((z) => z.id === zeit) || VORAB_ZEITEN.find((z) => z.id === "1h")).satz;
   return [
     `Përshëndetje${name ? ` ${name}` : ""}, jam Dr. Violeta Gashi nga LifeSkin.`,
     `Po e bëj analizën e lëkurës suaj personalisht, që t'ju gjejmë terapinë LifeSkin që i përshtatet lëkurës suaj dhe ju sjell rezultate të dukshme. Analiza do të jetë gati ${wann}.`,

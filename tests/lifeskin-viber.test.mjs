@@ -47,7 +47,7 @@ test("Heart: nur Viber -> Knoepfe kopieren und oeffnen Viber, sonst WhatsApp", a
   assert.equal(nurViber({ phone: "+38344123456", viber: "+38345987654" }), false);
   assert.equal(nurViber({ phone: "+38344123456" }), false);
   const vb = renderSitzungDetail({ ...basis, phone: "+38345987654", viber: "+38345987654" }, {}, "ready", [], { status: "wartet" });
-  assert.equal((vb.match(/data-action="lifeskin-viber"/g) || []).length, 4);
+  assert.equal((vb.match(/data-action="lifeskin-viber"/g) || []).length, 5);
   assert.match(vb, /data-nummer="38345987654"/);
   assert.doesNotMatch(vb, /wa\.me\//);
   assert.match(vb, /Telefon · Viber/);

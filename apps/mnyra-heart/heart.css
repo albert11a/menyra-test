@@ -6159,9 +6159,19 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 .heart-befund__wataste:active { transform: scale(.97); background: #25d3661a; }
 .heart-befund__wataicon { width: 17px; height: 17px; flex: none; color: #25d366; }
 .heart-befund__wataste--kopie .heart-befund__wataicon { color: var(--heart-muted, #8f918d); }
+/* KOMPAKT (25.09.): Zeichen neben dem Text statt darueber, fuenf Zeiten in
+   einer Reihe, alle Tasten 42 px hoch. */
+.heart-befund__patient .heart-befund__wareihe { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.heart-befund__patient .heart-befund__wataste { flex-direction: row; gap: 5px; min-height: 42px; padding: 0 4px; border-radius: 12px; font-size: 13.5px; }
+/* In den Reihen nur der Text - das Zeichen steht schon in der Ueberschrift. */
+.heart-befund__patient .heart-befund__wareihe .heart-befund__wataicon { display: none; }
+.heart-befund__patient .heart-befund__wataste { font-size: clamp(12px, 3.5vw, 14px); white-space: nowrap; }
+.heart-befund__patient .heart-befund__knopf--wa { min-height: 48px; padding: 8px 12px; font-size: 15px; }
+.heart-befund__patient .heart-befund__knopf--wa small { font-size: 11px; }
 /* Nachfassen: drei Tasten, die passende gruen umrandet. */
 .heart-befund__wareihe--drei { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.heart-befund__wareihe--drei .heart-befund__wataste { font-size: 13.5px; white-space: normal; text-align: center; line-height: 1.2; }
+.heart-befund__patient .heart-befund__wareihe--drei { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.heart-befund__wareihe--drei .heart-befund__wataste { font-size: 13.5px; text-align: center; line-height: 1.2; }
 .heart-befund__wataste--passt { border-color: #25d366; background: #25d36614; }
 
 /* Akte: Fallnummer und Telefon immer sichtbar, der Rest zum Aufklappen. */
@@ -6448,3 +6458,5 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 .heart-rasti-wahl__karte--medium .heart-rasti-wahl__bilder { position: relative; }
 .heart-rasti-wahl__karte--medium .heart-rasti-wahl__bilder img { aspect-ratio: 9 / 16; }
 .heart-rasti-wahl__karte--medium .heart-medium__art { top: auto; bottom: 6px; left: 6px; right: auto; }
+/* Schmale Telefone: "Nicht gesehen" darf umbrechen statt abgeschnitten zu werden. */
+.heart-befund__patient .heart-befund__wareihe--drei .heart-befund__wataste { white-space: normal; }
