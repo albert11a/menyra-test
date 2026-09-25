@@ -2120,7 +2120,7 @@ function renderPatientKnoepfe(sitzung, bericht, fertig) {
         </div>
         ${endText ? taste(endText, `${renderHeartIcon("send", "heart-befund__knopficon")}Befund in Viber senden<small>Text wird kopiert</small>`,
           "heart-befund__knopf heart-befund__knopf--viber")
-          : `<p class="heart-befund__hilfe">Nach der Freigabe erscheint hier „Befund in Viber senden“.</p>`}
+          : ""}
         ${renderNachfassen3(sitzung, bericht, fertig, (text, inhalt, klasse) => taste(text, inhalt, klasse))}
       </section>`;
   }
@@ -2141,7 +2141,7 @@ function renderPatientKnoepfe(sitzung, bericht, fertig) {
           ${renderHeartIcon("send", "heart-befund__knopficon")}Befund in WhatsApp senden<small>mit Anrede und Link</small></a>`
           : `<button type="button" class="heart-befund__knopf" data-action="lifeskin-text-kopieren" data-wert="${escapeHtml(endText)}"
                data-was="WhatsApp-Nachricht">${renderHeartIcon("copy", "heart-befund__knopficon")}Befund-Nachricht kopieren</button>`)
-          : `<p class="heart-befund__hilfe">Nach der Freigabe erscheint hier „Befund in WhatsApp senden“.</p>`}
+          : ""}
         ${renderNachfassen3(sitzung, bericht, fertig, (text, inhalt, klasse) => wa
           ? `<a class="${klasse}" href="${escapeHtml(waLink(text))}" target="_blank" rel="noopener">${inhalt}</a>`
           : `<button type="button" class="${klasse} heart-befund__wataste--kopie" data-action="lifeskin-text-kopieren"
