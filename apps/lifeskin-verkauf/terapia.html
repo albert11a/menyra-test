@@ -98,24 +98,16 @@
           <li><b>Konsultë online me skanim</b> — çdo javë me Dr. Gashin</li>
           <li><b>Vlerësimi final</b> — pas 4 javësh, krahasuar me sot</li>
         </ul>
-        <!-- Morgens und abends (Variante B, 25.09.): der Morgen als warme,
-             der Abend als dunkelgruene Karte, jedes Produkt eine Zeile mit
-             Foto, Menge und Schritt. Symbole: Lucide sun / moon. -->
+        <!-- Morgens und abends (Variante A, 25.09.): umschalten wie in einer
+             App, darunter je Produkt ein nummerierter Schritt mit Foto und
+             Menge. Symbole: Lucide sun / moon. -->
         <div class="rutina" id="t-rutina" hidden>
-          <div class="rutina__karte rutina__karte--m" id="t-rutina-mengjes">
-            <div class="rutina__kok">
-              <span class="rutina__ikona" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></span>
-              <p class="rutina__titulli">Mëngjes<small>Pas larjes së fytyrës</small></p>
-            </div>
-            <ol class="rutina__liste" id="t-mengjes"></ol>
+          <div class="rutina__tabs" role="tablist" aria-label="Rutina">
+            <button type="button" class="rutina__tab rutina__tab--m" role="tab" id="t-tab-mengjes" aria-controls="t-mengjes" aria-selected="true" data-rutina="mengjes"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>Mëngjes</button>
+            <button type="button" class="rutina__tab rutina__tab--n" role="tab" id="t-tab-mbremje" aria-controls="t-mbremje" aria-selected="false" data-rutina="mbremje"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>Mbrëmje</button>
           </div>
-          <div class="rutina__karte rutina__karte--n" id="t-rutina-mbremje">
-            <div class="rutina__kok">
-              <span class="rutina__ikona" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></span>
-              <p class="rutina__titulli">Mbrëmje<small>Para gjumit</small></p>
-            </div>
-            <ol class="rutina__liste" id="t-mbremje"></ol>
-          </div>
+          <ol class="rutina__liste" id="t-mengjes" role="tabpanel" aria-labelledby="t-tab-mengjes"></ol>
+          <ol class="rutina__liste" id="t-mbremje" role="tabpanel" aria-labelledby="t-tab-mbremje" hidden></ol>
         </div>
       </section>
 

@@ -545,22 +545,39 @@ export class Terapia {
       if (zeit.morgens) morgens.push(p);
       if (zeit.abends) abends.push(p);
     }
-    // Je Produkt eine Zeile: Foto, Name, Menge, Schritt. Eine Tageszeit
-    // ohne Produkt faellt weg.
+    // Je Produkt ein Schritt: Nummer, Foto, Name, Menge.
     const zeilen = (ziel, liste) => $(ziel)?.replaceChildren(...liste.map((p, i) => {
       const li = element("li");
       const text = element("div", "rutina__teksti");
       text.append(element("b", null, p.name));
       const menge = String(p.perdorimi?.sasia || "").trim();
       if (menge) text.append(element("span", null, menge.charAt(0).toUpperCase() + menge.slice(1)));
-      li.append(produktBild(p, "rutina__foto"), text, element("span", "rutina__nr", String(i + 1)));
+      li.append(element("span", "rutina__nr", String(i + 1)), produktBild(p, "rutina__foto"), text);
       return li;
     }));
     zeilen("#t-mengjes", morgens);
     zeilen("#t-mbremje", abends);
-    zeigen($("#t-rutina-mengjes"), morgens.length > 0);
-    zeigen($("#t-rutina-mbremje"), abends.length > 0);
+    // Eine Tageszeit ohne Produkt: kein Reiter dafuer. Offen ist zuerst
+    // der Morgen, wenn er Produkte hat.
+    zeigen($("#t-tab-mengjes"), morgens.length > 0);
+    zeigen($("#t-tab-mbremje"), abends.length > 0);
+    this.#rutinaZeigen(morgens.length ? "mengjes" : "mbremje");
+    if (!this.rutinaGebunden) {
+      this.rutinaGebunden = true;
+      $(".rutina__tabs")?.addEventListener("click", (e) => {
+        const tab = e.target instanceof Element ? e.target.closest("[data-rutina]") : null;
+        if (tab) this.#rutinaZeigen(tab.dataset.rutina);
+      });
+    }
     zeigen($("#t-rutina"), morgens.length + abends.length > 0);
+  }
+
+  #rutinaZeigen(welche) {
+    for (const [name, liste] of [["mengjes", "#t-mengjes"], ["mbremje", "#t-mbremje"]]) {
+      const an = name === welche;
+      $(`#t-tab-${name}`)?.setAttribute("aria-selected", an ? "true" : "false");
+      zeigen($(liste), an);
+    }
   }
 
   #analiza() {
