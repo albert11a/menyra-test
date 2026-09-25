@@ -84,3 +84,20 @@ test("Morgen/Abend: Lucide-Sonne und -Mond, jedes Produkt ein Schritt", () => {
   assert.match(html, /role="tablist"/);
   assert.match(js, /produktBild\(p, "rutina__foto"\)/, "Kein Produktfoto je Zeile");
 });
+
+test("was Heart im Bogen fuellt, steht auch auf der Seite", () => {
+  const html = lies("apps/lifeskin-verkauf/terapia.html");
+  for (const id of ["t-ndryshimet", "t-keshilla", "t-ekzaminimi", "t-termat"]) assert.ok(html.includes(`id="${id}"`), id);
+  const js = lies("apps/lifeskin-verkauf/terapia.js");
+  for (const feld of ["gjetjaKryesore", "gjetjaDyta", "synimi28", "keshilla", "ekzaminimi", "termat", "fotot", "zonat"]) {
+    assert.ok(js.includes(`r.${feld}`), `r.${feld} wird nicht gezeigt`);
+  }
+  // Beide Arten (mit und ohne Foto) zeigen die Zusaetze.
+  assert.equal((js.match(/this\.#bogenZusatz\(r/g) || []).length, 2);
+});
+
+test("aeltere Befunde: 28 Tage werden zu 4 Wochen", async () => {
+  globalThis.__LIFESKIN_TEST__ = true;
+  const { wochenStattTage } = await import("../apps/lifeskin-verkauf/terapia.js");
+  assert.equal(wochenStattTage("Pas 28 ditësh, synimi. Brenda 28 ditëve, në 28 ditë."), "Pas 4 javësh, synimi. Brenda 4 javëve, në 4 javë.");
+});

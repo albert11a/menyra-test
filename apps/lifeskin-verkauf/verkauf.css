@@ -400,6 +400,16 @@ a.knopf { text-decoration: none; }
 .knopf--wa { background: #1f8f55; box-shadow: 0 6px 16px #1f8f5540; }
 .pse-tani { margin: -8px 0 16px; color: var(--muted); }
 .permbledhja { color: var(--muted); font-size: .95rem; margin-bottom: 16px; }
+/* Haupt-, Nebenbefund und Ziel aus dem Bogen. */
+.ndryshimet { display: grid; gap: 10px; margin: 0 0 14px; }
+.ndryshimet > div { border-left: 3px solid var(--green); padding: 2px 0 2px 12px; }
+.ndryshimet dt { font-size: .74rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--green); }
+.ndryshimet dd { margin: 2px 0 0; color: var(--ink); }
+.keshilla { background: #eef4ef; border-radius: 14px; padding: 14px 16px; margin: 0 0 14px; }
+.keshilla strong { display: block; font-size: .85rem; color: var(--green); margin-bottom: 4px; }
+.keshilla p { margin: 0; }
+.ekzaminimi { color: var(--muted); font-size: .88rem; margin: 0 0 14px; }
+.termat > div { grid-template-columns: 1fr; gap: 2px; }
 .produkt-fig__bild { width: 64px; height: 98px; object-fit: contain; }
 img.produkt-fig__bild { width: 88px; height: 98px; border-radius: 12px; object-fit: cover; }
 img.produkt__ikona { object-fit: cover; padding: 0; }

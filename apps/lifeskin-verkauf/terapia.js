@@ -114,6 +114,14 @@ function produktBild(p, klasse) {
 
 // Die Antwort auf "Kur shoh ndryshim?": in 4 Wochen, und was genau
 // verschwinden soll - seine Karten, nicht ein allgemeiner Satz.
+// Aeltere Befunde sprechen noch von 28 Tagen - die Seite sagt ueberall 4 Wochen.
+export function wochenStattTage(text) {
+  return String(text || "")
+    .replace(/\b([Pp])as\s+28\s+ditësh/g, "$1as 4 javësh")
+    .replace(/\b28\s+ditëve/g, "4 javëve")
+    .replace(/\b28\s+ditë(?![a-zë])/g, "4 javë");
+}
+
 export function faqNdryshimi(problemet, wochen = 4) {
   const liste = [...new Set((problemet || [])
     .map((p) => [p?.gjetja, p?.ku].map((x) => String(x || "").trim()).filter(Boolean).join(" "))
@@ -597,6 +605,7 @@ export class Terapia {
       zeigen($("#t-zonatblock"), false);
       zeigen($("#t-parametratblock"), false);
       schreibe($("#t-permbledhja"), ohneFotoSaetze(r.gjetjet));
+      this.#bogenZusatz(r, ohneFotoSaetze);
       const shpjegimi = (Array.isArray(r.shpjegimi) ? r.shpjegimi : []).map(ohneFotoSaetze).filter(Boolean);
       $("#t-shpjegimi").replaceChildren(...shpjegimi.map((x) => element("p", null, x)));
       zeigen($("#t-shpjegimiblock"), shpjegimi.length > 0);
@@ -611,6 +620,7 @@ export class Terapia {
     schreibe($("#t-niveli"), niveli);
     zeigen($("#t-niveli"), Boolean(niveli));
     schreibe($("#t-permbledhja"), String(r.gjetjet || ""));
+    this.#bogenZusatz(r);
 
     const zonat = Array.isArray(r.zonaLista) ? r.zonaLista : [];
     $("#t-zonat").replaceChildren(...zonat.map((z) => {
@@ -635,6 +645,43 @@ export class Terapia {
     zeigen($("#t-shpjegimiblock"), shpjegimi.length > 0);
 
     this.#paKujdes(r);
+  }
+
+  // WAS IM BOGEN STAND UND AUF DER SEITE FEHLTE (25.09.): Haupt- und
+  // Nebenbefund, das Ziel nach 4 Wochen, wie untersucht wurde, der Rat von
+  // Dr. Gashi und die Begriffe. Heart fuellt sie, die Seite zeigte sie nie.
+  #bogenZusatz(r, glaetten = (x) => x) {
+    const text = (x) => glaetten(wochenStattTage(String(x || "").trim()));
+    const zeilen = [["Ndryshimi kryesor", r.gjetjaKryesore], ["Ndryshimi tjetër", r.gjetjaDyta], ["Synimi", r.synimi28]]
+      .map(([k, v]) => [k, text(v)]).filter(([, v]) => v);
+    $("#t-ndryshimet")?.replaceChildren(...zeilen.map(([k, v]) => {
+      const div = element("div");
+      div.append(element("dt", null, k), element("dd", null, v));
+      return div;
+    }));
+    zeigen($("#t-ndryshimet"), zeilen.length > 0);
+
+    const keshilla = text(r.keshilla);
+    schreibe($("#t-keshilla"), keshilla);
+    zeigen($("#t-keshillablock"), Boolean(keshilla));
+
+    const fotot = Number(r.fotot) || 0;
+    const zonat = Number(r.zonat) || 0;
+    const zahlen = this.ohneFoto ? "" : [fotot ? `${fotot} foto` : "", zonat ? `${zonat} zona` : ""]
+      .filter(Boolean).join(" dhe ");
+    const ekz = [zahlen ? `U vlerësuan ${zahlen}.` : "", text(r.ekzaminimi)].filter(Boolean).join(" ");
+    schreibe($("#t-ekzaminimi"), ekz);
+    zeigen($("#t-ekzaminimi"), Boolean(ekz));
+
+    const termat = (Array.isArray(r.termat) ? r.termat : []).slice(0, 8)
+      .map((t) => [String(t?.emri || t?.termi || "").trim(), text([t?.shpjegimi, t?.te_ju].filter(Boolean).join(" "))])
+      .filter(([k, v]) => k && v);
+    $("#t-termat")?.replaceChildren(...termat.map(([k, v]) => {
+      const div = element("div");
+      div.append(element("dt", null, k), element("dd", null, v));
+      return div;
+    }));
+    zeigen($("#t-termatblock"), termat.length > 0);
   }
 
   #paKujdes(r) {
