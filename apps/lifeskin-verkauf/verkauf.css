@@ -341,9 +341,14 @@ details > p, details > dl, details > ul { padding: 0 0 16px; color: var(--muted)
   background: var(--paper); border-top: 1px solid var(--line);
   padding: 10px max(16px, calc((100vw - 560px) / 2 + 20px)) calc(env(safe-area-inset-bottom) + 8px);
   box-shadow: 0 -6px 20px #0000001a;
+  /* Eigene Grafikebene: In Instagram/Facebook (WKWebView) und iOS-Safari
+     blieb eine feste Leiste ohne sie beim Wischen hinter der Seite
+     zurueck und sprang erst am Ende an ihren Platz. */
+  transform: translate3d(0, 0, 0); will-change: transform;
+  -webkit-backface-visibility: hidden; backface-visibility: hidden;
   transition: transform .22s ease;
 }
-.leiste[data-an="nein"] { transform: translateY(110%); }
+.leiste[data-an="nein"] { transform: translate3d(0, 110%, 0); pointer-events: none; }
 .leiste p { font-size: .72rem; color: var(--muted); text-align: center; margin-top: 5px; }
 /* PLATZ FUER DIE LEISTE. Ohne ihn lag der letzte Knopf der Seite ("Na
    shkruani në WhatsApp") dauerhaft UNTER der Leiste - man konnte ihn nicht

@@ -761,24 +761,47 @@ export class Terapia {
   // ---------- Leiste und Lesemarken ----------
 
   // Weg, solange ein Kaufknopf der Seite im Bild ist; sonst immer da.
+  // Weg, solange ein Kaufknopf der Seite im Bild ist; sonst immer da.
+  //
+  // IN INSTAGRAM UND FACEBOOK (In-App-Browser) kommen "scroll"-Ereignisse
+  // beim Wischen oft erst am Ende an - die Leiste erschien dann zu spaet
+  // oder blieb stehen. Ein IntersectionObserver meldet sich auch dort
+  // waehrend der Bewegung; "scroll" bleibt nur als Rueckfall.
   #leiste() {
     const leiste = $("#leiste");
     if (!this.mitAngebot) { zeigen(leiste, false); return; }
     zeigen(leiste, true);
+    const knoepfe = ["#hero-knopf", "#vendimi"].map((w) => $(w)).filter(Boolean);
+    const sichtbar = new Set();
+    let beobachtet = false;
+    const imBild = (el) => {
+      if (!el || el.hidden || el.closest("[hidden]")) return false;
+      if (beobachtet) return sichtbar.has(el);
+      const r = el.getBoundingClientRect();
+      return r.bottom > 0 && r.top < window.innerHeight - 80;
+    };
     const pruefen = () => {
       if (!this.mitAngebot) { leiste.dataset.an = "nein"; return; }
-      const hoehe = window.innerHeight;
-      const imBild = (el) => {
-        if (!el || el.hidden) return false;
-        const r = el.getBoundingClientRect();
-        return r.bottom > 0 && r.top < hoehe - 80;
-      };
       const offen = !$("#porosia").hidden;
-      leiste.dataset.an = !offen && !imBild($("#hero-knopf")) && !imBild($("#vendimi")) ? "ja" : "nein";
+      const an = !offen && !knoepfe.some(imBild) ? "ja" : "nein";
+      if (leiste.dataset.an !== an) leiste.dataset.an = an;
     };
     this.leistePruefen = pruefen;
-    window.addEventListener("scroll", pruefen, { passive: true });
+    if (typeof IntersectionObserver === "function" && knoepfe.length) {
+      const beobachter = new IntersectionObserver((eintraege) => {
+        for (const e of eintraege) {
+          if (e.isIntersecting) sichtbar.add(e.target);
+          else sichtbar.delete(e.target);
+        }
+        beobachtet = true;
+        pruefen();
+      }, { rootMargin: "0px 0px -80px 0px" });
+      for (const k of knoepfe) beobachter.observe(k);
+    } else {
+      window.addEventListener("scroll", pruefen, { passive: true });
+    }
     window.addEventListener("resize", pruefen, { passive: true });
+    globalThis.visualViewport?.addEventListener("resize", pruefen, { passive: true });
     pruefen();
   }
 
