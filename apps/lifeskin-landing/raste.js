@@ -16,6 +16,16 @@ import {
 
 const BASIS = `${LIFESKIN_FIRESTORE_BASE}/lifeskin/${LIFESKIN_TENANT}/config`;
 
+// DIE EIGENEN FAELLE GIBT ES AUCH ALS WEBP - rund 40 % kleiner bei
+// gleicher Schaerfe (Qualitaet 0,78). Die JPEG bleibt der Rueckfall fuer
+// Browser ohne WebP. Fremde Adressen (aus Heart hochgeladen) bleiben, wie
+// sie sind.
+export function rastiBild(src, alt) {
+  const bild = `<img src="${e(src)}" alt="${e(alt)}" width="720" height="810" loading="lazy" decoding="async" />`;
+  if (!/^\/apps\/lifeskin-landing\/fotot\/rasti-[a-z0-9-]+\.jpg$/.test(String(src || ""))) return bild;
+  return `<picture><source srcset="${e(String(src).replace(/\.jpg$/, ".webp"))}" type="image/webp" />${bild}</picture>`;
+}
+
 export function rastiKarte(r) {
   const n = r.produkte.length;
   const cmim = r.cmimi
@@ -25,11 +35,11 @@ export function rastiKarte(r) {
           <article class="rasti" data-rasti="${e(r.id)}" data-produkte="${n}" data-cmim="${e(r.cmimi)}">
             <div class="rasti__palet">
               <figure class="gjysma">
-                <img src="${e(r.para)}" alt="Para: ${e(r.gjetja)}" width="720" height="810" loading="lazy" decoding="async" />
+                ${rastiBild(r.para, `Para: ${r.gjetja || ""}`)}
                 <figcaption class="etiket">PARA</figcaption>
               </figure>
               <figure class="gjysma gjysma--fund">
-                <img src="${e(r.pas)}" alt="Pas 28 ditësh: ${e(r.gjetja)}" width="720" height="810" loading="lazy" decoding="async" />
+                ${rastiBild(r.pas, `Pas 28 ditësh: ${r.gjetja || ""}`)}
                 <figcaption class="etiket etiket--fund">PAS</figcaption>
               </figure>
             </div>

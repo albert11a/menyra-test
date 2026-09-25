@@ -224,10 +224,23 @@ const inlinedManifest = await inlineSocialBundleManifest();
 // eigenem Zustand) laden koennte. Die Einzeldateien bleiben daneben
 // liegen. Scheitert das Buendeln, bleibt die ungebuendelte Fassung - die
 // Seite laeuft dann wie bisher, nur langsamer.
+//
+// DIE LANDINGPAGE (Werbeziel) GENAUSO: Gemessen auf mnyra.com waren es 21
+// einzelne Module, jedes mit eigener Rundreise und Neuvalidierung - auf 3G
+// stand der Start-Knopf erst nach 6-17 s. Trichter, Laden und Faelle teilen
+// keinen Zustand auf Modulebene (Konfig, Katalog, Preise, Pixel-Kennungen
+// sind reine Werte/Funktionen), jedes Buendel darf also seine eigene Kopie
+// tragen.
 const EINZEL_EINSTIEGE = [
   "apps/lifeskin-astra/astra.js",
-  "apps/lifeskin-verkauf/terapia.js"
+  "apps/lifeskin-verkauf/terapia.js",
+  "apps/lifeskin/lifeskin-app.js",
+  "apps/lifeskin-landing/shop.js",
+  "apps/lifeskin-landing/raste.js"
 ];
+// Welche Einzeldateien in welchem Buendel stecken - fuer die modulepreload-
+// Zeilen unten.
+const imBuendel = new Map();
 let gebuendelt = 0;
 for (const einstieg of EINZEL_EINSTIEGE) {
   const quelle = resolve(repoRoot, einstieg);
@@ -242,17 +255,47 @@ for (const einstieg of EINZEL_EINSTIEGE) {
       minifyWhitespace: true,
       legalComments: "none",
       write: false,
+      metafile: true,
       logLevel: "silent"
     });
     await writeFile(resolve(distRoot, einstieg), ergebnis.outputFiles[0].contents);
+    imBuendel.set(`/${einstieg}`, Object.keys(ergebnis.metafile.inputs)
+      .map((datei) => `/${relative(repoRoot, resolve(repoRoot, datei)).split("\\").join("/")}`)
+      .filter((datei) => datei !== `/${einstieg}`));
     gebuendelt += 1;
   } catch (err) {
     console.warn(`Buendeln uebersprungen fuer ${einstieg}: ${err?.message || err}`);
   }
 }
 
+// VORGELADENE EINZELDATEIEN, DIE JETZT IM BUENDEL STECKEN, NICHT MEHR LADEN.
+// Sonst holt der Browser sie trotzdem - doppelt und umsonst.
+async function vorladenAufraeumen() {
+  if (!imBuendel.size) return 0;
+  let seiten = 0;
+  for await (const datei of dateienUnter(resolve(distRoot, "apps"))) {
+    if (extname(datei).toLowerCase() !== ".html") continue;
+    const roh = await readFile(datei, "utf8");
+    const ueberfluessig = new Set();
+    for (const [einstieg, teile] of imBuendel) {
+      if (!roh.includes(`src="${einstieg}"`)) continue;
+      for (const teil of teile) ueberfluessig.add(teil);
+    }
+    if (!ueberfluessig.size) continue;
+    const sauber = roh.replace(/[ \t]*<link rel="modulepreload" href="([^"]+)"\s*\/?>\n?/g,
+      (zeile, href) => (ueberfluessig.has(href) ? "" : zeile));
+    if (sauber !== roh) {
+      await writeFile(datei, sauber, "utf8");
+      seiten += 1;
+    }
+  }
+  return seiten;
+}
+const vorladenBereinigt = await vorladenAufraeumen();
+
 console.log(`Prepared Vercel static output in ${relative(repoRoot, distRoot) || "dist"}`);
 console.log(`Copied: ${copied.join(", ")}`);
 console.log(`Inline bundle manifest: ${inlinedManifest ? "injected" : "skipped"}`);
 console.log(`Kommentare entfernt aus: ${entkommentiert} Dateien`);
 console.log(`Gebuendelt: ${gebuendelt} Einstiege`);
+console.log(`Vorladen bereinigt auf: ${vorladenBereinigt} Seiten`);
