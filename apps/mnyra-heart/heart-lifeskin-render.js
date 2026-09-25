@@ -173,7 +173,7 @@ function renderKacheln(kennzahlen, zeitraum = "") {
     </p>` : ""}
     <!-- ZUKLAPPBAR (25.09.), wie die anderen Karten, mit Gedaechtnis.
          Zugeklappt stehen die drei wichtigsten Zahlen im Kopf. -->
-    <details class="heart-klapp heart-kachelklapp" ${klappAttr("kacheln", true)}>
+    <details class="heart-lifeskin-block heart-klapp heart-kachelklapp" ${klappAttr("kacheln", true)}>
       <summary class="heart-klapp__kopf">
         <h3 class="heart-lifeskin-block__titel">Zahlen · ${escapeHtml(name)}</h3>
         <span class="heart-klapp__zahl heart-klapp__zahl--zu">${escapeHtml(`${kennzahlen.landing ?? 0} Landing · ${kennzahlen.analysen ?? 0} Analysen · ${euro(kennzahlen.umsatzHeute)}`)}</span>

@@ -6461,9 +6461,9 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 /* Schmale Telefone: "Nicht gesehen" darf umbrechen statt abgeschnitten zu werden. */
 .heart-befund__patient .heart-befund__wareihe--drei .heart-befund__wataste { white-space: normal; }
 
-/* Kacheln zum Zuklappen: der Kopf schlicht, ohne eigene Karte darum. Die
-   Zeitraum-Chips darueber bleiben stehen - sie gelten fuer alles darunter. */
-.heart-kachelklapp { margin: 0 0 14px; }
-.heart-kachelklapp > .heart-klapp__kopf { padding: 4px 2px 10px; }
-.heart-kachelklapp:not([open]) { margin-bottom: 6px; }
+/* Kacheln zum Zuklappen: eine Karte wie Live und Trichter, der Titel in
+   der Karte. Die Zeitraum-Chips darueber bleiben stehen - sie gelten fuer
+   alles darunter. */
+.heart-kachelklapp { margin: 0; }
+.heart-kachelklapp .heart-lifeskin-kacheln { border-radius: 10px; }
 .heart-lifeskin-chips:has(+ .heart-kachelklapp:not([open])) { display: flex; }
