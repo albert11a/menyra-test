@@ -201,14 +201,37 @@ test("ohne Bild im Video kommt keine Aufnahme zurueck", () => {
     "Aus einem Video ohne Masse entsteht eine leere Aufnahme statt gar keiner");
 });
 
-test("das Bild, das hinausgeht, ist nicht gespiegelt", () => {
-  // Gespiegelt wird die VORSCHAU, damit sich das Ausrichten richtig
-  // anfuehlt - im Stilblatt und nur bei der vorderen Kamera. Was die
-  // Aerztin ansieht, soll die Haut zeigen, wie sie liegt: eine
-  // seitenverkehrte Aufnahme laesst sie am falschen Ort suchen.
-  const foto = ohneKommentare(lies("apps/lifeskin/lifeskin-foto.js"));
-  assert.ok(!/scale\(-1|scaleX\(-1|translate\(.*-1/.test(foto),
-    "Die Aufnahme wird gespiegelt - dann liegt der Befund auf der falschen Seite");
+// Eine Leinwand, die JEDEN Zeichenbefehl in seiner Reihenfolge mitschreibt.
+function spiegelLeinwand() {
+  const befehle = [];
+  const dokument = {
+    createElement: () => ({
+      width: 0, height: 0,
+      getContext: () => ({
+        translate: (...a) => befehle.push(["translate", ...a]),
+        scale: (...a) => befehle.push(["scale", ...a]),
+        drawImage: (...a) => befehle.push(["drawImage", ...a.slice(1)])
+      }),
+      toDataURL: () => "data:image/jpeg;base64,AAAA"
+    })
+  };
+  return { dokument, befehle };
+}
+
+test("die Aufnahme ist seitengleich mit der Vorschau - gespiegelt nur auf Wunsch", () => {
+  // GEMELDET: Beim Ausloesen sprang das Bild seitenverkehrt um. Die
+  // Vorschau der vorderen Kamera ist ein Spiegel (Stilblatt), die
+  // Aufnahme war es nicht. Jetzt legt alsJpeg() sie auf Wunsch
+  // gespiegelt ab: erst verschieben, dann umdrehen, dann zeichnen.
+  const gespiegelt = spiegelLeinwand();
+  assert.ok(alsJpeg({}, { breite: 720, hoehe: 960, dokument: gespiegelt.dokument, spiegeln: true }));
+  assert.deepEqual(gespiegelt.befehle, [
+    ["translate", 720, 0], ["scale", -1, 1], ["drawImage", 0, 0, 720, 960]
+  ]);
+  const gerade = spiegelLeinwand();
+  assert.ok(alsJpeg({}, { breite: 720, hoehe: 960, dokument: gerade.dokument }));
+  assert.deepEqual(gerade.befehle, [["drawImage", 0, 0, 720, 960]],
+    "Ohne Wunsch wird nichts umgedreht - Dateien und die hintere Kamera bleiben, wie sie sind");
   const css = lies("apps/lifeskin/lifeskin-styles.css");
   assert.match(css, /\.ls-flaeche\[data-richtung="user"\] \.ls-flaeche__rahmen video \{ transform: scaleX\(-1\); \}/,
     "Die Vorschau der vorderen Kamera ist kein Spiegel");

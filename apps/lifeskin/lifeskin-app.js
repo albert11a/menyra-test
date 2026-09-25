@@ -31,7 +31,7 @@ import { pruefeAufnahme, schaerfeVonBild } from "./lifeskin-face.js";
 import { Ringlauf, SEKTOREN, POSE_GRENZEN, SEKTOR_RECHTS } from "./lifeskin-pose.js";
 import { telefonPruefen } from "../../shared/lifeskin-telefon.js";
 import { LIFESKIN_TELEFON_VORWAHL } from "./lifeskin-config.js";
-import { netzVorladen, netzHolen, netzStand, messeNetz, MARKE } from "./lifeskin-netz.js";
+import { netzVorladen, netzHolen, netzStand, netzArt, netzFehlerFolge, messeNetz, MARKE } from "./lifeskin-netz.js";
 import { STANDARD_KONFIG, ALTERSGRUPPEN } from "./lifeskin-catalog.js";
 import { OBERFLAECHE, EINSTIEG_HINWEIS, EINSTIEG_KARTEN, ARZT_BILD, ARZT_NAME,
   FRAGEN, FRAGEN_NACH_SCAN, FRAGEN_PA_SKANIM, FRAGEN_PA_SKANIM_NUMRI,
@@ -268,6 +268,33 @@ const NACHFORDERN_HOECHSTENS = 2;
 // ein vollstaendiger und immer noch besser als ein Kunde, der aufgibt.
 const AUFNAHME_FRIST_MS = 40000;
 
+// WIE LANGE DER RING OHNE FORTSCHRITT STEHEN DARF, BEVOR GEHOLFEN WIRD.
+//
+// Liegen schon Bilder vor, wird nach 25 Sekunden ohne neuen Strich das
+// Blatt mit "Vazhdo kështu" geoeffnet - die Kamera laeuft weiter, nichts
+// geht verloren. Frueher stand hier nur der harte Abbruch nach 45
+// Sekunden: Kamera aus, Fehler, alle Bilder weg, alles von vorn. Den
+// gibt es weiter, aber nur noch, wenn es gar nichts zu retten gibt.
+const STILLSTAND_HILFE_MS = 25000;
+const STILLSTAND_ABBRUCH_MS = 45000;
+
+// Wie viele Bilder hintereinander die Erkennung mit einem Fehler beenden
+// darf, bevor der Weg ohne Netz uebernimmt. Bei 25 Messungen je Sekunde
+// ist das gut eine Sekunde - ein einzelner Aussetzer beim Groessenwechsel
+// der Leinwand bleibt weit darunter.
+const NETZ_AUSFALL_BILDER = 30;
+
+// Wie lange nach dem Tipp auf "Fillo" das Gesichtsnetz angestossen wird.
+// Die Karten der Landingpage tippen Start UND Weg im selben Zug; wer
+// dort "Me foto" oder "Per trupin" waehlt, bestellt es damit sofort
+// wieder ab (#wegWaehlen), bevor ein einziges Byte laeuft.
+const NETZ_VORMERKEN_MS = 1500;
+
+// Wie lange die Uebergabe OHNE JEDE ANTWORT des Servers wartet, bevor sie
+// den Hinweis zeigt. Gezaehlt ab der letzten Antwort, nicht ab dem Tipp -
+// siehe #uebergeben().
+const UEBERGABE_STILL_MS = 20000;
+
 // Wie lange das Bild wandern muss, bis der Hinweis dazu erscheint.
 //
 // Eine halbe Sekunde: kurz genug, um noch zu der Bewegung zu gehoeren, die
@@ -432,6 +459,25 @@ const FORTSCHRITT_TRUP = { name: 45, anliegen: 65, tel: 85 };
 // Als eigene Funktion, damit sie ohne Browser nachrechenbar ist.
 export function varianteLesen(wurzel) {
   return wurzel?.dataset?.lsVariante === "kurz" ? "kurz" : "klassik";
+}
+
+// DER BROWSER IN EINER APP AUF ANDROID - dort gibt es keine Live-Kamera.
+//
+// Die Android-Apps von Facebook und Instagram (ebenso Messenger, TikTok
+// und die meisten anderen) reichen die Kamerafrage ihrer eingebauten
+// Webansicht nicht an das System weiter: getUserMedia() antwortet sofort
+// mit NotAllowedError, ohne dass je eine Frage erscheint. Auf dem iPhone
+// ist das anders - dort geben dieselben Apps die Kamera frei.
+//
+// Gebraucht wird die Antwort an zwei Stellen: Das Gesichtsnetz wird dort
+// gar nicht erst geholt (#liveKameraMoeglich), und ein Kamerafehler bietet
+// statt "Provo sërish" die Handykamera und Chrome an (#kameraAusweg).
+// "; wv)" ist die Kennung jeder Android-Webansicht - auch der Apps, deren
+// Namen hier nicht stehen.
+export function inAppAndroid(kennzeichen = globalThis.navigator?.userAgent) {
+  const ua = String(kennzeichen || "");
+  return /Android/i.test(ua)
+    && /FBAN|FBAV|FB_IAB|FB4A|Instagram|Messenger|musical_ly|Bytedance|TikTok|Snapchat|; wv\)/i.test(ua);
 }
 
 // WAS AUF DER LANDINGPAGE EINZELN HEREINKOMMT.
@@ -777,12 +823,14 @@ export class Trichter {
   }
 
   starte() {
-    // Das Gesichtsnetz wiegt rund 6,7 MB und wird ab hier im Hintergrund
-    // geholt. Bis der Kunde Namen und Alter eingegeben und die drei Hinweise
-    // gelesen hat, vergehen zwanzig Sekunden - die Ladezeit liegt darin und
-    // nicht vor der Kamera. Der Rueckgabewert interessiert hier niemanden:
-    // Kommt es nicht, laeuft der Trichter mit der alten Erkennung weiter.
-    netzVorladen();
+    // HIER WURDE DAS GESICHTSNETZ GEHOLT - fuer JEDEN Besucher, beim
+    // Oeffnen der Landingpage: rund 6,9 MB, dazu WebAssembly uebersetzen
+    // und die Grafikkarte einrichten. Die meisten, die aus einer Anzeige
+    // kommen, tippen nie auf "Fillo"; sie bezahlten es trotzdem - mit
+    // Datenvolumen, mit einer Leitung, die in genau diesen Sekunden die
+    // Seite selbst laden sollte, und mit Speicher in den knappen Fenstern
+    // von Instagram und Facebook. Jetzt wird es erst geholt, wenn jemand
+    // den Scan will: siehe #netzVormerken() und #wegWaehlen().
     // Vor allem anderen: Wer sofort wieder weggeht, soll trotzdem gezaehlt
     // sein. Ohne Pixel-Kennung tut die Zeile nichts.
     if (this.pixel.starte()) this.pixel.melde("opened");
@@ -808,6 +856,7 @@ export class Trichter {
        er geschrieben hatte. Geht das nicht, faengt der Einstieg an wie
        immer; #standAufnehmen() sagt es mit false. */
     const aufgenommen = this.#stillSprung() || this.#standAufnehmen();
+    const direkt = aufgenommen ? null : this.#direktWegLesen();
     if (!aufgenommen) this.zeige("einstieg");
     // Erst jetzt, mit stehendem Aufbau: Vorher waeren die Stuecke noch
     // ohne Platz und jedes gaelte als "schon im Bild".
@@ -831,6 +880,35 @@ export class Trichter {
       namen: KLICKPFAD_NAMEN
     });
     this.klickpfad.melde("bildschirm", KLICKPFAD_NAMEN[`ls-${this.aktiv}`] || this.aktiv || "");
+
+    // Aus dem Chrome-Link (#chromeAdresse): gleich auf den Weg, den der
+    // Besucher in der App schon gewaehlt hatte - es sei denn, er hat
+    // inzwischen selbst getippt.
+    if (direkt && this.aktiv === "einstieg") {
+      this.#technik(`Aus dem Chrome-Link geöffnet: ${direkt}`);
+      this.#startTippen();
+      if (this.aktiv === "wahl") this.#wegWaehlen(direkt);
+    }
+  }
+
+  // Der Weg aus dem Chrome-Link (?ls_weg=skanim|foto) - nur, wo es den
+  // Wahlbildschirm gibt; die Kamera selbst geht erst auf einen Tipp auf.
+  //
+  // Die Angabe verlaesst die Adresse sofort wieder: Ein Neuladen soll
+  // nicht noch einmal springen, und wer die Adresse weitergibt, schickt
+  // die Landingpage und nicht die Mitte des Trichters.
+  #direktWegLesen() {
+    let suche;
+    try { suche = new URLSearchParams(globalThis.location?.search || ""); } catch { return null; }
+    const weg = suche.get("ls_weg");
+    if (!["skanim", "foto"].includes(weg) || !$("#ls-wahl")) return null;
+    try {
+      suche.delete("ls_weg");
+      const rest = suche.toString();
+      globalThis.history?.replaceState?.(globalThis.history.state, "",
+        `${globalThis.location.pathname}${rest ? `?${rest}` : ""}`);
+    } catch { /* Dann bleibt die Angabe stehen - sie schadet nicht. */ }
+    return weg;
   }
 
   zeige(name, { verlauf = "vor" } = {}) {
@@ -1611,11 +1689,11 @@ export class Trichter {
     }
     window.addEventListener("pageshow", () => {
       if (this.aktiv === "kamera" && !this.kamera.laeuft) {
-        this.#fehlerZeigen("fehlerKameraUnterbrochen", () => this.#kameraStarten());
+        this.#kameraFehlerZeigen("fehlerKameraUnterbrochen", "skanim", () => this.#kameraStarten());
       }
       if (this.aktiv === "foto" && !this.flaeche?.laeuft
         && $("#ls-fotobuehne")?.dataset.stand === "kamera") {
-        this.#fehlerZeigen("fehlerKameraUnterbrochen", () => this.#fotoStarten());
+        this.#kameraFehlerZeigen("fehlerKameraUnterbrochen", "foto", () => this.#fotoStarten());
       }
     });
     const kameraAnpassen = () => { this.#kameraGroesse(); this.#kameraSichtbarkeit(); };
@@ -1647,6 +1725,7 @@ export class Trichter {
   #startTippen() {
     const knopf = $("#ls-start");
     if (knopf) delete knopf.dataset.wartet;
+    this.#netzVormerken();
 
     // DIE KURZE FASSUNG GEHT UNMITTELBAR AN DIE KAMERA.
     //
@@ -1702,6 +1781,12 @@ export class Trichter {
   // Scan, ein Foto einer Wange oder eine Frage ohne Bild - drei Faelle,
   // die drei verschiedene Antworten brauchen.
   #wegWaehlen(weg) {
+    // Das Gesichtsnetz braucht nur der Scan. Mit ihm geht es sofort los,
+    // jeder andere Weg bestellt das vorgemerkte Laden ab. (Was keiner der
+    // vier bekannten Namen ist, endet unten beim Scan.)
+    if (["pa-skanim", "foto", "trup", "pytje"].includes(weg)) this.#netzAbbestellen();
+    else this.#netzJetzt();
+
     // Die alte Karte der Vorlage. Sie fuehrt weiter dorthin, wo sie
     // immer hinfuehrte - eine Seite, die es noch gibt, darf nicht in
     // eine leere Anzeige laufen.
@@ -1749,6 +1834,36 @@ export class Trichter {
       return;
     }
     this.#kameraStarten();
+  }
+
+  // ---------- Das Gesichtsnetz: erst laden, wenn es gebraucht wird ----------
+
+  // Gibt es hier ueberhaupt eine Live-Kamera? Ohne sie waeren die 6,9 MB
+  // umsonst - und in den Android-Fenstern von Facebook und Instagram gibt
+  // es keine (siehe inAppAndroid).
+  #liveKameraMoeglich() {
+    const nav = globalThis.navigator;
+    return Boolean(nav?.mediaDevices?.getUserMedia) && !inAppAndroid(nav.userAgent);
+  }
+
+  // Nach dem Tipp auf den Startknopf: gleich laden, aber erst nach einem
+  // Wimpernschlag - so kann ein Weg ohne Scan es noch abbestellen.
+  #netzVormerken() {
+    if (this.netzUhr || !this.#liveKameraMoeglich()) return;
+    this.netzUhr = setTimeout(() => {
+      this.netzUhr = 0;
+      netzVorladen();
+    }, NETZ_VORMERKEN_MS);
+  }
+
+  #netzJetzt() {
+    this.#netzAbbestellen();
+    if (this.#liveKameraMoeglich()) netzVorladen();
+  }
+
+  #netzAbbestellen() {
+    if (this.netzUhr) clearTimeout(this.netzUhr);
+    this.netzUhr = 0;
   }
 
   // Was an einem gewaehlten Weg festgehalten wird.
@@ -1823,6 +1938,7 @@ export class Trichter {
   // aus - siehe lifeskin-foto.js. Was hier steht, ist die Verdrahtung:
   // Strom auf, Bild zeigen, Ausloeser scharf.
   async #fotoStarten() {
+    this.zustand.fotoQuelle = "live";
     this.sitzung.schritt("fotokamera");
     this.zeige("foto");
     this.#fotoVorschauZeigen(null);
@@ -1834,7 +1950,7 @@ export class Trichter {
       },
       beiFehler: (schluessel) => {
         this.#technik(`Foto-Kamera Fehler: ${schluessel}`);
-        this.#fehlerZeigen(schluessel, () => this.#fotoStarten());
+        this.#kameraFehlerZeigen(schluessel, "foto", () => this.#fotoStarten());
       }
     });
     const fotoAb = Date.now();
@@ -1859,7 +1975,7 @@ export class Trichter {
     if ($("#ls-fotobuehne")?.dataset.bereit !== "ja") return;
     const aufnahme = this.flaeche?.aufnehmen();
     if (!aufnahme) {
-      this.#fehlerZeigen("fehlerKameraBild", () => this.#fotoStarten());
+      this.#kameraFehlerZeigen("fehlerKameraBild", "foto", () => this.#fotoStarten());
       return;
     }
     this.zustand.stelleFoto = aufnahme;
@@ -1880,7 +1996,13 @@ export class Trichter {
 
   // Noch einmal. Die alte Aufnahme wird dabei weggeworfen - sonst ginge
   // sie mit hinaus, wenn der zweite Versuch scheitert.
+  //
+  // KAM DAS BILD AUS DER KAMERA DES TELEFONS, geht die wieder auf und
+  // nicht die Live-Kamera: Die gibt es an dieser Stelle meistens gar nicht
+  // (siehe #kameraAusweg). Das alte Bild bleibt stehen, bis ein neues da
+  // ist - wer die Kamera ohne Aufnahme schliesst, hat sonst gar keines.
   #fotoNochmal() {
+    if (this.zustand.fotoQuelle === "system") { this.#systemFotoWaehlen("foto"); return; }
     this.zustand.stelleFoto = null;
     this.#fotoStarten();
   }
@@ -2459,7 +2581,7 @@ export class Trichter {
       this.kamera.netzWartet = false;
       if (!this.kamera.laeuft) return;
       this.#technik(netz
-        ? `Gesichtserkennung bereit nach ${Date.now() - this.kamera.startAb} ms (ab Kamera)`
+        ? `Gesichtserkennung bereit nach ${Date.now() - this.kamera.startAb} ms (ab Kamera) · ${netzArt() || "?"}`
         : "Gesichtserkennung NICHT geladen – einfache Erkennung");
       this.kamera.netz = netz;
       if (!netz) {
@@ -2621,7 +2743,7 @@ export class Trichter {
     this.#technik(`Scan abgebrochen: ${schluessel}`);
     this.#kameraStoppen();
     this.#blatt(false);
-    this.#fehlerZeigen(schluessel, () => this.#kameraStarten());
+    this.#kameraFehlerZeigen(schluessel, "skanim", () => this.#kameraStarten());
   }
 
   // Bleibt auch WAEHREND des Scans aktiv: Breite > 0 erkennt weder ein
@@ -2662,10 +2784,31 @@ export class Trichter {
         fortschritt = stand;
         this.kamera.fortschrittSeit = jetzt;
       }
-      if (this.kamera.modus === "ring" && jetzt - this.kamera.fortschrittSeit >= 45000) {
-        this.#kameraFehler("fehlerScanStillstand");
-      }
+      if (this.kamera.modus === "ring") this.#stillstandPruefen(jetzt);
     }, 800);
+  }
+
+  // DER RING STEHT - UND WAS SCHON DA IST, BLEIBT DA.
+  //
+  // Wer sechs von acht Strichen geschlossen hat und an den letzten zwei
+  // haengt, bekam nach 45 Sekunden einen Fehler: Kamera aus, Bilder weg,
+  // alles von vorn. Das macht niemand ein zweites Mal. Liegen Bilder vor,
+  // geht jetzt nach STILLSTAND_HILFE_MS das Blatt auf - mit "Vazhdo
+  // kështu", das mit dem Vorhandenen weitermacht. Die Kamera laeuft
+  // weiter; wer es schliesst und weiterdreht, dreht weiter.
+  //
+  // Nur wenn es gar nichts zu retten gibt (kein einziges Bild), bleibt es
+  // beim Abbruch - dann ist "noch einmal" wirklich der einzige Weg.
+  #stillstandPruefen(jetzt) {
+    const steht = jetzt - this.kamera.fortschrittSeit;
+    const etwasDa = this.#fehlendeBlicke().length < NOETIGE_BLICKE.length;
+    if (etwasDa && steht >= STILLSTAND_HILFE_MS) {
+      this.kamera.fortschrittSeit = jetzt;
+      this.#technik(`Scan ohne Fortschritt seit ${Math.round(steht / 1000)} s – Hilfe mit »Vazhdo kështu« geöffnet`);
+      this.#blatt(true);
+      return;
+    }
+    if (!etwasDa && steht >= STILLSTAND_ABBRUCH_MS) this.#kameraFehler("fehlerScanStillstand");
   }
 
   // Auf ein dekodiertes, laufendes Bild warten. Schnelle Geraete behalten
@@ -2911,6 +3054,21 @@ export class Trichter {
     // Der Zeitstempel muss streng wachsen, sonst verwirft MediaPipe das Bild.
     this.kamera.uhr = Math.max(this.kamera.uhr + 1, Math.round(performance.now()));
     const netz = messeNetz(leinwand, this.kamera.uhr);
+
+    // DIE ERKENNUNG IST WEG, NICHT DAS GESICHT.
+    //
+    // Wirft sie Bild um Bild einen Fehler (NETZ_AUSFALL_BILDER), ist sie
+    // selbst ausgefallen - etwa ein verlorener Grafikkontext. Der Ring
+    // stuende dann still und sagte "zurueck in den Kreis" zu jemandem, der
+    // laengst darin sitzt. Der Weg ohne Netz macht fertig, und was der Ring
+    // schon aufgenommen hat, bleibt.
+    if (!netz && netzFehlerFolge() >= NETZ_AUSFALL_BILDER) {
+      this.#technik(`Gesichtserkennung ausgefallen (${netzFehlerFolge()} Fehler in Folge) – einfache Erkennung übernimmt`);
+      this.kamera.netz = null;
+      this.kamera.modus = "rueckfall";
+      this.#rueckfallschleife(Date.now(), lauf);
+      return;
+    }
 
     const jetzt = Date.now();
     const stand = this.kamera.ring.schritt(netz, jetzt);
@@ -3692,7 +3850,7 @@ export class Trichter {
     this.#kameraStoppen();
 
     if (!basis.length) {
-      this.#fehlerZeigen("fehlerKeinGesicht", () => this.#kameraStarten());
+      this.#kameraFehlerZeigen("fehlerKeinGesicht", "skanim", () => this.#kameraStarten());
       return;
     }
     const lauf = this.kamera.lauf;
@@ -3720,7 +3878,7 @@ export class Trichter {
     const fotos = await this.#fotosAlsJpeg();
     if (lauf !== this.kamera.lauf) return;
     if (!Object.keys(fotos).length) {
-      this.#fehlerZeigen("fehlerKameraBild", () => this.#kameraStarten());
+      this.#kameraFehlerZeigen("fehlerKameraBild", "skanim", () => this.#kameraStarten());
       return;
     }
     // Was auf der Warteseite als "{anzahl} foto" steht, sind die Bilder -
@@ -4321,6 +4479,7 @@ export class Trichter {
     $("#ls-analyse [data-zurueck]")?.setAttribute("hidden", "");
     const anzeige = this.#aufbereitungZeigen().catch(() => {});
     let frist;
+    let vorgang = null;
     try {
       // Ein erneuter Tipp nutzt den laufenden Versand, statt ihn zu duplizieren.
       if (!this.uebergabeVorgang) {
@@ -4335,9 +4494,29 @@ export class Trichter {
           throw fehler;
         });
       }
+      vorgang = this.uebergabeVorgang;
+      // WARTEN, SOLANGE SICH ETWAS BEWEGT - nicht bis zu einer festen Uhrzeit.
+      //
+      // Hier stand eine Frist von zwanzig Sekunden ab dem Tipp. Auf einer
+      // schmalen Leitung (Mobilfunk im Fenster von Instagram) sind die
+      // Fotos dann oft noch unterwegs: Der Schirm meldete "nicht
+      // bestaetigt", waehrend alles sauber hochging - und wer das liest,
+      // geht. Jetzt zaehlt die Frist ab der LETZTEN Antwort des Servers
+      // (sitzung.letzteAntwort). Nur wer so lange gar nichts mehr hoert,
+      // bekommt den Hinweis; die Zeile darunter zeigt bis dahin, wie viele
+      // Fotos schon angekommen sind.
+      const ab = Date.now();
       const ok = await Promise.race([
-        this.uebergabeVorgang,
-        new Promise((_, nein) => { frist = setTimeout(() => nein(new Error("pending")), 20000); })
+        vorgang,
+        new Promise((_, nein) => {
+          const pruefen = () => {
+            this.#uebergabeFortschritt();
+            const zuletzt = Math.max(ab, Number(this.sitzung.letzteAntwort) || 0);
+            if (Date.now() - zuletzt >= UEBERGABE_STILL_MS) { nein(new Error("pending")); return; }
+            frist = setTimeout(pruefen, 1000);
+          };
+          frist = setTimeout(pruefen, 1000);
+        })
       ]);
       this.uebergabeVorgang = null;
       if (!ok) throw new Error("save failed");
@@ -4350,11 +4529,44 @@ export class Trichter {
       this.#aufbereitungFertig();
       this.#standVergessen();
       globalThis.location.assign(this.sitzung.berichtPfad);
-    } catch {
+    } catch (fehler) {
       this.#fehlerZeigen("uebergabeFehler", () => this.#uebergeben());
+      // UND KOMMT DER VERSAND DANACH DOCH NOCH AN, GEHT ES VON SELBST WEITER.
+      //
+      // Der Hinweis sagt "diese Seite offen lassen" - wer das tut, soll
+      // nicht zusaetzlich einen Knopf finden muessen, wenn die Leitung
+      // zurueckkommt und der Bericht steht.
+      if (fehler?.message === "pending" && vorgang) {
+        vorgang.then((ok) => {
+          // Endgueltig gescheitert: Der naechste Tipp auf "Provo sërish"
+          // soll neu senden und nicht dieses Ergebnis noch einmal lesen.
+          if (!ok) { if (this.uebergabeVorgang === vorgang) this.uebergabeVorgang = null; return; }
+          if (this.aktiv !== "analyse" || this.uebergabeAktiv) return;
+          $("#ls-fehler")?.classList.add("ls-verstecken");
+          this.#uebergeben();
+        }, () => {});
+      }
     } finally {
       clearTimeout(frist);
       this.uebergabeAktiv = false;
+    }
+  }
+
+  // Die letzte Zeile der Aufbereitung sagt, wie viele Fotos schon oben
+  // sind - solange noch welche unterwegs sind. Eine Zahl, die waechst,
+  // haelt Menschen auf der Seite; ein Kreis, der steht, nicht.
+  #uebergabeFortschritt() {
+    const zeile = this.aufbereitungLetzte?.lastElementChild;
+    if (!zeile) return;
+    const offen = Number(this.sitzung.offeneFotos?.size) || 0;
+    const gesamt = Number(this.zustand.fotoAnzahl) || 0;
+    if (offen && gesamt) {
+      if (this.aufbereitungText == null) this.aufbereitungText = zeile.textContent;
+      schreibe(zeile, this.text("uebergabeFotos", { fertig: Math.max(0, gesamt - offen), gesamt }));
+    } else if (this.aufbereitungText != null) {
+      // Alle oben: wieder der Satz, der dort stand ("geht an Dr. Gashi").
+      schreibe(zeile, this.aufbereitungText);
+      this.aufbereitungText = null;
     }
   }
 
@@ -4373,7 +4585,12 @@ export class Trichter {
     if (auf) $("#ls-blattzu")?.focus();
   }
 
-  #fehlerZeigen(schluessel, nochmal) {
+  // Der Fehlerkasten. Mit `ausweg` (siehe #kameraAusweg) traegt er unter
+  // "Provo sërish" noch die Kamera des Telefons und - auf Android in einer
+  // App - den Weg nach Chrome. Ohne `ausweg` sind beide weg: Der Kasten
+  // wird fuer jeden Fehler wiederverwendet, und ein Knopf aus dem
+  // vorigen Fehler darf nicht unter dem naechsten stehen bleiben.
+  #fehlerZeigen(schluessel, nochmal, { ausweg = null } = {}) {
     const kasten = $("#ls-fehler");
     if (!kasten) return;
     kasten.classList.remove("ls-verstecken");
@@ -4381,6 +4598,133 @@ export class Trichter {
     const knopf = $("#ls-fehlernochmal");
     schreibe(knopf, this.text("nochmal"));
     knopf.onclick = () => { kasten.classList.add("ls-verstecken"); nochmal?.(); };
+    // Wo nochmal versuchen nie hilft (die gesperrte Kamera einer App),
+    // steht der Knopf gar nicht erst da.
+    knopf.hidden = Boolean(ausweg?.ohneNochmal);
+
+    const foto = $("#ls-fehlerfoto");
+    if (foto) {
+      foto.hidden = !ausweg?.systemFoto;
+      // Der Tipp selbst oeffnet die Kamera des Telefons: Ein Dateifeld
+      // geht nur aus einem Fingerdruck heraus auf.
+      foto.onclick = ausweg?.systemFoto
+        ? () => { kasten.classList.add("ls-verstecken"); this.#systemFotoWaehlen(ausweg.weg); }
+        : null;
+    }
+    const chrome = $("#ls-fehlerchrome");
+    if (chrome) {
+      const adresse = ausweg?.chrome ? this.#chromeAdresse(ausweg.weg) : "";
+      chrome.hidden = !adresse;
+      if (adresse) chrome.setAttribute("href", adresse);
+      else chrome.removeAttribute?.("href");
+      chrome.onclick = adresse ? () => this.#technik(`Chrome-Link getippt (${ausweg.weg})`) : null;
+    }
+  }
+
+  // ---------- Wenn die Live-Kamera nicht geht ----------
+
+  // WELCHE AUSWEGE EIN KAMERAFEHLER ANBIETET.
+  //
+  // JEDER Kamerafehler bekommt die Kamera des Telefons dazu - nicht nur
+  // die gesperrte App: Wer die Freigabe abgelehnt hat, wessen Kamera kein
+  // Bild liefert oder dessen Scan stehen bleibt, macht mit einem Foto
+  // weiter, statt zu gehen. Ein Dateifeld braucht keine Freigabe der
+  // Seite; es oeffnet die Kamera-App des Telefons.
+  //
+  // Und wo "Provo sërish" sicher nichts aendert - Android in einer App,
+  // Freigabe verweigert oder keine Kamera-Schnittstelle -, steht es gar
+  // nicht erst da, und der Satz sagt, was los ist.
+  //
+  // Nur, wenn die Seite den Fotobildschirm traegt: Das Foto landet dort
+  // zur Pruefung. Ohne ihn gaebe es nur den Weg nach Chrome.
+  #kameraAusweg(grund, weg) {
+    const inApp = inAppAndroid();
+    const gesperrt = inApp && ["fehlerKameraErlaubnis", "fehlerKameraBrowser"].includes(grund);
+    return {
+      weg,
+      text: gesperrt ? "fehlerKameraInApp" : grund,
+      systemFoto: Boolean($("#ls-foto")),
+      chrome: inApp,
+      ohneNochmal: gesperrt
+    };
+  }
+
+  #kameraFehlerZeigen(grund, weg, nochmal) {
+    const ausweg = this.#kameraAusweg(grund, weg);
+    if (ausweg.text !== grund) this.#technik(`Live-Kamera in der App gesperrt (${grund}) – Handykamera und Chrome angeboten`);
+    this.#fehlerZeigen(ausweg.text, nochmal, { ausweg });
+  }
+
+  // Die Kamera des Telefons: ein Dateifeld, einmal angelegt.
+  //
+  // capture="user" oeffnet, wo das Geraet es kann, gleich die vordere
+  // Kamera; wo nicht, bietet es Kamera und Galerie an - beides ist recht.
+  #systemFotoFeld() {
+    if (this.systemFeld) return this.systemFeld;
+    const dokument = globalThis.document;
+    if (!dokument?.createElement) return null;
+    const feld = dokument.createElement("input");
+    feld.type = "file";
+    feld.accept = "image/*";
+    feld.setAttribute("capture", "user");
+    feld.hidden = true;
+    feld.addEventListener?.("change", () => this.#systemFotoErhalten(feld.files?.[0]));
+    (dokument.body || dokument.documentElement)?.appendChild?.(feld);
+    this.systemFeld = feld;
+    return feld;
+  }
+
+  #systemFotoWaehlen(weg = "foto") {
+    const feld = this.#systemFotoFeld();
+    if (!feld) return;
+    this.systemFotoWeg = weg;
+    this.#technik(`Handykamera geöffnet (${weg})`);
+    // Dasselbe Bild zweimal hintereinander loest sonst kein change aus.
+    try { feld.value = ""; } catch { /* aeltere Webansichten */ }
+    feld.click();
+  }
+
+  // DAS FOTO AUS DER KAMERA DES TELEFONS - ab hier der Weg "Me foto".
+  //
+  // Auch wenn der Besucher den Scan gewaehlt hatte: Was jetzt vorliegt,
+  // ist EIN Bild, und damit ist es fuer Dr. Gashi und fuer die Zahlen ein
+  // Fall mit Foto. Der Weg wechselt deshalb sichtbar (#wegMerken), und das
+  // Bild steht zur Pruefung da wie nach dem Ausloeser - mit "Përdor foton"
+  // und "Bëje përsëri".
+  async #systemFotoErhalten(datei) {
+    if (!datei) return;
+    const aufnahme = await fotoAusDatei(datei).catch(() => null);
+    if (!aufnahme) {
+      this.#technik("Handykamera: Foto nicht lesbar");
+      this.#fehlerZeigen("fehlerSystemFoto", () => this.#systemFotoWaehlen(this.systemFotoWeg || "foto"));
+      return;
+    }
+    if (!$("#ls-foto")) return;
+    this.#kameraStoppen();
+    if (this.zustand.typ !== "foto") this.#wegMerken("foto");
+    this.zustand.stelleFoto = aufnahme;
+    this.zustand.fotoQuelle = "system";
+    this.sitzung.schritt("fotokamera");
+    const kb = Math.round(String(aufnahme.foto?.jpeg || "").length * 0.75 / 1024);
+    this.#technik(`Handykamera: Foto erhalten · ${aufnahme.foto?.breite || 0}×${aufnahme.foto?.hoehe || 0} · ${kb} KB`);
+    this.zeige("foto");
+    this.#fotoVorschauZeigen(aufnahme.vorschau);
+  }
+
+  // DER WEG NACH CHROME - nur auf Android, nur aus einer App.
+  //
+  // Ein intent://-Link oeffnet dieselbe Adresse in Chrome; fehlt Chrome,
+  // bleibt es bei der Adresse im selben Fenster (browser_fallback_url).
+  // ls_weg nimmt den gewaehlten Weg mit: Dort geht es direkt zur Anleitung
+  // dieses Wegs, statt die Landingpage noch einmal zu lesen (#direktWeg).
+  #chromeAdresse(weg) {
+    let ziel;
+    try { ziel = new URL(globalThis.location?.href); } catch { return ""; }
+    if (!/^https?:$/.test(ziel.protocol)) return "";
+    ziel.hash = "";
+    ziel.searchParams.set("ls_weg", weg === "foto" ? "foto" : "skanim");
+    return `intent://${ziel.host}${ziel.pathname}${ziel.search}#Intent;scheme=https;package=com.android.chrome;`
+      + `S.browser_fallback_url=${encodeURIComponent(ziel.href)};end`;
   }
 }
 

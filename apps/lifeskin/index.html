@@ -283,6 +283,16 @@
   <p id="ls-fehlertext"></p>
   <button type="button" class="ls-knopf ls-knopf--text" id="ls-fehlernochmal"
           style="justify-content:flex-start;padding-left:0"></button>
+  <!-- DIE AUSWEGE, WENN DIE LIVE-KAMERA NICHT GEHT.
+       Die Android-Apps von Facebook und Instagram geben ihrer
+       eingebauten Webansicht keine Kamera; "Provo sërish" hilft dort
+       nie. Die Kamera des Telefons (ein Dateifeld) geht trotzdem - und
+       wer lieber den ganzen Scan macht, oeffnet die Seite in Chrome.
+       Beide erscheinen nur, wenn lifeskin-app.js sie anbietet. -->
+  <button type="button" class="ls-knopf ls-fehler__ausweg" id="ls-fehlerfoto"
+          data-text="systemFotoKnopf" hidden></button>
+  <a class="ls-knopf ls-knopf--leise ls-fehler__ausweg" id="ls-fehlerchrome"
+     data-text="chromeKnopf" hidden></a>
 </div>
 
 <section class="ls-schirm ls-schirm--kamera" id="ls-kamera" data-aktiv="nein">

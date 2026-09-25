@@ -169,3 +169,96 @@ test("JPEG: leere Canvas-Ausgabe wird nicht als Aufnahme akzeptiert", () => {
   assert.equal(p.context.jpegTest({}, { breite: 720, hoehe: 1280, dokument: { createElement: () => canvas } }), null);
   assert.equal(canvas.width, 0); p.stop();
 });
+
+// DIE AUFNAHME IST DAS, WAS IM RAHMEN STAND.
+//
+// Gemeldet: Mit der vorderen Kamera sprang das Bild beim Ausloesen
+// seitenverkehrt um - die Vorschau war ein Spiegel, die Aufnahme nicht.
+// Geprueft an der echten Klasse: vorne wird Foto UND Kachel gespiegelt,
+// hinten keines von beiden.
+function zeichenDokument(p) {
+  const leinwaende = [];
+  p.document.createElement = () => {
+    const befehle = [];
+    const leinwand = { width: 0, height: 0, befehle,
+      getContext: () => ({
+        translate: (...a) => befehle.push(["translate", ...a]),
+        scale: (...a) => befehle.push(["scale", ...a]),
+        drawImage: () => befehle.push(["drawImage"])
+      }),
+      toDataURL: () => "data:image/jpeg;base64,AAAA" };
+    leinwaende.push(leinwand);
+    return leinwand;
+  };
+  return leinwaende;
+}
+
+for (const [richtung, gespiegelt] of [["user", true], ["environment", false]]) {
+  test(`Foto: ${richtung === "user" ? "vordere" : "hintere"} Kamera nimmt ${gespiegelt ? "gespiegelt" : "ungespiegelt"} auf - wie die Vorschau`, async () => {
+    const p = probe();
+    const leinwaende = zeichenDokument(p);
+    const start = p.kamera.starte(richtung);
+    await p.clock.weiter(600);
+    assert.equal(await start, true);
+    assert.equal(p.kamera.richtung, richtung);
+    const aufnahme = p.kamera.aufnehmen();
+    assert.ok(aufnahme?.foto && aufnahme?.mini, "Keine Aufnahme");
+    assert.equal(leinwaende.length, 2, "Foto und Kachel");
+    for (const leinwand of leinwaende) {
+      const umgedreht = leinwand.befehle.some(([name, x]) => name === "scale" && x === -1);
+      assert.equal(umgedreht, gespiegelt);
+    }
+    p.stop();
+  });
+}
+
+// DAS BILD AUS DER KAMERA-APP (Dateifeld) - 12 Megapixel und mehr.
+//
+// Es wird ueber eine Objekt-Adresse geoeffnet statt als Text von einigen
+// Megabyte gelesen, die Adresse danach freigegeben, und eine Datei ohne
+// Typangabe (manche Android-Webansichten) wird nicht verworfen.
+function dateiProbe({ laedt = true } = {}) {
+  const adressen = { erzeugt: [], freigegeben: [] };
+  const context = vm.createContext({
+    console,
+    URL: {
+      createObjectURL: (datei) => { const a = `blob:test/${adressen.erzeugt.length}`; adressen.erzeugt.push([a, datei]); return a; },
+      revokeObjectURL: (a) => adressen.freigegeben.push(a)
+    },
+    FileReader: class { readAsDataURL() { throw new Error("Der Text-Umweg wurde benutzt"); } },
+    Image: class {
+      set src(wert) {
+        this.quelle = wert;
+        Promise.resolve().then(() => {
+          if (!laedt) { this.onerror?.(); return; }
+          Object.assign(this, { naturalWidth: 3024, naturalHeight: 4032 });
+          this.onload?.();
+        });
+      }
+      get src() { return this.quelle; }
+    }
+  });
+  vm.runInContext(readFileSync(new URL("../apps/lifeskin/lifeskin-foto.js", import.meta.url), "utf8")
+    .replace(/^export /gm, "") + "\nglobalThis.dateiTest = ausDatei;", context);
+  const dokument = { createElement: () => ({ width: 0, height: 0,
+    getContext: () => ({ drawImage() {} }), toDataURL: () => "data:image/jpeg;base64,AAAA" }) };
+  return { ausDatei: (datei) => context.dateiTest(datei, { dokument }), adressen };
+}
+
+test("Handykamera: Bild ohne Typangabe wird gelesen, verkleinert und die Adresse freigegeben", async () => {
+  const p = dateiProbe();
+  const aufnahme = await p.ausDatei({ type: "" });
+  assert.ok(aufnahme?.foto, "Ein Bild ohne Typ wurde verworfen");
+  assert.equal(aufnahme.foto.breite, 1440);
+  assert.equal(aufnahme.foto.hoehe, 1920);
+  assert.equal(aufnahme.mini.breite, 160);
+  assert.equal(p.adressen.erzeugt.length, 1);
+  assert.deepEqual(p.adressen.freigegeben, [p.adressen.erzeugt[0][0]], "Die Objekt-Adresse bleibt im Speicher");
+});
+
+test("Handykamera: kein Bild, kein Foto - und nichts bleibt liegen", async () => {
+  assert.equal(await dateiProbe().ausDatei({ type: "application/pdf" }), null);
+  const p = dateiProbe({ laedt: false });
+  assert.equal(await p.ausDatei({ type: "image/heic" }), null);
+  assert.equal(p.adressen.freigegeben.length, 1);
+});

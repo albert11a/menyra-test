@@ -139,6 +139,12 @@ function tiefMischen(ziel, quelle) {
   return ziel;
 }
 
+// Wie viele Byte ein Text auf der Leitung wiegt - ë und ç zaehlen doppelt.
+function bytesVon(text) {
+  const roh = String(text || "");
+  try { return new TextEncoder().encode(roh).length; } catch { return roh.length * 3; }
+}
+
 function kennung() {
   const puffer = new Uint8Array(16);
   (globalThis.crypto || {}).getRandomValues?.(puffer);
@@ -296,12 +302,20 @@ export class Sitzung {
     this.tenantId = tenantId;
     this.basis = basis;
     const senden = fetchFn || ((...a) => globalThis.fetch(...a));
+    // WANN ZULETZT EINE ANTWORT KAM - gleich welche.
+    //
+    // Die Uebergabe (lifeskin-app.js) wartet, solange sich etwas bewegt,
+    // statt nach einer festen Frist aufzugeben: Auf einer schmalen Leitung
+    // brauchen sieben Fotos laenger als zwanzig Sekunden, und genau dort
+    // stand dann "nicht bestaetigt" auf dem Schirm, waehrend die Bilder
+    // noch sauber hochgingen.
+    this.letzteAntwort = 0;
     // Auch eine nie beantwortete Anfrage darf die Warteschlange nicht sperren.
     this.fetchFn = async (url, optionen = {}) => {
       const controller = typeof AbortController === "function" ? new AbortController() : null;
       let timer;
       try {
-        return await Promise.race([
+        const antwort = await Promise.race([
           Promise.resolve().then(() => senden(url, { ...optionen, ...(controller ? { signal: controller.signal } : {}) })),
           new Promise((_, nein) => {
             timer = setTimeout(() => {
@@ -310,6 +324,8 @@ export class Sitzung {
             }, url.includes("/photos/") ? 90000 : 20000);
           })
         ]);
+        this.letzteAntwort = Date.now();
+        return antwort;
       } finally { clearTimeout(timer); }
     };
     this.speicher = speicher !== undefined ? speicher : sitzungsSpeicher();
@@ -478,13 +494,21 @@ export class Sitzung {
 
   async #schreiben(daten, felderMaske) {
     const maske = felderMaske.map((f) => `updateMask.fieldPaths=${encodeURIComponent(f)}`).join("&");
+    const inhalt = JSON.stringify({ fields: felder(daten) });
     const antwort = await this.fetchFn(`${this.pfad}?${maske}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fields: felder(daten) }),
+      body: inhalt,
       // Der result-Schritt wird direkt vor dem Wechsel zur Warteseite
       // geschrieben. Der Browser soll diesen kleinen PATCH weiter senden.
-      keepalive: true
+      //
+      // NUR BIS 60 KB. Mehr nimmt ein Browser mit keepalive gar nicht an
+      // (64 KiB fuer alle solchen Anfragen zusammen) - er verwirft die
+      // Anfrage, statt sie ohne keepalive zu senden. Wartet die Kette
+      // lange hinter den Fotos, wird aus vielen kleinen Schreibvorgaengen
+      // ein grosser (#sammeln); der ginge dann mitsamt Name und Klickpfad
+      // verloren.
+      keepalive: bytesVon(inhalt) < 60000
     });
     if (!antwort.ok) throw new Error(`Firestore ${antwort.status}`);
     return antwort;

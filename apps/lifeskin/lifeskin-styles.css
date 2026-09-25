@@ -1333,6 +1333,11 @@ p { margin: 0; }
   bottom: calc(env(safe-area-inset-bottom) + 18px);
   z-index: 30;
 }
+/* Die Auswege darunter (Handykamera, Chrome): volle Breite, mit Luft zum
+ * Satz. Der Chrome-Weg ist ein Link und soll trotzdem wie ein Knopf
+ * aussehen - ohne Unterstrich. */
+.ls-fehler__ausweg { margin-top: 10px; }
+a.ls-knopf { text-decoration: none; }
 
 /* ---------- Quer gehalten ----------
  *
@@ -1441,8 +1446,9 @@ p { margin: 0; }
  *
  * Wer sich selbst fotografiert, erwartet einen Spiegel - sonst greift
  * er beim Ausrichten in die falsche Richtung. Wer seinen Arm
- * fotografiert, erwartet seinen Arm. Gespiegelt wird deshalb nur die
- * Vorschau und nie das Bild, das hinausgeht (siehe lifeskin-foto.js). */
+ * fotografiert, erwartet seinen Arm. Die Aufnahme wird GENAUSO
+ * gespiegelt wie diese Vorschau (siehe lifeskin-foto.js): Sonst springt
+ * das Bild beim Ausloesen seitenverkehrt um. */
 .ls-flaeche[data-richtung="user"] .ls-flaeche__rahmen video { transform: scaleX(-1); }
 .ls-flaeche__rahmen video { opacity: 0; }
 .ls-flaeche[data-bereit="ja"] .ls-flaeche__rahmen video { opacity: 1; }

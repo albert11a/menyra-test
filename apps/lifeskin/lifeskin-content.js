@@ -779,6 +779,27 @@ export const OBERFLAECHE = Object.freeze({
     sq: "Nuk po dallojmë fytyrë. Kërkoni dritë më të mirë dhe mbani telefonin në lartësi të syve.",
     de: "Wir erkennen kein Gesicht. Suchen Sie besseres Licht und halten Sie das Handy auf Augenhöhe."
   },
+  // DER AUSWEG, WENN DIE LIVE-KAMERA NICHT GEHT.
+  //
+  // Die Android-Apps von Facebook und Instagram geben ihrer eingebauten
+  // Webansicht keine Kamera - "erneut versuchen" hilft dort nie. Die
+  // Kamera des Telefons (ein Dateifeld) geht trotzdem, und damit bleibt
+  // der Besucher im Trichter, statt ihn zu verlassen.
+  fehlerKameraInApp: {
+    sq: "Ky aplikacion nuk e hap kamerën live në këtë faqe. Bëni një foto me kamerën e telefonit dhe vazhdoni – Dr. Gashi e sheh njësoj.",
+    de: "Diese App öffnet auf dieser Seite keine Live-Kamera. Machen Sie ein Foto mit der Handykamera und machen Sie weiter – Dr. Gashi sieht es genauso."
+  },
+  fehlerSystemFoto: {
+    sq: "Fotoja nuk u lexua. Provoni përsëri ose zgjidhni një foto tjetër.",
+    de: "Das Foto ließ sich nicht lesen. Versuchen Sie es erneut oder wählen Sie ein anderes Foto."
+  },
+  systemFotoKnopf: { sq: "Bëj foto me kamerën e telefonit", de: "Foto mit der Handykamera machen" },
+  chromeKnopf: { sq: "Hape në Chrome", de: "In Chrome öffnen" },
+  // Waehrend der Uebergabe: die Bilder, die noch unterwegs sind.
+  uebergabeFotos: {
+    sq: "Po dërgohen fotot te Dr. Gashi… {fertig} nga {gesamt}",
+    de: "Fotos werden an Dr. Gashi gesendet… {fertig} von {gesamt}"
+  },
   fehlerBestellung: {
     sq: "Porosia nuk u dërgua. Kontrolloni internetin dhe provoni sërish — të dhënat tuaja janë ruajtur.",
     de: "Die Bestellung ging nicht raus. Prüfen Sie die Verbindung und versuchen Sie es erneut — Ihre Eingaben sind gespeichert."

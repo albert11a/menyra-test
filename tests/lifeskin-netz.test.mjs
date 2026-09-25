@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { poseAusMatrix, MARKE, NETZ_QUELLEN, LIDSPALTE_LINKS, LIDSPALTE_RECHTS,
-  netzStand, netzHolen, netzVorladen, netzLohntSich, __test__ } from "../apps/lifeskin/lifeskin-netz.js";
+  netzStand, netzHolen, netzVorladen, netzLohntSich, netzArt, netzFehlerFolge, messeNetz,
+  __test__ } from "../apps/lifeskin/lifeskin-netz.js";
 
 // Eine Drehmatrix um die Bildachse, spaltenweise wie MediaPipe sie liefert.
 function rollMatrix(grad) {
@@ -133,5 +134,57 @@ test("uebersprungen heisst sofort fertig, nicht neun Sekunden warten", async () 
   assert.equal(ergebnis, null, "Es kommt kein Netz, also null");
   assert.ok(Date.now() - seit < 200, "Es wird trotzdem gewartet");
   assert.equal(netzStand(), "uebersprungen", "Der Stand sagt nicht, dass bewusst nicht geladen wurde");
+  __test__.zuruecksetzen();
+});
+
+// ---------------------------------------------------------------------------
+// Ohne Grafikkarte weiter - und eine Erkennung, die ausfaellt, faellt auf
+// ---------------------------------------------------------------------------
+
+function mediapipeAttrappe({ gpuGeht }) {
+  const versuche = [];
+  return {
+    versuche,
+    importiere: async () => ({
+      FilesetResolver: { forVisionTasks: async () => ({ wasm: true }) },
+      FaceLandmarker: {
+        createFromOptions: async (_werkzeug, optionen) => {
+          const art = optionen.baseOptions.delegate;
+          versuche.push(art);
+          if (art === "GPU" && !gpuGeht) throw new Error("WebGL2 nicht verfuegbar");
+          return { art, detectForVideo: () => ({ faceLandmarks: [] }) };
+        }
+      }
+    })
+  };
+}
+
+test("scheitert die Grafikkarte, rechnet das Netz auf dem Prozessor", async () => {
+  // Frueher warf createFromOptions() - und der Scan fiel ganz auf den
+  // Weg ohne Netz, obwohl WASM und Modell laengst geladen waren.
+  __test__.zuruecksetzen();
+  const ohneGpu = mediapipeAttrappe({ gpuGeht: false });
+  const netz = await __test__.ladeWirklich({ importiere: ohneGpu.importiere });
+  assert.deepEqual(ohneGpu.versuche, ["GPU", "CPU"]);
+  assert.equal(netz.art, "CPU");
+  assert.equal(netzArt(), "CPU");
+
+  __test__.zuruecksetzen();
+  const mitGpu = mediapipeAttrappe({ gpuGeht: true });
+  assert.equal((await __test__.ladeWirklich({ importiere: mitGpu.importiere })).art, "GPU");
+  assert.deepEqual(mitGpu.versuche, ["GPU"], "Mit Grafikkarte wird nichts doppelt angelegt");
+  assert.equal(netzArt(), "GPU");
+  __test__.zuruecksetzen();
+});
+
+test("Fehler in Folge werden gezaehlt - ein Bild ohne Gesicht ist keiner", () => {
+  __test__.zuruecksetzen();
+  let wirft = true;
+  __test__.einsetzen({ detectForVideo() { if (wirft) throw new Error("context lost"); return { faceLandmarks: [] }; } });
+  for (let i = 0; i < 3; i += 1) assert.equal(messeNetz({}, i + 1), null);
+  assert.equal(netzFehlerFolge(), 3);
+  wirft = false;
+  assert.equal(messeNetz({}, 10), null, "Kein Gesicht im Bild");
+  assert.equal(netzFehlerFolge(), 0, "Ein Bild ohne Gesicht setzte die Folge nicht zurueck");
   __test__.zuruecksetzen();
 });

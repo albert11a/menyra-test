@@ -87,8 +87,12 @@ export function zielMasse(breite, hoehe, hoechsteBreite = FOTO_BREITE) {
 // `quelle` ist alles, was drawImage annimmt: ein <video>, ein <img>, eine
 // Leinwand. Die Masse kommen von aussen, weil ein Video sie anders nennt
 // als ein Bild.
+//
+// `spiegeln` legt das Bild seitenverkehrt ab - so, wie die vordere Kamera
+// es in der Vorschau zeigt. Siehe Flaechenkamera#aufnehmen().
 export function alsJpeg(quelle, { breite, hoehe, dokument = globalThis.document,
-  hoechsteBreite = FOTO_BREITE, stufen = FOTO_STUFEN, grenze = FOTO_HOECHSTZEICHEN } = {}) {
+  hoechsteBreite = FOTO_BREITE, stufen = FOTO_STUFEN, grenze = FOTO_HOECHSTZEICHEN,
+  spiegeln = false } = {}) {
   const masse = zielMasse(breite, hoehe, hoechsteBreite);
   if (!masse.breite || !dokument?.createElement) return null;
   const leinwand = dokument.createElement("canvas");
@@ -97,6 +101,10 @@ export function alsJpeg(quelle, { breite, hoehe, dokument = globalThis.document,
   try {
     const feld = leinwand.getContext("2d");
     if (!feld) return null;
+    if (spiegeln) {
+      feld.translate(masse.breite, 0);
+      feld.scale(-1, 1);
+    }
     feld.drawImage(quelle, 0, 0, masse.breite, masse.hoehe);
     const treffer = besteGuete((guete) => leinwand.toDataURL("image/jpeg", guete), stufen, grenze);
     if (!treffer || !/^data:image\/jpeg;base64,.+/.test(treffer.jpeg)) return null;
@@ -113,9 +121,9 @@ export function alsJpeg(quelle, { breite, hoehe, dokument = globalThis.document,
 // Die Kachel zum selben Bild. Aus DEM AUFGENOMMENEN Bild und nicht noch
 // einmal aus der Kamera: Sonst zeigte die Warteseite einen anderen
 // Augenblick als die Akte.
-export function miniaturAus(quelle, { breite, hoehe, dokument = globalThis.document } = {}) {
+export function miniaturAus(quelle, { breite, hoehe, dokument = globalThis.document, spiegeln = false } = {}) {
   return alsJpeg(quelle, {
-    breite, hoehe, dokument,
+    breite, hoehe, dokument, spiegeln,
     hoechsteBreite: MINI_BREITE, stufen: MINI_STUFEN, grenze: MINI_HOECHSTZEICHEN
   });
 }
@@ -126,8 +134,61 @@ export function miniaturAus(quelle, { breite, hoehe, dokument = globalThis.docum
 // Telefon bietet es beides an, aufnehmen oder aus der Galerie nehmen.
 // Wer ein Bild von gestern hat, auf dem der Ausschlag deutlicher war,
 // soll genau das schicken duerfen.
+//
+// SEIT ES DEN AUSWEG UEBER DIE HANDYKAMERA GIBT, kommt hier auch das Bild
+// an, das den Scan ersetzt (lifeskin-app.js, #systemFotoErhalten) - aus
+// der Kamera-App, also 12 Megapixel und mehr. Zwei Dinge sind deshalb
+// anders als vorher:
+//
+//  - Die Datei wird direkt als Bild geoeffnet (Objekt-Adresse) und nicht
+//    erst als Text von mehreren Megabyte gelesen. Auf einem aelteren
+//    Telefon im Fenster von Facebook ist dieser Text der Unterschied
+//    zwischen einem Bild und einer neu geladenen Seite.
+//  - Eine Datei OHNE Typangabe wird nicht verworfen: Manche Webansichten
+//    auf Android liefern das Bild aus der Kamera ohne Typ. Ob es ein Bild
+//    ist, entscheidet das Dekodieren - was keines ist, laedt nicht.
 export async function ausDatei(datei, { dokument = globalThis.document } = {}) {
-  if (!datei || !/^image\//.test(String(datei.type || ""))) return null;
+  const typ = String(datei?.type || "");
+  if (!datei || (typ && !/^image\//.test(typ))) return null;
+  const geladen = await bildAusDatei(datei);
+  if (!geladen) return null;
+  const { bild, freigeben } = geladen;
+  try {
+    const gross = alsJpeg(bild, { breite: bild.naturalWidth, hoehe: bild.naturalHeight, dokument });
+    if (!gross) return null;
+    const mini = miniaturAus(bild, { breite: bild.naturalWidth, hoehe: bild.naturalHeight, dokument });
+    return { foto: gross, mini, vorschau: mini?.jpeg || gross.jpeg };
+  } finally {
+    freigeben();
+  }
+}
+
+function bildLaden(adresse) {
+  return new Promise((fertig) => {
+    const el = new Image();
+    el.onload = () => fertig(el);
+    el.onerror = () => fertig(null);
+    el.src = adresse;
+  });
+}
+
+async function bildAusDatei(datei) {
+  const adressen = globalThis.URL;
+  if (typeof adressen?.createObjectURL === "function") {
+    let adresse = "";
+    try { adresse = adressen.createObjectURL(datei); } catch { adresse = ""; }
+    if (adresse) {
+      const bild = await bildLaden(adresse);
+      const freigeben = () => { try { adressen.revokeObjectURL?.(adresse); } catch { /* egal */ } };
+      if (bild) return { bild, freigeben };
+      // Was der Browser aus der Datei nicht dekodiert, dekodiert er auch
+      // aus Text nicht - kein zweiter Versuch ueber den teuren Umweg.
+      freigeben();
+      return null;
+    }
+  }
+  // Rueckfall fuer Webansichten ohne Objekt-Adressen: als Text lesen.
+  if (typeof FileReader !== "function") return null;
   const quelle = await new Promise((fertig) => {
     const leser = new FileReader();
     leser.onload = () => fertig(String(leser.result || ""));
@@ -135,17 +196,8 @@ export async function ausDatei(datei, { dokument = globalThis.document } = {}) {
     leser.readAsDataURL(datei);
   });
   if (!quelle) return null;
-  const bild = await new Promise((fertig) => {
-    const el = new Image();
-    el.onload = () => fertig(el);
-    el.onerror = () => fertig(null);
-    el.src = quelle;
-  });
-  if (!bild) return null;
-  const gross = alsJpeg(bild, { breite: bild.naturalWidth, hoehe: bild.naturalHeight, dokument });
-  if (!gross) return null;
-  const mini = miniaturAus(bild, { breite: bild.naturalWidth, hoehe: bild.naturalHeight, dokument });
-  return { foto: gross, mini, vorschau: mini?.jpeg || gross.jpeg };
+  const bild = await bildLaden(quelle);
+  return bild ? { bild, freigeben: () => {} } : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -406,21 +458,31 @@ export class Flaechenkamera {
     return this.starte(this.richtung === "user" ? "environment" : "user");
   }
 
-  // Das Bild, wie es gerade im Rahmen steht.
+  // Das Bild, wie es gerade im Rahmen steht - UND ZWAR SEITENGLEICH.
   //
-  // NICHT GESPIEGELT, auch wenn die Vorschau es ist: Gespiegelt wird im
-  // Stilblatt, damit sich die Bewegung richtig anfuehlt. Was die Aerztin
-  // ansieht, soll die Haut zeigen, wie sie liegt - eine seitenverkehrte
-  // Aufnahme laesst sie am falschen Ort suchen.
+  // Hier stand "nicht gespiegelt": Gespiegelt wurde nur die Vorschau im
+  // Stilblatt, die Aufnahme ging ungespiegelt hinaus. Genau das sah der
+  // Besucher als Fehler: Beim Ausloesen sprang sein Bild seitenverkehrt
+  // um, und dasselbe umgedrehte Bild stand danach als "gespeichert" auf
+  // dem Nummernschirm und auf der Warteseite.
+  //
+  // Jetzt ist die Aufnahme das, was im Rahmen stand. Mit der vorderen
+  // Kamera heisst das: gespiegelt, wie ein Spiegel - genau wie der Scan
+  // seine Bilder seit jeher ablegt (#spiegelnAuf in lifeskin-app.js).
+  // Die Aerztin bekommt damit auf beiden Wegen dieselbe Seitenlage, und
+  // der Befund nennt ohnehin nie "links" oder "rechts" (siehe
+  // docs/lifeskin-prompt-v9.txt). Die hintere Kamera zeigt ungespiegelt
+  // und nimmt ungespiegelt auf.
   aufnehmen() {
     const video = this.video;
     if (!this.bereit || !this.#hatBild() || Date.now() - this.letztesBild > 2000) return null;
+    const spiegeln = this.richtung === "user";
     const gross = alsJpeg(video, {
-      breite: video.videoWidth, hoehe: video.videoHeight, dokument: this.dokument
+      breite: video.videoWidth, hoehe: video.videoHeight, dokument: this.dokument, spiegeln
     });
     if (!gross) return null;
     const mini = miniaturAus(video, {
-      breite: video.videoWidth, hoehe: video.videoHeight, dokument: this.dokument
+      breite: video.videoWidth, hoehe: video.videoHeight, dokument: this.dokument, spiegeln
     });
     return { foto: gross, mini, vorschau: gross.jpeg };
   }

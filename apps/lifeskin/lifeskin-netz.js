@@ -31,11 +31,16 @@
 // Fuer einen Trichter, dessen Besucher aus einer Anzeige im Mobilfunk kommen,
 // ist das viel. Drei Dinge fangen es ab:
 //
-//   1. Geladen wird ab dem ersten Bildschirm im Hintergrund. Bis der Kunde
-//      Namen und Alter eingegeben und die drei Hinweise gelesen hat,
-//      vergehen zwanzig Sekunden - die Ladezeit liegt darin und nicht davor.
-//   2. Der Service Worker legt beides in den Cache. Ab dem zweiten Besuch
-//      kostet es nichts.
+//   1. Geladen wird im Hintergrund, sobald jemand den Scan WILL - beim
+//      Tipp auf den Startknopf bzw. auf "Me skanim", nicht schon beim
+//      Oeffnen der Landingpage (siehe #netzVormerken in lifeskin-app.js).
+//      Wahl, Anleitung und Systemfrage liegen danach noch vor der Kamera;
+//      die Ladezeit liegt darin und nicht davor.
+//   2. Der Browser-Cache haelt es fest: WASM und Buendel von jsDelivr ein
+//      Jahr (immutable), das Modell von Google eine Stunde (max-age=3600).
+//      Einen Service Worker gibt es auf den LifeSkin-Seiten NICHT (sw.js
+//      nimmt sie ausdruecklich aus) - hier stand frueher, er lege beides
+//      ab; das stimmte nicht.
 //   3. Kommt es nicht rechtzeitig oder gar nicht, laeuft der Trichter mit
 //      der alten Erkennung weiter. Ein Trichter, der am Ladebalken haengt,
 //      hat den Kunden verloren.
@@ -132,9 +137,16 @@ let laden = null;
 let netz = null;
 let stand = "aus";
 let letzterFehler = null;
+// Wie viele Bilder HINTEREINANDER mit einer Ausnahme endeten - siehe
+// messeNetz(). Ein Bild ohne Gesicht zaehlt nicht: Das ist kein Fehler.
+let fehlerFolge = 0;
+// Auf welchem Weg das Netz rechnet: "GPU" oder "CPU" (siehe ladeWirklich).
+let art = "";
 
 export function netzStand() { return stand; }
+export function netzArt() { return art; }
 export function netzFehler() { return letzterFehler; }
+export function netzFehlerFolge() { return fehlerFolge; }
 
 // Verbindungen, ueber die 6,7 MB nicht rechtzeitig ankommen koennen.
 // WELCHE LEITUNG ZU SCHMAL IST, UM ES ZU VERSUCHEN.
@@ -209,11 +221,34 @@ export function netzVorladen(optionen = {}) {
   return laden;
 }
 
+// ERST DIE GRAFIKKARTE, DANN DER PROZESSOR.
+//
+// Der GPU-Weg braucht WebGL2, und genau das fehlt oder zickt auf den
+// Geraeten, die wir nicht in der Hand haben: aeltere iPhones, manche
+// Android-Webansichten, ein Grafiktreiber, der den Kontext verweigert.
+// Dann warf createFromOptions() - und der Scan fiel fuer diesen Besucher
+// ganz auf den Weg ohne Netz zurueck, obwohl das Netz geladen war.
+//
+// Der CPU-Weg ist langsamer, aber er laeuft ueberall, wo WebAssembly
+// laeuft. WASM und Modell liegen beim zweiten Versuch schon im Cache.
 async function ladeWirklich({ importiere = (pfad) => import(/* @vite-ignore */ pfad) } = {}) {
   const { FilesetResolver, FaceLandmarker } = await importiere(BUENDEL);
   const werkzeug = await FilesetResolver.forVisionTasks(WASM_BASIS);
-  return FaceLandmarker.createFromOptions(werkzeug, {
-    baseOptions: { modelAssetPath: MODELL, delegate: "GPU" },
+  try {
+    const aufGpu = await FaceLandmarker.createFromOptions(werkzeug, netzOptionen("GPU"));
+    art = "GPU";
+    return aufGpu;
+  } catch (gpuFehler) {
+    letzterFehler = `GPU: ${String(gpuFehler?.message || gpuFehler).slice(0, 80)}`;
+    const aufCpu = await FaceLandmarker.createFromOptions(werkzeug, netzOptionen("CPU"));
+    art = "CPU";
+    return aufCpu;
+  }
+}
+
+function netzOptionen(delegate) {
+  return {
+    baseOptions: { modelAssetPath: MODELL, delegate },
     runningMode: "VIDEO",
     numFaces: 1,
     // Die Matrix ist der Grund fuer den ganzen Umbau: Sie liefert die
@@ -225,7 +260,7 @@ async function ladeWirklich({ importiere = (pfad) => import(/* @vite-ignore */ p
     minFaceDetectionConfidence: 0.4,
     minFacePresenceConfidence: 0.4,
     minTrackingConfidence: 0.4
-  });
+  };
 }
 
 // Warten, aber nicht ewig.
@@ -256,9 +291,16 @@ export function messeNetz(quelle, zeitstempelMs) {
   let ergebnis;
   try {
     ergebnis = netz.detectForVideo(quelle, zeitstempelMs);
+    fehlerFolge = 0;
   } catch {
     // Ein einzelnes Bild kann schiefgehen, wenn die Leinwand gerade die
     // Groesse wechselt. Das ist kein Grund, den Trichter anzuhalten.
+    //
+    // VIELE HINTEREINANDER dagegen schon: Dann ist die Erkennung selbst
+    // weg - etwa ein verlorener WebGL-Kontext, wenn iOS einer Webansicht
+    // Speicher nimmt. Der Ring stuende dann still und wartete auf ein
+    // Gesicht, das er nie mehr findet. Die Zahl liest #ringschleife().
+    fehlerFolge += 1;
     return null;
   }
   const punkte = ergebnis?.faceLandmarks?.[0];
@@ -290,7 +332,7 @@ function mimikAus(kategorien) {
 // Nur fuer die Tests: den Ladeweg zuruecksetzen und einen Doppelgaenger
 // einsetzen, ohne echtes Netz aus dem Netz zu holen.
 export const __test__ = {
-  zuruecksetzen() { laden = null; netz = null; stand = "aus"; letzterFehler = null; },
+  zuruecksetzen() { laden = null; netz = null; stand = "aus"; letzterFehler = null; fehlerFolge = 0; art = ""; },
   einsetzen(doppel) { netz = doppel; stand = "da"; laden = Promise.resolve(doppel); },
   ladeWirklich
 };
