@@ -119,6 +119,26 @@ export function felder(objekt) {
   return raus;
 }
 
+// Zwei Masken duerfen zusammen, solange kein Feld das Elternfeld eines
+// anderen ist - "timings" und "timings.live" in einem PATCH weist Firestore ab.
+function maskenUeberlappen(vorhanden, neu) {
+  for (const feld of neu) {
+    for (const da of vorhanden) {
+      if (da !== feld && (da.startsWith(`${feld}.`) || feld.startsWith(`${da}.`))) return true;
+    }
+  }
+  return false;
+}
+
+function tiefMischen(ziel, quelle) {
+  for (const [k, v] of Object.entries(quelle || {})) {
+    const schlicht = v && typeof v === "object" && !Array.isArray(v);
+    if (schlicht) ziel[k] = tiefMischen(ziel[k] && typeof ziel[k] === "object" && !Array.isArray(ziel[k]) ? ziel[k] : {}, v);
+    else ziel[k] = v;
+  }
+  return ziel;
+}
+
 function kennung() {
   const puffer = new Uint8Array(16);
   (globalThis.crypto || {}).getRandomValues?.(puffer);
@@ -326,6 +346,7 @@ export class Sitzung {
     // ueberholt die Ergaenzung das Anlegen und Firestore legt zwei Dokumente
     // an - oder schlimmer, das Anlegen ueberschreibt die Ergaenzung.
     this.kette = Promise.resolve();
+    this.sammel = null;
     this.offeneFotos = new Map();
     // Zeit je Schritt. Ohne sie laesst sich spaeter nicht sagen, wo es hakt.
     this.zeiten = {};
@@ -400,12 +421,59 @@ export class Sitzung {
 
   // Jeder Aufruf haengt sich hinten an und schluckt seinen Fehler.
   #reihen(aufgabe) {
+    // Was danach kommt, darf nicht mehr VOR diese Aufgabe rutschen.
+    this.sammel = null;
     this.kette = this.kette.then(aufgabe).catch((fehler) => {
       // Bewusst nur eine Notiz: Der Trichter laeuft weiter. Eine Bestellung,
       // die an der Zaehlung scheitert, waere der teuerste denkbare Fehler.
       if (globalThis.console) console.warn("[lifeskin] Sitzung nicht gespeichert:", fehler?.message);
     });
     return this.kette;
+  }
+
+  // SCHREIBEN IN DIE SITZUNG: WAS HINTEREINANDER WARTET, GEHT ALS EIN PATCH.
+  //
+  // GEMESSEN, NICHT VERMUTET (LS-2509-5SH64 und der Test mit 3G): Bis zur
+  // Nummer sammeln sich rund 33 kleine Schreibvorgaenge - Klickpfad,
+  // Zeiten, Schritte. Jeder wartete auf den vorigen, und die Uebergabe
+  // (Bericht anlegen) stand hinter ALLEN: 2,6 s auf einem guten Netz,
+  // 12,7 s auf 3G, 25 s auf langsamem 3G - laenger als die 20-s-Frist.
+  //
+  // Jetzt: Solange ein Schreibvorgang noch nicht losgeschickt ist, wandert
+  // jeder weitere mit hinein. In der Leitung steht hoechstens einer, dahinter
+  // hoechstens ein gesammelter. Nichts geht verloren, nichts ueberholt: Eine
+  // andere Aufgabe (Fotos, Bericht) schliesst die Sammlung, alles Spaetere
+  // kommt danach.
+  //
+  // Weist Firestore das Gesammelte ab (400/403 - etwa ein Feld, das die
+  // Regeln noch nicht kennen), geht jedes Teil noch einmal einzeln: Ein
+  // unbekanntes Feld darf nicht die Nummer mitreissen, die daneben stand.
+  #sammeln(daten, maske) {
+    const offen = this.sammel;
+    if (offen && !maskenUeberlappen(offen.maske, maske)) {
+      tiefMischen(offen.daten, daten);
+      for (const feld of maske) offen.maske.add(feld);
+      offen.teile.push({ daten, maske });
+      return offen.versprechen;
+    }
+    const neu = { daten: tiefMischen({}, daten), maske: new Set(maske), teile: [{ daten, maske }] };
+    neu.versprechen = this.#reihen(async () => {
+      if (this.sammel === neu) this.sammel = null;
+      try {
+        return await this.#schreiben(neu.daten, [...neu.maske]);
+      } catch (fehler) {
+        if (neu.teile.length < 2 || !/Firestore 4\d\d/.test(String(fehler?.message))) throw fehler;
+        let letzte;
+        for (const teil of neu.teile) {
+          try { letzte = await this.#schreiben(teil.daten, teil.maske); }
+          catch (einzeln) { globalThis.console?.warn?.("[lifeskin] Teil nicht gespeichert:", einzeln?.message); }
+        }
+        if (!letzte) throw fehler;
+        return letzte;
+      }
+    });
+    this.sammel = neu;
+    return neu.versprechen;
   }
 
   async #schreiben(daten, felderMaske) {
@@ -448,7 +516,7 @@ export class Sitzung {
     };
     this.stand = { ...this.stand, ...daten };
     this.angelegt = true;
-    const geschrieben = this.#reihen(() => this.#schreiben(daten, Object.keys(daten)));
+    const geschrieben = this.#sammeln(daten, Object.keys(daten));
     this.#sichtbarkeitMerken(dokument);
     return geschrieben;
   }
@@ -478,7 +546,7 @@ export class Sitzung {
       this.stand.device = device;
       // Nur device und updatedAt, mit Maske: Der Anlegezeitpunkt bleibt
       // stehen, sonst weist ihn die Regel ab.
-      this.#reihen(() => this.#schreiben({ device, updatedAt: jetzt() }, ["device", "updatedAt"]));
+      this.#sammeln({ device, updatedAt: jetzt() }, ["device", "updatedAt"]);
     };
     dokument.addEventListener("visibilitychange", merken);
   }
@@ -510,8 +578,8 @@ export class Sitzung {
       catch (fehler) { globalThis.console?.warn?.("[lifeskin] Schrittmeldung:", fehler?.message); }
     }
 
-    const geschrieben = this.#reihen(() => this.#schreiben(daten, Object.keys(daten).flatMap((key) => key === "timings"
-      ? Object.keys(daten.timings).map((name) => `timings.${name}`) : [key])));
+    const geschrieben = this.#sammeln(daten, Object.keys(daten).flatMap((key) => key === "timings"
+      ? Object.keys(daten.timings).map((name) => `timings.${name}`) : [key]));
     // Analyse abgeschickt oder bestellt: sofort melden - aber erst, wenn
     // der Schritt in Firestore steht, denn die Meldung liest ihn dort.
     if (neu > bisher && MELDE_SCHRITTE.has(name)) {
@@ -544,7 +612,7 @@ export class Sitzung {
     this.stand.step = name;
     this.#merkeStand();
     const daten = { step: name, updatedAt: jetzt() };
-    return this.#reihen(() => this.#schreiben(daten, Object.keys(daten)));
+    return this.#sammeln(daten, Object.keys(daten));
   }
 
   // Die drei Aufnahmen: gerade, nach rechts, nach links.
@@ -761,6 +829,7 @@ export class Sitzung {
     // Solange die Regel sie nicht kennt, weist hasOnly() das ganze
     // Dokument ab - und dann gibt es keine Warteseite.
     delete ohneTyp.numri;
+    this.sammel = null;
     this.kette = this.kette.then(async () => {
       // Fehlgeschlagene Fotos bleiben fuer einen erneuten Versuch erhalten.
       // Eine fertige Abgabe darf keine nur behaupteten Aufnahmen enthalten.
@@ -805,7 +874,7 @@ export class Sitzung {
   klickpfadSchreiben(eintraege) {
     if (!eintraege?.length) return this.kette;
     const { daten, masken } = pfadPatch(eintraege);
-    return this.#reihen(() => this.#schreiben(daten, masken));
+    return this.#sammeln(daten, masken);
   }
 
   // Einzelne Felder ergaenzen, ohne den Schritt zu bewegen.
@@ -817,7 +886,7 @@ export class Sitzung {
     const mit = { updatedAt: jetzt(), ...daten };
     const neu = MELDE_MARKEN.some((f) => daten?.[f] === true && this.stand?.[f] !== true);
     Object.assign(this.stand, daten);
-    const geschrieben = this.#reihen(() => this.#schreiben(mit, Object.keys(mit)));
+    const geschrieben = this.#sammeln(mit, Object.keys(mit));
     // Warenkorb oder Kasse zum ersten Mal: melden, sobald es in Firestore steht.
     if (neu) {
       const id = this.id;
