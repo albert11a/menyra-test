@@ -75,11 +75,11 @@ test("Kur shoh ndryshim? nennt seine Probleme als Ziel", async () => {
 
 test("Morgen/Abend: Lucide-Sonne und -Mond, jedes Produkt ein Schritt", () => {
   const html = lies("apps/lifeskin-verkauf/terapia.html");
-  assert.match(html, /rutina__ikona--dielli[\s\S]*?<circle cx="12" cy="12" r="4"\/>/);
-  assert.match(html, /rutina__ikona--hena[\s\S]*?M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z/);
-  assert.match(html, /<ol class="rutina__hapat" id="t-mengjes"><\/ol>/);
+  assert.match(html, /rutina__karte--m[\s\S]*?<circle cx="12" cy="12" r="4"\/>/);
+  assert.match(html, /rutina__karte--n[\s\S]*?M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z/);
+  assert.match(html, /<ol class="rutina__liste" id="t-mengjes"><\/ol>/);
   const js = lies("apps/lifeskin-verkauf/terapia.js");
   assert.doesNotMatch(js, /join\(" → "\)/, "Die Produkte stehen wieder als ein langer Text");
   assert.match(js, /zeigen\(\$\("#t-rutina-mengjes"\), morgens\.length > 0\)/);
-  assert.match(lies("apps/lifeskin-verkauf/verkauf.css"), /\.rutina__hapat li \{[^}]*white-space: nowrap/);
+  assert.match(js, /produktBild\(p, "rutina__foto"\)/, "Kein Produktfoto je Zeile");
 });

@@ -542,18 +542,22 @@ export class Terapia {
     const sortiert = [...this.produkte].sort((a, b) => (Number(a.perdorimi?.hapi) || 9) - (Number(b.perdorimi?.hapi) || 9));
     for (const p of sortiert) {
       const zeit = tageszeiten(p.perdorimi?.koha);
-      if (zeit.morgens) morgens.push(p.name);
-      if (zeit.abends) abends.push(p.name);
+      if (zeit.morgens) morgens.push(p);
+      if (zeit.abends) abends.push(p);
     }
-    // Jedes Produkt ein nummerierter Schritt - bricht als Ganzes um, nie
-    // mitten im Namen. Eine Tageszeit ohne Produkt faellt weg.
-    const schritte = (ziel, namen) => $(ziel)?.replaceChildren(...namen.map((name, i) => {
+    // Je Produkt eine Zeile: Foto, Name, Menge, Schritt. Eine Tageszeit
+    // ohne Produkt faellt weg.
+    const zeilen = (ziel, liste) => $(ziel)?.replaceChildren(...liste.map((p, i) => {
       const li = element("li");
-      li.append(element("i", null, String(i + 1)), name);
+      const text = element("div", "rutina__teksti");
+      text.append(element("b", null, p.name));
+      const menge = String(p.perdorimi?.sasia || "").trim();
+      if (menge) text.append(element("span", null, menge.charAt(0).toUpperCase() + menge.slice(1)));
+      li.append(produktBild(p, "rutina__foto"), text, element("span", "rutina__nr", String(i + 1)));
       return li;
     }));
-    schritte("#t-mengjes", morgens);
-    schritte("#t-mbremje", abends);
+    zeilen("#t-mengjes", morgens);
+    zeilen("#t-mbremje", abends);
     zeigen($("#t-rutina-mengjes"), morgens.length > 0);
     zeigen($("#t-rutina-mbremje"), abends.length > 0);
     zeigen($("#t-rutina"), morgens.length + abends.length > 0);
