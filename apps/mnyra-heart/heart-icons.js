@@ -225,6 +225,29 @@ const ICONS = Object.freeze({
   `
 });
 
+// iOS UND ANDROID - GEFUELLT, nicht als Strich wie die Zeichen oben.
+//
+// Sie stehen elf Punkte gross auf dem Vorschaubild eines Falls; eine
+// Strichzeichnung waere dort nur ein Fleck. Ein Apfel mit Blatt fuer iOS,
+// der Kopf mit den zwei Fuehlern fuer Android - die Augen sind Loecher
+// (evenodd), damit sie auf jedem Grund stehen.
+const GERAET_ZEICHEN = Object.freeze({
+  ios: `
+    <path d="M12 7.3C13.1 6.4 14.5 6 15.8 6.2 18 6.6 19.4 8.5 19.3 11 19.2 14.8 17 20.5 14.6 20.5 13.6 20.5 13.1 19.9 12 19.9 10.9 19.9 10.4 20.5 9.4 20.5 7 20.5 4.8 14.8 4.7 11 4.6 8.5 6 6.6 8.2 6.2 9.5 6 10.9 6.4 12 7.3Z"></path>
+    <path d="M12.3 5.6C12.4 3.9 13.6 2.7 15.3 2.5 15.2 4.2 14 5.4 12.3 5.6Z"></path>
+  `,
+  android: `
+    <path fill-rule="evenodd" d="M5 18A7 7 0 0 1 19 18ZM10.25 14.6A.95.95 0 1 1 8.35 14.6.95.95 0 1 1 10.25 14.6ZM15.65 14.6A.95.95 0 1 1 13.75 14.6.95.95 0 1 1 15.65 14.6Z"></path>
+    <path d="M7.4 12.6 5.8 9.9M16.6 12.6 18.2 9.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
+  `
+});
+
+export function renderGeraetZeichen(os, extraClass = "heart-icon") {
+  const body = GERAET_ZEICHEN[os];
+  if (!body) return "";
+  return `<svg class="${extraClass}" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">${body}</svg>`;
+}
+
 export function renderHeartIcon(name = "home", extraClass = "heart-icon") {
   const body = ICONS[name] || ICONS.home;
   return `

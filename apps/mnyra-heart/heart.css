@@ -5243,6 +5243,21 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
   border-top-left-radius: 8px;
   font-variant-numeric: tabular-nums;
 }
+/* iPhone oder Android - oben links auf dem Bild, gegenueber der Anzahl
+   (unten rechts), in derselben dunklen Plakette. Android in seinem Gruen:
+   Beim Durchsehen soll es auffallen, sobald ein Android dabei ist. Daneben
+   die App, wenn bekannt ("IG", "FB"). */
+.heart-lifeskin-fall__geraet {
+  position: absolute; left: 0; top: 0;
+  display: inline-flex; align-items: center; gap: 1px;
+  height: 16px; padding: 0 4px 0 3px;
+  font-size: 9.5px; font-weight: 700; line-height: 16px;
+  color: #fafafa; background: rgba(0, 0, 0, 0.66);
+  border-bottom-right-radius: 8px;
+}
+.heart-lifeskin-fall__geraet b { font-weight: 700; }
+.heart-lifeskin-fall__os { width: 11px; height: 11px; flex: none; display: block; }
+.heart-lifeskin-fall__geraet--android .heart-lifeskin-fall__os { color: #3ddc84; }
 .heart-lifeskin-fall__bild img {
   width: 100%; height: 100%; object-fit: cover; display: block;
 }

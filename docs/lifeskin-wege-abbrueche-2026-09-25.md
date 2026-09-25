@@ -216,3 +216,26 @@ Datenmodell-Aenderungen, keine Deploys.
   Wiederbesuchern (App-Fenster laden nach WhatsApp neu) die Rundreisen.
 - Optional volle esbuild-Minifizierung der LifeSkin-Buendel (heute bewusst nur
   Kommentare/Leerraum).
+
+## 8. Nachtrag (25.09., abends)
+
+- **Heart: iPhone oder Android an jedem Fall.** Oben links auf dem
+  Vorschaubild jeder Fallzeile steht ein Zeichen: Apfel = iOS, gruener
+  Android-Kopf = Android — in allen Faechern (Offen, Ready, Seen, Kasse,
+  Bestellt, Später, Archiv). Quelle ist `device.os` der Sitzung, das der
+  Trichter seit jeher schreibt; deshalb tragen es auch alte Faelle im Archiv.
+  Faelle ohne Sitzung ("nur Bericht") oder vom Rechner zeigen nichts.
+- **Neu ab jetzt: die App.** Die Sitzung merkt sich zusaetzlich `device.app`
+  (instagram, facebook, messenger, tiktok, snapchat, webview oder leer =
+  normaler Browser). Heart zeigt das Kuerzel neben dem Zeichen ("IG", "FB")
+  und in der Akte unter "Gerät" ausgeschrieben, mit Bildschirmgroesse.
+  Keine Regel-Aenderung noetig: `device` wird nur auf "is map" geprueft.
+  Aeltere Faelle kennen die App nicht und zeigen nur das System.
+  **Damit laesst sich die offene Frage aus A1 beantworten:** Ein Scan-Fall
+  mit "Android · IG" heisst, die Live-Kamera ging in der Instagram-App.
+- **Wahlbildschirm:** "REKOMANDOJMË" steht jetzt auch auf "Me foto" (gleiches
+  Schild, gleicher Rahmen). Die zweite empfohlene Karte bekommt 10 Punkte
+  (niedrige Bildschirme: 8) Abstand nach oben, damit ihr Schild nicht an die
+  Karte darueber stoesst. "Për trupin ose vetëm pyetje" bleibt ohne.
+- Tests: `tests/heart-lifeskin-geraet.test.mjs` (6), `tests/lifeskin-menyra.test.mjs`
+  erweitert. `npm test`: 2682 bestanden.

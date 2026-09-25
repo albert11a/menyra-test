@@ -254,6 +254,7 @@ export const OBERFLAECHE = Object.freeze({
   // Er faengt genau die auf, die heute beim Scan weggehen, obwohl sie
   // ein Anliegen haben: Wer sein Gesicht nicht ganz zeigen will, muss
   // Lifeskin dafuer nicht mehr verlassen.
+  wahlFotoMarke: { sq: "REKOMANDOJMË", de: "EMPFOHLEN" },
   wahlFotoTitel: { sq: "Me foto", de: "Mit Foto" },
   wahlFotoText: {
     sq: "Nuk dëshironi ta tregoni të gjithë fytyrën? Fotografoni vetëm pjesën që ju shqetëson — p.sh. faqen, ballin ose mjekrën.",

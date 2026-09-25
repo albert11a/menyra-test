@@ -2938,6 +2938,10 @@ html.shporta-hapur:has(#ls-einstieg[data-aktiv="ja"]) { overflow: hidden; }
 .ls-wahl--drei .ls-wahlkarte__titel { font-size: 16px; }
 .ls-wahl--drei .ls-wahlkarte__text { font-size: 13.5px; }
 .ls-wahl--drei .ls-wahlkarte__punkt { margin-top: 3px; font-size: 11.5px; }
+/* ZWEI EMPFOHLENE KARTEN (Skanim und Foto): Das Schild der zweiten sitzt
+   neun Punkte ueber ihrer Kante - im Abstand von 10 stiesse es an die
+   Karte darueber. */
+.ls-wahl--drei .ls-wahlkarte--rat:not(:first-child) { margin-top: 10px; }
 
 /* Auf einem niedrigen Bildschirm (Instagram auf einem 667er) rueckt
    die Wahl zusammen, statt den unteren Rand der letzten Karte
@@ -2973,6 +2977,7 @@ html.shporta-hapur:has(#ls-einstieg[data-aktiv="ja"]) { overflow: hidden; }
   .ls-wahl--drei .ls-wahlkarte__titel { font-size: 15px; }
   .ls-wahl--drei .ls-wahlkarte__text { font-size: 12.5px; line-height: 1.38; }
   .ls-wahl--drei .ls-wahlkarte__punkt { margin-top: 2px; font-size: 11px; }
+  .ls-wahl--drei .ls-wahlkarte--rat:not(:first-child) { margin-top: 8px; }
 }
 
 /* ══ ENGE UND NIEDRIGE BILDSCHIRME ═════════════════════════════════

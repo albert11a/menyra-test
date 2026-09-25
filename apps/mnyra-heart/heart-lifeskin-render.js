@@ -15,7 +15,7 @@
 
 import { pfadLesen } from "../../shared/lifeskin-klickpfad.js";
 import { escapeHtml } from "./heart-ui-utils.js";
-import { renderHeartIcon } from "./heart-icons.js";
+import { renderHeartIcon, renderGeraetZeichen } from "./heart-icons.js";
 // Der Setpreis kommt aus derselben Quelle wie im Trichter. Zwei Zahlen an
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
@@ -920,6 +920,39 @@ function artMarke(sitzung) {
     escapeHtml(eintrag.label)}</span>`;
 }
 
+// IPHONE ODER ANDROID - UND AUS WELCHER APP.
+//
+// Gewuenscht am 25.09.: an jedem Fall sehen, ob er von einem iPhone oder
+// einem Android kam. Der Grund ist eine offene Frage: Ob die Android-Apps
+// von Instagram und Facebook die Live-Kamera freigeben, steht nur in
+// alten Quellen. Ein Scan-Fall mit "Android · IG" beantwortet sie.
+//
+// device.os schreibt der Trichter seit jeher in die Sitzung - das Zeichen
+// steht deshalb auch an alten Faellen im Archiv. device.app gibt es erst
+// seit dem 25.09.; aeltere Faelle zeigen nur das System. "andere" (etwa
+// ein Rechner) und Faelle ohne Sitzung zeigen nichts.
+const APP_NAMEN = Object.freeze({
+  instagram: ["IG", "Instagram"], facebook: ["FB", "Facebook"], messenger: ["FB", "Messenger"],
+  tiktok: ["TT", "TikTok"], snapchat: ["SC", "Snapchat"], webview: ["App", "App-Browser"]
+});
+
+export function geraetVon(sitzung) {
+  const os = String(sitzung?.device?.os || "");
+  if (os !== "ios" && os !== "android") return null;
+  const [kurz, app] = APP_NAMEN[String(sitzung.device.app || "")] || ["", ""];
+  const system = os === "ios" ? "iOS" : "Android";
+  return { os, system, kurz, app, text: [system, app].filter(Boolean).join(" · ") };
+}
+
+// Oben links auf dem Vorschaubild, gegenueber der Anzahl der Fotos (unten
+// rechts): In der Zeile daneben ist kein Platz mehr (siehe vorschauFeld).
+function geraetMarke(sitzung) {
+  const g = geraetVon(sitzung);
+  if (!g) return "";
+  return `<span class="heart-lifeskin-fall__geraet heart-lifeskin-fall__geraet--${g.os}" title="${escapeHtml(g.text)}" role="img" aria-label="${escapeHtml(g.text)}">${
+    renderGeraetZeichen(g.os, "heart-lifeskin-fall__os")}${g.kurz ? `<b>${escapeHtml(g.kurz)}</b>` : ""}</span>`;
+}
+
 // EIN GESICHT LIEST SICH SCHNELLER ALS EINE FALLNUMMER.
 //
 // Links das erste Bild des Patienten, rund geschnitten; daneben zwei Zeilen,
@@ -939,13 +972,14 @@ function vorschauFeld(sitzung, bild) {
   const zahl = anzahl
     ? `<span class="heart-lifeskin-fall__anzahl" title="${anzahl} Fotos">${escapeHtml(String(anzahl))}</span>`
     : "";
+  const geraet = geraetMarke(sitzung);
   if (bild) {
     return `<span class="heart-lifeskin-fall__bild">
-      <img src="${escapeHtml(bild)}" alt="" decoding="sync" data-vorschau-bild="${escapeHtml(sitzung.id)}">${zahl}
+      <img src="${escapeHtml(bild)}" alt="" decoding="sync" data-vorschau-bild="${escapeHtml(sitzung.id)}">${geraet}${zahl}
     </span>`;
   }
   return `<span class="heart-lifeskin-fall__bild" data-vorschau="${escapeHtml(sitzung.id)}">
-    <span class="heart-lifeskin-fall__buchstabe">${escapeHtml(buchstabe)}</span>${zahl}
+    <span class="heart-lifeskin-fall__buchstabe">${escapeHtml(buchstabe)}</span>${geraet}${zahl}
   </span>`;
 }
 
@@ -1701,8 +1735,12 @@ function herkunftVon(sitzung) {
 function renderHerkunftInhalt(sitzung) {
   const h = herkunftVon(sitzung);
   const nurNummer = (w) => /^\d{6,}$/.test(String(w || ""));
+  // Das Geraet in Worten, mit Bildschirm: "Android · Instagram · 412x915".
+  const g = geraetVon(sitzung);
+  const geraet = g ? [g.text, String(sitzung.device?.screen || "")].filter(Boolean).join(" · ") : "";
   return `
     <dl class="heart-antworten">
+      ${geraet ? `<div class="heart-antworten__zeile"><dt>Gerät</dt><dd>${escapeHtml(geraet)}</dd></div>` : ""}
       <div class="heart-antworten__zeile"><dt>Quelle</dt><dd>${escapeHtml(h.quelle)}</dd></div>
       <div class="heart-antworten__zeile"><dt>Kampagne</dt><dd>${h.kampagne ? kopierWert(h.kampagne, "Kampagne") : "—"}</dd></div>
       <div class="heart-antworten__zeile"><dt>Anzeige</dt><dd>${h.anzeige ? kopierWert(h.anzeige, "Anzeige") : "—"}</dd></div>

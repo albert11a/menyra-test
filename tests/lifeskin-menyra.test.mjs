@@ -80,6 +80,12 @@ test("drei Karten, in dieser Reihenfolge - und die empfohlene ist erkennbar", ()
     "Die empfohlene Karte ist nicht als solche ausgezeichnet");
   assert.match(wahl, /class="ls-wahlkarte__marke" data-text="wahlScanMarke"/,
     "Der empfohlenen Karte fehlt ihr Schild");
+  // SEIT DEM 25.09. IST AUCH DAS FOTO EMPFOHLEN - mit demselben Schild.
+  // Der niedrigste Einstieg (Trup) bleibt ohne.
+  assert.match(wahl, /class="ls-wahlkarte ls-wahlkarte--rat" data-ls-weg="foto">\s*(?:<!--[\s\S]*?-->\s*)?<span class="ls-wahlkarte__marke" data-text="wahlFotoMarke"/,
+    "Das Foto traegt kein Schild");
+  assert.match(wahl, /class="ls-wahlkarte" data-ls-weg="trup"/, "Auch Trup ist jetzt empfohlen");
+  assert.equal(OBERFLAECHE.wahlFotoMarke.sq, OBERFLAECHE.wahlScanMarke.sq);
   const css = lies("apps/lifeskin-landing/landing.css");
   assert.match(css, /\.ls-wahlkarte--rat \{[^}]*border-color: var\(--basis\);/,
     "Die empfohlene Karte hebt sich nicht ab");

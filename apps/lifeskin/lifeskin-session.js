@@ -184,6 +184,25 @@ export function herkunftAuslesen(ort = globalThis.location, verweis = globalThis
   };
 }
 
+// AUS WELCHER APP DIE SEITE GEOEFFNET WURDE - oder "" fuer einen normalen
+// Browser.
+//
+// Heart zeigt es am Fall neben iOS/Android: "Android in Instagram" ist ein
+// anderer Fall als "Android in Chrome" - nur im ersten ist offen, ob die
+// Live-Kamera ueberhaupt geht (siehe inAppAndroid in lifeskin-app.js, das
+// dieselben Kennungen liest). Instagram zuerst: Seine Kennung traegt keine
+// der Facebook-Marken, Messenger vor Facebook, weil Messenger beide traegt.
+export function appAus(kennzeichen = "") {
+  const ua = String(kennzeichen || "");
+  if (/Instagram/i.test(ua)) return "instagram";
+  if (/Messenger/i.test(ua)) return "messenger";
+  if (/FBAN|FBAV|FB_IAB|FB4A|FBIOS/.test(ua)) return "facebook";
+  if (/musical_ly|Bytedance|TikTok/i.test(ua)) return "tiktok";
+  if (/Snapchat/i.test(ua)) return "snapchat";
+  if (/Android/.test(ua) && /; wv\)/.test(ua)) return "webview";
+  return "";
+}
+
 export function geraetAuslesen(
   navigator = globalThis.navigator,
   bildschirm = globalThis.screen,
@@ -194,6 +213,9 @@ export function geraetAuslesen(
   const android = /Android/.test(kennzeichen);
   return {
     os: ios ? "ios" : android ? "android" : "andere",
+    // Als Teil von device und nicht als eigenes Feld - aus demselben Grund
+    // wie "gesehen" unten: Die Regel prueft device nur auf "is map".
+    app: appAus(kennzeichen),
     browser: /CriOS/.test(kennzeichen) ? "chrome-ios"
       : /Safari/.test(kennzeichen) && !/Chrome/.test(kennzeichen) ? "safari"
       : /Chrome/.test(kennzeichen) ? "chrome"
