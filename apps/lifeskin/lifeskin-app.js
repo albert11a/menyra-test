@@ -40,6 +40,7 @@ import { besteGuete, Flaechenkamera, ausDatei as fotoAusDatei } from "./lifeskin
 import { Sitzung } from "./lifeskin-session.js";
 import { starteKlickpfad } from "../../shared/lifeskin-klickpfad.js";
 import { Pixel } from "./lifeskin-pixel.js";
+import { untenNachziehenStarten } from "../../shared/lifeskin-unten.js";
 
 // Sechs Bildschirme, nicht mehr zehn.
 //
@@ -4320,6 +4321,9 @@ if (typeof document !== "undefined" && !globalThis.__LIFESKIN_TEST__) {
     const trichter = new Trichter();
     globalThis.__lifeskinTrichter = trichter;
     trichter.starte();
+    // iOS: Leiste unten nach Tastatur (Name, Nummer, Kasse) wieder an
+    // die Unterkante - siehe shared/lifeskin-unten.js.
+    untenNachziehenStarten();
   };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();

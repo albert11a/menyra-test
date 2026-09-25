@@ -1758,6 +1758,13 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   /* Solange nichts darin steht, faengt er keine Tipps ab - er liegt
      ueber dem letzten Abschnitt der Seite. */
   pointer-events: none;
+  /* Eigene Grafikebene: In Instagram/Facebook und iOS-Safari blieb die
+     feste Leiste ohne sie beim Wischen zurueck (die Browserleiste
+     faehrt ein, die Leiste folgte erst am Ende der Bewegung). */
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 .dock__leib {
   padding: 8px var(--rand) calc(8px + env(safe-area-inset-bottom));

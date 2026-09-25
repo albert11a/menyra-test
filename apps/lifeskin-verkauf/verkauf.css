@@ -9,7 +9,9 @@
 * { box-sizing: border-box; }
 /* Was hidden ist, bleibt weg - auch wenn eine Klasse display setzt. */
 [hidden] { display: none !important; }
-html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+/* Die Farbe an der Wurzel: Safari faerbt damit seine Leiste oben und
+   alles, was ueber den Seitenrand hinaus gezogen wird. */
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; background: var(--paper); }
 body {
   margin: 0; background: var(--paper); color: var(--ink);
   font: 16px/1.55 Arial, Helvetica, sans-serif;

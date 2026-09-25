@@ -32,6 +32,7 @@ import {
   RASTE_STANDARD, rasteLaden, rasteNormalisieren, rasteFuerBericht, rasteMitBildern, rastiProdukteText
 } from "../../shared/lifeskin-raste.js";
 import { KundenMedien } from "./terapia-medien.js";
+import { untenNachziehenStarten } from "../../shared/lifeskin-unten.js";
 
 const $ = (wahl) => document.querySelector(wahl);
 const $$ = (wahl) => Array.from(document.querySelectorAll(wahl));
@@ -805,40 +806,9 @@ export class Terapia {
     }
     window.addEventListener("resize", pruefen, { passive: true });
     globalThis.visualViewport?.addEventListener("resize", pruefen, { passive: true });
-    this.#untenNachziehen(pruefen);
+    // iOS: nach Tastatur oder Vollbild die Unterkante neu rechnen lassen.
+    this.untenNachziehen = untenNachziehenStarten({ nachher: pruefen });
     pruefen();
-  }
-
-  // iOS (Safari, Instagram, Facebook) RECHNET "UNTEN" NACH DER TASTATUR
-  // NICHT NEU: Schliesst sich die Tastatur (Bestellschirm, Kommentar) oder
-  // ein Vollbild, blieben die Leiste und alles andere, was unten festhaengt,
-  // mitten im Bildschirm stehen - bis man weiterwischte. Ein Scroll um
-  // einen Punkt hin und zurueck zwingt iOS, neu zu rechnen; man sieht ihn
-  // nicht. Nur wenn kein Feld mehr den Fokus hat, sonst springt die
-  // Tastatur.
-  #untenNachziehen(pruefen) {
-    const nachziehen = () => {
-      if (document.activeElement?.matches?.("input, textarea, select")) return;
-      requestAnimationFrame(() => {
-        const x = window.scrollX;
-        const y = window.scrollY;
-        window.scrollTo(x, y + 1);
-        window.scrollTo(x, y);
-        pruefen();
-      });
-    };
-    this.untenNachziehen = nachziehen;
-    document.addEventListener("focusout", (e) => {
-      if (e.target instanceof Element && e.target.matches("input, textarea, select")) setTimeout(nachziehen, 150);
-    });
-    // Waechst der sichtbare Bereich deutlich (Tastatur zu), ebenfalls -
-    // aber nicht bei den kleinen Spruengen der Browserleiste beim Wischen.
-    const vv = globalThis.visualViewport;
-    let hoehe = vv?.height || 0;
-    vv?.addEventListener("resize", () => {
-      if (vv.height - hoehe > 120) setTimeout(nachziehen, 80);
-      hoehe = vv.height;
-    }, { passive: true });
   }
 
   #lesemarken() {
