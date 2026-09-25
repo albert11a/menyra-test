@@ -44,19 +44,26 @@ Landing ─ Fillo ─► Mënyra ─┬─ Me skanim ─► Anleitung ─► Kam
 
 Sortiert nach Wirkung auf die Abbrueche.
 
-### A1 — Android in Facebook/Instagram: keine Live-Kamera (groesste Abbruchstelle)
+### A1 — Wenn die Live-Kamera nicht geht (vermutlich oft: Android in Facebook/Instagram)
 
-Die Android-Apps von Facebook und Instagram geben ihrer eingebauten
-Webansicht keinen Kamerazugriff: `getUserMedia()` antwortet sofort mit
-`NotAllowedError`, ohne Systemfrage. Auf dem iPhone geben dieselben Apps die
-Kamera frei. Belegt durch das Meta-Entwicklerforum
+Nach dem Meta-Entwicklerforum
 ([Thread](https://developers.facebook.com/community/threads/432379558191221))
-und die 8th-Wall-Dokumentation
-([iOS-Apps](https://www.8thwall.com/blog/post/41168830873/8th-wall-now-works-across-all-major-ios-apps-including-instagram-snapchat-and-more)).
+und 8th Wall
+([iOS-Apps](https://www.8thwall.com/blog/post/41168830873/8th-wall-now-works-across-all-major-ios-apps-including-instagram-snapchat-and-more))
+geben die Android-Apps von Facebook und Instagram ihrer eingebauten
+Webansicht keinen Kamerazugriff: `getUserMedia()` antwortet sofort mit
+`NotAllowedError`, ohne Systemfrage. **Diese Quellen sind mehrere Jahre alt
+und nicht am Geraet geprueft** — eine neuere App-Fassung kann die Kamera
+freigeben. Der Code setzt es deshalb nicht voraus (siehe unten).
 
-Vorher: Fehlerkasten mit "Lejoni kamerën …" und "Provo sërish" — der Knopf
-hilft dort nie. Scan UND Foto waren fuer Android-Besucher aus Anzeigen eine
-Sackgasse.
+Nachpruefen laesst es sich am echten Verkehr: In Heart bei Android-Faellen aus
+Instagram/Facebook die Klickpfad-Zeile "Technik" lesen. "Scan-Kamera bereit
+nach … ms" = die Kamera ging; "Scan-Kamera Fehler: NotAllowedError nach 20 ms"
+= ohne Frage abgelehnt; "… nach 3000 ms" = der Besucher hat selbst abgelehnt.
+
+Vorher: Bei jedem Kamerafehler nur "Lejoni kamerën …" und "Provo sërish" — wo
+die App ohne Frage ablehnt, hilft der Knopf nie; Scan UND Foto waren dann
+eine Sackgasse.
 
 Jetzt (`#kameraAusweg`, `#systemFotoWaehlen`, `#systemFotoErhalten`,
 `#chromeAdresse` in `lifeskin-app.js`):
@@ -69,11 +76,19 @@ Jetzt (`#kameraAusweg`, `#systemFotoWaehlen`, `#systemFotoErhalten`,
   përsëri"), der Fall wird zu Typ `foto`, danach Name → Nummer → Warteseite
   wie gewohnt. "Bëje përsëri" oeffnet wieder die Handykamera.
 - Android in einer App (Facebook, Instagram, Messenger, TikTok, jede
-  Android-Webansicht `; wv)`): Bei verweigerter Kamera steht der Satz
-  `fehlerKameraInApp`, **kein** "Provo sërish", dafuer Handykamera und
+  Android-Webansicht `; wv)`) bekommt bei einem Kamerafehler zusaetzlich
   **"Hape në Chrome"** (`intent://…;package=com.android.chrome`, mit
   `browser_fallback_url`). In Chrome fuehrt `?ls_weg=skanim|foto` direkt zur
   Anleitung des gewaehlten Wegs; die Angabe verschwindet sofort aus der Adresse.
+- "Provo sërish" faellt NUR weg, wenn die Absage **ohne Frage** kam: in
+  einer Android-App innerhalb von 600 ms (so schnell tippt kein Mensch) oder
+  ganz ohne Kamera-Schnittstelle. Dann steht der Satz `fehlerKameraInApp`.
+  Hat der Besucher selbst "Blockieren" getippt (spaetere Absage), bleibt
+  "Provo sërish" stehen.
+- Gibt die App die Kamera frei, aendert sich fuer diese Besucher nichts: kein
+  Fehlerkasten, Scan wie bisher, und das Gesichtsnetz wird auch dort
+  vorgeladen (es wird nicht nach der App gefragt, nur ob es eine
+  Kamera-Schnittstelle gibt).
 - Bilder aus der Kamera-App (12 MP+) werden ueber eine Objekt-Adresse
   dekodiert statt als Text von mehreren MB gelesen; Dateien ohne Typangabe
   (manche Android-Webansichten) werden nicht mehr verworfen.
@@ -126,8 +141,8 @@ wo es gar keine Live-Kamera gibt.
 Jetzt:
 - Geladen wird erst bei Absicht: 1,5 s nach dem Tipp auf den Startknopf
   (ein Tipp auf "Me foto"/"Trup" bestellt es wieder ab), sofort bei
-  "Me skanim". Wo keine Live-Kamera moeglich ist (Android-App-Browser, keine
-  Kamera-Schnittstelle), gar nicht.
+  "Me skanim". Ohne Kamera-Schnittstelle gar nicht; bei einer Absage der
+  Kamera wird es nie angefordert (es haengt am laufenden Kamerabild).
 - GPU-Start scheitert → zweiter Versuch auf der CPU statt ganz ohne Netz.
   Welcher Weg lief, steht im Klickpfad ("Gesichtserkennung bereit … · GPU/CPU").
 
@@ -160,11 +175,12 @@ Keine neuen Firestore-Felder: alles laeuft ueber vorhandene Felder
 
 ## 5. Pruefung
 
-- `node --test tests/lifeskin-*.test.mjs tests/heart-lifeskin-*.test.mjs`: 1162 bestanden.
-- `npm test`: 2673 bestanden, 0 fehlgeschlagen.
-- Neu: `tests/lifeskin-wege-robust.test.mjs` (15 Tests: App-Erkennung,
-  Fehlerkasten-Auswege, Handykamera → Foto-Weg, Chrome-Link, Stillstand-Hilfe,
-  Netz-Ausfall, Laden bei Absicht). Erweitert: `lifeskin-uebergabe` (+6),
+- `node --test tests/lifeskin-*.test.mjs tests/heart-lifeskin-*.test.mjs`: 1165 bestanden.
+- `npm test`: 2676 bestanden, 0 fehlgeschlagen.
+- Neu: `tests/lifeskin-wege-robust.test.mjs` (18 Tests: App-Erkennung,
+  Fehlerkasten-Auswege inkl. "selbst abgelehnt" und "App gibt Kamera frei",
+  Handykamera → Foto-Weg, Chrome-Link, Stillstand-Hilfe, Netz-Ausfall,
+  Laden bei Absicht). Erweitert: `lifeskin-uebergabe` (+6),
   `lifeskin-netz` (+2), `lifeskin-foto-lifecycle` (+4), `lifeskin-stellenfoto`
   (Spiegel-Test ersetzt: Aufnahme = Vorschau).
 - `npm run build`: erfolgreich; keine getrackten Bundle-Dateien geaendert.
@@ -180,7 +196,7 @@ gestartet. Die mobilen Faelle sind simulierte Browser-/Kamera-/Netz-Ereignisse.
 
 | Geraet / Fenster | Pruefen |
 |---|---|
-| Android + Instagram-App | Me skanim → Fehlerkasten ohne "Provo sërish", Handykamera oeffnet? Foto → Foto-Weg → Name → Nummer → Warteseite. "Hape në Chrome" oeffnet Chrome direkt auf der Anleitung? |
+| Android + Instagram-App (z. B. Samsung) | ZUERST: Erscheint beim Scan eine Kamerafrage und laeuft die Kamera? Dann ist die alte Quelle ueberholt, und der Scan laeuft wie bisher. Wenn nicht: Fehlerkasten ohne "Provo sërish", Handykamera oeffnet? Foto → Foto-Weg → Name → Nummer → Warteseite. "Hape në Chrome" oeffnet Chrome direkt auf der Anleitung? |
 | Android + Facebook-App | dasselbe; Me foto ebenso |
 | iPhone + Instagram/Facebook-App | Live-Kamera geht, Ring laeuft; Me foto vorne: Vorschau = Aufnahme (nicht seitenverkehrt); Freigabe ablehnen → Handykamera-Ausweg |
 | iPhone Safari, Android Chrome | Scan komplett; Ring an 2 Strichen haengen lassen → nach 25 s Hilfe mit "Vazhdo kështu" |

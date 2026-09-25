@@ -295,6 +295,12 @@ const NETZ_VORMERKEN_MS = 1500;
 // siehe #uebergeben().
 const UEBERGABE_STILL_MS = 20000;
 
+// Wie schnell eine Kamera-Absage kommen muss, damit sie als "ohne Frage
+// abgelehnt" gilt. Die Systemfrage braucht allein zum Erscheinen einige
+// hundert Millisekunden, und dann muss noch jemand lesen und tippen -
+// schneller als das lehnt nur die App selbst ab (siehe #kameraAusweg).
+const SOFORT_VERWEIGERT_MS = 600;
+
 // Wie lange das Bild wandern muss, bis der Hinweis dazu erscheint.
 //
 // Eine halbe Sekunde: kurz genug, um noch zu der Bewegung zu gehoeren, die
@@ -461,17 +467,18 @@ export function varianteLesen(wurzel) {
   return wurzel?.dataset?.lsVariante === "kurz" ? "kurz" : "klassik";
 }
 
-// DER BROWSER IN EINER APP AUF ANDROID - dort gibt es keine Live-Kamera.
+// DER BROWSER IN EINER APP AUF ANDROID - dort gibt es womoeglich keine
+// Live-Kamera.
 //
-// Die Android-Apps von Facebook und Instagram (ebenso Messenger, TikTok
-// und die meisten anderen) reichen die Kamerafrage ihrer eingebauten
-// Webansicht nicht an das System weiter: getUserMedia() antwortet sofort
-// mit NotAllowedError, ohne dass je eine Frage erscheint. Auf dem iPhone
-// ist das anders - dort geben dieselben Apps die Kamera frei.
-//
-// Gebraucht wird die Antwort an zwei Stellen: Das Gesichtsnetz wird dort
-// gar nicht erst geholt (#liveKameraMoeglich), und ein Kamerafehler bietet
-// statt "Provo sërish" die Handykamera und Chrome an (#kameraAusweg).
+// Nach Meta-Entwicklerforum und 8th Wall reichen die Android-Apps von
+// Facebook und Instagram (ebenso Messenger, TikTok und andere) die
+// Kamerafrage ihrer eingebauten Webansicht nicht weiter: getUserMedia()
+// antwortet sofort mit NotAllowedError, ohne dass je eine Frage erscheint.
+// Auf dem iPhone geben dieselben Apps die Kamera frei. DIESE QUELLEN SIND
+// JAHRE ALT, und am Geraet geprueft ist es nicht - eine neuere App-Fassung
+// kann die Kamera freigeben. Deshalb entscheidet diese Funktion nie
+// allein: Sie wird erst gefragt, wenn die Kamera WIRKLICH abgelehnt hat,
+// und nur fuer die Auswege im Fehlerkasten (#kameraAusweg).
 // "; wv)" ist die Kennung jeder Android-Webansicht - auch der Apps, deren
 // Namen hier nicht stehen.
 export function inAppAndroid(kennzeichen = globalThis.navigator?.userAgent) {
@@ -1838,12 +1845,17 @@ export class Trichter {
 
   // ---------- Das Gesichtsnetz: erst laden, wenn es gebraucht wird ----------
 
-  // Gibt es hier ueberhaupt eine Live-Kamera? Ohne sie waeren die 6,9 MB
-  // umsonst - und in den Android-Fenstern von Facebook und Instagram gibt
-  // es keine (siehe inAppAndroid).
+  // Gibt es hier ueberhaupt eine Kamera-Schnittstelle? Ohne sie waeren die
+  // 6,9 MB umsonst.
+  //
+  // BEWUSST NICHT NACH DER APP GEFRAGT. Dass die Android-Fenster von
+  // Facebook und Instagram keine Kamera freigeben, sagen Quellen, die
+  // Jahre alt sind - am Geraet geprueft ist es nicht. Gibt eine neuere
+  // App-Fassung die Kamera doch frei, bekaemen genau diese Besucher sonst
+  // den Ring ohne vorgeladenes Netz. Ob die Kamera geht, zeigt allein ihr
+  // Start (#kameraAusweg).
   #liveKameraMoeglich() {
-    const nav = globalThis.navigator;
-    return Boolean(nav?.mediaDevices?.getUserMedia) && !inAppAndroid(nav.userAgent);
+    return Boolean(globalThis.navigator?.mediaDevices?.getUserMedia);
   }
 
   // Nach dem Tipp auf den Startknopf: gleich laden, aber erst nach einem
@@ -1949,11 +1961,13 @@ export class Trichter {
         if (buehne) buehne.dataset.bereit = bereit ? "ja" : "nein";
       },
       beiFehler: (schluessel) => {
-        this.#technik(`Foto-Kamera Fehler: ${schluessel}`);
-        this.#kameraFehlerZeigen(schluessel, "foto", () => this.#fotoStarten());
+        const dauerMs = Date.now() - (this.fotoStartAb || 0);
+        this.#technik(`Foto-Kamera Fehler: ${schluessel} nach ${dauerMs} ms`);
+        this.#kameraFehlerZeigen(schluessel, "foto", () => this.#fotoStarten(), { dauerMs });
       }
     });
     const fotoAb = Date.now();
+    this.fotoStartAb = fotoAb;
     const auf = await this.flaeche.starte();
     if (this.aktiv !== "foto" || !auf) return;
     this.#technik(`Foto-Kamera bereit nach ${Date.now() - fotoAb} ms · ${this.flaeche.richtung === "user" ? "vorne" : "hinten"}`);
@@ -2551,7 +2565,9 @@ export class Trichter {
           NotSupportedError: "fehlerKameraBrowser", NotFoundError: "fehlerKameraFehlt",
           NotReadableError: "fehlerKameraBelegt", TimeoutError: "fehlerKameraWartet"
         }[grund] || "fehlerKamera";
-        this.#kameraFehler(text);
+        // Wie schnell die Absage kam, entscheidet, ob "Provo sërish" etwas
+        // bringt (siehe #kameraAusweg).
+        this.#kameraFehler(text, { dauerMs: Date.now() - this.kamera.startAb });
       }
       return;
     }
@@ -2739,11 +2755,11 @@ export class Trichter {
       && !spur.muted && spur.enabled !== false;
   }
 
-  #kameraFehler(schluessel) {
+  #kameraFehler(schluessel, { dauerMs } = {}) {
     this.#technik(`Scan abgebrochen: ${schluessel}`);
     this.#kameraStoppen();
     this.#blatt(false);
-    this.#kameraFehlerZeigen(schluessel, "skanim", () => this.#kameraStarten());
+    this.#kameraFehlerZeigen(schluessel, "skanim", () => this.#kameraStarten(), { dauerMs });
   }
 
   // Bleibt auch WAEHREND des Scans aktiv: Breite > 0 erkennt weder ein
@@ -4632,14 +4648,22 @@ export class Trichter {
   // Seite; es oeffnet die Kamera-App des Telefons.
   //
   // Und wo "Provo sërish" sicher nichts aendert - Android in einer App,
-  // Freigabe verweigert oder keine Kamera-Schnittstelle -, steht es gar
-  // nicht erst da, und der Satz sagt, was los ist.
+  // die ohne Frage abgelehnt hat oder gar keine Kamera-Schnittstelle
+  // kennt -, steht es nicht da, und der Satz sagt, was los ist.
   //
   // Nur, wenn die Seite den Fotobildschirm traegt: Das Foto landet dort
   // zur Pruefung. Ohne ihn gaebe es nur den Weg nach Chrome.
-  #kameraAusweg(grund, weg) {
+  //
+  // GESPERRT HEISST: OHNE FRAGE ABGELEHNT. Eine Ablehnung innerhalb von
+  // SOFORT_VERWEIGERT_MS kann kein Mensch getippt haben - dann hat die App
+  // die Kamera verweigert, ohne je zu fragen, und "Provo sërish" aendert
+  // daran nichts. Kam die Ablehnung spaeter, hat der Besucher selbst
+  // "Blockieren" getippt; dann bleibt "Provo sërish" stehen, denn eine App,
+  // die fragt, fragt vielleicht auch ein zweites Mal.
+  #kameraAusweg(grund, weg, { dauerMs = Infinity } = {}) {
     const inApp = inAppAndroid();
-    const gesperrt = inApp && ["fehlerKameraErlaubnis", "fehlerKameraBrowser"].includes(grund);
+    const gesperrt = inApp && (grund === "fehlerKameraBrowser"
+      || (grund === "fehlerKameraErlaubnis" && dauerMs < SOFORT_VERWEIGERT_MS));
     return {
       weg,
       text: gesperrt ? "fehlerKameraInApp" : grund,
@@ -4649,8 +4673,8 @@ export class Trichter {
     };
   }
 
-  #kameraFehlerZeigen(grund, weg, nochmal) {
-    const ausweg = this.#kameraAusweg(grund, weg);
+  #kameraFehlerZeigen(grund, weg, nochmal, { dauerMs } = {}) {
+    const ausweg = this.#kameraAusweg(grund, weg, { dauerMs });
     if (ausweg.text !== grund) this.#technik(`Live-Kamera in der App gesperrt (${grund}) – Handykamera und Chrome angeboten`);
     this.#fehlerZeigen(ausweg.text, nochmal, { ausweg });
   }

@@ -31,6 +31,7 @@ const UA = Object.freeze({
   instagramAndroid: "Mozilla/5.0 (Linux; Android 12; SM-G991B Build/SP1A.210812.016; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/119.0.6045.193 Mobile Safari/537.36 Instagram 310.0.0.38.109 Android (31/12; 420dpi; 1080x2176; samsung; SM-G991B; o1s; exynos2100; de_DE; 543512316)",
   instagramIos: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 308.0.2.18.106 (iPhone15,2; iOS 17_1; de_DE; de; scale=3.00; 1179x2556; 530339375)",
   facebookIos: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBAV/430.0.0.29.107;FBBV/551146455;FBDV/iPhone13,2;FBMD/iPhone;FBSN/iOS;FBSV/16.6;FBSS/3;FBID/phone;FBLC/de_DE;FBOP/5]",
+  samsungInstagram: "Mozilla/5.0 (Linux; Android 14; SM-S921B Build/UP1A.231005.007; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/128.0.6613.146 Mobile Safari/537.36 Instagram 348.0.0.36.103 Android (34/14; 480dpi; 1080x2340; samsung; SM-S921B; e1s; s5e9945; de_DE; 637476142)",
   chromeAndroid: "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
   samsungAndroid: "Mozilla/5.0 (Linux; Android 13; SM-S911B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/23.0 Chrome/115.0.0.0 Mobile Safari/537.36",
   safariIos: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1"
@@ -39,6 +40,7 @@ const UA = Object.freeze({
 test("Android in einer App erkannt - iPhone und Systembrowser nicht", () => {
   assert.equal(inAppAndroid(UA.facebookAndroid), true);
   assert.equal(inAppAndroid(UA.instagramAndroid), true);
+  assert.equal(inAppAndroid(UA.samsungInstagram), true);
   // Auf dem iPhone geben dieselben Apps die Kamera frei.
   assert.equal(inAppAndroid(UA.instagramIos), false);
   assert.equal(inAppAndroid(UA.facebookIos), false);
@@ -236,6 +238,45 @@ test("Android in Facebook: kein sinnloses 'Provo sërish', sondern Handykamera u
   assert.match(adresse, /S\.browser_fallback_url=https%3A%2F%2Fwww\.mnyra\.com%2Flifeskin%3Fls_weg%3Dskanim;end$/);
 });
 
+test("Android in einer App, aber SELBST abgelehnt (Frage kam): 'Provo sërish' bleibt, dazu Handykamera und Chrome", async () => {
+  // Dass die App gar nicht fragt, sagen alte Quellen - es wird nicht
+  // vorausgesetzt. Kommt die Absage erst nach Sekunden, hat ein Mensch
+  // "Blockieren" getippt: Eine App, die fragt, fragt vielleicht wieder.
+  const p = probe({ ua: UA.samsungInstagram, gum: () => new Promise((_, nein) => {
+    p.clock.setTimeout(() => nein(Object.assign(new Error("Permission denied"), { name: "NotAllowedError" })), 2500);
+  }) });
+  const start = p.app._kameraStarten();
+  await p.clock.weiter(2600);
+  await start;
+  assert.equal(p.hol("#ls-fehlertext").textContent, texte.OBERFLAECHE.fehlerKameraErlaubnis.sq);
+  assert.equal(p.hol("#ls-fehlernochmal").hidden, false, "Nach eigener Ablehnung fehlt der zweite Versuch");
+  assert.equal(p.hol("#ls-fehlerfoto").hidden, false);
+  assert.equal(p.hol("#ls-fehlerchrome").hidden, false);
+});
+
+test("Android in einer App mit freigegebener Kamera: kein Fehlerkasten, der Scan laeuft", async () => {
+  const p = probe({ ua: UA.samsungInstagram });
+  const start = p.app._kameraStarten();
+  await p.clock.pumpen(); p.bild(); await p.clock.weiter(600); await start;
+  assert.equal(p.fehlerSichtbar(), false);
+  assert.equal(p.aufrufe.fallback, 1, "Der Scan ist nicht angelaufen");
+  p.app._kameraStoppen();
+});
+
+test("Fotoweg in der App: sofortige Absage ohne Frage - Handykamera statt 'Provo sërish'", async () => {
+  const p = probe({ ua: UA.facebookAndroid });
+  p.context.Flaechenkamera = class {
+    constructor(optionen) { this.optionen = optionen; }
+    starte() { this.optionen.beiFehler("fehlerKameraErlaubnis"); return Promise.resolve(false); }
+    stoppe() {}
+  };
+  await p.app._fotoStarten();
+  assert.equal(p.hol("#ls-fehlertext").textContent, texte.OBERFLAECHE.fehlerKameraInApp.sq);
+  assert.equal(p.hol("#ls-fehlernochmal").hidden, true);
+  assert.equal(p.hol("#ls-fehlerfoto").hidden, false);
+  assert.match(p.hol("#ls-fehlerchrome").getAttribute("href"), /ls_weg=foto/);
+});
+
 test("iPhone in Instagram: verweigert heisst verweigert - nochmal UND Handykamera, kein Chrome", async () => {
   const p = probe({ ua: UA.instagramIos, gum: verweigert });
   await p.app._kameraStarten();
@@ -407,16 +448,19 @@ test("der Tipp auf den Start merkt das Netz vor - ein anderer Weg bestellt es ab
   assert.equal(r.app.aktiv, "vorbereitung");
 });
 
-test("wo es keine Live-Kamera gibt, wird das Netz gar nicht geholt", async () => {
-  const p = probe({ ua: UA.instagramAndroid });
-  p.app._startTippen();
+test("in der App wird das Netz trotzdem vorgeladen - nur ohne Kamera-Schnittstelle nicht", async () => {
+  // Ob die App die Kamera freigibt, ist nicht am Geraet geprueft. Gibt sie
+  // sie frei, sollen gerade diese Besucher den Ring mit fertigem Netz
+  // bekommen - also wird nicht nach der App gefragt.
+  const p = probe({ ua: UA.samsungInstagram });
   p.app._wegWaehlen("skanim");
-  await p.clock.weiter(5000);
-  assert.equal(p.aufrufe.netz, 0);
+  assert.equal(p.aufrufe.netz, 1);
 
   const q = probe();
   q.context.navigator.mediaDevices = undefined;
+  q.app._startTippen();
   q.app._wegWaehlen("skanim");
+  await q.clock.weiter(5000);
   assert.equal(q.aufrufe.netz, 0);
 });
 
