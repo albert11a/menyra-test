@@ -91,28 +91,37 @@
       <!-- 3. WAS DRIN IST -->
       <section class="pjese" id="merrni" data-pfad="Was drin ist" hidden>
         <p class="syri">Çfarë merrni</p>
-        <h2>Gjithçka për 28 ditë, në një pako.</h2>
+        <h2>Gjithçka për 4 javë, në një pako.</h2>
         <div id="t-produktet"></div>
         <ul class="perfshihet">
           <li><b>Plani juaj personal</b> — çfarë, kur dhe në çfarë radhe</li>
           <li><b>Konsultë online me skanim</b> — çdo javë me Dr. Gashin</li>
-          <li><b>Vlerësimi final</b> — në ditën 28, krahasuar me sot</li>
+          <li><b>Vlerësimi final</b> — pas 4 javësh, krahasuar me sot</li>
         </ul>
+        <!-- Morgens und abends: jedes Produkt ein nummerierter Schritt, der
+             als Ganzes umbricht (Symbole: Lucide sun / moon). -->
         <div class="rutina" id="t-rutina" hidden>
-          <div><span aria-hidden="true">☀</span><p><b>Mëngjes</b><span id="t-mengjes"></span></p></div>
-          <div><span aria-hidden="true">☾</span><p><b>Mbrëmje</b><span id="t-mbremje"></span></p></div>
+          <div class="rutina__rresht" id="t-rutina-mengjes">
+            <span class="rutina__ikona rutina__ikona--dielli" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></span>
+            <div class="rutina__trupi"><b>Mëngjes</b><ol class="rutina__hapat" id="t-mengjes"></ol></div>
+          </div>
+          <div class="rutina__rresht" id="t-rutina-mbremje">
+            <span class="rutina__ikona rutina__ikona--hena" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></span>
+            <div class="rutina__trupi"><b>Mbrëmje</b><ol class="rutina__hapat" id="t-mbremje"></ol></div>
+          </div>
         </div>
       </section>
 
-      <!-- 4. DIE 28 TAGE -->
+      <!-- 4. DIE 4 WOCHEN (data-pfad bleibt "28 Tage" - der Klickpfad in
+           Heart vergleicht damit auch alte Besuche) -->
       <section class="pjese" id="ditet" data-pfad="28 Tage" hidden>
-        <p class="syri">28 ditët tuaja</p>
+        <p class="syri">4 javët tuaja</p>
         <h2>Nuk mbeteni vetëm.</h2>
         <ol class="rruga">
           <li><span>1</span><div><h3>Dita 1 — pakoja arrin</h3><p>Me planin tuaj. Filloni po atë mbrëmje.</p></div></li>
-          <li><span>7</span><div><h3>Java 1 — skanimi i parë</h3><p>Dr. Gashi shikon si po reagon lëkura juaj.</p></div></li>
-          <li><span>14</span><div><h3>Java 2–3 — plani përshtatet</h3><p>Nëse diçka nuk ecën, e ndryshojmë bashkë.</p></div></li>
-          <li><span>28</span><div><h3>Dita 28 — vlerësimi final</h3><p id="t-dita28">Krahasojmë lëkurën tuaj me foton e sotme.</p></div></li>
+          <li><span>2</span><div><h3>Java 1 — skanimi i parë</h3><p>Dr. Gashi shikon si po reagon lëkura juaj.</p></div></li>
+          <li><span>3</span><div><h3>Java 2–3 — plani përshtatet</h3><p>Nëse diçka nuk ecën, e ndryshojmë bashkë.</p></div></li>
+          <li><span>4</span><div><h3>Java 4 — vlerësimi final</h3><p id="t-dita28">Krahasojmë lëkurën tuaj me foton e sotme.</p></div></li>
         </ol>
       </section>
 
@@ -124,14 +133,14 @@
           <figure class="rasti">
             <div class="rasti__foto">
               <img src="/apps/lifeskin-landing/fotot/rasti-1-dita1.jpg" alt="Para terapisë" loading="lazy"><span>Para</span>
-              <img src="/apps/lifeskin-landing/fotot/rasti-1-dita28.jpg" alt="Pas 28 ditëve" loading="lazy"><span class="pas">Dita 28</span>
+              <img src="/apps/lifeskin-landing/fotot/rasti-1-dita28.jpg" alt="Pas 4 javësh" loading="lazy"><span class="pas">Java 4</span>
             </div>
             <figcaption>Pacienti 1 · 26 vjeç · akne inflamatore<br><b>LF ACNE + LF MOISTUR</b></figcaption>
           </figure>
           <figure class="rasti">
             <div class="rasti__foto">
               <img src="/apps/lifeskin-landing/fotot/rasti-3-dita1.jpg" alt="Para terapisë" loading="lazy"><span>Para</span>
-              <img src="/apps/lifeskin-landing/fotot/rasti-3-dita28.jpg" alt="Pas 28 ditëve" loading="lazy"><span class="pas">Dita 28</span>
+              <img src="/apps/lifeskin-landing/fotot/rasti-3-dita28.jpg" alt="Pas 4 javësh" loading="lazy"><span class="pas">Java 4</span>
             </div>
             <figcaption>Pacienti 3 · 22 vjeç · akne & pore të mëdha<br><b>LF ACNE + LF MOISTUR + LF PORE</b></figcaption>
           </figure>
@@ -156,9 +165,9 @@
         <p class="syri">Para se të vendosni</p>
         <h2>Pyetje të shpeshta.</h2>
         <details><summary>A është kjo terapi e përshtatshme për mua?<i aria-hidden="true">+</i></summary>
-          <p id="t-faq1">Dr. Gashi e zgjodhi sipas fotove tuaja dhe gjetjeve të kësaj analize. Nëse keni lëkurë shumë të ndjeshme ose përdorni ilaçe për lëkurën, na shkruani para se të filloni.</p></details>
+          <p id="t-faq1">Po. Dr. Gashi e zgjodhi sipas fotove tuaja, për problemet që pamë në lëkurën tuaj. Mund të filloni që sot.</p></details>
         <details><summary>Kur shoh ndryshim?<i aria-hidden="true">+</i></summary>
-          <p>Lëkura ndryshon ngadalë — ndryshimet e para zakonisht duken pas disa javësh. Prandaj Dr. Gashi e kontrollon çdo javë dhe e krahason në ditën 28.</p></details>
+          <p id="t-faq2">Brenda 4 javëve lëkura juaj ndryshon dukshëm – synimi është që problemet që pamë të largohen plotësisht. Dr. Gashi e kontrollon çdo javë me skanim.</p></details>
         <details><summary>Si paguaj dhe sa kushton dërgesa?<i aria-hidden="true">+</i></summary>
           <p id="t-pagesa"></p></details>
         <details><summary>Po nëse nuk jam i kënaqur?<i aria-hidden="true">+</i></summary>
@@ -243,7 +252,7 @@
       <h2 id="t-porosititulli">Ku ta dërgojmë terapinë?</h2>
     </div>
     <div class="porosia__shporta" id="t-shporta">
-      <p><b>Terapia 28-ditore</b><span id="t-shportaprodukte"></span></p>
+      <p><b>Terapia 4-javore</b><span id="t-shportaprodukte"></span></p>
       <strong data-cmimi></strong>
     </div>
     <form class="porosia__forma" id="forma" novalidate>

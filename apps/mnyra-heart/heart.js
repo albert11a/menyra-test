@@ -2986,12 +2986,13 @@ async function lifeskinPromptKopieren() {
   const session = findeSitzung(state, state.offen);
   if (!session) { setToast('Prompt', 'Zuerst einen Fall öffnen.', 'danger'); return; }
   try {
-    // PROMPT v8: Analyse und Texte der Therapieseite in einem. Er ist ein
-    // Text mit Platzhaltern, keine JSON-Vorlage mehr - siehe
-    // promptV8Fuellen() und docs/lifeskin-prompt-v8.txt.
+    // PROMPT v9 (seit 25.09.; v8 liegt daneben): Analyse und Texte der
+    // Therapieseite in einem, ein Text mit Platzhaltern - siehe
+    // promptV8Fuellen() und docs/lifeskin-prompt-v9.txt. Gleiches Schema
+    // wie v8, nur Ton, Einstufung und Produkttexte sind neu.
     // Mit oder ohne Foto - der Schalter im Bogen entscheidet.
     const ohneFoto = document.querySelector('[data-bogen-art]')?.value === 'pa-foto';
-    const response = await fetch(ohneFoto ? '/docs/lifeskin-prompt-v8-pa-foto.txt' : '/docs/lifeskin-prompt-v8.txt', {cache:'no-store'});
+    const response = await fetch(ohneFoto ? '/docs/lifeskin-prompt-v9-pa-foto.txt' : '/docs/lifeskin-prompt-v9.txt', {cache:'no-store'});
     if (!response.ok) throw new Error('Die Promptvorlage konnte nicht geladen werden.');
     const vorlage = await response.text();
     if (store.getState().lifeskin?.offen !== session.id) return;

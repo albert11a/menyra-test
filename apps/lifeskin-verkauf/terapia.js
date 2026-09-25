@@ -37,6 +37,9 @@ const $ = (wahl) => document.querySelector(wahl);
 const $$ = (wahl) => Array.from(document.querySelectorAll(wahl));
 const BESTELLT = ["bestellt", "versandt", "zugestellt"];
 const TAGE = Number(STANDARD_KONFIG.reichweiteTage) || 28;
+// Gesagt wird "4 javë", nicht "28 ditë": Wochen klingen nach einer
+// Therapie mit Ende, Tage nach Dauerkauf (Wunsch Dr. Gashi, 25.09.).
+const WOCHEN = Math.max(1, Math.round(TAGE / 7));
 
 function zahl(wert) {
   const n = Number(wert);
@@ -106,6 +109,18 @@ function produktBild(p, klasse) {
   const svg = produktZeichnung(p.lloji || p.nenName);
   svg.setAttribute("class", klasse);
   return svg;
+}
+
+// Die Antwort auf "Kur shoh ndryshim?": in 4 Wochen, und was genau
+// verschwinden soll - seine Karten, nicht ein allgemeiner Satz.
+export function faqNdryshimi(problemet, wochen = 4) {
+  const liste = [...new Set((problemet || [])
+    .map((p) => [p?.gjetja, p?.ku].map((x) => String(x || "").trim()).filter(Boolean).join(" "))
+    .filter(Boolean)
+    .map((x) => x.charAt(0).toLowerCase() + x.slice(1)))].slice(0, 3);
+  if (!liste.length) return "";
+  const aufgezaehlt = liste.length === 1 ? liste[0] : `${liste.slice(0, -1).join(", ")}, si dhe ${liste.at(-1)}`;
+  return `Brenda ${wochen} javëve lëkura juaj ndryshon dukshëm – synojmë t'i largojmë plotësisht: ${aufgezaehlt}. Dr. Gashi e kontrollon çdo javë me skanim.`;
 }
 
 export class Terapia {
@@ -208,8 +223,8 @@ export class Terapia {
       const para = element("img");
       para.src = r.para; para.alt = "Para terapisë"; para.loading = "lazy";
       const pas = element("img");
-      pas.src = r.pas; pas.alt = "Pas 28 ditëve"; pas.loading = "lazy";
-      foto.append(para, element("span", null, "Para"), pas, element("span", "pas", "Dita 28"));
+      pas.src = r.pas; pas.alt = `Pas ${WOCHEN} javësh`; pas.loading = "lazy";
+      foto.append(para, element("span", null, "Para"), pas, element("span", "pas", `Java ${WOCHEN}`));
       const gjetja = r.gjetja ? r.gjetja.charAt(0).toLowerCase() + r.gjetja.slice(1) : "";
       const text = element("figcaption", null, [r.emri, gjetja].filter(Boolean).join(" · "));
       if (r.produkte.length) text.append(document.createElement("br"), element("b", null, rastiProdukteText(r)));
@@ -258,7 +273,7 @@ export class Terapia {
     // 1. Oben: was die Anzeige versprochen hat.
     schreibe($("#t-syri"), mitProdukten ? "Terapia juaj është gati" : "Analiza juaj është gati");
     schreibe($("#t-titulli"), mitProdukten
-      ? (name ? `${name}, kjo është terapia juaj për ${TAGE} ditë.` : `Terapia juaj për ${TAGE} ditë është gati.`)
+      ? (name ? `${name}, kjo është terapia juaj për ${WOCHEN} javë.` : `Terapia juaj për ${WOCHEN} javë është gati.`)
       : (name ? `${name}, analiza juaj është gati.` : "Analiza juaj është gati."));
     this.#mjeku();
     // Fielen Karten weg, weil ihr Produkt nicht im Set ist, nennt der Satz
@@ -320,6 +335,9 @@ export class Terapia {
     zeigen($("#vendimi"), this.mitAngebot);
     schreibe($("#t-dita28"), s.dita_28 || this.produkte[0]?.synimi || "Krahasojmë lëkurën tuaj me foton e sotme.");
     schreibe($("#t-psetani"), s.pse_tani || "");
+    // "Kur shoh ndryshim?" - mit SEINEN Problemen, als Ziel: weg in 4 Wochen.
+    const faq2 = faqNdryshimi((s.problemet || []).filter((p) => this.#karteGilt(p)), WOCHEN);
+    if (faq2) schreibe($("#t-faq2"), faq2);
     zeigen($("#t-psetani"), Boolean(s.pse_tani));
 
     // 8. Die ganze Analyse.
@@ -375,7 +393,7 @@ export class Terapia {
     }
     const n = this.produkte.length;
     const cipa = $("#t-seticipa");
-    cipa.replaceChildren(...[n === 1 ? "1 produkt" : `${n} produkte`, `${TAGE} ditë`, "Plan personal", "Dr. Gashi çdo javë"]
+    cipa.replaceChildren(...[n === 1 ? "1 produkt" : `${n} produkte`, `${WOCHEN} javë`, "Plan personal", "Dr. Gashi çdo javë"]
       .map((x) => element("li", null, x)));
     schreibe($("#t-shportaprodukte"), `${this.produkte.map((p) => p.name).join(" + ")} · plan · ndjekje`);
   }
@@ -430,7 +448,7 @@ export class Terapia {
     const text = {
       bestellt: "Ju kontaktojmë për konfirmimin e adresës. Pagesa bëhet kur ta merrni pakon.",
       versandt: "Pakoja juaj është nisur. Pagesa bëhet kur ta merrni.",
-      zugestellt: "Pakoja juaj është dorëzuar. Dr. Gashi ju ndjek gjatë 28 ditëve."
+      zugestellt: `Pakoja juaj është dorëzuar. Dr. Gashi ju ndjek gjatë ${WOCHEN} javëve.`
     }[this.daten.status] || "";
     schreibe($("#t-porositurtext"), text);
   }
@@ -525,8 +543,17 @@ export class Terapia {
       if (zeit.morgens) morgens.push(p.name);
       if (zeit.abends) abends.push(p.name);
     }
-    schreibe($("#t-mengjes"), morgens.join(" → ") || "—");
-    schreibe($("#t-mbremje"), abends.join(" → ") || "—");
+    // Jedes Produkt ein nummerierter Schritt - bricht als Ganzes um, nie
+    // mitten im Namen. Eine Tageszeit ohne Produkt faellt weg.
+    const schritte = (ziel, namen) => $(ziel)?.replaceChildren(...namen.map((name, i) => {
+      const li = element("li");
+      li.append(element("i", null, String(i + 1)), name);
+      return li;
+    }));
+    schritte("#t-mengjes", morgens);
+    schritte("#t-mbremje", abends);
+    zeigen($("#t-rutina-mengjes"), morgens.length > 0);
+    zeigen($("#t-rutina-mbremje"), abends.length > 0);
     zeigen($("#t-rutina"), morgens.length + abends.length > 0);
   }
 
@@ -538,9 +565,9 @@ export class Terapia {
     if (this.ohneFoto) {
       schreibe($("#t-analizasyri"), "Si u zgjodh plani juaj");
       schreibe($("#t-analizatitulli"), "Nga ajo që na treguat.");
-      schreibe($("#t-faq1"), "Dr. Gashi e zgjodhi sipas përshkrimit tuaj. Nëse keni lëkurë shumë të ndjeshme ose përdorni ilaçe për lëkurën, na shkruani para se të filloni.");
+      schreibe($("#t-faq1"), "Po. Dr. Gashi e zgjodhi sipas përshkrimit tuaj, për problemet që na treguat. Mund të filloni që sot.");
       const metoda = $("#t-metoda");
-      schreibe(metoda, "Ky plan bazohet në atë që na përshkruat: çfarë ju shqetëson, ku dhe prej kur. Gjatë 28 ditëve Dr. Gashi ju ndjek çdo javë dhe e përshtat planin nëse duhet.");
+      schreibe(metoda, `Ky plan bazohet në atë që na përshkruat: çfarë ju shqetëson, ku dhe prej kur. Gjatë ${WOCHEN} javëve Dr. Gashi ju ndjek çdo javë dhe e përshtat planin nëse duhet.`);
       const summe = $("#t-metodablock summary");
       if (summe?.firstChild) summe.firstChild.textContent = "Si u zgjodh plani?";
       zeigen($("#t-diagnoza"), false);

@@ -110,7 +110,8 @@ export function promptFuellen(vorlage, sitzung) {
 
 // PROMPT v8 - ein Text mit fuenf Platzhaltern statt einer JSON-Vorlage.
 //
-// Der Text steht in docs/lifeskin-prompt-v8.txt und wird so eingesetzt,
+// Der Text steht in docs/lifeskin-prompt-v9.txt (davor v8, gleiche
+// Platzhalter) und wird so eingesetzt,
 // wie er dort steht. Hier werden nur die Platzhalter gefuellt:
 // {{PATIENT_NAME}}, {{GENDER}}, {{AGE}}, {{ANAMNESIS}} und
 // {{VERIFIED_PRODUCTS}}.

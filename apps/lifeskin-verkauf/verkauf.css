@@ -128,15 +128,36 @@ a { color: var(--green); }
 .perfitimet { margin: 14px 0 0; padding: 0 0 0 18px; font-size: .92rem; display: grid; gap: 6px; }
 .perfitimet li::marker { color: var(--green); }
 .perfshihet { list-style: none; padding: 0; margin: 18px 0; display: grid; gap: 8px; font-size: .92rem; }
+/* Morgens / abends - je Tageszeit eine Zeile: Symbol, Wort, dann die
+   Produkte als nummerierte Schritte. Ein Schritt bricht nur als Ganzes
+   um, nie mitten im Namen. */
 .rutina {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-  background: #f0eee6; border-radius: 14px; padding: 16px;
+  display: grid; gap: 0; margin-top: 18px;
+  background: var(--white); border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
 }
-.rutina > div { display: flex; gap: 10px; align-items: flex-start; }
-.rutina > div > span { color: var(--green); font-size: 1.2rem; line-height: 1.2; }
-.rutina p { display: flex; flex-direction: column; font-size: .85rem; }
-.rutina p b { font-size: .9rem; }
-.rutina__koha { grid-column: 1 / -1; font-size: .8rem; color: var(--muted); text-align: center; border-top: 1px solid #dcd9ce; padding-top: 10px; }
+.rutina__rresht { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: start; padding: 14px 16px; }
+.rutina__rresht + .rutina__rresht { border-top: 1px solid var(--line); }
+.rutina__ikona {
+  width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+}
+.rutina__ikona svg { display: block; }
+.rutina__ikona--dielli { background: #fdf1dc; color: #b86e12; }
+.rutina__ikona--hena { background: #e7ecf3; color: #33466b; }
+.rutina__trupi { min-width: 0; }
+.rutina__trupi > b {
+  display: block; font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+  line-height: 1.2; margin: 1px 0 7px;
+}
+.rutina__hapat { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.rutina__hapat li {
+  display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+  padding: 5px 11px 5px 5px; border-radius: 999px; background: var(--green-soft);
+  font-size: .85rem; font-weight: 700; color: var(--green); line-height: 1.2;
+}
+.rutina__hapat li i {
+  width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  background: var(--green); color: #fff; font-style: normal; font-size: .7rem; font-weight: 700;
+}
 
 /* 4. Die 28 Tage */
 .rruga { list-style: none; margin: 0; padding: 0; }
@@ -438,3 +459,11 @@ img.produkt__ikona { object-fit: cover; padding: 0; }
 .pergjigjet b::before { content: "✓"; font-weight: 700; }
 .pergjigjet span { font-size: .8rem; line-height: 1.35; color: var(--muted); }
 .pergjigjet:empty { display: none; }
+
+/* Die Vorlage unter /120992 behaelt die alte Morgen/Abend-Karte. */
+.rutina--alt { grid-template-columns: 1fr 1fr; gap: 10px; background: #f0eee6; border: 0; padding: 16px; margin-top: 0; }
+.rutina--alt > div { display: flex; gap: 10px; align-items: flex-start; }
+.rutina--alt > div > span { color: var(--green); font-size: 1.2rem; line-height: 1.2; }
+.rutina--alt p { display: flex; flex-direction: column; font-size: .85rem; }
+.rutina--alt p b { font-size: .9rem; }
+.rutina__koha { grid-column: 1 / -1; font-size: .8rem; color: var(--muted); text-align: center; border-top: 1px solid #dcd9ce; padding-top: 10px; }

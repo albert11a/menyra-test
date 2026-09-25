@@ -70,7 +70,7 @@ test("Heart nimmt die Texte der Analyse vor dem Regelsatz", () => {
 });
 
 test("die Prompts verbieten links/rechts und verlangen drei per_ju-Punkte", () => {
-  for (const datei of ["docs/lifeskin-prompt-v8.txt", "docs/lifeskin-prompt-v8-pa-foto.txt"]) {
+  for (const datei of ["docs/lifeskin-prompt-v8.txt", "docs/lifeskin-prompt-v8-pa-foto.txt", "docs/lifeskin-prompt-v9.txt", "docs/lifeskin-prompt-v9-pa-foto.txt"]) {
     const prompt = lies(datei);
     assert.match(prompt, /„majtë", „djathtë", „majtas", „djathtas"/, datei);
     assert.match(prompt, /GENAU 3 Punkte/, datei);
