@@ -1785,6 +1785,7 @@ export class Trichter {
     // Weg faengt bei null an, so oft er gewaehlt wird.
     this.zustand.stelleFoto = null;
     this.zustand.fotoAnzahl = 0;
+    this.zustand.telBild = "";
     // Der neue Weg faengt auch im Kopf bei null an: Ein Anliegen, das
     // auf "Per trupin" getippt und dann auf "Me foto" gewechselt wurde,
     // ginge sonst als Text eines Falls hinaus, den niemand geschrieben
@@ -1891,6 +1892,7 @@ export class Trichter {
     if (!aufnahme) return;
     this.sitzung.schritt("fotogati");
     this.zustand.fotoAnzahl = 1;
+    this.zustand.telBild = aufnahme.mini?.jpeg || aufnahme.vorschau || "";
     // Im Hintergrund hinaus, wie beim Scan: Der Besucher wartet nicht
     // darauf, dass ein Bild ankommt.
     this.#uploadMelden(this.sitzung.fotosSpeichern({ zona: aufnahme.foto }));
@@ -2013,6 +2015,7 @@ export class Trichter {
       const aufnahme = this.zustand.stelleFoto;
       if (aufnahme) {
         this.zustand.fotoAnzahl = 1;
+        this.zustand.telBild = aufnahme.mini?.jpeg || aufnahme.vorschau || "";
         this.#uploadMelden(this.sitzung.fotosSpeichern({ zona: aufnahme.foto }));
         if (aufnahme.mini) this.sitzung.miniaturenSpeichern({ zona: aufnahme.mini });
         this.sitzung.ergaenze({ photos: ["zona"] });
@@ -2050,10 +2053,29 @@ export class Trichter {
     if (!$("#ls-tel")) return false;
     if (melden) this.sitzung.schritt("numri");
     this.#telFehler(null);
+    this.#telKopfFuellen();
     this.zeige("tel");
     // Kein Autofokus: erst Zweck und WhatsApp-Hinweis lesen, dann tippen.
     this.#telPruefen();
     return true;
+  }
+
+  // Variante B: beim Namen gefragt, und oben das eigene Foto - "gespeichert".
+  // Ohne Foto (Frage ohne Bild) steht nur die Aerztin da.
+  #telKopfFuellen() {
+    const name = String(this.zustand.name || "").trim().split(/\s+/)[0];
+    const titel = $("#ls-teltitel");
+    if (titel) schreibe(titel, name ? this.text("telTitelName", { name }) : this.text("telTitel"));
+    const bild = this.zustand.telBild || "";
+    const el = $("#ls-gesichertbild");
+    if (el) {
+      if (bild) el.src = bild;
+      el.hidden = !bild;
+    }
+    const ueber = $("#ls-gesicherttitel");
+    // Nach dem Neuladen ist das Bild weg, das Foto aber gespeichert.
+    const mitFoto = Boolean(bild) || Number(this.zustand.fotoAnzahl) > 0;
+    if (ueber) schreibe(ueber, this.text(mitFoto ? "telGesichert" : "telGesichertOhne"));
   }
 
   // Dasselbe wie beim Anliegen: Das Feld ist die Wahrheit, nicht der
@@ -2111,6 +2133,7 @@ export class Trichter {
     const knopf = $("#ls-telweiter");
     const knopfText = this.text(viber ? "telKnopfViber" : "telKnopf");
     if (knopf && knopfText) schreibe(knopf, knopfText);
+    if (knopf) knopf.dataset.kanal = viber ? "viber" : "whatsapp";
     const info = $("#ls-telinfo");
     const infoText = this.text(viber ? "telInfoViber" : "telInfo");
     if (info && infoText) schreibe(info, infoText);
@@ -3518,6 +3541,12 @@ export class Trichter {
       if (mini) minis[blick] = mini;
     }
     if (Object.keys(minis).length) this.sitzung.miniaturenSpeichern(minis);
+    // Das Bild von vorn fuer den Nummern-Schirm ("Fotoja juaj u ruajt").
+    const vorn = minis.gerade || Object.values(minis)[0];
+    if (vorn?.jpeg) {
+      this.zustand.telBild = vorn.jpeg;
+      if (this.aktiv === "tel") this.#telKopfFuellen();
+    }
   }
 
   #miniaturBauen(jpeg) {

@@ -142,8 +142,13 @@ test("der Patient bekommt auch seine Fotos nicht zu sehen", () => {
   // Wirkung, naemlich Zweifel auf dem Bildschirm, auf dem er sich
   // entscheidet. Hier ist das Bild kein Befund, sondern sein eigener
   // Ausloeser, und er hat es eine Sekunde vorher selbst gemacht.
+  //
+  // VIERTE QUELLE (25.09., Variante B, vom Betreiber gewaehlt): Auf dem
+  // Nummern-Schirm steht "Fotoja juaj u ruajt" mit der MINIATUR, die ohnehin
+  // auf die Warteseite geht - 64 px, als Beleg, dass es gespeichert ist,
+  // nicht als Befund. Die volle Aufnahme bleibt weiter verborgen.
   const bildQuellen = [...app.matchAll(/\.src\s*=\s*([^;\n]+)/g)].map((m) => m[1].trim());
-  assert.deepEqual(bildQuellen, ["ARZT_BILD", 'jpeg || ""', "aufnahme.vorschau", '""', "jpeg"],
+  assert.deepEqual(bildQuellen, ["ARZT_BILD", 'jpeg || ""', "aufnahme.vorschau", '""', "bild", "jpeg"],
     "Ein Bild im Trichter bekommt seine Quelle von woanders als aus dem Verzeichnis");
   const verkleinern = methode(appMitKommentaren, "#miniaturBauen");
   for (const einhaengen of ["append", "prepend", "appendChild", "insertBefore", "replaceChildren"]) {

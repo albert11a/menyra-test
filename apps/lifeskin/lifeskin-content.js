@@ -372,14 +372,26 @@ export const OBERFLAECHE = Object.freeze({
   // Angabe, bei der jemand zoegert. Wer bis hierhin seinen Namen, sein
   // Alter und sein Anliegen geschrieben hat, gibt sie.
   telSchritt: { sq: "Hapi i fundit", de: "Der letzte Schritt" },
-  telTitel: { sq: "Na duhet numri juaj i WhatsApp-it", de: "Wir brauchen Ihre WhatsApp-Nummer" },
-  telUnter: {
-    sq: "Dr. Gashi ju shkruan në WhatsApp për t’ju dërguar analizën dhe terapinë e përshtatshme për lëkurën tuaj.",
-    de: "Dr. Gashi schreibt Ihnen auf WhatsApp, um Ihnen Ihre Analyse und die passende Therapie für Ihre Haut zu senden."
+  // DER NUMMERN-SCHIRM, VARIANTE B (25.09.): 25 Menschen haben ein Foto
+  // gemacht und KEINE Nummer hinterlassen, 18 davon genau hier. Der
+  // Schirm sagt jetzt zuerst, was schon geschafft ist - "Ihr Foto ist
+  // gespeichert", mit dem eigenen Bild und Dr. Gashi daneben - und fragt
+  // dann beim Namen nach der Nummer. Darunter nur, was die Angst nimmt:
+  // kein Anruf, die Nummer bleibt privat.
+  telGesichert: { sq: "Fotoja juaj u ruajt", de: "Ihr Foto ist gespeichert" },
+  telGesichertOhne: { sq: "Të dhënat tuaja u ruajtën", de: "Ihre Angaben sind gespeichert" },
+  telGesichertUnter: {
+    sq: "Dr. Violeta Gashi e shqyrton vetë dhe ju shkruan sot.",
+    de: "Dr. Violeta Gashi prüft es selbst und schreibt Ihnen heute."
   },
+  telTitelName: { sq: "{name}, numri juaj i WhatsApp-it", de: "{name}, Ihre WhatsApp-Nummer" },
+  telTitel: { sq: "Numri juaj i WhatsApp-it", de: "Ihre WhatsApp-Nummer" },
+  telTelefonata: { sq: "Pa telefonata", de: "Keine Anrufe" },
+  telPrivat: { sq: "Numri mbetet privat", de: "Die Nummer bleibt privat" },
+  telPrivatUnter: { sq: "nuk e ndajmë me askënd.", de: "wir geben sie an niemanden weiter." },
   telInfo: {
-    sq: "Ju shkruajmë vetëm në WhatsApp. Nuk ju telefonojmë.",
-    de: "Wir schreiben Ihnen ausschließlich über WhatsApp. Wir rufen Sie nicht an."
+    sq: "vetëm një mesazh në WhatsApp.",
+    de: "nur eine Nachricht auf WhatsApp."
   },
   telPlatzhalter: { sq: "044 123 456", de: "044 123 456" },
   telKnopf: { sq: "Merrni analizën në WhatsApp", de: "Analyse per WhatsApp erhalten" },
@@ -393,8 +405,8 @@ export const OBERFLAECHE = Object.freeze({
     de: "Wenn Sie kein WhatsApp haben, schreibt Dr. Gashi Ihnen auf Viber."
   },
   telInfoViber: {
-    sq: "Ju shkruajmë vetëm në Viber. Nuk ju telefonojmë.",
-    de: "Wir schreiben Ihnen ausschließlich über Viber. Wir rufen Sie nicht an."
+    sq: "vetëm një mesazh në Viber.",
+    de: "nur eine Nachricht auf Viber."
   },
   telKnopfViber: { sq: "Merrni analizën në Viber", de: "Analyse per Viber erhalten" },
   uebergabeLaeuft: { sq: "Po dërgojmë të dhënat tuaja…", de: "Ihre Angaben werden gesendet…" },
