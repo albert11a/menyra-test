@@ -911,8 +911,36 @@ export class Trichter {
   // ist auf dem Handy das Erste, was auffaellt.
   zurueckZu(ziel) {
     if (!SCHIRME.includes(ziel)) return;
+    if (this.aktiv === "kamera") this.#scanVerlassenMelden();
     this.#kameraStoppen();
     this.zeige(ziel, { verlauf: "nein" });
+  }
+
+  // TECHNIK IM KLICKPFAD - damit sich pro Besucher zeigt, ob Kamera,
+  // Gesichtserkennung und Upload wirklich funktionieren, und wo es hakt
+  // (Heart: Fall -> Klickpfad, Zeilen "Technik").
+  #technik(text) {
+    try { this.klickpfad?.melde("technik", text); } catch { /* nie den Trichter stoeren */ }
+  }
+
+  // Nimmt das Versprechen von fotosSpeichern() - der Upload laeuft im
+  // Hintergrund weiter, die Zeile kommt, wenn er fertig ist.
+  #uploadMelden(versprechen) {
+    Promise.resolve(versprechen).then((e) => this.#uploadZeile(e), () => {});
+  }
+
+  #uploadZeile(e) {
+    if (!e || typeof e !== "object") return;
+    this.#technik(e.fehler
+      ? `Foto-Upload FEHLGESCHLAGEN: ${e.fehler} von ${e.ok + e.fehler} · ${e.grund}`
+      : `Fotos hochgeladen: ${e.ok} · ${e.kb} KB · ${(e.ms / 1000).toFixed(1)} s`);
+  }
+
+  #scanVerlassenMelden() {
+    const ab = this.kamera.startAb || Date.now();
+    const anteil = Math.round((this.kamera.ring?.anteil || 0) * 100);
+    const modus = this.kamera.modus === "ring" ? "Ring" : (this.kamera.netzWartet ? "Erkennung lädt noch" : "einfache Erkennung");
+    this.#technik(`Scan verlassen nach ${Math.round((Date.now() - ab) / 1000)} s · ${modus} · Ring ${anteil} % · Gesicht ${this.zustand.erkannt ? "erkannt" : "nicht erkannt"}`);
   }
 
   // Wohin ein Zurueck von hier fuehrt.
@@ -1403,6 +1431,15 @@ export class Trichter {
     // Der sichtbare Pfeil. Viele benutzen den Browser-Knopf nie.
     for (const knopf of $$("[data-zurueck]")) {
       knopf.addEventListener("click", () => {
+        // IN DER FOTO-VORSCHAU HEISST ZURUECK "NOCH EINMAL". Gemessen: Jede
+        // Vierte tippte nach "Bëj foton" auf den Pfeil statt auf "Bëje
+        // përsëri" - und landete ganz vorne bei der Wahl (LS-2509-5SH64
+        // fuenfmal hintereinander). Jetzt geht es zurueck in die Kamera.
+        if (this.aktiv === "foto" && $("#ls-fotobuehne")?.dataset.stand === "vorschau") {
+          this.klickpfad?.melde("technik", "Pfeil zurück in der Foto-Vorschau → neue Aufnahme");
+          this.#fotoNochmal();
+          return;
+        }
         const ziel = this.vorherigerSchirm();
         if (!ziel) return;
         // ueber den Verlauf zurueck, damit beide Wege dieselbe Kette teilen
@@ -1794,10 +1831,15 @@ export class Trichter {
         const buehne = $("#ls-fotobuehne");
         if (buehne) buehne.dataset.bereit = bereit ? "ja" : "nein";
       },
-      beiFehler: (schluessel) => this.#fehlerZeigen(schluessel, () => this.#fotoStarten())
+      beiFehler: (schluessel) => {
+        this.#technik(`Foto-Kamera Fehler: ${schluessel}`);
+        this.#fehlerZeigen(schluessel, () => this.#fotoStarten());
+      }
     });
+    const fotoAb = Date.now();
     const auf = await this.flaeche.starte();
     if (this.aktiv !== "foto" || !auf) return;
+    this.#technik(`Foto-Kamera bereit nach ${Date.now() - fotoAb} ms · ${this.flaeche.richtung === "user" ? "vorne" : "hinten"}`);
     // Dieselbe Marke wie beim Scan, aus demselben Grund: Der Schritt
     // davor sagt "hat getippt", diese Marke sagt "hat erlaubt".
     if (auf) this.#kameraOkMerken();
@@ -1851,7 +1893,7 @@ export class Trichter {
     this.zustand.fotoAnzahl = 1;
     // Im Hintergrund hinaus, wie beim Scan: Der Besucher wartet nicht
     // darauf, dass ein Bild ankommt.
-    this.sitzung.fotosSpeichern({ zona: aufnahme.foto });
+    this.#uploadMelden(this.sitzung.fotosSpeichern({ zona: aufnahme.foto }));
     if (aufnahme.mini) this.sitzung.miniaturenSpeichern({ zona: aufnahme.mini });
     this.sitzung.ergaenze({ photos: ["zona"] });
     this.#nameZeigen();
@@ -1971,7 +2013,7 @@ export class Trichter {
       const aufnahme = this.zustand.stelleFoto;
       if (aufnahme) {
         this.zustand.fotoAnzahl = 1;
-        this.sitzung.fotosSpeichern({ zona: aufnahme.foto });
+        this.#uploadMelden(this.sitzung.fotosSpeichern({ zona: aufnahme.foto }));
         if (aufnahme.mini) this.sitzung.miniaturenSpeichern({ zona: aufnahme.mini });
         this.sitzung.ergaenze({ photos: ["zona"] });
       }
@@ -2305,6 +2347,7 @@ export class Trichter {
     // ein Wort ist das ein leerer Kreis auf einer leeren Seite.
     schreibe($("#ls-kamerahinweis"), this.text("kameraOeffnet"));
     this.sitzung.schritt("camera");
+    this.kamera.startAb = Date.now();
 
     try {
       // Nur nach einer Berührung - iOS erlaubt es nicht anders.
@@ -2351,11 +2394,13 @@ export class Trichter {
       const bereit = await this.#videoBereit(video, { lauf });
       if (lauf !== this.kamera.lauf) return;
       if (!bereit) { this.#kameraFehler("fehlerKameraBild"); return; }
+      this.#technik(`Scan-Kamera bereit nach ${Date.now() - this.kamera.startAb} ms · ${video.videoWidth}×${video.videoHeight}`);
     } catch (fehler) {
       // Ein abgeloester Lauf zeigt keinen Fehler an: Der neue ist gerade
       // dabei, und zwei Meldungen uebereinander verwirren nur.
       if (lauf === this.kamera.lauf) {
         const grund = String(fehler?.name || "");
+        this.#technik(`Scan-Kamera Fehler: ${grund || String(fehler?.message || "").slice(0, 40)} nach ${Date.now() - this.kamera.startAb} ms`);
         const text = {
           NotAllowedError: "fehlerKameraErlaubnis", SecurityError: "fehlerKameraErlaubnis",
           NotSupportedError: "fehlerKameraBrowser", NotFoundError: "fehlerKameraFehlt",
@@ -2390,6 +2435,9 @@ export class Trichter {
       if (lauf !== this.kamera.lauf) return;
       this.kamera.netzWartet = false;
       if (!this.kamera.laeuft) return;
+      this.#technik(netz
+        ? `Gesichtserkennung bereit nach ${Date.now() - this.kamera.startAb} ms (ab Kamera)`
+        : "Gesichtserkennung NICHT geladen – einfache Erkennung");
       this.kamera.netz = netz;
       if (!netz) {
         this.sitzung.ergaenze({ meshFallback: true, meshState: netzStand() });
@@ -2547,6 +2595,7 @@ export class Trichter {
   }
 
   #kameraFehler(schluessel) {
+    this.#technik(`Scan abgebrochen: ${schluessel}`);
     this.#kameraStoppen();
     this.#blatt(false);
     this.#fehlerZeigen(schluessel, () => this.#kameraStarten());
@@ -3649,7 +3698,7 @@ export class Trichter {
     // nicht die Messungen. Hier standen die Messungen, und das waren nie
     // dieselben Zahlen.
     this.zustand.fotoAnzahl = Object.keys(fotos).length;
-    this.sitzung.fotosSpeichern(fotos);
+    this.#uploadMelden(this.sitzung.fotosSpeichern(fotos));
     // Und die kleine Fassung fuer die Warteseite. Bewusst OHNE await: Sie
     // laeuft neben dem Weg, waehrend der Kunde seinen Namen tippt, und
     // haelt den Uebergang zum naechsten Bildschirm um keine Millisekunde

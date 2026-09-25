@@ -1245,7 +1245,7 @@ const PFAD_WORTE = Object.freeze({
   geoeffnet: "Seite geöffnet", bildschirm: "Bildschirm", klick: "Tippt", aufgeklappt: "Klappt auf",
   zugeklappt: "Klappt zu", feld: "Feld angetippt", gesehen: "Liest", scroll: "Scrollt",
   verlassen: "Verlässt die Seite", zurueck: "Kommt zurück", kasse: "Kasse", bestellt: "BESTELLT",
-  fehler: "Fehler"
+  fehler: "Fehler", technik: "Technik"
 });
 
 // Die Zusammenfassung ueber dem Verlauf: wo er am laengsten war, was er
@@ -1529,7 +1529,7 @@ function renderSchritteInhalt(sitzung) {
 const PFAD_ZEICHEN = Object.freeze({
   geoeffnet: "fileText", bildschirm: "fileText", klick: "pointer", aufgeklappt: "chevronDown", zugeklappt: "chevronRight",
   feld: "pencil", gesehen: "eye", scroll: "arrowUpDown", verlassen: "doorOut", zurueck: "undo", kasse: "cart",
-  bestellt: "checkCircle", fehler: "alert"
+  bestellt: "checkCircle", fehler: "alert", technik: "activity"
 });
 const pfadIcon = (e) => renderHeartIcon(PFAD_ZEICHEN[e.e] || "info", "heart-pfad__icon");
 

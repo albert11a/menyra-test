@@ -578,15 +578,25 @@ export class Sitzung {
     if (!liste.length) return this.kette;
     for (const [blick, foto] of liste) this.offeneFotos.set(blick, foto);
     const GLEICHZEITIG = 3;
+    // Das Ergebnis geht an den Aufrufer (Klickpfad "Technik"): wie viele
+    // angekommen sind, wie viele nicht, wie gross, wie lange.
+    const ergebnis = { ok: 0, fehler: 0, kb: 0, ms: 0, grund: "" };
     return this.#reihen(async () => {
+      const ab = Date.now();
       for (let i = 0; i < liste.length; i += GLEICHZEITIG) {
         await Promise.all(liste.slice(i, i + GLEICHZEITIG)
           .map(([blick, foto]) => this.#fotoSchreiben(blick, foto).then(() => {
+            ergebnis.ok += 1;
+            ergebnis.kb += Math.round(String(foto.jpeg || "").length * 0.75 / 1024);
             if (this.offeneFotos.get(blick) === foto) this.offeneFotos.delete(blick);
           }).catch((fehler) => {
+            ergebnis.fehler += 1;
+            ergebnis.grund ||= String(fehler?.message || "").slice(0, 60);
             if (globalThis.console) console.warn("[lifeskin] Foto nicht gespeichert:", fehler?.message);
           })));
       }
+      ergebnis.ms = Date.now() - ab;
+      return ergebnis;
     });
   }
 

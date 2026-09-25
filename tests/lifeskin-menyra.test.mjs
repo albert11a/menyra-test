@@ -225,7 +225,7 @@ test("Me foto: Anleitung, Aufnahme, Vorschau - und erst dann Name und Alter", ()
   // Erst "Përdor foton" macht den Fall daraus.
   const nehmen = methode(APP, "#fotoNehmen");
   assert.match(nehmen, /this\.sitzung\.schritt\("fotogati"\);/);
-  assert.match(nehmen, /this\.sitzung\.fotosSpeichern\(\{ zona: aufnahme\.foto \}\);/);
+  assert.match(nehmen, /this\.sitzung\.fotosSpeichern\(\{ zona: aufnahme\.foto \}\)/);
   assert.match(nehmen, /this\.#nameZeigen\(\);/);
   // Und "Bëje përsëri" wirft die alte Aufnahme weg - sonst ginge sie
   // mit hinaus, wenn der zweite Versuch scheitert.
