@@ -249,8 +249,8 @@ test("Handykamera: Bild ohne Typangabe wird gelesen, verkleinert und die Adresse
   const p = dateiProbe();
   const aufnahme = await p.ausDatei({ type: "" });
   assert.ok(aufnahme?.foto, "Ein Bild ohne Typ wurde verworfen");
-  assert.equal(aufnahme.foto.breite, 1440);
-  assert.equal(aufnahme.foto.hoehe, 1920);
+  assert.equal(aufnahme.foto.breite, 1080);
+  assert.equal(aufnahme.foto.hoehe, 1440);
   assert.equal(aufnahme.mini.breite, 160);
   assert.equal(p.adressen.erzeugt.length, 1);
   assert.deepEqual(p.adressen.freigegeben, [p.adressen.erzeugt[0][0]], "Die Objekt-Adresse bleibt im Speicher");

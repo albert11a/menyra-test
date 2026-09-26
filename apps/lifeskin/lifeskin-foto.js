@@ -32,11 +32,29 @@
 // braucht: Dies ist das kleinere Modul, es haengt an nichts, und der
 // Trichter holt sie von hier. Andersherum haette dieses Modul den ganzen
 // Scan mitgezogen - fuer drei Zahlen und eine Schleife.
-export const FOTO_STUFEN = Object.freeze([0.94, 0.88, 0.82, 0.74, 0.64]);
+//
+// KLEIN GENUG FUER EIN SCHWACHES NETZ. Hier begann die Leiter bei 0,94
+// und endete erst an der Firestore-Grenze: 1440 Punkte breit, bis zu
+// 900.000 Zeichen je Bild, bei sieben Bildern drei bis fuenf Megabyte
+// Upload. Auf einer schwachen Mobilleitung ist der Upload die langsame
+// Richtung - das waren dort 30 bis 60 Sekunden, und genau so lange stand
+// der Besucher nach dem Scan vor "Loading".
+//
+// Jetzt: 1080 Punkte (FOTO_BREITE), Qualitaet ab 0,86 und ein ZIEL von
+// rund 200 KB je Bild (FOTO_ZIELZEICHEN). Zusammen etwa ein Megabyte,
+// auf derselben Leitung rund zehn Sekunden. Und das alte Telefon kodiert
+// jedes Bild meist genau einmal.
+export const FOTO_STUFEN = Object.freeze([0.86, 0.8, 0.72, 0.64]);
 
-// Wieviel Text ein Bild hoechstens werden darf. Der Rest des Dokuments -
+// Das Ziel je Bild: 280.000 Zeichen Base64 sind gut 200 KB.
+export const FOTO_ZIELZEICHEN = 280000;
+
+// Wieviel Text ein Bild HOECHSTENS werden darf. Der Rest des Dokuments -
 // Blickrichtung, Zeitstempel, Masse - liegt bei wenigen hundert Byte; der
-// Abstand zur Millionengrenze ist Absicht und kein Geiz.
+// Abstand zur Millionengrenze ist Absicht und kein Geiz. Das ist die
+// Grenze der Firestore-Regeln und nur noch der Notfall: Erreicht ein
+// sehr detailreiches Bild das Ziel auch auf der tiefsten Stufe nicht,
+// geht es trotzdem hinaus, statt verloren zu gehen.
 export const FOTO_HOECHSTZEICHEN = 900000;
 
 // Wie breit die Aufnahme gespeichert wird.
@@ -44,7 +62,7 @@ export const FOTO_HOECHSTZEICHEN = 900000;
 // Dieselbe Grenze wie beim Scan: Was die Kamera weniger liefert, bleibt
 // weniger - hochrechnen erfindet nichts, und die Aerztin sieht auf dieses
 // Bild, bevor sie etwas schreibt.
-export const FOTO_BREITE = 1440;
+export const FOTO_BREITE = 1080;
 
 // Und die Kachel, die der Patient auf seiner Warteseite sieht. Sie liegt
 // neben dem Bericht und ist damit oeffentlich lesbar - deshalb klein,
@@ -59,12 +77,22 @@ export const MINI_HOECHSTZEICHEN = 60000;
 // nachrechenbar ist: `kodiere(guete)` gibt die fertige Zeichenkette
 // zurueck, mehr braucht die Entscheidung nicht. Getestet in
 // tests/lifeskin-fotos.test.mjs.
-export function besteGuete(kodiere, stufen = FOTO_STUFEN, grenze = FOTO_HOECHSTZEICHEN) {
+//
+// `grenze` ist das Ziel, `notfall` die harte Grenze: Erreicht keine Stufe
+// das Ziel, gilt das kleinste Ergebnis, sofern es unter der harten liegt -
+// ohne einen weiteren Kodiervorgang. Fuer Fotos ist das Ziel
+// FOTO_ZIELZEICHEN und die harte Grenze die der Firestore-Regeln; wer eine
+// eigene Grenze uebergibt (die Kachel), hat nur diese eine.
+export function besteGuete(kodiere, stufen = FOTO_STUFEN, grenze = FOTO_ZIELZEICHEN,
+  notfall = grenze === FOTO_ZIELZEICHEN ? FOTO_HOECHSTZEICHEN : grenze) {
+  let kleinstes = null;
   for (const guete of stufen) {
     const jpeg = kodiere(guete);
-    if (typeof jpeg === "string" && jpeg.length <= grenze) return { jpeg, guete };
+    if (typeof jpeg !== "string") continue;
+    if (jpeg.length <= grenze) return { jpeg, guete };
+    if (!kleinstes || jpeg.length < kleinstes.jpeg.length) kleinstes = { jpeg, guete };
   }
-  return null;
+  return kleinstes && kleinstes.jpeg.length <= notfall ? kleinstes : null;
 }
 
 // Auf welche Masse ein Bild heruntergerechnet wird.
@@ -91,7 +119,7 @@ export function zielMasse(breite, hoehe, hoechsteBreite = FOTO_BREITE) {
 // `spiegeln` legt das Bild seitenverkehrt ab - so, wie die vordere Kamera
 // es in der Vorschau zeigt. Siehe Flaechenkamera#aufnehmen().
 export function alsJpeg(quelle, { breite, hoehe, dokument = globalThis.document,
-  hoechsteBreite = FOTO_BREITE, stufen = FOTO_STUFEN, grenze = FOTO_HOECHSTZEICHEN,
+  hoechsteBreite = FOTO_BREITE, stufen = FOTO_STUFEN, grenze = FOTO_ZIELZEICHEN,
   spiegeln = false } = {}) {
   const masse = zielMasse(breite, hoehe, hoechsteBreite);
   if (!masse.breite || !dokument?.createElement) return null;

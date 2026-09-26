@@ -127,9 +127,12 @@ const GATE_BREITE = 240;
 // Bilder sind das, worauf eine Aerztin schaut, bevor sie einen Befund
 // unterschreibt.
 //
-// Jetzt: volle Aufloesung der Messleinwand, gedeckelt auf 1440. Was ein
+// Jetzt: volle Aufloesung der Messleinwand, gedeckelt auf 1080 - dieselbe
+// Grenze wie FOTO_BREITE in lifeskin-foto.js, aus demselben Grund: Mit
+// 1440 gingen drei bis fuenf Megabyte hoch, und auf einer schwachen
+// Leitung stand der Besucher danach eine Minute vor "Loading". Was ein
 // Geraet weniger liefert, bleibt weniger - hochrechnen erfindet nichts.
-const FOTO_BREITE = 1440;
+const FOTO_BREITE = 1080;
 
 // DIE QUALITAETSSTUFEN UND DIE GROESSENGRENZE STEHEN IN lifeskin-foto.js.
 //
@@ -298,13 +301,17 @@ const NETZ_AUSFALL_BILDER = 30;
 // wieder ab (#wegWaehlen), bevor ein einziges Byte laeuft.
 const NETZ_VORMERKEN_MS = 1500;
 
+// Wie lange nach dem Laden der Seite die Gesichtserkennung anfaengt zu
+// laden (siehe #netzAufDerLanding).
+const NETZ_LANDING_MS = 1200;
+
 // WIE LANGE DER SCAN AUF DIE GESICHTSERKENNUNG WARTET, bevor er ohne sie
-// aufnimmt. Hier standen neun Sekunden - neun Sekunden, in denen jemand
-// mit dem Gesicht im Kreis sass und nichts zuging. Das Laden beginnt
-// schon beim ersten Tipp auf der Landingpage; wer sie nach sechs
-// Sekunden an der Kamera noch nicht hat, hat eine Leitung, auf der auch
-// drei weitere nicht reichen. Dann nimmt der Weg ohne Netz sofort auf.
-const NETZ_WARTEN_MS = 6000;
+// aufnimmt. Ohne sie fuellt sich der Ring nicht - es entstehen nur drei
+// gerade Bilder, und die Aerztin bekommt keine Seitenansicht. Deshalb
+// lieber etwas laenger warten (der Besucher sitzt in dieser Zeit schon
+// richtig im Kreis) und die Erkennung frueher laden: Sie beginnt schon,
+// wenn die Landingpage steht (#netzAufDerLanding).
+const NETZ_WARTEN_MS = 9000;
 
 // Wie lange die Uebergabe OHNE JEDE ANTWORT des Servers wartet, bevor sie
 // den Hinweis zeigt. Gezaehlt ab der letzten Antwort, nicht ab dem Tipp -
@@ -846,14 +853,21 @@ export class Trichter {
   }
 
   starte() {
-    // HIER WURDE DAS GESICHTSNETZ GEHOLT - fuer JEDEN Besucher, beim
-    // Oeffnen der Landingpage: rund 6,9 MB, dazu WebAssembly uebersetzen
-    // und die Grafikkarte einrichten. Die meisten, die aus einer Anzeige
-    // kommen, tippen nie auf "Fillo"; sie bezahlten es trotzdem - mit
-    // Datenvolumen, mit einer Leitung, die in genau diesen Sekunden die
-    // Seite selbst laden sollte, und mit Speicher in den knappen Fenstern
-    // von Instagram und Facebook. Jetzt wird es erst geholt, wenn jemand
-    // den Scan will: siehe #netzVormerken() und #wegWaehlen().
+    // DAS GESICHTSNETZ KOMMT WIEDER AUF DER LANDINGPAGE - aber erst, wenn
+    // die Seite selbst geladen ist (#netzAufDerLanding).
+    //
+    // Hier wurde es einmal sofort beim Oeffnen geholt, und das kostete
+    // die Leitung genau in den Sekunden, in denen die Seite selbst kommen
+    // sollte. Danach erst beim Tipp auf den Scan - und dann reichte die
+    // Zeit bis zur Kamera auf einer schwachen Leitung nicht: 6,9 MB bei
+    // einem Megabit sind fast eine Minute. Ohne Netz fuellt sich der Ring
+    // nicht, und der Scan liefert nur drei gerade Bilder.
+    //
+    // Nach dem Laden der Seite liegt die ganze Lesezeit der Landingpage
+    // und der Anleitung vor der Kamera. Dafuer zahlen auch Besucher, die
+    // nie scannen, mit Datenvolumen - auf 2G und mit "Daten sparen" wird
+    // weiterhin nichts geladen (netzLohntSich in lifeskin-netz.js).
+    this.#netzAufDerLanding();
     // Vor allem anderen: Wer sofort wieder weggeht, soll trotzdem gezaehlt
     // sein. Ohne Pixel-Kennung tut die Zeile nichts.
     if (this.pixel.starte()) this.pixel.melde("opened");
@@ -1882,6 +1896,20 @@ export class Trichter {
       this.netzUhr = 0;
       netzVorladen();
     }, NETZ_VORMERKEN_MS);
+  }
+
+  // Nach dem Laden der Seite, und dann noch einen Augenblick: Bilder,
+  // Schriften und die ersten Schreibvorgaenge der Sitzung gehen vor.
+  #netzAufDerLanding() {
+    if (!this.#liveKameraMoeglich()) return;
+    const los = () => {
+      this.netzLandingUhr = setTimeout(() => {
+        this.netzLandingUhr = 0;
+        netzVorladen();
+      }, NETZ_LANDING_MS);
+    };
+    if (globalThis.document?.readyState === "complete") los();
+    else globalThis.addEventListener?.("load", los, { once: true });
   }
 
   #netzJetzt() {

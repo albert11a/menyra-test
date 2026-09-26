@@ -31,11 +31,11 @@
 // Fuer einen Trichter, dessen Besucher aus einer Anzeige im Mobilfunk kommen,
 // ist das viel. Drei Dinge fangen es ab:
 //
-//   1. Geladen wird im Hintergrund, sobald jemand den Scan WILL - beim
-//      Tipp auf den Startknopf bzw. auf "Me skanim", nicht schon beim
-//      Oeffnen der Landingpage (siehe #netzVormerken in lifeskin-app.js).
-//      Wahl, Anleitung und Systemfrage liegen danach noch vor der Kamera;
-//      die Ladezeit liegt darin und nicht davor.
+//   1. Geladen wird im Hintergrund, sobald die Landingpage selbst geladen
+//      ist (#netzAufDerLanding in lifeskin-app.js). Erst beim Tipp auf den
+//      Scan zu laden reichte auf einer schwachen Leitung nicht bis zur
+//      Kamera - und ohne Netz fuellt sich der Ring nicht. So liegt die
+//      ganze Lesezeit von Landingpage, Wahl und Anleitung davor.
 //   2. Der Browser-Cache haelt es fest: WASM und Buendel von jsDelivr ein
 //      Jahr (immutable), das Modell von Google eine Stunde (max-age=3600).
 //      Einen Service Worker gibt es auf den LifeSkin-Seiten NICHT (sw.js

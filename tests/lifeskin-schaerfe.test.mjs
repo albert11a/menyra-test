@@ -235,7 +235,7 @@ test("die Zusatzbilder kosten nicht so viel wie das beste", () => {
   // nach dem Scan auf.
   const quelle = ohneKommentare(APP);
   assert.match(quelle, /FOTO_BREITE_MEHR = 900/, "Die Zusatzbilder sind so gross wie das beste");
-  assert.match(quelle, /FOTO_BREITE = 1440/, "Das beste Bild ist nicht mehr in voller Groesse");
+  assert.match(quelle, /FOTO_BREITE = 1080/, "Das beste Bild ist nicht mehr in der Groesse, die ein schwaches Netz schafft");
   // Und sie liegen als JPEG statt als Leinwand im Speicher.
   assert.match(methode(quelle, "#kleinesFoto"), /toDataURL\("image\/jpeg"/,
     "Die Zusatzbilder haengen als Leinwand im Speicher");

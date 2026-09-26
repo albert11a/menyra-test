@@ -15,7 +15,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  FOTO_BREITE, FOTO_STUFEN, FOTO_HOECHSTZEICHEN, MINI_BREITE, MINI_HOECHSTZEICHEN,
+  FOTO_BREITE, FOTO_STUFEN, FOTO_ZIELZEICHEN, FOTO_HOECHSTZEICHEN, MINI_BREITE, MINI_HOECHSTZEICHEN,
   besteGuete, zielMasse, alsJpeg, miniaturAus, Flaechenkamera
 } from "../apps/lifeskin/lifeskin-foto.js";
 import { lies, ohneKommentare } from "./lifeskin-quelle.mjs";
@@ -25,11 +25,11 @@ import { lies, ohneKommentare } from "./lifeskin-quelle.mjs";
 // ---------------------------------------------------------------------------
 
 test("das Seitenverhaeltnis bleibt, und vergroessert wird nie", () => {
-  // Ein Telefon, das 720 Punkte liefert, bekommt kein Bild mit 1440:
+  // Ein Telefon, das 720 Punkte liefert, bekommt kein Bild mit 1080:
   // Darin stuende nichts, was nicht schon in den 720 steht, und es waere
   // viermal so gross.
   assert.deepEqual(zielMasse(720, 1280, FOTO_BREITE), { breite: 720, hoehe: 1280 });
-  assert.deepEqual(zielMasse(2880, 3840, FOTO_BREITE), { breite: 1440, hoehe: 1920 });
+  assert.deepEqual(zielMasse(2880, 3840, FOTO_BREITE), { breite: 1080, hoehe: 1440 });
   assert.deepEqual(zielMasse(1920, 1080, MINI_BREITE), { breite: 160, hoehe: 90 });
   // Ohne Masse kein Bild - und keine Leinwand mit Hoehe null.
   assert.deepEqual(zielMasse(0, 0), { breite: 0, hoehe: 0 });
@@ -41,10 +41,19 @@ test("die beste Qualitaet, die noch in ein Firestore-Dokument passt", () => {
   // darin. Statt eine feste Qualitaet zu raten, die mal zu gross und mal
   // zu schlecht ist, wird die beste genommen, die noch passt.
   const kodierer = (laengeBei1) => (guete) => "x".repeat(Math.round(laengeBei1 * guete));
+  // Heute mit einem ZIEL (FOTO_ZIELZEICHEN, gut 200 KB), damit der Upload
+  // auch auf einer schwachen Leitung schnell geht.
   assert.equal(besteGuete(kodierer(300000)).guete, FOTO_STUFEN[0]);
-  assert.equal(besteGuete(kodierer(1000000)).guete, 0.88);
-  // Und wenn keine Stufe passt, kommt nichts zurueck statt eines Bildes,
-  // das Firestore lautlos abweist.
+  assert.ok(besteGuete(kodierer(300000)).jpeg.length <= FOTO_ZIELZEICHEN);
+  assert.equal(besteGuete(kodierer(400000)).guete, 0.64);
+  // Erreicht keine Stufe das Ziel, geht das kleinste Ergebnis hinaus -
+  // solange es unter der Grenze der Regeln bleibt. Ein detailreiches Bild
+  // geht nicht verloren.
+  const gross = besteGuete(kodierer(1000000));
+  assert.equal(gross.guete, 0.64);
+  assert.ok(gross.jpeg.length > FOTO_ZIELZEICHEN && gross.jpeg.length <= FOTO_HOECHSTZEICHEN);
+  // Und wenn auch das nicht passt, kommt nichts zurueck statt eines
+  // Bildes, das Firestore lautlos abweist.
   assert.equal(besteGuete(kodierer(5000000)), null);
 });
 
@@ -72,9 +81,9 @@ test("ein Bild geht in voller Breite hinaus und die Leinwand wird freigegeben", 
   const { dokument, gezeichnet, leinwaende } = leinwandBau();
   const treffer = alsJpeg({}, { breite: 2880, hoehe: 3840, dokument });
   assert.equal(treffer.breite, FOTO_BREITE);
-  assert.equal(treffer.hoehe, 1920);
-  assert.deepEqual(gezeichnet[0], [0, 0, 1440, 1920]);
-  assert.ok(treffer.jpeg.length <= FOTO_HOECHSTZEICHEN);
+  assert.equal(treffer.hoehe, 1440);
+  assert.deepEqual(gezeichnet[0], [0, 0, 1080, 1440]);
+  assert.ok(treffer.jpeg.length <= FOTO_ZIELZEICHEN);
 
   // DIE LEINWAND WIRD AUSDRUECKLICH GELEERT. Ein Bild in voller
   // Aufloesung sind ein paar Megabyte, und auf einem Telefon mit wenig

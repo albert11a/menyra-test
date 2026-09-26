@@ -146,6 +146,12 @@
 
   <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
   <link rel="dns-prefetch" href="//firestore.googleapis.com" />
+  <!-- Die Gesichtserkennung kommt von diesen beiden (lifeskin-netz.js) und
+       wird geladen, sobald die Seite steht. Nur die Adresse vorab
+       aufloesen - eine offene Verbindung wuerde der Seite selbst eine
+       Leitung wegnehmen. -->
+  <link rel="dns-prefetch" href="//cdn.jsdelivr.net" />
+  <link rel="dns-prefetch" href="//storage.googleapis.com" />
 
   <!-- HIER STAND EIN PRELOAD AUF DAS GESICHT DER AERZTIN, und es ist
        weg: Sie steht nicht mehr im ersten Blick, sondern in ihrem

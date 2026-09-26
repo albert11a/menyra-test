@@ -483,11 +483,20 @@ test("in der App wird das Netz trotzdem vorgeladen - nur ohne Kamera-Schnittstel
   assert.equal(q.aufrufe.netz, 0);
 });
 
-test("die Landingpage selbst holt das Netz nicht mehr", () => {
+test("die Landingpage holt das Netz - aber erst, wenn die Seite selbst geladen ist", () => {
+  // Damit der Ring sich auch auf einer schwachen Leitung fuellt: Die
+  // Lesezeit von Landingpage und Anleitung gehoert dem Download.
   const app = readFileSync(new URL("../apps/lifeskin/lifeskin-app.js", import.meta.url), "utf8");
   const start = app.slice(app.indexOf("\n  starte() {"), app.indexOf("\n  zeige(name"));
   const ohneKommentar = start.replace(/^\s*\/\/.*$/gm, "");
-  assert.ok(!/netzVorladen\(/.test(ohneKommentar), "starte() laedt das Gesichtsnetz fuer jeden Besucher");
+  assert.ok(!/netzVorladen\(/.test(ohneKommentar), "starte() laedt das Netz sofort - vor der Seite selbst");
+  assert.match(ohneKommentar, /this\.#netzAufDerLanding\(\);/, "Die Landingpage laedt das Netz nicht mehr vor");
+  const landing = app.slice(app.indexOf("  #netzAufDerLanding() {"), app.indexOf("  #netzJetzt() {"));
+  assert.match(landing, /readyState === "complete"/);
+  assert.match(landing, /addEventListener\?\.\("load", los, \{ once: true \}\)/,
+    "Das Netz wartet nicht auf das Laden der Seite");
+  assert.match(landing, /if \(!this\.#liveKameraMoeglich\(\)\) return;/,
+    "Ohne Kamera-Schnittstelle werden 6,9 MB umsonst geladen");
 });
 
 // ---------------------------------------------------------------------------

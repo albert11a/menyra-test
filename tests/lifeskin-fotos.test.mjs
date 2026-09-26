@@ -126,17 +126,18 @@ function kodierer(zeichenBeiVoll = 400000) {
   return (guete) => "d".repeat(Math.round(zeichenBeiVoll * guete));
 }
 
-test("die hoechste Qualitaet gewinnt, wenn sie passt", () => {
+test("die hoechste Qualitaet gewinnt, wenn sie ins Ziel passt", () => {
   const treffer = besteGuete(kodierer(300000));
-  assert.equal(treffer.guete, 0.94);
+  assert.equal(treffer.guete, 0.86);
+  assert.ok(treffer.jpeg.length <= 280000);
 });
 
 test("ist das Bild zu gross, wird eine Stufe tiefer genommen - nicht mehr", () => {
-  // Bei voller Qualitaet 1.000.000 Zeichen: 0,94 ergaebe 940.000 und ist zu
-  // gross, 0,88 ergibt 880.000 und passt. Genau eine Stufe tiefer.
-  const treffer = besteGuete(kodierer(1000000));
-  assert.equal(treffer.guete, 0.88);
-  assert.ok(treffer.jpeg.length <= 900000);
+  // Bei voller Qualitaet 340.000 Zeichen: 0,86 ergaebe 292.400 und liegt
+  // ueber dem Ziel, 0,8 ergibt 272.000 und passt. Genau eine Stufe tiefer.
+  const treffer = besteGuete(kodierer(340000));
+  assert.equal(treffer.guete, 0.8);
+  assert.ok(treffer.jpeg.length <= 280000);
 });
 
 test("passt keine Stufe, wird nichts zurueckgegeben statt etwas Kaputtes", () => {
