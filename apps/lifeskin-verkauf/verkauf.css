@@ -70,7 +70,7 @@ a { color: var(--green); }
 /* Drei und mehr: eine Reihe zum Wischen, die naechste Karte lugt hervor. */
 .mjetet__rrjeta--shume {
   display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
-  margin-inline: -20px; padding: 2px 20px 6px; scroll-padding-inline: 20px;
+  margin: 0 -20px -10px; padding: 2px 20px 16px; scroll-padding-inline: 20px;
 }
 .mjetet__rrjeta--shume::-webkit-scrollbar { display: none; }
 .mjetet__rrjeta--shume .mjeti { flex: 0 0 calc((100% - 10px) / 2.25); scroll-snap-align: start; }
@@ -339,13 +339,17 @@ svg.rutina__foto { padding: 4px; }
 .rezultate__unter { margin-top: -12px; color: var(--muted); font-size: .92rem; }
 #rezultate .raste {
   display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain;
-  scrollbar-width: none; margin: 0 -20px; padding: 18px 20px 6px; scroll-padding-inline: 20px;
+  scrollbar-width: none; scroll-padding-inline: 20px;
+  /* Eine Reihe zum Wischen schneidet alles ab, was ueber ihren Rand
+     ragt - auch den Schatten der Karten. Unten deshalb Platz fuer den
+     ganzen Schatten, den der negative Rand wieder zurueckholt. */
+  margin: 0 -20px -18px; padding: 18px 20px 30px;
 }
 #rezultate .raste::-webkit-scrollbar { display: none; }
 #rezultate .raste:focus-visible { outline: 2px solid var(--green); outline-offset: -2px; }
 #rezultate .rasti {
   flex: 0 0 86%; max-width: 440px; scroll-snap-align: start; display: flex; flex-direction: column;
-  border-color: #d6ddd8; border-radius: 20px; box-shadow: 0 6px 20px #10171812;
+  border-color: #d6ddd8; border-radius: 20px; box-shadow: 0 4px 16px #10171810;
 }
 #rezultate .raste--nje .rasti { flex-basis: 100%; max-width: none; }
 #rezultate .rasti__foto { gap: 2px; background: var(--white); }
