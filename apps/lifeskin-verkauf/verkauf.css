@@ -509,11 +509,13 @@ details > p, details > dl, details > ul { padding: 0 0 16px; color: var(--muted)
   /* Eigene Grafikebene: In Instagram/Facebook (WKWebView) und iOS-Safari
      blieb eine feste Leiste ohne sie beim Wischen hinter der Seite
      zurueck und sprang erst am Ende an ihren Platz. */
-  transform: translate3d(0, 0, 0); will-change: transform;
+  transform: translate3d(0, var(--unten, 0px), 0); will-change: transform;
   -webkit-backface-visibility: hidden; backface-visibility: hidden;
   transition: transform .22s ease;
 }
-.leiste[data-an="nein"] { transform: translate3d(0, 110%, 0); pointer-events: none; }
+/* --unten: der Versatz, den iOS bei "unten" manchmal falsch rechnet -
+   gemessen in shared/lifeskin-unten.js (festUntenHalten). */
+.leiste[data-an="nein"] { transform: translate3d(0, calc(110% + var(--unten, 0px)), 0); pointer-events: none; }
 .leiste p { font-size: .72rem; color: var(--muted); text-align: center; margin-top: 5px; }
 /* PLATZ FUER DIE LEISTE. Ohne ihn lag der letzte Knopf der Seite ("Na
    shkruani në WhatsApp") dauerhaft UNTER der Leiste - man konnte ihn nicht
