@@ -1624,7 +1624,14 @@ export class Terapia {
     const pruefen = () => {
       if (!this.mitAngebot) { leiste.dataset.an = "nein"; return; }
       const offen = !$("#porosia").hidden;
-      const an = !offen && !knoepfe.some(imBild) ? "ja" : "nein";
+      // ERST NACH DEM KNOPF DER PAKET-KARTE: Solange man ihn noch nicht
+      // erreicht hat (er liegt unter dem Bildschirm), bleibt die Leiste
+      // weg - sie kommt erst, wenn er oben aus dem Bild gescrollt ist.
+      const karteKnopf = $("#hero-knopf");
+      const vorbei = !karteKnopf || karteKnopf.closest("[hidden]")
+        ? true
+        : karteKnopf.getBoundingClientRect().bottom < 0;
+      const an = !offen && vorbei && !knoepfe.some(imBild) ? "ja" : "nein";
       if (leiste.dataset.an !== an) leiste.dataset.an = an;
     };
     this.leistePruefen = pruefen;
