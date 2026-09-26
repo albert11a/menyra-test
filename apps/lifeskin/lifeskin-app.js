@@ -36,7 +36,7 @@ import { STANDARD_KONFIG, ALTERSGRUPPEN } from "./lifeskin-catalog.js";
 import { OBERFLAECHE, EINSTIEG_HINWEIS, EINSTIEG_KARTEN, ARZT_BILD, ARZT_NAME,
   FRAGEN, FRAGEN_NACH_SCAN, FRAGEN_PA_SKANIM, FRAGEN_PA_SKANIM_NUMRI,
   FRAGEN_TEXTE, t, fuelle } from "./lifeskin-content.js";
-import { besteGuete, Flaechenkamera, Sprungschutz, ausDatei as fotoAusDatei } from "./lifeskin-foto.js";
+import { besteGuete, Flaechenkamera, ausDatei as fotoAusDatei } from "./lifeskin-foto.js";
 import { Sitzung } from "./lifeskin-session.js";
 import { starteKlickpfad } from "../../shared/lifeskin-klickpfad.js";
 import { Pixel } from "./lifeskin-pixel.js";
@@ -2753,9 +2753,6 @@ export class Trichter {
     const video = $("#ls-video");
     this.#abspielen(video);
     this.#abspielWaechter(video);
-    // Nach einer Pause laeuft die Kamera oft neu an - mit denselben
-    // Aufloesungswechseln wie beim ersten Mal.
-    this.kamera.sprung?.starte();
   }
 
   #kamerabildBereit(video) {
@@ -2879,11 +2876,6 @@ export class Trichter {
         if (gezeigt) return;
         gezeigt = true;
         if (kasten) kasten.dataset.bereit = "ja";
-        // Ab jetzt ist das Bild zu sehen - und ein Umschalten der
-        // Kameraaufloesung waere es auch. Der Sprungschutz deckt die
-        // ersten Sekunden ab (siehe lifeskin-foto.js).
-        this.kamera.sprung ||= new Sprungschutz({ video });
-        this.kamera.sprung.starte();
         schreibe($("#ls-kamerahinweis"), this.text("ringEinmessen"));
       };
       const pruefen = () => {
@@ -3963,7 +3955,6 @@ export class Trichter {
     this.kamera.laeuft = false;
     this.kamera.anfrageAbbrechen?.();
     this.kamera.bereitAbbrechen?.();
-    this.kamera.sprung?.stoppe();
     this.kamera.wegSeit = 0;
     $("#ls-fehler")?.classList.add("ls-verstecken");
     if (this.kamera.abspielTakt) {

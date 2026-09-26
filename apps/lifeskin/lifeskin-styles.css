@@ -786,8 +786,7 @@ p { margin: 0; }
   .ls-kamera { aspect-ratio: 1 / 1; }
   .ls-kamera::before { display: none; }
 }
-.ls-kamera video,
-.ls-kamera .ls-sprung {
+.ls-kamera video {
   position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0;
   width: 100%; height: 100%;
   object-fit: cover;
@@ -812,8 +811,7 @@ p { margin: 0; }
   opacity: 0;
   transition: opacity 240ms ease;
 }
-.ls-kamera[data-bereit="ja"] video,
-.ls-kamera[data-bereit="ja"] .ls-sprung--an { opacity: 1; }
+.ls-kamera[data-bereit="ja"] video { opacity: 1; }
 
 /* Der Kreis. Alles ausserhalb ist schwarz. */
 .ls-kamera__kreis {
@@ -1435,7 +1433,6 @@ a.ls-knopf { text-decoration: none; }
 }
 
 .ls-flaeche__rahmen video,
-.ls-flaeche__rahmen .ls-sprung,
 .ls-flaeche__bild {
   /* Die Einzelwerte vor der Kurzform: inset kennt Chrome erst ab 87,
      und die aelteren Androids sind hier die Zielgruppe. */
@@ -1453,20 +1450,8 @@ a.ls-knopf { text-decoration: none; }
  * gespiegelt wie diese Vorschau (siehe lifeskin-foto.js): Sonst springt
  * das Bild beim Ausloesen seitenverkehrt um. */
 .ls-flaeche[data-richtung="user"] .ls-flaeche__rahmen video { transform: scaleX(-1); }
-.ls-flaeche[data-richtung="user"] .ls-flaeche__rahmen .ls-sprung { transform: scaleX(-1); }
 .ls-flaeche__rahmen video { opacity: 0; }
 .ls-flaeche[data-bereit="ja"] .ls-flaeche__rahmen video { opacity: 1; }
-
-/* DER SPRUNGSCHUTZ (lifeskin-foto.js, Sprungschutz).
- *
- * Eine Leinwand genau ueber dem Video, mit denselben Regeln wie das
- * Video selbst (Zuschnitt, Spiegel, Naehe - siehe die Selektoren oben).
- * In den ersten Sekunden zeichnet sie jedes Bild mit; schaltet die
- * Kamera ihre Aufloesung um, bleibt ihr letztes Bild stehen und blendet
- * weich aus, statt dass der Ausschnitt springt. Ohne --an ist sie nicht
- * zu sehen, und ohne freigegebenes Bild (data-bereit) auch mit nicht. */
-.ls-sprung { opacity: 0; transition: opacity 240ms ease; pointer-events: none; }
-.ls-flaeche[data-bereit="ja"] .ls-flaeche__rahmen .ls-sprung--an { opacity: 1; }
 
 /* Das aufgenommene Bild liegt UEBER dem Video. So bleibt der Rahmen
  * gleich gross, und der Wechsel kostet kein Nachrechnen des Layouts. */

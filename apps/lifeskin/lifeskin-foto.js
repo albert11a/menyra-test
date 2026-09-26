@@ -201,161 +201,6 @@ async function bildAusDatei(datei) {
 }
 
 // ---------------------------------------------------------------------------
-// Der Sprungschutz
-// ---------------------------------------------------------------------------
-
-// KEIN SICHTBARER SPRUNG, WENN DIE KAMERA BEIM ANLAUFEN UMSCHALTET.
-//
-// Viele Telefonkameras liefern die ersten Bilder in einer vorlaeufigen
-// Aufloesung und schalten dann um - auf alten Androids gern ein- oder
-// zweimal in der ersten Sekunde. Wechselt dabei das Seitenverhaeltnis,
-// zeigt `object-fit: cover` ploetzlich einen anderen Ausschnitt: Das
-// Gesicht springt naeher oder weiter weg.
-//
-// Frueher stand deshalb der Spinner, bis die Groesse eine Weile ruhig
-// war - das kostete bei jedem Start Zeit, auch auf den Geraeten, die gar
-// nicht springen. Jetzt erscheint das Bild frueh, und in den ersten
-// Sekunden liegt eine Leinwand genau darueber, die jedes Bild mitzeichnet
-// (gleiche Klasse, gleicher Zuschnitt, gleicher Spiegel - siehe
-// .ls-sprung in lifeskin-styles.css). Wer hinsieht, sieht die Leinwand.
-//
-// Aendert sich die Bildgroesse, zeichnet sie NICHT mit: Das letzte Bild
-// vor dem Wechsel bleibt stehen, verdeckt das umschaltende Video und
-// blendet erst weich aus, wenn die neue Groesse ruhig steht. Aus dem
-// Sprung wird eine Ueberblendung. Dass die Leinwand oben liegt, BEVOR
-// der Wechsel erkannt wird, ist der Kern: Chrome setzt Videobilder
-// neben dem Hauptfaden zusammen, ein erst beim Wechsel eingeblendetes
-// Standbild kaeme mindestens ein Bild zu spaet.
-//
-// Gemessen wird davon nichts - Scan und Aufnahme lesen weiter das Video.
-export const SPRUNG_FENSTER_MS = 3000;
-export const SPRUNG_RUHE_MS = 200;
-export const SPRUNG_HOECHSTENS_MS = 1000;
-export const SPRUNG_BLENDE_MS = 240;
-
-export class Sprungschutz {
-  constructor({ video, dokument = globalThis.document, fensterMs = SPRUNG_FENSTER_MS,
-    ruheMs = SPRUNG_RUHE_MS, hoechstensMs = SPRUNG_HOECHSTENS_MS, blendeMs = SPRUNG_BLENDE_MS } = {}) {
-    this.video = video || null;
-    this.dokument = dokument;
-    this.fensterMs = fensterMs;
-    this.ruheMs = ruheMs;
-    this.hoechstensMs = hoechstensMs;
-    this.blendeMs = blendeMs;
-    this.leinwand = null;
-    this.lauf = 0;
-    this.bild = 0;
-    this.blende = 0;
-  }
-
-  #fenster() {
-    return this.dokument?.defaultView || globalThis;
-  }
-
-  // Die Leinwand liegt unmittelbar hinter dem Video im selben Kasten:
-  // darueber, aber unter allem, was danach kommt (Aufnahme, Hinweise).
-  #leinwandHolen() {
-    if (this.leinwand) return this.leinwand;
-    const video = this.video;
-    if (!video?.parentNode || typeof this.dokument?.createElement !== "function") return null;
-    const leinwand = this.dokument.createElement("canvas");
-    if (typeof leinwand?.getContext !== "function") return null;
-    leinwand.className = "ls-sprung";
-    leinwand.setAttribute?.("aria-hidden", "true");
-    video.parentNode.insertBefore(leinwand, video.nextSibling);
-    this.leinwand = leinwand;
-    return leinwand;
-  }
-
-  // Aufrufen, sobald das Bild zu sehen ist - und noch einmal, wenn es
-  // nach einer Pause wiederkommt.
-  starte() {
-    this.stoppe();
-    const video = this.video;
-    const fenster = this.#fenster();
-    const leinwand = this.#leinwandHolen();
-    let stift = null;
-    try { stift = leinwand?.getContext("2d"); } catch { stift = null; }
-    if (!stift || typeof fenster?.requestAnimationFrame !== "function") return false;
-    const lauf = (this.lauf += 1);
-    const ende = Date.now() + this.fensterMs;
-    let masse = "";
-    let gefrorenSeit = 0;
-    let ruhigSeit = 0;
-    const zeichnen = () => {
-      const breite = video.videoWidth;
-      const hoehe = video.videoHeight;
-      if (leinwand.width !== breite) leinwand.width = breite;
-      if (leinwand.height !== hoehe) leinwand.height = hoehe;
-      stift.drawImage(video, 0, 0, breite, hoehe);
-      leinwand.classList.add("ls-sprung--an");
-    };
-    const takt = () => {
-      this.bild = 0;
-      if (lauf !== this.lauf) return;
-      const jetzt = Date.now();
-      const hatBild = video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0;
-      const neu = hatBild ? `${video.videoWidth}x${video.videoHeight}` : masse;
-      if (gefrorenSeit) {
-        if (neu !== masse) { masse = neu; ruhigSeit = jetzt; }
-        if (jetzt - ruhigSeit >= this.ruheMs || jetzt - gefrorenSeit >= this.hoechstensMs) {
-          this.#ausblenden(lauf, jetzt < ende ? () => {
-            gefrorenSeit = 0;
-            this.bild = fenster.requestAnimationFrame(takt);
-          } : null);
-          return;
-        }
-      } else if (masse && neu !== masse && leinwand.classList.contains("ls-sprung--an")) {
-        // DER WECHSEL. Nicht zeichnen - das Standbild bleibt oben.
-        masse = neu;
-        gefrorenSeit = jetzt;
-        ruhigSeit = jetzt;
-      } else if (jetzt >= ende) {
-        this.#ausblenden(lauf, null);
-        return;
-      } else if (hatBild) {
-        masse = neu;
-        try { zeichnen(); } catch { this.stoppe(); return; }
-      }
-      this.bild = fenster.requestAnimationFrame(takt);
-    };
-    takt();
-    return true;
-  }
-
-  // Weich weg, damit der neue Ausschnitt hereinblendet statt zu springen.
-  // Danach liegt die Leinwand unsichtbar und ohne Uebergang bereit: Beim
-  // naechsten Zeichnen erscheint sie mit genau dem Bild, das darunter
-  // ohnehin steht.
-  #ausblenden(lauf, danach) {
-    const leinwand = this.leinwand;
-    if (!leinwand?.classList.contains("ls-sprung--an")) { if (!danach) this.stoppe(); else danach(); return; }
-    leinwand.classList.add("ls-sprung--blende");
-    leinwand.classList.remove("ls-sprung--an");
-    this.blende = setTimeout(() => {
-      this.blende = 0;
-      if (lauf !== this.lauf) return;
-      leinwand.classList.remove("ls-sprung--blende");
-      if (danach) danach(); else this.stoppe();
-    }, this.blendeMs);
-  }
-
-  stoppe() {
-    this.lauf += 1;
-    if (this.bild) this.#fenster()?.cancelAnimationFrame?.(this.bild);
-    this.bild = 0;
-    clearTimeout(this.blende);
-    this.blende = 0;
-    if (this.leinwand) {
-      this.leinwand.classList.remove("ls-sprung--an", "ls-sprung--blende");
-      // Den Bildspeicher hergeben: in voller Kameraaufloesung sind das
-      // mehrere Megabyte, die nach dem Anlaufen niemand mehr braucht.
-      try { this.leinwand.width = 0; this.leinwand.height = 0; } catch { /* egal */ }
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Die Kamera selbst
 // ---------------------------------------------------------------------------
 
@@ -482,11 +327,7 @@ export class Flaechenkamera {
         }
       }
       this.bereit = Boolean(this.video);
-      if (this.bereit) {
-        this.#ueberwachen(lauf);
-        this.sprung ||= new Sprungschutz({ video: this.video, dokument: this.dokument });
-        this.sprung.starte();
-      }
+      if (this.bereit) this.#ueberwachen(lauf);
       return true;
     } catch (fehler) {
       if (lauf !== this.lauf) return false;
@@ -588,7 +429,6 @@ export class Flaechenkamera {
         bildzeit = video.currentTime;
         this.letztesBild = jetzt;
         try { Promise.resolve(video.play()).catch(() => {}); } catch { /* naechster Takt */ }
-        this.sprung?.starte();
       }
       const spur = this.strom?.getVideoTracks?.()[0];
       if (!spur || spur.readyState === "ended") {
@@ -651,7 +491,6 @@ export class Flaechenkamera {
 
   stoppe() {
     this.lauf += 1;
-    this.sprung?.stoppe();
     this.#bereitSetzen(false);
     clearInterval(this.waechter);
     this.waechter = null;

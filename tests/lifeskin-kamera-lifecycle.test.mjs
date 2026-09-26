@@ -119,7 +119,6 @@ function probe({ gum, breite = 390, hoehe = 844 } = {}) {
     // ganze Datei beim Einlesen um.
     besteGuete: (kodiere) => ({ jpeg: kodiere(0.9), guete: 0.9 }),
     Flaechenkamera: class { starte() { return Promise.resolve(false); } stoppe() {} },
-    Sprungschutz: class { starte() { return false; } stoppe() {} },
     fotoAusDatei: async () => null,
     navigator: { mediaDevices: { getUserMedia: (...args) => { anfragen++; return gum ? gum(...args) : Promise.resolve(stream); } } },
     netzHolen: async () => null, netzStand: () => "aus", console,

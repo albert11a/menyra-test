@@ -119,7 +119,6 @@ function pruefstand() {
     Pixel: class { starte() { return false; } melde() {} meldeWeg() {} meldeAbgabe() {} meldeLead() {} },
     besteGuete: (kodiere) => ({ jpeg: kodiere(0.9), guete: 0.9 }),
     Flaechenkamera: class { starte() { return Promise.resolve(false); } stoppe() {} },
-    Sprungschutz: class { starte() { return false; } stoppe() {} },
     fotoAusDatei: async () => null,
     Sitzung: class {},
     netzVorladen() {}, netzHolen: async () => null, netzStand: () => "aus",
