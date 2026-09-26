@@ -189,7 +189,7 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
   // aufklappt.
   const rasteDok = konfigDocs.find((d) => d.id === RASTE_DOK_ID)?.data() || null;
   const konfig = konfigDocs
-    .filter((d) => !String(d.id).startsWith(LANDING_FOTOT_PRAEFIX))
+    .filter((d) => !String(d.id).startsWith(LANDING_FOTOT_PRAEFIX) && !String(d.id).startsWith(ANALYSE_FOTOT_PRAEFIX))
     .filter((d) => d.id !== RASTE_DOK_ID && !String(d.id).startsWith(RASTI_BILD_ID))
     .reduce((zusammen, d) => ({ ...zusammen, ...(d.data() || {}) }), {});
   const setPreis = Number.isFinite(Number(konfig.setPreis)) && Number(konfig.setPreis) > 0
@@ -423,25 +423,44 @@ export async function speichereAnbieter(anbieter = {}) {
 export const LANDING_FOTOT_PRAEFIX = "landingFotot-";
 export const LANDING_FOTOT_MAX = 6;
 
-export async function ladeLandingFotot(produktId) {
+// DIE BILDER DER ANALYSESEITE (/terapia/<kennung>): dasselbe noch
+// einmal, als eigenes Dokument je Produkt. Ohne eigene Bilder zeigt die
+// Analyseseite die der Landingpage.
+//
+// DAS FELD HEISST "bilder" UND NICHT "fotot" - mit Absicht: Die
+// Landingpage liest die ganze Sammlung "config" und fordert dabei nur
+// das Feld "fotot" an (shop.js). So laedt sie die Bilder der
+// Analyseseite nicht mit. apps/lifeskin-verkauf/terapia.js kennt beide
+// Werte, tests/heart-lifeskin-analysefotot.test.mjs haelt sie zusammen.
+export const ANALYSE_FOTOT_PRAEFIX = "analyseFotot-";
+export const ANALYSE_FOTOT_FELD = "bilder";
+
+const FOTOT_ABLAGE = {
+  landing: { praefix: LANDING_FOTOT_PRAEFIX, feld: "fotot" },
+  analyse: { praefix: ANALYSE_FOTOT_PRAEFIX, feld: ANALYSE_FOTOT_FELD }
+};
+
+export async function ladeLandingFotot(produktId, art = "landing") {
   if (!produktId) return [];
+  const ablage = FOTOT_ABLAGE[art] || FOTOT_ABLAGE.landing;
   const schnapp = await getDoc(
-    doc(db, "lifeskin", TENANT, "config", `${LANDING_FOTOT_PRAEFIX}${produktId}`)
+    doc(db, "lifeskin", TENANT, "config", `${ablage.praefix}${produktId}`)
   );
-  const liste = schnapp.exists() ? schnapp.data()?.fotot : null;
+  const liste = schnapp.exists() ? schnapp.data()?.[ablage.feld] : null;
   return Array.isArray(liste)
     ? liste.filter((f) => typeof f === "string" && f.startsWith("data:image/"))
     : [];
 }
 
-export async function speichereLandingFotot(produktId, fotot) {
+export async function speichereLandingFotot(produktId, fotot, art = "landing") {
   if (!produktId) throw new Error("Produkt ohne Kennung");
+  const ablage = FOTOT_ABLAGE[art] || FOTOT_ABLAGE.landing;
   const sauber = (Array.isArray(fotot) ? fotot : [])
     .filter((f) => typeof f === "string" && f.startsWith("data:image/"))
     .slice(0, LANDING_FOTOT_MAX);
   await setDoc(
-    doc(db, "lifeskin", TENANT, "config", `${LANDING_FOTOT_PRAEFIX}${produktId}`),
-    { fotot: sauber, updatedAt: new Date().toISOString() }
+    doc(db, "lifeskin", TENANT, "config", `${ablage.praefix}${produktId}`),
+    { [ablage.feld]: sauber, updatedAt: new Date().toISOString() }
   );
   return sauber;
 }

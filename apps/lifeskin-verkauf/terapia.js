@@ -104,10 +104,14 @@ function produktZeichnung(lloji) {
   return svg;
 }
 
-// Die Bilder der Landingpage (Heart legt sie an). Dieselben Werte wie
-// FOTO_PRAEFIX/FOTOS_MAX in apps/lifeskin-landing/shop.js - nicht von
-// dort geholt, weil shop.js beim Laden den Laden der Landingpage startet.
+// Die Bilder je Mittel (Heart legt sie an): zuerst die eigenen der
+// Analyseseite, sonst die der Landingpage. Dieselben Werte wie
+// FOTO_PRAEFIX/FOTOS_MAX in apps/lifeskin-landing/shop.js und
+// ANALYSE_FOTOT_* in heart-lifeskin-adapter.js - nicht von dort geholt,
+// weil shop.js beim Laden den Laden der Landingpage startet.
 const FOTO_PRAEFIX = "landingFotot-";
+const ANALYSE_FOTO_PRAEFIX = "analyseFotot-";
+const ANALYSE_FOTO_FELD = "bilder";
 const FOTOS_MAX = 6;
 
 // Kleine Zeichen, fest im Code - kein Text aus Daten landet in innerHTML.
@@ -552,8 +556,9 @@ export class Terapia {
     if (this.neu) schreibe(link, `Si funksionon ndjekja ${WOCHEN}-javore ↓`);
   }
 
-  // Die Bilder eines Mittels: zuerst die der Landingpage (Heart,
-  // config/landingFotot-<id>), sonst das Produktfoto, sonst die Zeichnung.
+  // Die Bilder eines Mittels: die der Analyseseite, sonst die der
+  // Landingpage (Heart, config/...Fotot-<id>), sonst das Produktfoto,
+  // sonst die Zeichnung.
   #bilderVon(p) {
     const fotot = this.landingFotot?.get(p.id) || [];
     if (fotot.length) return fotot;
@@ -636,7 +641,7 @@ export class Terapia {
     return art;
   }
 
-  // Die Bilder der Landingpage: je Mittel ein Dokument, parallel und nur
+  // Die Bilder aus Heart: je Mittel ein Dokument, parallel und nur
   // fuer die Mittel dieses Befunds (nicht die ganze Sammlung wie shop.js).
   // Kommt nichts oder dauert es zu lange, bleibt das Produktfoto.
   async #mjetetFotot() {
@@ -645,15 +650,24 @@ export class Terapia {
     const basis = `${LIFESKIN_FIRESTORE_BASE}/lifeskin/${LIFESKIN_TENANT}/config`;
     const holen = this.quelle.fetchFn || globalThis.fetch;
     const karte = new Map();
-    const einzeln = async (id) => {
+    const bilderAus = async (praefix, feld, id) => {
       try {
-        const antwort = await holen(`${basis}/${FOTO_PRAEFIX}${encodeURIComponent(id)}`);
-        if (!antwort.ok) return;
-        const liste = dokument(await antwort.json()).fotot;
-        const fotot = (Array.isArray(liste) ? liste : [])
+        const antwort = await holen(`${basis}/${praefix}${encodeURIComponent(id)}`);
+        if (!antwort.ok) return [];
+        const liste = dokument(await antwort.json())[feld];
+        return (Array.isArray(liste) ? liste : [])
           .filter((f) => typeof f === "string" && f.startsWith("data:image/")).slice(0, FOTOS_MAX);
-        if (fotot.length) karte.set(id, fotot);
-      } catch { /* dann das Produktfoto */ }
+      } catch { return []; }
+    };
+    // Beide gleichzeitig: Wer keine eigenen Bilder fuer die Analyseseite
+    // hat, wartet nicht erst auf die leere Antwort.
+    const einzeln = async (id) => {
+      const [eigene, landing] = await Promise.all([
+        bilderAus(ANALYSE_FOTO_PRAEFIX, ANALYSE_FOTO_FELD, id),
+        bilderAus(FOTO_PRAEFIX, "fotot", id)
+      ]);
+      const fotot = eigene.length ? eigene : landing;
+      if (fotot.length) karte.set(id, fotot);
     };
     const frist = new Promise((fertig) => setTimeout(fertig, 4000));
     await Promise.race([Promise.all(this.produkte.map((p) => einzeln(p.id))), frist]);

@@ -572,13 +572,15 @@ export function bindHeartEvents({
       return;
     }
     if (action === "lifeskin-landingbild-weg") {
-      await operations.lifeskinLandingbildWeg?.(Number(target.getAttribute("data-index")));
+      await operations.lifeskinLandingbildWeg?.(Number(target.getAttribute("data-index")),
+        target.getAttribute("data-art") || "landing");
       return;
     }
     if (action === "lifeskin-landingbild-schieben") {
       await operations.lifeskinLandingbildSchieben?.(
         Number(target.getAttribute("data-index")),
-        target.getAttribute("data-richtung"));
+        target.getAttribute("data-richtung"),
+        target.getAttribute("data-art") || "landing");
       return;
     }
     if (action === "lifeskin-produkt-zu") {

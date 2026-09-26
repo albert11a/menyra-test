@@ -2799,6 +2799,7 @@ function renderProduktEditor(produkt, status, entwurf) {
       })()}
 
       ${renderLandingFotot(p, entwurf)}
+      ${renderLandingFotot(p, entwurf, "analyse")}
 
       <div class="heart-lifeskin-editor__fuss">
         <button type="button" class="heart-lifeskin-resetknopf heart-lifeskin-resetknopf--speichern"
@@ -2834,21 +2835,24 @@ function renderProduktEditor(produkt, status, entwurf) {
 // zugleich der Schalter: Wer ein Mittel dort zeigen will, legt ein Bild
 // dazu; wer es wegnehmen will, nimmt die Bilder weg. Niemand muss dafuer
 // Code anfassen, und es steht als Satz im Bereich.
-function renderLandingFotot(p, entwurf) {
+function renderLandingFotot(p, entwurf, art = "landing") {
+  const analyse = art === "analyse";
+  const titel = analyse ? "Bilder fuer die Analyseseite" : "Bilder fuer die Landingpage";
+  const feld = analyse ? "analyseFotot" : "landingFotot";
   if (!p.id) {
     return `
-      <h4 class="heart-lifeskin-verteilung__titel">Bilder fuer die Landingpage</h4>
+      <h4 class="heart-lifeskin-verteilung__titel">${titel}</h4>
       <p class="heart-lifeskin-leer">
         Erst speichern, dann lassen sich hier Bilder anlegen — sie haengen an der Kennung des Produkts.
       </p>`;
   }
 
-  const fotot = Array.isArray(entwurf?.landingFotot) ? entwurf.landingFotot : null;
-  const laedt = entwurf?.landingFototStatus === "laeuft";
+  const fotot = Array.isArray(entwurf?.[feld]) ? entwurf[feld] : null;
+  const laedt = entwurf?.[`${feld}Status`] === "laeuft";
 
   if (fotot === null) {
     return `
-      <h4 class="heart-lifeskin-verteilung__titel">Bilder fuer die Landingpage</h4>
+      <h4 class="heart-lifeskin-verteilung__titel">${titel}</h4>
       <p class="heart-lifeskin-leer">${laedt ? "Bilder werden geladen …" : "Bilder werden geladen …"}</p>`;
   }
 
@@ -2864,7 +2868,7 @@ function renderLandingFotot(p, entwurf) {
     const pfeil = (richtung, aus, zeichen, satz) => `
       <button type="button" class="heart-lifeskin-landingbild__schieb"
               data-action="lifeskin-landingbild-schieben"
-              data-index="${i}" data-richtung="${richtung}"
+              data-index="${i}" data-richtung="${richtung}" data-art="${art}"
               ${aus || laedt ? "disabled" : ""}
               aria-label="${satz}">${zeichen}</button>`;
     return `
@@ -2876,7 +2880,7 @@ function renderLandingFotot(p, entwurf) {
         ${pfeil("vor", letzter, "›", `Bild ${i + 1} nach hinten`)}
       </figcaption>
       <button type="button" class="heart-lifeskin-landingbild__weg"
-              data-action="lifeskin-landingbild-weg" data-index="${i}"
+              data-action="lifeskin-landingbild-weg" data-index="${i}" data-art="${art}"
               aria-label="Bild ${i + 1} entfernen">×</button>
     </figure>`;
   }).join("");
@@ -2884,14 +2888,21 @@ function renderLandingFotot(p, entwurf) {
   const voll = fotot.length >= 6;
 
   return `
-    <h4 class="heart-lifeskin-verteilung__titel">Bilder fuer die Landingpage</h4>
-    <p class="heart-lifeskin-leer">
+    <h4 class="heart-lifeskin-verteilung__titel">${titel}</h4>
+    ${analyse ? `<p class="heart-lifeskin-leer">
+      Sie stehen auf der <b>Analyseseite</b> der Patientin (mnyra.com/terapia/…) oben unter
+      <b>„Produktet tuaja“</b>, zum Wischen, und gross im Fenster, das ein Tipp auf das Mittel oeffnet.
+      Das erste Bild ist das, das jede Patientin sieht. <b>Ohne Bilder hier zeigt die Analyseseite die
+      Bilder der Landingpage</b>, sonst das Produktfoto. Mit <b>‹</b> und <b>›</b> aendern Sie die
+      Reihenfolge. Hoechstens sechs, jedes wird auf 1000 Bildpunkte verkleinert.
+      <b>Bilder speichern sich sofort</b>, der Knopf unten ist nur fuer den Text.
+    </p>` : `<p class="heart-lifeskin-leer">
       Sie stehen unter <b>„Rezultate që shihen“</b> auf mnyra.com/lifeskin, zwei Mittel in einer Reihe,
       zum Wischen. Das erste Bild ist das, das jeder sieht. <b>Ohne Bild erscheint das Mittel dort nicht</b> —
       so nehmen Sie es auch wieder weg. Mit <b>‹</b> und <b>›</b> unter einem Bild aendern Sie die
       Reihenfolge. Hoechstens sechs, jedes wird auf 1000 Bildpunkte verkleinert.
       <b>Bilder speichern sich sofort</b>, der Knopf unten ist nur fuer den Text.
-    </p>
+    </p>`}
     <div class="heart-lifeskin-landingbilder">
       ${kacheln}
       ${voll ? "" : `
@@ -2900,7 +2911,7 @@ function renderLandingFotot(p, entwurf) {
            oeffneDateiwahl() in heart.js. Mehrere Bilder in einem Griff
            kann es trotzdem - das Feld entsteht mit multiple. -->
       <button type="button" class="heart-lifeskin-landingbild__neu"
-              data-action="trigger-crm-file" data-crm-file-input="heartLifeskinLandingInput"
+              data-action="trigger-crm-file" data-crm-file-input="${analyse ? "heartLifeskinAnalyseInput" : "heartLifeskinLandingInput"}"
               ${laedt ? "disabled" : ""}>
         ${laedt ? "…" : "+ Bild"}
       </button>`}

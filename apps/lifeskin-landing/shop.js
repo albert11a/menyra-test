@@ -122,8 +122,12 @@ function karteAus(felder) {
  * von zwoelf Runden ist ein Riegel gegen eine Antwort, die immer ein
  * Token mitschickt - eine Seite, die ewig laedt, ist schlimmer als
  * eine, die etwas weglaesst. */
-async function holeSammlung(name, holen = fetch) {
-  const basis = `${LIFESKIN_FIRESTORE_BASE}/lifeskin/${LIFESKIN_TENANT}/${name}?pageSize=60`;
+async function holeSammlung(name, holen = fetch, nurFeld = "") {
+  /* NUR DAS NOETIGE FELD. In "config" liegen auch die Bilder der
+     Analyseseite (Feld "bilder") und der Vorher/Nachher-Faelle - mit
+     mask.fieldPaths kommen die nicht mit, nur "fotot". */
+  const maske = nurFeld ? `&mask.fieldPaths=${encodeURIComponent(nurFeld)}` : "";
+  const basis = `${LIFESKIN_FIRESTORE_BASE}/lifeskin/${LIFESKIN_TENANT}/${name}?pageSize=60${maske}`;
   const raus = [];
   let token = "";
   for (let runde = 0; runde < 12; runde += 1) {
@@ -378,7 +382,7 @@ export class Laden {
     try {
       const [produkte, konfig] = await Promise.all([
         holeSammlung("products", this.holen).catch(() => []),
-        holeSammlung("config", this.holen).catch(() => [])
+        holeSammlung("config", this.holen, "fotot").catch(() => [])
       ]);
 
       const fotos = new Map();

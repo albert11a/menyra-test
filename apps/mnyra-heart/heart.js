@@ -1960,37 +1960,47 @@ async function speichereLifeskinAnbieter() {
 // Der Entwurf wird trotzdem mitgeschrieben, aus demselben Grund wie beim
 // Produktfoto darueber: Heart zeichnet bei jeder Zustandsaenderung neu,
 // und was nur im Formular stand, waere danach weg.
+// ZWEI BEREICHE, EIN WEG: die Bilder der Landingpage (art "landing")
+// und die der Analyseseite (art "analyse"). Beide liegen je Produkt in
+// einem eigenen Dokument (Adapter), beide speichern sofort.
+const fototFeld = (art) => (art === "analyse" ? "analyseFotot" : "landingFotot");
+const fototSeite = (art) => (art === "analyse" ? "Analyseseite" : "Landingpage");
+
 async function landingFototLaden(produktId) {
   if (!produktId || produktId === "__neu") return;
   try {
-    const fotot = await ladeLandingFotot(produktId);
+    const [fotot, analyseFotot] = await Promise.all([
+      ladeLandingFotot(produktId),
+      ladeLandingFotot(produktId, "analyse")
+    ]);
     const stand = store.getState().lifeskin || {};
     // Nur setzen, wenn immer noch dasselbe Produkt offen ist: Wer
     // schnell weiterklickt, bekommt sonst die Bilder des vorigen.
     if (stand.produktOffen !== produktId) return;
     actions.patchLifeskin({
-      produktEntwurf: { ...(stand.produktEntwurf || {}), landingFotot: fotot }
+      produktEntwurf: { ...(stand.produktEntwurf || {}), landingFotot: fotot, analyseFotot }
     });
   } catch (fehler) {
     setToast("Bilder", fehler?.message || "Die Bilder liessen sich nicht laden.", "danger");
   }
 }
 
-async function landingFototSchreiben(fotot, meldung) {
+async function landingFototSchreiben(fotot, meldung, art = "landing") {
   const stand = store.getState().lifeskin || {};
   const id = stand.produktOffen;
   if (!id || id === "__neu") return;
-  const vorher = Array.isArray(stand.produktEntwurf?.landingFotot)
-    ? stand.produktEntwurf.landingFotot
+  const feld = fototFeld(art);
+  const vorher = Array.isArray(stand.produktEntwurf?.[feld])
+    ? stand.produktEntwurf[feld]
     : [];
   actions.patchLifeskin({
-    produktEntwurf: { ...(stand.produktEntwurf || {}), landingFotot: fotot, landingFototStatus: "laeuft" }
+    produktEntwurf: { ...(stand.produktEntwurf || {}), [feld]: fotot, [`${feld}Status`]: "laeuft" }
   });
   try {
-    const sauber = await speichereLandingFotot(id, fotot);
+    const sauber = await speichereLandingFotot(id, fotot, art);
     const jetzt = store.getState().lifeskin || {};
     actions.patchLifeskin({
-      produktEntwurf: { ...(jetzt.produktEntwurf || {}), landingFotot: sauber, landingFototStatus: "" }
+      produktEntwurf: { ...(jetzt.produktEntwurf || {}), [feld]: sauber, [`${feld}Status`]: "" }
     });
     setToast("Bilder", meldung, "success");
   } catch (fehler) {
@@ -1998,16 +2008,17 @@ async function landingFototSchreiben(fotot, meldung) {
     // steht und nicht gespeichert ist, ist schlechter als keines.
     const jetzt = store.getState().lifeskin || {};
     actions.patchLifeskin({
-      produktEntwurf: { ...(jetzt.produktEntwurf || {}), landingFotot: vorher, landingFototStatus: "" }
+      produktEntwurf: { ...(jetzt.produktEntwurf || {}), [feld]: vorher, [`${feld}Status`]: "" }
     });
     setToast("Bilder", fehler?.message || "Speichern fehlgeschlagen.", "danger");
   }
 }
 
-async function lifeskinLandingbilder(dateien) {
+async function lifeskinLandingbilder(dateien, art = "landing") {
   const stand = store.getState().lifeskin || {};
-  const da = Array.isArray(stand.produktEntwurf?.landingFotot)
-    ? stand.produktEntwurf.landingFotot
+  const feld = fototFeld(art);
+  const da = Array.isArray(stand.produktEntwurf?.[feld])
+    ? stand.produktEntwurf[feld]
     : [];
   const platz = LANDING_FOTOT_MAX - da.length;
   if (platz <= 0) {
@@ -2093,20 +2104,22 @@ async function lifeskinLandingbilder(dateien) {
   await landingFototSchreiben([...alte, ...neue],
     zuviel
       ? `${neue.length} Bilder gespeichert. Mehr als ${LANDING_FOTOT_MAX} gehen nicht.`
-      : `${neue.length === 1 ? "Bild" : `${neue.length} Bilder`} gespeichert. Auf der Landingpage sichtbar.`);
+      : `${neue.length === 1 ? "Bild" : `${neue.length} Bilder`} gespeichert. Auf der ${fototSeite(art)} sichtbar.`,
+    art);
 }
 
-async function lifeskinLandingbildWeg(index) {
+async function lifeskinLandingbildWeg(index, art = "landing") {
   const stand = store.getState().lifeskin || {};
-  const da = Array.isArray(stand.produktEntwurf?.landingFotot)
-    ? stand.produktEntwurf.landingFotot
+  const feld = fototFeld(art);
+  const da = Array.isArray(stand.produktEntwurf?.[feld])
+    ? stand.produktEntwurf[feld]
     : [];
   if (!Number.isInteger(index) || index < 0 || index >= da.length) return;
   const ohne = da.filter((_, i) => i !== index);
-  await landingFototSchreiben(ohne,
-    ohne.length
-      ? "Bild entfernt."
-      : "Letztes Bild entfernt — das Mittel erscheint auf der Landingpage nicht mehr.");
+  const leer = art === "analyse"
+    ? "Letztes Bild entfernt — die Analyseseite zeigt jetzt die Bilder der Landingpage."
+    : "Letztes Bild entfernt — das Mittel erscheint auf der Landingpage nicht mehr.";
+  await landingFototSchreiben(ohne, ohne.length ? "Bild entfernt." : leer, art);
 }
 
 /* Die Reihenfolge der Landingbilder.
@@ -2124,10 +2137,11 @@ async function lifeskinLandingbildWeg(index) {
  *
  * Geschrieben wird ueber denselben Weg wie Hinzufuegen und Entfernen:
  * sofort, mit Ruecknahme, wenn Firestore nein sagt. */
-async function lifeskinLandingbildSchieben(index, richtung) {
+async function lifeskinLandingbildSchieben(index, richtung, art = "landing") {
   const stand = store.getState().lifeskin || {};
-  const da = Array.isArray(stand.produktEntwurf?.landingFotot)
-    ? stand.produktEntwurf.landingFotot
+  const feld = fototFeld(art);
+  const da = Array.isArray(stand.produktEntwurf?.[feld])
+    ? stand.produktEntwurf[feld]
     : [];
   const ziel = index + (richtung === "zurueck" ? -1 : 1);
   if (!Number.isInteger(index) || index < 0 || index >= da.length) return;
@@ -2135,14 +2149,18 @@ async function lifeskinLandingbildSchieben(index, richtung) {
   /* Nicht laufen lassen, waehrend der vorige Schreibvorgang noch
      unterwegs ist: Zwei Tausche auf demselben Ausgangsstand geben eine
      Reihenfolge, die keiner der beiden Drucke gemeint hat. */
-  if (stand.produktEntwurf?.landingFototStatus === "laeuft") return;
+  const laeuft = art === "analyse"
+    ? stand.produktEntwurf?.analyseFototStatus === "laeuft"
+    : stand.produktEntwurf?.landingFototStatus === "laeuft";
+  if (laeuft) return;
 
   const neu = [...da];
   [neu[index], neu[ziel]] = [neu[ziel], neu[index]];
   await landingFototSchreiben(neu,
     ziel === 0
-      ? "Bild ist jetzt das erste — es steht auf der Landingpage vorne."
-      : `Bild an Stelle ${ziel + 1}.`);
+      ? `Bild ist jetzt das erste — es steht auf der ${fototSeite(art)} vorne.`
+      : `Bild an Stelle ${ziel + 1}.`,
+    art);
 }
 
 // ══ DIE VORHER/NACHHER-FAELLE ═════════════════════════════════════
@@ -3689,10 +3707,10 @@ const operations = {
   lifeskinProdukteBizele() { return lifeskinProdukteBizele(); },
   lifeskinProduktfoto(datei) { return lifeskinProduktfoto(datei); },
   lifeskinProduktfotoWeg() { lifeskinProduktfotoWeg(); },
-  lifeskinLandingbilder(dateien) { return lifeskinLandingbilder(dateien); },
-  lifeskinLandingbildWeg(index) { return lifeskinLandingbildWeg(index); },
-  lifeskinLandingbildSchieben(index, richtung) {
-    return lifeskinLandingbildSchieben(index, richtung);
+  lifeskinLandingbilder(dateien, art) { return lifeskinLandingbilder(dateien, art); },
+  lifeskinLandingbildWeg(index, art) { return lifeskinLandingbildWeg(index, art); },
+  lifeskinLandingbildSchieben(index, richtung, art) {
+    return lifeskinLandingbildSchieben(index, richtung, art);
   },
   loescheLifeskinProdukt() { return loescheLifeskinProdukt(); },
   gibLifeskinBerichtFrei(id, wahl) { return gibLifeskinBerichtFrei(id, wahl); },
@@ -4173,6 +4191,10 @@ const operations = {
     }
     if (safeInputId === "heartLifeskinLandingInput") {
       oeffneDateiwahl(true, (dateien) => { lifeskinLandingbilder(dateien); });
+      return;
+    }
+    if (safeInputId === "heartLifeskinAnalyseInput") {
+      oeffneDateiwahl(true, (dateien) => { lifeskinLandingbilder(dateien, "analyse"); });
       return;
     }
     document.getElementById(safeInputId)?.click?.();
