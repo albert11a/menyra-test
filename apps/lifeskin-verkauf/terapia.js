@@ -13,7 +13,7 @@
 //
 // Was sie NICHT hat: die Warteseite. Ein Fall, der noch nicht freigegeben
 // ist, geht nach /analiza/<kennung> - dort steht sie.
-import { AnalyseDaten, kennungAusPfad } from "../lifeskin-astra/astra-daten.js";
+import { AnalyseDaten, kennungAusPfad, dokument } from "../lifeskin-astra/astra-daten.js";
 import { Pixel, pixelKennungen } from "../lifeskin/lifeskin-pixel.js";
 import { STANDARD_KONFIG } from "../lifeskin/lifeskin-catalog.js";
 import { LIFESKIN_WHATSAPP, LIFESKIN_WHATSAPP_TEXT, LIFESKIN_TELEFON_VORWAHL } from "../lifeskin/lifeskin-config.js";
@@ -103,6 +103,42 @@ function produktZeichnung(lloji) {
   svg.innerHTML = teile.d;
   return svg;
 }
+
+// Die Bilder der Landingpage (Heart legt sie an). Dieselben Werte wie
+// FOTO_PRAEFIX/FOTOS_MAX in apps/lifeskin-landing/shop.js - nicht von
+// dort geholt, weil shop.js beim Laden den Laden der Landingpage startet.
+const FOTO_PRAEFIX = "landingFotot-";
+const FOTOS_MAX = 6;
+
+// Kleine Zeichen, fest im Code - kein Text aus Daten landet in innerHTML.
+function svgZeichen(klasse, inhalt, strich = "2") {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", strich);
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("class", klasse);
+  svg.innerHTML = inhalt;
+  return svg;
+}
+const ikonHaken = () => svgZeichen("seti__haken", '<circle cx="12" cy="12" r="10" fill="#edf2ed" stroke="none"/><path d="M7.5 12.5l3 3 6-6.5"/>', "2.4");
+function ikoneAufziehen() {
+  const span = element("span", "mjeti__shenje");
+  span.setAttribute("aria-hidden", "true");
+  span.append(svgZeichen("", '<path d="M9 4H4v5"/><path d="M15 4h5v5"/><path d="M15 20h5v-5"/><path d="M9 20H4v-5"/>', "2.2"));
+  return span;
+}
+const ikoneZeit = (art) => svgZeichen("mjeti__kohaikona", art === "hena"
+  ? '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>'
+  : '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/>', "2.4");
+const ikoneZusage = (art) => svgZeichen("pergjigjet__ikona", {
+  para: '<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>',
+  garanci: '<path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>',
+  transport: '<path d="M2.5 6h11v10h-11zM13.5 9.5h4l3 3.5V16h-7"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>'
+}[art] || "", "1.9");
 
 function produktBild(p, klasse) {
   if (p.foto) {
@@ -454,29 +490,56 @@ export class Terapia {
     schreibe($("#t-mjekudata"), tag ? `Dermatologe · ${tag}` : "Dermatologe");
   }
 
+  // DIE PRODUKTE WIE AUF DER LANDINGPAGE (shop.js #karte): eigene Karten
+  // direkt auf der Seite, Bilder zum Wischen, Antippen oeffnet das Blatt.
+  // Kein Kaufknopf je Mittel - gekauft wird das Paket darunter.
+  //
+  // In der Reihenfolge der Anwendung (perdorimi.hapi), mit Nummer: So
+  // liest sich die Reihe als Behandlung und nicht als Regal.
   #seti() {
+    const sortiert = [...this.produkte].sort((a, b) => (Number(a.perdorimi?.hapi) || 9) - (Number(b.perdorimi?.hapi) || 9));
     const ort = $("#t-setiprodukte");
-    ort.replaceChildren();
-    for (const p of this.produkte) {
-      const fig = element("figure", "produkt-fig");
-      fig.append(produktBild(p, "produkt-fig__bild"));
-      const unter = element("figcaption", null, p.name);
-      const klein = [p.nenName, p.inhalt].filter(Boolean).join(" · ");
-      if (klein) unter.append(element("small", null, klein));
-      fig.append(unter);
-      ort.append(fig);
-    }
+    ort?.classList.toggle("mjetet__rrjeta--nje", sortiert.length === 1);
+    ort?.classList.toggle("mjetet__rrjeta--shume", sortiert.length > 2);
+    ort?.replaceChildren(...sortiert.map((p, i) => this.#mjetiKarte(p, i + 1)));
+    zeigen($("#t-mjetet"), sortiert.length > 0);
+    this.#mjetetPunkte();
+    this.#mjetetFotot();
+
     const n = this.produkte.length;
     const cipa = $("#t-seticipa");
-    cipa.replaceChildren(...[n === 1 ? "1 produkt" : `${n} produkte`, `${WOCHEN} javë`, "Plan personal",
+    cipa?.replaceChildren(...[n === 1 ? "1 produkt" : `${n} produkte`, `${WOCHEN} javë`, "Plan personal",
       this.neu ? `Ndjekje ${WOCHEN}-javore` : "Dr. Gashi çdo javë"]
       .map((x) => element("li", null, x)));
     schreibe($("#t-shportaprodukte"), `${this.produkte.map((p) => p.name).join(" + ")} · plan · ndjekje`);
 
-    // NEUE FASSUNG: was genau im Paket liegt - Name, Menge, Inhalt - und
-    // ein kurzer Sprung zur Begleitung. Kein langer Text oben.
+    // DIE PAKET-KARTE: was drin ist, als Liste mit Haken - statt Chips.
+    schreibe($("#t-setititull"), `Paketa juaj ${WOCHEN}-javore`);
+    schreibe($("#t-setinen"), this.ohneFoto ? "E zgjodhi Dr. Gashi sipas përshkrimit tuaj" : "E zgjodhi Dr. Gashi sipas fotove tuaja");
+    const mengen = [...new Set(sortiert.map((p) => p.inhalt).filter(Boolean))];
+    const menge = n > 1 && mengen.length === 1 ? `1 × secili · ${mengen[0]}`
+      : sortiert.map((p) => [`1 × ${p.name}`, p.inhalt].filter(Boolean).join(" ")).join(" · ");
+    const zeiten = sortiert.map((p) => tageszeiten(p.perdorimi?.koha));
+    const plan = zeiten.some((z) => z.morgens) && zeiten.some((z) => z.abends)
+      ? "Plan personal për mëngjes e mbrëmje" : "Plan personal: kur dhe si i përdorni";
+    const punkte = [
+      [sortiert.map((p) => p.name).join(" + "), menge],
+      [plan, ""],
+      this.neu ? [`Ndjekje ${WOCHEN}-javore`, "Me kontroll javor të planifikuar"] : ["Dr. Gashi ju kontrollon çdo javë", "Ndryshimi pas disa javësh"]
+    ];
+    $("#t-setilista")?.replaceChildren(...punkte.map(([text, klein]) => {
+      const li = element("li");
+      li.append(ikonHaken());
+      const block = element("div", null, text);
+      if (klein) block.append(element("small", null, klein));
+      li.append(block);
+      return li;
+    }));
+
+    // NEUE FASSUNG: die Liste oben nennt den Inhalt schon - kein zweites
+    // "Në pako". Der kurze Sprung zur Begleitung bleibt.
     const pako = $("#t-pako");
-    zeigen(pako, this.neu && n > 0);
+    zeigen(pako, false);
     if (this.neu && pako) {
       pako.replaceChildren("Në pako: ", ...this.produkte.flatMap((p, i) => {
         const teil = [element("b", null, `1 × ${p.name}`)];
@@ -487,6 +550,200 @@ export class Terapia {
     const link = $("#t-ndjekjalink");
     zeigen(link, this.neu && n > 0);
     if (this.neu) schreibe(link, `Si funksionon ndjekja ${WOCHEN}-javore ↓`);
+  }
+
+  // Die Bilder eines Mittels: zuerst die der Landingpage (Heart,
+  // config/landingFotot-<id>), sonst das Produktfoto, sonst die Zeichnung.
+  #bilderVon(p) {
+    const fotot = this.landingFotot?.get(p.id) || [];
+    if (fotot.length) return fotot;
+    return p.foto ? [p.foto] : [];
+  }
+
+  #bahn(p, klasse) {
+    const bahn = element("div", `${klasse}__bahn`);
+    bahn.dataset.bahn = "";
+    const bilder = this.#bilderVon(p);
+    if (!bilder.length) {
+      const fig = element("figure", `${klasse}__pamje ${klasse}__pamje--zeichnung`);
+      fig.append(produktBild(p, "mjeti__zeichnung"));
+      bahn.append(fig);
+      return { bahn, anzahl: 1 };
+    }
+    bahn.append(...bilder.map((src, i) => {
+      const fig = element("figure", `${klasse}__pamje`);
+      const img = element("img");
+      img.src = src;
+      img.alt = i === 0 ? p.name : "";
+      img.decoding = "async";
+      if (i > 0) img.loading = "lazy";
+      fig.append(img);
+      return fig;
+    }));
+    return { bahn, anzahl: bilder.length };
+  }
+
+  static #punkteVon(anzahl) {
+    if (anzahl < 2) return null;
+    const pika = element("div", "mjeti__pika");
+    pika.setAttribute("aria-hidden", "true");
+    for (let i = 0; i < anzahl; i += 1) pika.append(element("i"));
+    return pika;
+  }
+
+  #mjetiKarte(p, nr) {
+    const art = element("article", "mjeti");
+    art.dataset.mjetiHap = p.id;
+    const pamjet = element("div", "mjeti__pamjet");
+    // Solange die Bilder der Landingpage unterwegs sind, steht nur die
+    // Flaeche da (Platz reserviert) - kein Packshot, der gleich danach
+    // gegen ein anderes Bild springt.
+    if (this.landingFotot) {
+      const { bahn, anzahl } = this.#bahn(p, "mjeti");
+      bahn.tabIndex = 0;
+      bahn.setAttribute("role", "group");
+      bahn.setAttribute("aria-label", p.name);
+      pamjet.append(bahn);
+      // Ohne Punkte bleibt die Zeile leer stehen - sonst sitzt der Name
+      // eines Mittels mit einem Bild hoeher als der seines Nachbarn.
+      pamjet.append(Terapia.#punkteVon(anzahl) || element("div", "mjeti__pika"));
+    } else {
+      pamjet.append(element("div", "mjeti__bahn mjeti__bahn--pret"), element("div", "mjeti__pika"));
+    }
+    const nummer = element("span", "mjeti__nr", String(nr));
+    nummer.setAttribute("aria-hidden", "true");
+    pamjet.append(nummer, ikoneAufziehen());
+    art.append(pamjet);
+
+    const fjale = element("div", "mjeti__fjale");
+    const emer = element("p", "mjeti__emer", p.name);
+    if (p.inhalt) emer.append(element("span", "mjeti__sasi", p.inhalt));
+    fjale.append(emer);
+    if (p.nenName) fjale.append(element("p", "mjeti__nen", p.nenName));
+    const zeit = tageszeiten(p.perdorimi?.koha);
+    const koha = zeit.morgens && zeit.abends ? ["dielli", "2× në ditë"]
+      : zeit.abends ? ["hena", "Mbrëmje"] : zeit.morgens ? ["dielli", "Mëngjes"] : null;
+    if (koha) {
+      const chip = element("span", "mjeti__koha");
+      chip.append(ikoneZeit(koha[0]), koha[1]);
+      fjale.append(chip);
+    }
+    art.append(fjale);
+    // Tastatur und Vorleser: die ganze Karte ist ein Knopf.
+    art.tabIndex = 0;
+    art.setAttribute("role", "button");
+    art.setAttribute("aria-label", `${p.name}${p.nenName ? ` · ${p.nenName}` : ""} – shiko detajet`);
+    return art;
+  }
+
+  // Die Bilder der Landingpage: je Mittel ein Dokument, parallel und nur
+  // fuer die Mittel dieses Befunds (nicht die ganze Sammlung wie shop.js).
+  // Kommt nichts oder dauert es zu lange, bleibt das Produktfoto.
+  async #mjetetFotot() {
+    if (this.landingFotot || this.fototLaufen) return;
+    this.fototLaufen = true;
+    const basis = `${LIFESKIN_FIRESTORE_BASE}/lifeskin/${LIFESKIN_TENANT}/config`;
+    const holen = this.quelle.fetchFn || globalThis.fetch;
+    const karte = new Map();
+    const einzeln = async (id) => {
+      try {
+        const antwort = await holen(`${basis}/${FOTO_PRAEFIX}${encodeURIComponent(id)}`);
+        if (!antwort.ok) return;
+        const liste = dokument(await antwort.json()).fotot;
+        const fotot = (Array.isArray(liste) ? liste : [])
+          .filter((f) => typeof f === "string" && f.startsWith("data:image/")).slice(0, FOTOS_MAX);
+        if (fotot.length) karte.set(id, fotot);
+      } catch { /* dann das Produktfoto */ }
+    };
+    const frist = new Promise((fertig) => setTimeout(fertig, 4000));
+    await Promise.race([Promise.all(this.produkte.map((p) => einzeln(p.id))), frist]);
+    this.landingFotot = karte;
+    this.#seti();
+  }
+
+  #mjetetPunkte() {
+    for (const pamjet of $$(".mjeti__pamjet, .mjetiblatt__pamjet")) {
+      const bahn = pamjet.querySelector("[data-bahn]");
+      const punkte = pamjet.querySelector(".mjeti__pika");
+      if (!bahn || !punkte || bahn.dataset.gebunden) continue;
+      bahn.dataset.gebunden = "1";
+      const setzen = () => {
+        const an = Math.round(bahn.scrollLeft / (bahn.clientWidth || 1));
+        [...punkte.children].forEach((x, i) => x.toggleAttribute("data-an", i === an));
+      };
+      setzen();
+      let wartet = false;
+      bahn.addEventListener("scroll", () => {
+        if (wartet) return;
+        wartet = true;
+        requestAnimationFrame(() => { wartet = false; setzen(); });
+      }, { passive: true });
+    }
+  }
+
+  // DAS BLATT: dieselbe Reihenfolge wie auf der Landingpage (shop.js
+  // #blatt) - Bilder, wofuer, Versprechen, Wirkung, Anwendung. Dazu der
+  // Satz, den Dr. Gashi fuer DIESEN Befund geschrieben hat.
+  #blattOeffnen(id) {
+    const p = this.produkte.find((x) => x.id === id);
+    const blatt = $("#mjetiblatt");
+    const trup = $("#mjetiblatt-trup");
+    if (!p || !blatt || !trup) return;
+    schreibe($("#mjetiblatt-titull"), p.name);
+    const pamjet = element("div", "mjetiblatt__pamjet");
+    const { bahn, anzahl } = this.#bahn(p, "mjetiblatt");
+    pamjet.append(bahn);
+    const pika = Terapia.#punkteVon(anzahl);
+    if (pika) pamjet.append(pika);
+    const teile = [pamjet];
+    const unter = [p.nenName, p.inhalt].filter(Boolean).join(" · ");
+    if (unter) teile.push(element("p", "mjetiblatt__nen", unter));
+    const satz = String(p.satz || p.kurz || "").trim();
+    if (satz) teile.push(element("p", "mjetiblatt__kurz", satz));
+    // Die Seite sagt ueberall Wochen, nie "Tag 28" (siehe WOCHEN).
+    const frist = wochenStattTage(p.synimi).replace(/\bDeri në ditën\s+28\b/g, `Brenda ${WOCHEN} javësh`);
+    const synimi = this.neu ? ohneWochenversprechen(frist) : frist;
+    if (synimi) teile.push(element("p", "mjetiblatt__synim", synimi));
+    if ((p.veprimi || []).length) {
+      const pjese = element("section", "mjetiblatt__pjese");
+      const ul = element("ul", "mjetiblatt__lista");
+      ul.append(...p.veprimi.slice(0, 5).map((x) => element("li", null, x)));
+      pjese.append(element("h3", null, "Si vepron"), ul);
+      teile.push(pjese);
+    }
+    const anwendung = [["Kur", p.perdorimi?.koha], ["Sa", p.perdorimi?.sasia], ["Si", p.perdorimi?.si]]
+      .filter(([, wert]) => String(wert || "").trim());
+    if (anwendung.length || p.perdorimi?.kujdes) {
+      const pjese = element("section", "mjetiblatt__pjese");
+      pjese.append(element("h3", null, "Si përdoret"));
+      if (anwendung.length) {
+        const dl = element("dl", "mjetiblatt__perdorimi");
+        dl.append(...anwendung.map(([marke, wert]) => {
+          const zeile = element("div");
+          zeile.append(element("dt", null, marke), element("dd", null, wert));
+          return zeile;
+        }));
+        pjese.append(dl);
+      }
+      if (p.perdorimi?.kujdes) pjese.append(element("p", "mjetiblatt__kujdes", p.perdorimi.kujdes));
+      teile.push(pjese);
+    }
+    trup.replaceChildren(...teile);
+    trup.scrollTop = 0;
+    this.blattVon = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    blatt.hidden = false;
+    document.body.classList.add("pa-rreshqitje");
+    this.#mjetetPunkte();
+    blatt.querySelector(".mjetiblatt__mbyll")?.focus({ preventScroll: true });
+    this.klickpfad?.melde("produkt", p.name);
+  }
+
+  #blattSchliessen() {
+    const blatt = $("#mjetiblatt");
+    if (!blatt || blatt.hidden) return;
+    blatt.hidden = true;
+    if ($("#porosia")?.hidden !== false) document.body.classList.remove("pa-rreshqitje");
+    this.blattVon?.focus?.({ preventScroll: true });
   }
 
   // Nur was wirklich gilt - aus der Konfiguration, nicht aus dem Text.
@@ -526,7 +783,31 @@ export class Terapia {
       zelle.append(element("b", null, frage), text);
       return zelle;
     });
-    $("#t-siguria")?.replaceChildren(...antwortenBauen());
+    // OBEN: drei kurze Zusagen unter dem Knopf, als Reihe mit Zeichen.
+    // "Für Ihre Haut" steht im Kopf der Paket-Karte, die woechentliche
+    // Kontrolle in ihrer Liste - die vier Antworten bleiben alle da.
+    const zusagen = [
+      nachnahme ? ["para", "Paguani te dera", "kur vjen pakoja"] : null,
+      g ? ["garanci", `${g.tage} ditë garanci`, "nga marrja e pakos", { text: "Kushtet", href: "#garancia" }]
+        : tage ? ["garanci", `${tage} ditë garanci`, "ose paratë mbrapsht"] : null,
+      ["transport", "Transport falas", von && bis ? `dërgesa ${von}–${bis} ditë` : ""]
+    ].filter(Boolean);
+    const siguria = $("#t-siguria");
+    siguria?.classList.add("pergjigjet--rresht");
+    siguria?.replaceChildren(...zusagen.map(([zeichen, fett, klein, link]) => {
+      const zelle = element("div");
+      zelle.append(ikoneZusage(zeichen), element("b", null, fett));
+      if (klein || link) {
+        const text = element("span", null, klein);
+        if (link) {
+          const a = element("a", null, `${link.text} ↓`);
+          a.href = link.href;
+          text.append(" ", a);
+        }
+        zelle.append(text);
+      }
+      return zelle;
+    }));
     schreibe($("#t-porosisiguria"), [nachnahme ? "Paguani kur ta merrni" : "", tage ? `${tage} ditë garanci` : "", "Transport falas"].filter(Boolean).join(" · "));
     schreibe($("#t-leistegaranci"), tage ? `${tage} ditë garanci` : "");
     // In der Kasse: die Garantie aufklappbar, mit den ganzen Bedingungen -
@@ -831,9 +1112,20 @@ export class Terapia {
   // ---------- Handlungen ----------
 
   #ereignisse() {
+    document.addEventListener("keydown", (ereignis) => {
+      if (ereignis.key === "Escape") { this.#blattSchliessen(); return; }
+      const ziel = ereignis.target;
+      if ((ereignis.key === "Enter" || ereignis.key === " ") && ziel instanceof Element && ziel.matches("[data-mjeti-hap]")) {
+        ereignis.preventDefault();
+        this.#blattOeffnen(ziel.dataset.mjetiHap);
+      }
+    });
     document.addEventListener("click", (ereignis) => {
       const ziel = ereignis.target;
       if (!(ziel instanceof Element)) return;
+      const mjeti = ziel.closest("[data-mjeti-hap]");
+      if (mjeti) { this.#blattOeffnen(mjeti.dataset.mjetiHap); return; }
+      if (ziel.closest("[data-mjeti-mbyll]")) { this.#blattSchliessen(); return; }
       if (ziel.closest("[data-porosi]")) {
         this.#kauf("knopf");
         this.#porosia(true);

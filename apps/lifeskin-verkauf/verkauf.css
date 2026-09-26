@@ -57,10 +57,163 @@ a { color: var(--green); }
 .hero__pse { color: var(--muted); font-size: 1rem; }
 .hero__pse b { color: var(--ink); font-weight: 600; }
 
-.seti {
-  margin-top: 22px; background: var(--white); border: 1px solid #cbd8cc;
-  border-radius: var(--radius); padding: 20px; box-shadow: 0 10px 28px #183d2914;
+/* DIE PRODUKTE (26.09.): wie auf der Landingpage (landing.css .mjeti) -
+   eigene Karten direkt auf der Seite, keine Karte in der Karte. Bilder
+   zum Wischen, Antippen oeffnet das Blatt #mjetiblatt. */
+.mjetet { margin-top: 24px; }
+.mjetet__kopf { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 0 2px 10px; }
+.mjetet__kopf h2 { font-size: 1.08rem; margin: 0; letter-spacing: -.01em; }
+.mjetet__kopf span { font-size: .78rem; color: var(--muted); white-space: nowrap; }
+.mjetet__rrjeta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+/* Ein Mittel: nicht ueber die ganze Breite aufgeblasen. */
+.mjetet__rrjeta--nje { grid-template-columns: minmax(0, 250px); justify-content: center; }
+/* Drei und mehr: eine Reihe zum Wischen, die naechste Karte lugt hervor. */
+.mjetet__rrjeta--shume {
+  display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+  margin-inline: -20px; padding: 2px 20px 6px; scroll-padding-inline: 20px;
 }
+.mjetet__rrjeta--shume::-webkit-scrollbar { display: none; }
+.mjetet__rrjeta--shume .mjeti { flex: 0 0 calc((100% - 10px) / 2.25); scroll-snap-align: start; }
+
+.mjeti {
+  display: flex; flex-direction: column; min-width: 0; cursor: pointer;
+  background: var(--white); border: 1px solid #d6ddd8; border-radius: 16px; overflow: hidden;
+  box-shadow: 0 2px 10px #1017180d; -webkit-tap-highlight-color: transparent;
+}
+.mjeti:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.mjeti:active { transform: scale(.99); }
+.mjeti__pamjet { position: relative; }
+.mjeti__bahn {
+  display: flex; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain;
+  scrollbar-width: none; background: #f0eee6; aspect-ratio: 1 / 1;
+}
+.mjeti__bahn::-webkit-scrollbar { display: none; }
+.mjeti__bahn--pret { background: linear-gradient(180deg, #f0eee6, #e8ebe4); }
+.mjeti__pamje { flex: 0 0 100%; margin: 0; scroll-snap-align: start; }
+.mjeti__pamje img { width: 100%; height: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
+.mjeti__pamje--zeichnung, .mjetiblatt__pamje--zeichnung { display: flex; align-items: center; justify-content: center; }
+.mjeti__zeichnung { width: 38%; height: auto; max-height: 70%; }
+.mjeti__pika { display: flex; align-items: center; justify-content: center; gap: 4px; height: 12px; pointer-events: none; }
+.mjeti__pika i { width: 5px; height: 5px; border-radius: 99px; background: #d6ddd8; transition: width .18s ease, background .18s ease; }
+.mjeti__pika i[data-an] { width: 13px; background: var(--green); }
+.mjeti__nr {
+  position: absolute; left: 8px; top: 8px; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 99px;
+  background: #154e45eb; color: #fff; font-size: 11px; font-weight: 700; line-height: 22px; text-align: center; pointer-events: none;
+}
+.mjeti__shenje {
+  position: absolute; right: 8px; top: 8px; width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; pointer-events: none;
+  background: #f7faf9eb; color: var(--ink); box-shadow: 0 1px 4px #10171824;
+}
+.mjeti__shenje svg { width: 15px; height: 15px; display: block; }
+.mjeti__fjale { padding: 2px 11px 11px; }
+.mjeti__emer {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 6px;
+  font-size: 14px; font-weight: 700; letter-spacing: .01em; white-space: nowrap;
+}
+.mjeti__sasi { flex: none; font-size: 11px; font-weight: 500; color: var(--muted); }
+.mjeti__nen { margin-top: 1px; font-size: 12px; line-height: 1.3; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mjeti__koha {
+  display: inline-flex; align-items: center; gap: 5px; margin-top: 7px; padding: 3px 8px; border-radius: 99px;
+  background: var(--green-soft); color: var(--green); font-size: 11.5px; font-weight: 700; white-space: nowrap;
+}
+.mjeti__kohaikona { width: 12px; height: 12px; flex: none; }
+@media (max-width: 350px) {
+  .mjeti__emer { font-size: 13px; }
+  .mjeti__sasi { font-size: 10.5px; }
+  .mjeti__fjale { padding: 2px 9px 10px; }
+}
+
+/* DAS BLATT eines Mittels - wie auf der Landingpage, ohne Kaufknopf. */
+.mjetiblatt { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; justify-content: flex-end; }
+.mjetiblatt[hidden] { display: none; }
+.mjetiblatt__prapa { position: absolute; inset: 0; background: #141c1a73; animation: mjetiblatt-prapa .2s ease both; }
+.mjetiblatt__flete {
+  position: relative; width: 100%; max-width: 560px; margin: 0 auto; max-height: calc(100vh - 36px);
+  display: flex; flex-direction: column; background: var(--white); border-radius: 20px 20px 0 0;
+  box-shadow: 0 -10px 30px #0000002e; animation: mjetiblatt-rein .24s cubic-bezier(.2, .8, .2, 1) both;
+}
+@supports (height: 100svh) { .mjetiblatt__flete { max-height: calc(100svh - 36px); } }
+.mjetiblatt__kok { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 20px 10px; }
+.mjetiblatt__kok h2 { margin: 0; font-size: 1.15rem; }
+.mjetiblatt__mbyll {
+  flex: none; width: 36px; height: 36px; border: 0; border-radius: 50%;
+  background: var(--green-soft); color: var(--ink); font-size: 1rem; line-height: 1;
+}
+.mjetiblatt__trup {
+  overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  padding: 0 20px calc(24px + env(safe-area-inset-bottom));
+}
+.mjetiblatt__pamjet { position: relative; }
+.mjetiblatt__bahn {
+  display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain;
+  scrollbar-width: none; margin-inline: -20px; padding-inline: 20px; scroll-padding-inline: 20px;
+}
+.mjetiblatt__bahn::-webkit-scrollbar { display: none; }
+.mjetiblatt__pamje {
+  flex: 0 0 100%; margin: 0; scroll-snap-align: center; border-radius: 16px; overflow: hidden;
+  background: #f0eee6; aspect-ratio: 1 / 1;
+}
+.mjetiblatt__bahn:has(> :nth-child(2)) .mjetiblatt__pamje { flex-basis: 86%; }
+.mjetiblatt__pamje img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mjetiblatt__pamjet .mjeti__pika { margin-top: 6px; }
+.mjetiblatt__nen { margin-top: 12px; font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--green); }
+.mjetiblatt__kurz { margin-top: 4px; font-size: 1rem; line-height: 1.45; }
+.mjetiblatt__synim {
+  margin-top: 14px; padding: 12px 14px; border-left: 3px solid var(--green); border-radius: 0 12px 12px 0;
+  background: var(--green-soft); font-size: .92rem; font-weight: 600; line-height: 1.45; color: var(--green);
+}
+.mjetiblatt__pjese { margin-top: 20px; }
+.mjetiblatt__pjese h3 { font-size: .75rem; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.mjetiblatt__lista { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 7px; }
+.mjetiblatt__lista li { position: relative; padding-left: 24px; font-size: .92rem; line-height: 1.45; }
+.mjetiblatt__lista li::before {
+  content: ""; position: absolute; left: 1px; top: 5px; width: 12px; height: 7px;
+  border-left: 2px solid var(--green); border-bottom: 2px solid var(--green); transform: rotate(-45deg);
+}
+.mjetiblatt__perdorimi { margin: 8px 0 0; display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.mjetiblatt__perdorimi > div { display: grid; grid-template-columns: 44px 1fr; gap: 10px; padding: 10px 12px; background: var(--white); }
+.mjetiblatt__perdorimi dt { font-size: .8rem; font-weight: 700; color: var(--green); }
+.mjetiblatt__perdorimi dd { margin: 0; font-size: .9rem; line-height: 1.4; }
+.mjetiblatt__kujdes { margin-top: 10px; font-size: .85rem; line-height: 1.45; color: var(--muted); }
+@keyframes mjetiblatt-rein { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes mjetiblatt-prapa { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .mjetiblatt__flete, .mjetiblatt__prapa { animation: none; } }
+
+/* DIE PAKET-KARTE: Kopf, Liste mit Haken, Preis, Knopf, drei Zusagen. */
+.seti {
+  margin-top: 18px; background: var(--white); border: 1px solid var(--line);
+  border-radius: 20px; padding: 18px 16px 16px; box-shadow: 0 6px 24px #1017180f;
+}
+.seti__kopf { display: flex; gap: 11px; align-items: center; }
+.seti__ikona {
+  flex: none; width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+  background: var(--green-soft); color: var(--green);
+}
+.seti__ikona svg { width: 22px; height: 22px; }
+.seti__kopf p { display: flex; flex-direction: column; min-width: 0; }
+.seti__kopf b { font-size: 1.02rem; line-height: 1.3; }
+.seti__kopf span { font-size: .8rem; color: var(--muted); line-height: 1.35; }
+.seti__lista { list-style: none; margin: 12px 0 0; padding: 0; }
+.seti__lista li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; font-size: .9rem; line-height: 1.4; border-top: 1px solid #eef1ed; }
+.seti__lista li:first-child { border-top: 0; }
+.seti__lista small { display: block; font-size: .8rem; color: var(--muted); }
+.seti__haken { flex: none; width: 18px; height: 18px; margin-top: 1px; color: var(--green); }
+#t-cmimi1 {
+  align-items: flex-end; margin: 10px 0 14px; padding: 14px 0 0; background: none; border-radius: 0;
+  border-top: 1px dashed var(--line);
+}
+#t-cmimi1 p { line-height: 1.35; font-size: .8rem; white-space: nowrap; }
+/* Oben: die Zusagen als Reihe mit Zeichen, ohne Rahmen. */
+.pergjigjet.pergjigjet--rresht {
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 6px; background: none; border: 0; border-radius: 0;
+}
+.pergjigjet.pergjigjet--rresht div { background: none; padding: 0; justify-items: center; text-align: center; gap: 3px; }
+.pergjigjet.pergjigjet--rresht b { display: block; font-size: .75rem; color: var(--ink); line-height: 1.25; }
+.pergjigjet.pergjigjet--rresht b::before { content: none; }
+.pergjigjet.pergjigjet--rresht span { font-size: .72rem; line-height: 1.3; }
+.pergjigjet__ikona { width: 22px; height: 22px; color: var(--green); }
+/* Die Vorlage unter /120992 (index.html) behaelt die alte Produktreihe. */
 .seti__produkte {
   display: flex; justify-content: center; align-items: flex-end; gap: 22px;
   background: linear-gradient(180deg, #edf2ed, #e3ebe3); border-radius: 14px; padding: 18px 12px 12px;

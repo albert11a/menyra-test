@@ -47,17 +47,29 @@
         <p class="shqetesimi" id="t-shqetesimi" hidden></p>
         <p class="kontroll" id="t-kontroll" hidden>Dr. Gashi rekomandon edhe një kontroll të afërt te mjeku për këtë pamje.</p>
 
+        <!-- DIE PRODUKTE WIE AUF DER LANDINGPAGE: eigene Karten direkt auf
+             der Seite (keine Karte in der Karte), mehrere Bilder zum
+             Wischen. Antippen oeffnet das Blatt #mjetiblatt - ohne
+             Kaufknopf, gekauft wird das ganze Paket darunter. -->
+        <div class="mjetet" id="t-mjetet" hidden>
+          <div class="mjetet__kopf"><h2>Produktet tuaja</h2><span>Prekni për detaje</span></div>
+          <div class="mjetet__rrjeta" id="t-setiprodukte"></div>
+        </div>
+
         <div class="seti" id="t-seti" hidden>
-          <div class="seti__produkte" id="t-setiprodukte" aria-hidden="true"></div>
+          <div class="seti__kopf">
+            <span class="seti__ikona" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5L12 12l8.5-4.5M12 12v9"/></svg></span>
+            <p><b id="t-setititull"></b><span id="t-setinen"></span></p>
+          </div>
+          <ul class="seti__lista" id="t-setilista"></ul>
           <!-- Nur in der neuen Fassung (?ndjekja=1): was genau im Paket
-               liegt, mit Menge - fuer Screenreader die einzige Liste der
-               Produkte, die Bilder darueber sind aria-hidden. -->
+               liegt, mit Menge. -->
           <p class="seti__pako" id="t-pako" hidden></p>
-          <ul class="seti__cipa" id="t-seticipa"></ul>
+          <ul class="seti__cipa" id="t-seticipa" hidden></ul>
           <a class="seti__ndjekja" id="t-ndjekjalink" href="#ndjekja" hidden></a>
           <div class="cmimi" id="t-cmimi1">
             <div><strong data-cmimi></strong><span data-dita></span></div>
-            <p>Transport falas<br><b>Paguani te dera</b></p>
+            <p>Pa abonim<br>Pagesë e vetme</p>
           </div>
           <button class="knopf" type="button" data-porosi id="hero-knopf"></button>
           <div class="pergjigjet" id="t-siguria"></div>
@@ -264,6 +276,19 @@
   <div class="leiste" id="leiste" data-pfad="Leiste unten" data-an="nein" hidden>
     <button class="knopf" type="button" data-porosi></button>
     <p>Paguani te dera · Transport falas · <span id="t-leistegaranci"></span></p>
+  </div>
+
+  <!-- DAS PRODUKT IM EINZELNEN - wie das Blatt der Landingpage, aber ohne
+       "Shto": gekauft wird hier das Paket, nicht ein einzelnes Mittel. -->
+  <div class="mjetiblatt" id="mjetiblatt" role="dialog" aria-modal="true" aria-labelledby="mjetiblatt-titull" hidden>
+    <div class="mjetiblatt__prapa" data-mjeti-mbyll></div>
+    <div class="mjetiblatt__flete">
+      <div class="mjetiblatt__kok">
+        <h2 id="mjetiblatt-titull"></h2>
+        <button type="button" class="mjetiblatt__mbyll" data-mjeti-mbyll aria-label="Mbyll">✕</button>
+      </div>
+      <div class="mjetiblatt__trup" id="mjetiblatt-trup"></div>
+    </div>
   </div>
 
   <div class="porosia" id="porosia" data-pfad="Bestellschirm" hidden>
