@@ -35,6 +35,7 @@ import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 import { renderRaste, renderRastiEditor, renderBefundRasteAuswahl, rasteListe } from "./heart-lifeskin-raste.js";
 import { klappAttr, alsKlapp } from "./heart-lifeskin-klapp.js";
 import { entwurfLesen, promptGemacht } from "./heart-lifeskin-entwurf.js";
+import { mitFingerabdruck } from "./heart-morph.js";
 import { renderMedien, renderMediumEditor, renderMedienReaktionen, renderBefundMedienAuswahl } from "./heart-lifeskin-medien.js";
 import { vorschauKasten } from "./heart-lifeskin-vorschau.js";
 import { ohneSeite, ohneSeiteTief } from "../../shared/lifeskin-ohne-seite.js";
@@ -100,20 +101,39 @@ function euro(betrag) {
   return `${Math.round(Number(betrag) || 0)} €`;
 }
 
+// DATUM UND UHRZEIT AUS EINEM EINZIGEN FORMATIERER JE ART.
+//
+// toLocaleTimeString() mit Optionen baut bei JEDEM Aufruf einen neuen
+// Formatierer - und jede Zeile der Fallliste ruft es zweimal. Gemessen am
+// 25.09. (lauf-heart.mjs, Telefon-Tempo): uber eine Sekunde je Neuzeichnen
+// nur fuer Datum und Uhrzeit. Ein Formatierer je Art, und was einmal
+// formatiert ist, wird nicht noch einmal formatiert.
+const ZEITFORM = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Belgrade" });
+const DATUMFORM = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", timeZone: "Europe/Belgrade" });
+const SEKUNDENFORM = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Europe/Belgrade" });
+const FORM_MERKER_MAX = 20000;
+
+function merkeFormat(merker, form, iso) {
+  const schluessel = String(iso ?? "");
+  const gemerkt = merker.get(schluessel);
+  if (gemerkt !== undefined) return gemerkt;
+  const zeit = Date.parse(schluessel);
+  const text = Number.isFinite(zeit) ? form.format(new Date(zeit)) : "";
+  if (merker.size >= FORM_MERKER_MAX) merker.clear();
+  merker.set(schluessel, text);
+  return text;
+}
+
+const uhrzeitMerker = new Map();
+const datumMerker = new Map();
+const sekundenMerker = new Map();
+
 function uhrzeit(iso) {
-  const zeit = Date.parse(iso);
-  if (!Number.isFinite(zeit)) return "";
-  return new Date(zeit).toLocaleTimeString("de-DE", {
-    hour: "2-digit", minute: "2-digit", timeZone: "Europe/Belgrade"
-  });
+  return merkeFormat(uhrzeitMerker, ZEITFORM, iso);
 }
 
 function datumKurz(iso) {
-  const zeit = Date.parse(iso);
-  if (!Number.isFinite(zeit)) return "";
-  return new Date(zeit).toLocaleDateString("de-DE", {
-    day: "2-digit", month: "2-digit", timeZone: "Europe/Belgrade"
-  });
+  return merkeFormat(datumMerker, DATUMFORM, iso);
 }
 
 // Eine Kachel. Der Vergleichswert steht darunter, nicht daneben - auf dem
@@ -1108,6 +1128,44 @@ function renderAuswahlLeiste(fach, ids, auswahl, loeschGefragt) {
       </div>`;
 }
 
+// EINE ZEILE DER FALLLISTE - und sie wird nur gebaut, wenn sich an ihr
+// etwas geaendert hat.
+//
+// Die Liste "Offen" wird nie abgeschnitten und bei jeder Live-Zahl neu
+// gezeichnet; jede Zeile neu zusammenzusetzen kostete auf einem Telefon
+// ueber eine Sekunde (lauf-heart.mjs, 25.09.). Eine Sitzung, ihr Bericht
+// und ihr Vorschaubild werden im Zustand nie von innen geaendert, sondern
+// ersetzt - ist alles dasselbe Objekt wie beim letzten Mal, ist es auch
+// dieselbe Zeile.
+const zeilenMerker = new WeakMap();
+
+function fallKnopf(s, bericht, fach, bild, waehlen, an) {
+  const prompt = promptGemacht(s.id);
+  const gemerkt = zeilenMerker.get(s);
+  if (gemerkt && gemerkt.bericht === bericht && gemerkt.bild === bild && gemerkt.fach === fach
+    && gemerkt.waehlen === waehlen && gemerkt.an === an && gemerkt.prompt === prompt) {
+    return gemerkt.html;
+  }
+  // Ohne Leerzeichen - so bleibt neben der Nummer Platz fuer den Namen.
+  const tel = String(s.phone || s.address?.telefon || "").replace(/\s+/g, "");
+  const html = mitFingerabdruck(`
+    <button type="button" class="heart-lifeskin-fall${waehlen ? " heart-lifeskin-fall--waehlen" : ""}${an ? " heart-lifeskin-fall--an" : ""}"
+            data-action="${waehlen ? "lifeskin-auswahl-fall" : "lifeskin-sitzung"}" data-id="${escapeHtml(s.id)}"${waehlen ? ` aria-pressed="${an}"` : ""}>
+      ${vorschauFeld(s, bild)}
+      <span class="heart-lifeskin-fall__leib">
+        <span class="heart-lifeskin-fall__kopf">
+          <b>${escapeHtml(s.name || "—")}</b>
+          ${s.code ? `<span class="heart-lifeskin-code">${escapeHtml(s.code)}</span>` : ""}
+          ${tel ? `<span class="heart-lifeskin-fall__tel">${escapeHtml(tel)}</span>` : ""}
+        </span>
+        ${fallZeile(s, fach, bericht)}
+      </span>
+      ${waehlen ? `<span class="heart-lifeskin-fall__wahl" aria-hidden="true">${an ? renderHeartIcon("check", "heart-lifeskin-fall__haken") : ""}</span>` : ""}
+    </button>`);
+  zeilenMerker.set(s, { bericht, bild, fach, waehlen, an, prompt, html });
+  return html;
+}
+
 function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle", fuss = "",
   vorschau = {}, { auswahl = null, auswahlLoeschen = false } = {}) {
   // ALLE WEGE IN EINER LISTE. Ein Fall ist ein Fall, egal ueber welchen
@@ -1137,25 +1195,7 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
 
   const waehlen = Array.isArray(auswahl);
   const gewaehltSet = new Set(waehlen ? auswahl : []);
-  const zeilen = gewaehlt.map((s) => {
-    const an = gewaehltSet.has(s.id);
-    // Ohne Leerzeichen - so bleibt neben der Nummer Platz fuer den Namen.
-    const tel = String(s.phone || s.address?.telefon || "").replace(/\s+/g, "");
-    return `
-    <button type="button" class="heart-lifeskin-fall${waehlen ? " heart-lifeskin-fall--waehlen" : ""}${an ? " heart-lifeskin-fall--an" : ""}"
-            data-action="${waehlen ? "lifeskin-auswahl-fall" : "lifeskin-sitzung"}" data-id="${escapeHtml(s.id)}"${waehlen ? ` aria-pressed="${an}"` : ""}>
-      ${vorschauFeld(s, vorschau[s.id])}
-      <span class="heart-lifeskin-fall__leib">
-        <span class="heart-lifeskin-fall__kopf">
-          <b>${escapeHtml(s.name || "—")}</b>
-          ${s.code ? `<span class="heart-lifeskin-code">${escapeHtml(s.code)}</span>` : ""}
-          ${tel ? `<span class="heart-lifeskin-fall__tel">${escapeHtml(tel)}</span>` : ""}
-        </span>
-        ${fallZeile(s, fach, berichte[s.id])}
-      </span>
-      ${waehlen ? `<span class="heart-lifeskin-fall__wahl" aria-hidden="true">${an ? renderHeartIcon("check", "heart-lifeskin-fall__haken") : ""}</span>` : ""}
-    </button>`;
-  }).join("");
+  const zeilen = gewaehlt.map((s) => fallKnopf(s, berichte[s.id], fach, vorschau[s.id], waehlen, gewaehltSet.has(s.id))).join("");
 
   const leerFach = {
     alle: "Nichts offen — alles beantwortet, zurueckgelegt oder abgehakt.",
@@ -1171,7 +1211,9 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
   // Kopf das Zahnrad fuer die Auswahl.
   const zahnrad = `<button type="button" class="heart-faelle-zahnrad${waehlen ? " heart-faelle-zahnrad--an" : ""}"
       data-action="lifeskin-auswahl" aria-label="Fälle auswählen" aria-pressed="${waehlen}">${renderHeartIcon("zahnrad", "heart-faelle-zahnrad__icon")}</button>`;
-  return alsKlapp(`
+  // Der Abdruck gehoert an die Karte selbst, nicht an die Chips davor:
+  // Aendert sich nichts an der Liste, bleibt die ganze Karte stehen.
+  const karte = alsKlapp(`
     ${chips}
     <section class="heart-lifeskin-block heart-faelle">
       <h3 class="heart-lifeskin-block__titel">${escapeHtml(titel)}</h3>
@@ -1181,6 +1223,8 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
         : `<p class="heart-lifeskin-leer">${escapeHtml(leerFach)}</p>`}
       ${mehr > 0 ? `<p class="heart-lifeskin-leer">+ ${mehr} ältere in diesem Fach.</p>` : ""}
     </section>`, "faelle", { zahl, ton: neu ? "offen" : "", kopfExtra: zahnrad });
+  const beginn = karte.indexOf("<details");
+  return beginn > 0 ? karte.slice(0, beginn) + mitFingerabdruck(karte.slice(beginn)) : mitFingerabdruck(karte);
 }
 
 // Die eigenen Laeufe. Sie stehen ganz unten und in keiner Zahl darueber.
@@ -1312,11 +1356,9 @@ export function klickpfadInteressen(pfad) {
 }
 
 function uhrzeitSekunden(iso) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
   // Dieselbe Zeitzone wie ueberall in Heart (Kosovo) - sonst stand im
   // Klickpfad 22:53, im Kopf darueber 00:53.
-  return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Europe/Belgrade" });
+  return merkeFormat(sekundenMerker, SEKUNDENFORM, iso);
 }
 
 // DIE TEXTE DER THERAPIESEITE - jedes Feld einzeln aenderbar.
@@ -2217,6 +2259,14 @@ export function befundWeg(sitzung, art, gemerkt = "") {
 function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({}), zustand = {}) {
   const stand = bericht?.status || "wartet";
   const fertig = stand !== "wartet" && stand !== "vorschau";
+  // WAEHREND GESPEICHERT WIRD, SAGEN ES DIE KNOEPFE - aus dem Zustand
+  // gezeichnet, nicht nachtraeglich ins DOM geschrieben: Das ging beim
+  // naechsten Zeichnen verloren, und man tippte zwei-, dreimal.
+  const speichert = zustand?.berichtStatus === "laeuft";
+  const speichernAttr = speichert ? ' disabled aria-busy="true"' : "";
+  const knopf = String(zustand?.berichtKnopf || "");
+  const speichernText = (art, standard) => (knopf === art && speichert ? "Wird gespeichert …"
+    : knopf === `${art}:ok` ? "✓ Gespeichert" : standard);
   const gewaehlt = new Map(
     (bericht?.produkte || []).map((p) => [String(p.id), ohneSeite(String(p.satz || ""))])
   );
@@ -2440,20 +2490,20 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({}), 
         <label class="heart-befund__geprueft"><input type="checkbox" data-raport-reviewed${raport.aerztlichGeprueft ? " checked" : ""} />
           <span>Dr. Violeta Gashi hat diesen Befund ärztlich geprüft.</span></label>
         <button type="button" class="heart-befund__knopf heart-befund__knopf--haupt"
-                data-action="lifeskin-bericht-freigeben" data-id="${escapeHtml(sitzung.id)}">
-          ${fertig ? "Änderungen freigeben"
-            : (["trup", "pytje"].includes(typVon(sitzung)) ? "Antwort freigeben" : "Befund freigeben")}
+                data-action="lifeskin-bericht-freigeben" data-id="${escapeHtml(sitzung.id)}"${speichernAttr}>
+          ${speichernText("freigeben", fertig ? "Änderungen freigeben"
+            : (["trup", "pytje"].includes(typVon(sitzung)) ? "Antwort freigeben" : "Befund freigeben"))}
         </button>
         ${fertig ? `<button type="button" class="heart-befund__knopf heart-befund__knopf--leise"
-                data-action="lifeskin-bericht-vorschau" data-id="${escapeHtml(sitzung.id)}">Nur für uns (Vorschau)</button>` : `
+                data-action="lifeskin-bericht-vorschau" data-id="${escapeHtml(sitzung.id)}"${speichernAttr}>${speichernText("vorschau", "Nur für uns (Vorschau)")}</button>` : `
         <!-- BEREIT: alles speichern, der Patient sieht noch nichts - in der
              Fallliste steht danach "Bereit", der Fall wartet nur noch aufs
              Freigeben. -->
         <div class="heart-befund__zwei">
           <button type="button" class="heart-befund__knopf heart-befund__knopf--bereit${bericht?.bereit === true && stand === "vorschau" ? " heart-befund__knopf--bereit-an" : ""}"
-                  data-action="lifeskin-bericht-bereit" data-id="${escapeHtml(sitzung.id)}">${bericht?.bereit === true && stand === "vorschau" ? "✓ Bereit" : "Bereit"}</button>
+                  data-action="lifeskin-bericht-bereit" data-id="${escapeHtml(sitzung.id)}"${speichernAttr}>${speichernText("bereit", bericht?.bereit === true && stand === "vorschau" ? "✓ Bereit" : "Bereit")}</button>
           <button type="button" class="heart-befund__knopf heart-befund__knopf--leise"
-                  data-action="lifeskin-bericht-vorschau" data-id="${escapeHtml(sitzung.id)}">Nur für uns</button>
+                  data-action="lifeskin-bericht-vorschau" data-id="${escapeHtml(sitzung.id)}"${speichernAttr}>${speichernText("vorschau", "Nur für uns")}</button>
         </div>`}
         ${stand !== "wartet" ? `<a class="heart-befund__textlink" href="/terapia/${escapeHtml(sitzung.id)}?${stand === "vorschau" ? "vorschau=1&amp;" : ""}still=1" target="_blank" rel="noopener">
           ${stand === "vorschau" ? "Vorschau ansehen" : "Therapieseite ansehen"} ${renderHeartIcon("externalLink", "heart-befund__linkicon")}<small>ohne Statistik</small></a>` : ""}

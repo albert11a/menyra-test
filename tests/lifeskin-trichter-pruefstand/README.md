@@ -18,6 +18,28 @@ reden mit dem Netz. Sie werden von Hand gestartet, wenn jemand fragt.
 | `lauf-kompat.mjs` | Ab welchem Browser laeuft der Trichter - und ab welchem bleibt der Bildschirm leer? (statisch, ohne Browser) |
 | `lauf-e2e.mjs` | Kommt jemand vom Scan bis zur ersten Frage? |
 | `lauf-bytes.mjs` | Was laedt der erste Bildschirm herunter, bevor jemand getippt hat? |
+| `lauf-wege.mjs` | ALLE Wege von A bis Z (25.09.): Scan, Foto, Trup/Pytje, gesperrte Kamera in Instagram/Facebook, Telefonkamera, zaehe Leitung, Zurueck-Taste, Warteseite → Therapie. Mit Kamera-Attrappe (echtes Gesicht) und Firestore im Speicher. |
+| `lauf-heart.mjs` | Heart mit einigen tausend Faellen, Telefon-Tempo: Laden, Akte oeffnen (Springen?), Live-Zahl, Live-Reihe richtig?, zweiter Start. Braucht den lokalen Emulator (siehe unten). |
+| `lauf-morph.mjs` | Das Abgleichen von Heart (heart-morph.js) liefert dasselbe wie innerHTML - im Browser geprueft. |
+
+Hilfsdateien: `kamera-attrappe.mjs` (Gesichtsvideo fuer die erfundene Kamera),
+`dist-server.mjs` (liefert den gebauten Stand `dist/` wie Vercel aus),
+`heart-emulator-seed.mjs` (legt Lifeskin-Faelle im lokalen Emulator an).
+
+### Heart gegen den lokalen Emulator
+
+Nichts davon beruehrt die echte Datenbank: Heart laeuft mit
+`?firebase-emulator=1` gegen den Emulator (Projekt `mnyra-local`), und die
+Skripte weigern sich, ohne `FIRESTORE_EMULATOR_HOST=127.0.0.1:8080` zu laufen.
+
+    node node_modules/firebase-tools/lib/bin/firebase.js emulators:start --only firestore,auth --project mnyra-local
+    npm run emulators:seed
+    FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 node tests/lifeskin-trichter-pruefstand/heart-emulator-seed.mjs 4000
+    node scripts/local-dev-server.mjs
+    FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 node tests/lifeskin-trichter-pruefstand/lauf-heart.mjs
+
+`CPU=4` (Standard) bremst die CPU vierfach, so rechnet ein Mittelklasse-Handy;
+`PROFIL=1` schreibt je Schritt die teuersten Funktionen dazu.
 
 Die Geraeteliste steht in `geraete.mjs` - eine Zeile je Geraet, Engine und
 App-Fenster.

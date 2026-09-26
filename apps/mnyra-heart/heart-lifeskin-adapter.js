@@ -87,6 +87,17 @@ export { TRICHTER_STUFEN };
 export function horcheLive(beiAenderung, { fensterMs = LIVE_FENSTER_MS * 2 } = {}) {
   let abmelden;
   let generation = 0;
+  // Unveraenderte Sitzungen kommen als DASSELBE Objekt zurueck - auch nach
+  // dem Neuaufsetzen der Abfrage alle drei Minuten. Daran erkennt Heart,
+  // dass ihre Zeile nicht neu gezeichnet werden muss.
+  const bekannt = new Map();
+  const alsSitzung = (d, roh) => {
+    const alt = bekannt.get(d.id);
+    if (alt && alt.roh === roh) return alt.sitzung;
+    const sitzung = normalisiere(d.id, d.data());
+    bekannt.set(d.id, { roh, sitzung });
+    return sitzung;
+  };
   const starten = () => {
     const lauf = ++generation;
     abmelden?.();
@@ -101,10 +112,16 @@ export function horcheLive(beiAenderung, { fensterMs = LIVE_FENSTER_MS * 2 } = {
     let zuletzt = "";
     abmelden = onSnapshot(abfrage, (snapshot) => {
       if (lauf !== generation) return;
-      const stand = JSON.stringify(snapshot.docs.map((d) => [d.id, ohnePfad(d.data())]));
+      const roh = snapshot.docs.map((d) => JSON.stringify(ohnePfad(d.data())));
+      const stand = snapshot.docs.map((d, i) => `${d.id}:${roh[i]}`).join("\n");
       if (stand === zuletzt) return;
       zuletzt = stand;
-      beiAenderung(snapshot.docs.map((d) => normalisiere(d.id, d.data())));
+      const sitzungen = snapshot.docs.map((d, i) => alsSitzung(d, roh[i]));
+      // Nur behalten, was noch im Fenster steht - sonst waechst die Mappe
+      // ueber den Tag.
+      const jetztDa = new Set(snapshot.docs.map((d) => d.id));
+      for (const id of bekannt.keys()) if (!jetztDa.has(id)) bekannt.delete(id);
+      beiAenderung(sitzungen);
     }, (fehler) => {
       globalThis.console?.warn?.("[heart] Live-Ansicht nicht verfuegbar:", fehler?.message);
       if (lauf === generation) beiAenderung(null);
@@ -114,6 +131,32 @@ export function horcheLive(beiAenderung, { fensterMs = LIVE_FENSTER_MS * 2 } = {
   // Keep the listener bounded by time, without silently dropping person 301.
   const timer = globalThis.setInterval(starten, LIVE_FENSTER_MS);
   return () => { generation += 1; abmelden?.(); globalThis.clearInterval(timer); };
+}
+
+// NUR DAS NACHHOLEN, WAS SICH SEIT DEM LETZTEN LADEN GEAENDERT HAT.
+//
+// Der Knopf "Aktualisieren" lud jedes Mal ALLE Sitzungen, Berichte,
+// Produkte und Medien - bei ein paar tausend Sitzungen auf dem Telefon
+// zwanzig Sekunden und mehr (gemessen am 25.09., lauf-heart.mjs). Jeder
+// Schreibvorgang des Trichters und der Befundseite setzt updatedAt; was
+// seit dem letzten Laden geschrieben wurde, steht damit in einer kleinen
+// Abfrage. Berichte tragen kein updatedAt und sind klein: sie kommen ganz.
+//
+// Gibt es mehr Aenderungen, als eine Abfrage liefert, ist das kein
+// Nachholen mehr - dann gibt es null, und der Aufrufer laedt alles.
+export async function ladeLifeskinSeit(seit) {
+  const [sitzungsDocs, berichtDocs] = await Promise.all([
+    getDocs(query(collection(db, "lifeskin", TENANT, "sessions"),
+      where("updatedAt", ">=", String(seit || "")), orderBy("updatedAt", "desc"), limit(SITZUNG_GRENZE))),
+    ladeSammlung(["lifeskin", TENANT, "reports"], false)
+  ]);
+  if (sitzungsDocs.docs.length >= SITZUNG_GRENZE) return null;
+  const berichte = {};
+  for (const d of berichtDocs) berichte[d.id] = { id: d.id, ...(d.data() || {}) };
+  return {
+    sitzungen: sitzungsDocs.docs.map((d) => normalisiere(d.id, d.data())),
+    berichte
+  };
 }
 
 export async function ladeLifeskin({ ausSpeicher = false } = {}) {
@@ -461,6 +504,17 @@ export async function speichereProdukt(produkt) {
 // "?vorschau=1" dahinter. So wird geprueft, was er wirklich zu sehen
 // bekommt, und nicht eine Nachbildung davon; und keine Zahl bewegt sich,
 // weil die Seite in der Vorschau nichts zaehlt.
+// Einen einzelnen Bericht nachlesen - nach dem Freigeben, Markieren oder
+// Versenden. Vorher lud Heart danach ALLES neu (Sitzungen, Berichte,
+// Produkte, Medien): bei ein paar tausend Sitzungen Sekunden, in denen die
+// Seite stand und danach sprang.
+export async function ladeBericht(sitzungId) {
+  const kennung = String(sitzungId || "").trim();
+  if (!kennung) return null;
+  const schnappschuss = await getDoc(doc(db, "lifeskin", TENANT, "reports", kennung));
+  return schnappschuss.exists() ? { id: schnappschuss.id, ...(schnappschuss.data() || {}) } : null;
+}
+
 export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport, texte, ohneBild = false, raste = [], klientet = [], nurStaff = false, bereit = false }) {
   if (!sitzungId) throw new Error("Bericht ohne Kennung");
   await setDoc(doc(db, "lifeskin", TENANT, "reports", sitzungId), {

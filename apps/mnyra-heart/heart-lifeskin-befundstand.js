@@ -43,11 +43,41 @@ export function befundStandAuffrischen(wurzel = document) {
 // Textfelder so hoch wie ihr Text: kein Scrollen IM Feld, Teile lassen
 // sich auf dem Telefon markieren und kopieren. Zugeklappte Felder haben
 // keine Hoehe - sie folgen beim Aufklappen (heart-events.js, toggle).
+//
+// NUR, WAS SICH GEAENDERT HAT, UND IN ZWEI SCHRITTEN.
+//
+// Das lief nach JEDEM Zeichnen ueber jedes Feld des Bogens, und zwar im
+// Wechsel lesen-schreiben-lesen: Jedes Feld zwang den Browser, die ganze
+// Seite neu zu vermessen. Gemessen am 25.09. (lauf-heart.mjs): gut eine
+// halbe Sekunde beim Oeffnen einer Akte. Und weil jedes Feld dafuer kurz
+// auf "auto" schrumpfte, konnte die Seite kurz kuerzer werden als die
+// Stelle, an der man stand - der Browser schob sie nach oben: der Sprung.
+//
+// Jetzt: nur Felder, deren Text oder Breite sich seit dem letzten Mal
+// geaendert hat; alle auf einmal schrumpfen, alle auf einmal messen, alle
+// auf einmal setzen - und die Scrollstelle bleibt, wo sie war.
+const vermessen = new WeakMap();
+
 export function befundFelderAnpassen(wurzel = document) {
-  for (const feld of wurzel?.querySelectorAll?.(".heart-befund textarea:not([hidden]):not([data-fest])") || []) {
-    if (!feld.offsetParent) continue;
-    feld.style.height = "auto";
-    feld.style.height = `${feld.scrollHeight + 2}px`;
+  const felder = [...(wurzel?.querySelectorAll?.(".heart-befund textarea:not([hidden]):not([data-fest])") || [])]
+    .filter((feld) => feld.offsetParent);
+  const noetig = [];
+  const staende = [];
+  for (const feld of felder) {
+    const stand = `${feld.clientWidth}|${feld.value}`;
+    if (vermessen.get(feld) === stand) continue;
+    noetig.push(feld);
+    staende.push(stand);
   }
+  if (!noetig.length) return;
+  const x = globalThis.scrollX || 0;
+  const y = globalThis.scrollY || 0;
+  for (const feld of noetig) feld.style.height = "auto";
+  const hoehen = noetig.map((feld) => feld.scrollHeight);
+  noetig.forEach((feld, i) => {
+    feld.style.height = `${hoehen[i] + 2}px`;
+    vermessen.set(feld, staende[i]);
+  });
+  if (typeof globalThis.scrollTo === "function" && ((globalThis.scrollY || 0) !== y)) globalThis.scrollTo(x, y);
 }
 

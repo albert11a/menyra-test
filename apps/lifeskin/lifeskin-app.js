@@ -270,13 +270,21 @@ const AUFNAHME_FRIST_MS = 40000;
 
 // WIE LANGE DER RING OHNE FORTSCHRITT STEHEN DARF, BEVOR GEHOLFEN WIRD.
 //
-// Liegen schon Bilder vor, wird nach 25 Sekunden ohne neuen Strich das
+// Liegen schon Bilder vor, wird nach 15 Sekunden ohne neuen Strich das
 // Blatt mit "Vazhdo kështu" geoeffnet - die Kamera laeuft weiter, nichts
 // geht verloren. Frueher stand hier nur der harte Abbruch nach 45
 // Sekunden: Kamera aus, Fehler, alle Bilder weg, alles von vorn. Den
 // gibt es weiter, aber nur noch, wenn es gar nichts zu retten gibt.
-const STILLSTAND_HILFE_MS = 25000;
-const STILLSTAND_ABBRUCH_MS = 45000;
+//
+// 15 UND 30 STATT 25 UND 45 - GEMESSEN AM 25.09. im Pruefstand
+// (tests/lifeskin-trichter-pruefstand/lauf-wege.mjs, A1 und A9): Wer den
+// Kopf nicht drehen kann, stand mit 25 Sekunden 34 Sekunden vor der
+// Kamera, bis das Blatt von selbst aufging - der Hinweis nennt den
+// Ausloeser schon nach 12. Und ohne erkanntes Gesicht kam der Ausweg
+// (noch einmal oder Foto mit der Telefonkamera) erst nach 50 Sekunden.
+// Beides ist laenger, als jemand in einem App-Fenster wartet.
+const STILLSTAND_HILFE_MS = 15000;
+const STILLSTAND_ABBRUCH_MS = 30000;
 
 // Wie viele Bilder hintereinander die Erkennung mit einem Fehler beenden
 // darf, bevor der Weg ohne Netz uebernimmt. Bei 25 Messungen je Sekunde

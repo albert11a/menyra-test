@@ -1226,8 +1226,13 @@ export function bestellungenImZeitraum(sitzungen, zeitraum) {
 }
 
 export function aktualisiereLifeskinSitzungen(zustand, aenderungen) {
+  // Ein neues Objekt nur, wo sich wirklich etwas aendert: An der Identitaet
+  // einer Sitzung erkennt die Fallliste, dass ihre Zeile gleich bleibt.
   const alle = entdopple([...(zustand.sitzungen || []), ...(zustand.tests || []), ...aenderungen])
-    .map((s) => ({ ...s, bestelltAt: s.bestelltAt || zustand.berichte?.[s.id]?.bestelltAt || "" }));
+    .map((s) => {
+      const bestelltAt = s.bestelltAt || zustand.berichte?.[s.id]?.bestelltAt || "";
+      return s.bestelltAt === bestelltAt ? s : { ...s, bestelltAt };
+    });
   const { echte: sitzungen, tests } = teileTests(alle, zustand.berichte);
   sitzungen.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   tests.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));

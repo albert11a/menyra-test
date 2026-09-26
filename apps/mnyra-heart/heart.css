@@ -6482,3 +6482,3458 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 .heart-kachelklapp { margin: 0; }
 .heart-kachelklapp .heart-lifeskin-kacheln { border-radius: 10px; }
 .heart-lifeskin-chips:has(+ .heart-kachelklapp:not([open])) { display: flex; }
+
+/* ============================================================
+   DIE SCHUBLADE MIT DREI EINTRAEGEN (25.09.)
+   Lifeskin allein oben, alles andere unter "Mnyra" zum Aufklappen,
+   darunter die Einrichtung. Die Unterpunkte sind kleiner und eingerueckt:
+   Man sieht auf einen Blick, was dazugehoert.
+   ============================================================ */
+.heart-nav-gruppe {
+  display: grid;
+  gap: 6px;
+}
+
+.heart-nav-gruppe__kopf {
+  width: 100%;
+}
+
+.heart-nav-gruppe__pfeil {
+  margin-left: auto;
+  display: inline-flex;
+  color: var(--heart-text-muted);
+  transition: transform 160ms ease;
+}
+
+.heart-nav-gruppe__pfeil .heart-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.heart-nav-gruppe--offen .heart-nav-gruppe__pfeil {
+  transform: rotate(180deg);
+}
+
+/* In einem Mnyra-Bereich, aber die Gruppe ist zu: Der Kopf zeigt, wo man ist. */
+.heart-nav-link--hier {
+  border-color: rgba(225, 29, 72, 0.45);
+}
+
+.heart-nav-gruppe__inhalt {
+  display: grid;
+  gap: 6px;
+  padding-left: 14px;
+  border-left: 2px solid var(--heart-border);
+  margin-left: 18px;
+}
+
+.heart-nav-gruppe__inhalt[hidden] {
+  display: none;
+}
+
+.heart-nav-link--unter {
+  min-height: 42px;
+  padding: 5px 10px;
+  border-radius: 13px;
+}
+
+.heart-nav-link--unter .heart-nav-link__icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+}
+
+.heart-nav-link--unter .heart-nav-link__hint {
+  display: none;
+}
+
+.heart-nav-link--unter .heart-nav-link__label {
+  font-size: 0.88rem;
+}
+
+/* TAG ODER NACHT - zwei Haelften eines Schalters. */
+.heart-theme-wahl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  margin: 10px 0 8px;
+  border-radius: 14px;
+  background: var(--heart-surface-soft);
+  border: 1px solid var(--heart-border);
+}
+
+.heart-theme-wahl__knopf {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--heart-text-muted);
+  font-weight: 800;
+}
+
+.heart-theme-wahl__knopf--an {
+  background: var(--heart-surface);
+  color: var(--heart-text);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+}
+
+.heart-theme-wahl__icon {
+  width: 17px;
+  height: 17px;
+}
+
+/* ============================================================
+   DER KNOPF REAGIERT, SOBALD DER FINGER DRAUF IST (25.09.)
+   Gedrueckt wird er sichtbar kleiner - vorher tat sich bis zur Antwort
+   nichts, und man tippte ein zweites Mal. "Aktualisieren" dreht sich,
+   solange geladen wird (heart.js, refresh).
+   ============================================================ */
+button,
+[data-action],
+[data-nav-key] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.heart-icon-button,
+.heart-topbar-back,
+.heart-nav-link,
+.heart-drawer-action,
+.heart-lifeskin-fall,
+.heart-befund__knopf,
+.heart-theme-wahl__knopf,
+.heart-lifeskin-chip,
+.heart-button {
+  transition: transform 90ms ease, opacity 90ms ease;
+}
+
+.heart-icon-button:active,
+.heart-topbar-back:active,
+.heart-drawer-action:active,
+.heart-befund__knopf:active,
+.heart-theme-wahl__knopf:active,
+.heart-button:active {
+  transform: scale(0.94);
+}
+
+.heart-nav-link:active,
+.heart-lifeskin-fall:active,
+.heart-lifeskin-chip:active {
+  transform: scale(0.985);
+  opacity: 0.86;
+}
+
+.heart-icon-button--refresh .heart-icon {
+  transition: transform 200ms ease;
+}
+
+.heart-icon-button--dreht .heart-icon {
+  animation: heart-drehen 700ms linear infinite;
+}
+
+.heart-icon-button--dreht {
+  pointer-events: none;
+}
+
+.heart-befund__knopf[aria-busy="true"] {
+  opacity: 0.75;
+}
+
+@keyframes heart-drehen {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heart-icon-button--dreht .heart-icon {
+    animation-duration: 1600ms;
+  }
+}
+
+/* ===== TAG (erzeugt) =====
+   Der helle Farbsatz. Gewuenscht am 25.09.: "Tag und Nacht". Umgeschaltet
+   wird in der Schublade (heart-render.js, renderThemeWahl); gemerkt wird
+   es auf dem Geraet (localStorage "heart.theme"), angewandt als
+   data-heart-theme am <html>.
+
+   Oben die Farbwerte, die der Rest von Heart ueber var(--heart-...)
+   benutzt. Darunter JEDE Regel dieser Datei mit einer Farbangabe, in
+   derselben Reihenfolge wie oben und mit derselben Gewichtung
+   (:where zaehlt nicht mit): Feste dunkle Farben sind aus den Werten der
+   Nacht abgeleitet (Helligkeit gespiegelt, Toenung behalten), alles andere
+   steht unveraendert da - nur so gewinnt eine Sonderregel wie der gruene
+   Hauptknopf weiter gegen die allgemeine Regel davor. Was auf einem Foto,
+   einem Video oder einer Markenfarbe steht (WhatsApp, der rote Knopf, die
+   Live-Punkte), bleibt, wie es ist.
+
+   Wer oben eine Farbe aendert, erzeugt diesen Teil neu - er ist nicht von
+   Hand gepflegt (Werkzeug: scripts/heart-tag-farben.mjs). */
+html[data-heart-theme="tag"] {
+  color-scheme: light;
+  --heart-bg: #f4f4f2;
+  --heart-bg-soft: #ecece9;
+  --heart-surface: #ffffff;
+  --heart-surface-2: #f6f6f4;
+  --heart-surface-strong: #ffffff;
+  --heart-surface-soft: #f1f1ee;
+  --heart-border: rgba(24, 24, 27, 0.12);
+  --heart-border-strong: rgba(24, 24, 27, 0.22);
+  --heart-text: #18181b;
+  --heart-text-soft: #3f3f46;
+  --heart-text-muted: #66666e;
+  --heart-shadow: 0 14px 36px rgba(24, 24, 27, 0.08);
+}
+
+/* 172 Farbangaben uebersetzt */
+html:where([data-heart-theme="tag"]),
+:where(html[data-heart-theme="tag"]) body {
+  background: radial-gradient(circle at top left, rgba(35, 196, 131, 0.12), transparent 26%), radial-gradient(circle at top right, rgba(0, 0, 0, 0.092), transparent 30%), linear-gradient(180deg, #f6f6f6 0%, #fafafa 100%);
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) a {
+  color: inherit;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-auth-card {
+  background: var(--heart-surface-strong);
+  border: 1px solid var(--heart-border);
+  border-radius: 36px;
+  box-shadow: var(--heart-shadow);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-auth-card p {
+  color: var(--heart-text-soft);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-input-field span,
+:where(html[data-heart-theme="tag"]) .heart-detail-grid span {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-input-field input {
+  border-radius: 22px;
+  border: 1px solid var(--heart-border);
+  background: #eeeeef;
+  color: var(--heart-text);
+  outline: none;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-input-field input:focus {
+  border-color: rgba(35, 196, 131, 0.42);
+  box-shadow: 0 0 0 4px rgba(35, 196, 131, 0.12);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-sidebar {
+  background: rgba(6, 6, 8, 0.96);
+  border-right: 1px solid var(--heart-border);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-shell__overlay {
+  background: rgba(0, 0, 0, 0.72);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-sidebar__footer,
+:where(html[data-heart-theme="tag"]) .heart-section,
+:where(html[data-heart-theme="tag"]) .heart-note-card,
+:where(html[data-heart-theme="tag"]) .heart-list-card,
+:where(html[data-heart-theme="tag"]) .heart-connection-panel,
+:where(html[data-heart-theme="tag"]) .heart-empty-state,
+:where(html[data-heart-theme="tag"]) .heart-loading-block,
+:where(html[data-heart-theme="tag"]) .heart-error-block,
+:where(html[data-heart-theme="tag"]) .heart-toast {
+  background: var(--heart-surface);
+  border: 1px solid var(--heart-border);
+  box-shadow: var(--heart-shadow);
+  border-radius: var(--heart-radius-lg);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-sidebar__footer p,
+:where(html[data-heart-theme="tag"]) .heart-section p,
+:where(html[data-heart-theme="tag"]) .heart-stat-value span,
+:where(html[data-heart-theme="tag"]) .heart-note-card p,
+:where(html[data-heart-theme="tag"]) .heart-list-card p,
+:where(html[data-heart-theme="tag"]) .heart-connection-panel__note,
+:where(html[data-heart-theme="tag"]) .heart-connection-panel__detail,
+:where(html[data-heart-theme="tag"]) .heart-empty-state p,
+:where(html[data-heart-theme="tag"]) .heart-loading-block,
+:where(html[data-heart-theme="tag"]) .heart-error-block {
+  color: var(--heart-text-soft);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-nav-link {
+  border: 1px solid var(--heart-border);
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.023);
+  color: var(--heart-text-soft);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-nav-link--active {
+  background: var(--heart-accent);
+  color: #050505;
+  border-color: rgba(0, 0, 0, 0.44);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-topbar {
+  background: rgba(4, 4, 4, 0.92);
+  border-bottom: 1px solid var(--heart-border);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-eyebrow {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-connection-panel--critical,
+:where(html[data-heart-theme="tag"]) .heart-badge--danger,
+:where(html[data-heart-theme="tag"]) .heart-toast--danger {
+  border-color: rgba(255, 107, 87, 0.35);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-connection-panel--warning,
+:where(html[data-heart-theme="tag"]) .heart-badge--warning,
+:where(html[data-heart-theme="tag"]) .heart-toast--warning {
+  border-color: rgba(244, 185, 66, 0.35);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-connection-panel--success,
+:where(html[data-heart-theme="tag"]) .heart-badge--success,
+:where(html[data-heart-theme="tag"]) .heart-toast--success {
+  border-color: rgba(35, 196, 131, 0.35);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-button {
+  border-radius: 18px;
+  border: 1px solid transparent;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-button--primary {
+  background: var(--heart-accent);
+  color: #050505;
+  box-shadow: 0 14px 30px rgba(255, 255, 255, 0.08);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-button--secondary {
+  background: rgba(0, 0, 0, 0.046);
+  color: var(--heart-text);
+  border-color: var(--heart-border);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-detail-grid div {
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.034);
+  border: 1px solid var(--heart-border);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-empty-state__icon {
+  border-radius: 16px;
+  background: rgba(35, 196, 131, 0.14);
+  color: #baf5dd;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-badge {
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.11);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-badge--neutral {
+  background: rgba(127, 129, 124, 0.16);
+  color: #b0b3ad;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-badge--info {
+  background: rgba(75, 141, 255, 0.16);
+  color: #8bb7ff;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-badge--success {
+  background: rgba(35, 196, 131, 0.16);
+  color: #94f0c8;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-badge--warning {
+  background: rgba(244, 185, 66, 0.16);
+  color: #ffd67e;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-badge--danger {
+  background: rgba(255, 107, 87, 0.16);
+  color: #ffad9f;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-error-block {
+  color: #ffad9f;
+}
+
+html:where([data-heart-theme="tag"]),
+:where(html[data-heart-theme="tag"]) body {
+  background: var(--heart-bg) !important;
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) #heartApp {
+  background: var(--heart-bg);
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-auth-shell {
+  background: var(--heart-bg);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-auth-card {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-login-mark__word {
+  color: var(--heart-accent-2);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-login-mark__sub {
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-auth-help {
+  color: var(--heart-text-soft);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-login-heading__word {
+  color: var(--heart-accent-2);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-login-heading__sub {
+  color: #71717a;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-input-field {
+  background: #f5f5f6;
+  border: 1px solid #cdcdd0;
+  border-radius: 1.8rem;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-input-field span,
+:where(html[data-heart-theme="tag"]) .heart-detail-grid span,
+:where(html[data-heart-theme="tag"]) .heart-page-header__eyebrow,
+:where(html[data-heart-theme="tag"]) .heart-sidebar__label,
+:where(html[data-heart-theme="tag"]) .heart-nav-link__hint {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-input-field span {
+  color: #71717a;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-input-field input {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--heart-text);
+  box-shadow: none;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-input-field input:focus {
+  box-shadow: none;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-login-error {
+  color: #fb7185;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-loader-view {
+  background: var(--heart-bg);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-loader-spinner {
+  border-radius: 1rem;
+  border: 2px solid #3f3f46;
+  border-top-color: #ffffff;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-loader-label {
+  color: #71717a;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-shell {
+  background: var(--heart-bg);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-main-shell {
+  background: var(--heart-bg);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-topbar {
+  background: var(--heart-bg);
+  border-bottom: 1px solid rgba(205, 205, 208, 0.8);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-brand-lockup__eyebrow {
+  color: var(--heart-accent-2);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-brand-lockup__wordmark {
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-icon-button {
+  border-radius: 999px;
+  border: 1px solid var(--heart-border);
+  background: var(--heart-surface);
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-topbar-back {
+  border: 0;
+  border-radius: 999px;
+  background: var(--heart-accent-2, #e11d48);
+  color: #ffffff;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-page-header__title {
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-sidebar {
+  background: var(--heart-bg);
+  border-right: 0;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-sidebar__panel,
+:where(html[data-heart-theme="tag"]) .heart-sidebar__footer {
+  background: var(--heart-surface);
+  border: 1px solid var(--heart-border);
+  border-radius: 22px;
+  box-shadow: var(--heart-shadow);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-sidebar__identity strong {
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-sidebar__identity p {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-shell__overlay {
+  background: rgba(0, 0, 0, 0.82);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-nav-link {
+  background: var(--heart-surface-soft);
+  border: 1px solid var(--heart-border);
+  border-radius: 16px;
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-nav-link__icon {
+  border-radius: 12px;
+  background: #f0f0f1;
+  border: 1px solid var(--heart-border);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-nav-link__label {
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-nav-link--active {
+  background: rgba(230, 174, 193, 0.3);
+  border-color: rgba(225, 29, 72, 0.65);
+  color: var(--heart-text);
+  box-shadow: 0 18px 42px rgba(127, 29, 62, 0.24);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-nav-link--active .heart-nav-link__icon {
+  background: var(--heart-accent);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+@media (max-height: 860px) {
+:where(html[data-heart-theme="tag"]) .heart-nav-link {
+  border-radius: 14px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-nav-link__icon {
+  border-radius: 10px;
+}
+}
+
+:where(html[data-heart-theme="tag"]) .heart-drawer-action {
+  border-radius: 22px;
+  border: 1px solid var(--heart-border);
+  background: #f0f0f1;
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-button--primary {
+  background: var(--heart-accent);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-drawer-action--logout {
+  border-radius: 999px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-sidebar__footer {
+  border: 0;
+  border-top: 1px solid rgba(187, 187, 194, 0.74);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-sidebar__avatar {
+  border-radius: 999px;
+  background: rgba(236, 158, 180, 0.18);
+  border: 1px solid rgba(159, 18, 57, 0.42);
+  color: #161618;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-button {
+  border-radius: 20px;
+  box-shadow: none;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-button--secondary {
+  background: var(--heart-surface);
+  border-color: var(--heart-border);
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-section,
+:where(html[data-heart-theme="tag"]) .heart-note-card,
+:where(html[data-heart-theme="tag"]) .heart-list-card,
+:where(html[data-heart-theme="tag"]) .heart-connection-panel,
+:where(html[data-heart-theme="tag"]) .heart-empty-state,
+:where(html[data-heart-theme="tag"]) .heart-loading-block,
+:where(html[data-heart-theme="tag"]) .heart-error-block,
+:where(html[data-heart-theme="tag"]) .heart-toast {
+  background: var(--heart-surface);
+  border-color: var(--heart-border);
+  border-radius: 28px;
+  box-shadow: var(--heart-shadow);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-connection-panel,
+:where(html[data-heart-theme="tag"]) .heart-note-card,
+:where(html[data-heart-theme="tag"]) .heart-detail-grid div {
+  background: var(--heart-surface-soft);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-topbar h2,
+:where(html[data-heart-theme="tag"]) .heart-section h2 {
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-badge--neutral {
+  background: rgba(39, 39, 42, 0.95);
+  color: #d4d4d8;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-badge--info {
+  background: rgba(28, 78, 216, 0.2);
+  color: #bfdbfe;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-badge--success {
+  background: rgba(193, 235, 210, 0.34);
+  color: #bbf7d0;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-badge--warning {
+  background: rgba(239, 206, 169, 0.34);
+  color: #fde68a;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-badge--danger {
+  background: rgba(230, 174, 174, 0.38);
+  color: #fecaca;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-shell--standalone,
+:where(html[data-heart-theme="tag"]) .heart-shell--standalone .heart-main-shell {
+  background: var(--heart-bg);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-chip {
+  border-radius: 999px;
+  border: 1px solid var(--heart-border);
+  background: var(--heart-surface-soft);
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-setup-tool-card {
+  background: var(--heart-surface-soft);
+  border: 1px solid var(--heart-border);
+  border-radius: 24px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-setup-tool-card__icon {
+  border-radius: 14px;
+  background: rgba(236, 158, 180, 0.18);
+  color: #fda4af;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-setup-tool-card__body strong {
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-setup-tool-card__body p {
+  color: var(--heart-text-soft);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-social-view {
+  border: 1px solid var(--heart-border);
+  border-radius: 30px;
+  background: rgba(10, 10, 12, 0.76);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.066);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-social-view--leads,
+:where(html[data-heart-theme="tag"]) .heart-crm-social-view--staff {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-social-eyebrow {
+  color: #94f0c8;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-social-head h2 {
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-icon-button {
+  border: 1px solid var(--heart-border);
+  border-radius: 18px;
+  color: var(--heart-text-soft);
+  background: rgba(28, 28, 33, 0.9);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.072);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-scope-tab {
+  border: 1px solid var(--heart-border);
+  border-radius: 24px;
+  background: rgba(28, 28, 33, 0.82);
+  color: var(--heart-text-soft);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-scope-tab--active {
+  border-color: rgba(35, 196, 131, 0.38);
+  background: rgba(35, 196, 131, 0.16);
+  color: var(--heart-text);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.072);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-scope-tab span,
+:where(html[data-heart-theme="tag"]) .heart-crm-stat-box span,
+:where(html[data-heart-theme="tag"]) .heart-crm-section-foot span,
+:where(html[data-heart-theme="tag"]) .heart-crm-card-footer span {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-scope-tab strong {
+  color: inherit;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-control-row {
+  border: 1px solid var(--heart-border);
+  border-radius: 28px;
+  background: rgba(28, 28, 33, 0.82);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.054);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-control-row__icon {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-control-row input,
+:where(html[data-heart-theme="tag"]) .heart-crm-control-row select {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--heart-text-soft);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-control-row input::placeholder {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-card {
+  border: 1px solid var(--heart-border);
+  border-radius: 26px;
+  background: rgba(0, 0, 0, 0.063);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.066);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-card-title {
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-card-meta {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-card-subline {
+  color: var(--heart-text-soft);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-avatar {
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.092);
+  color: var(--heart-text-soft);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-avatar--large {
+  border-radius: 22px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-ad-thumb {
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.092);
+  color: var(--heart-text-soft);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-chip {
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-chip--neutral {
+  border-color: rgba(0, 0, 0, 0.088);
+  background: rgba(127, 129, 124, 0.16);
+  color: #b0b3ad;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-chip--info {
+  border-color: rgba(75, 141, 255, 0.2);
+  background: rgba(75, 141, 255, 0.14);
+  color: #8bb7ff;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-chip--success {
+  border-color: rgba(35, 196, 131, 0.26);
+  background: rgba(35, 196, 131, 0.16);
+  color: #94f0c8;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-chip--warning {
+  border-color: rgba(244, 185, 66, 0.24);
+  background: rgba(244, 185, 66, 0.16);
+  color: #ffd67e;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-chip--danger {
+  border-color: rgba(255, 107, 87, 0.28);
+  background: rgba(255, 107, 87, 0.16);
+  color: #ffad9f;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-chip--dark {
+  border-color: rgba(0, 0, 0, 0.374);
+  background: #000000;
+  color: #09090b;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-action-placeholder {
+  border: 1px solid var(--heart-border);
+  border-radius: 22px;
+  background: rgba(0, 0, 0, 0.081);
+  color: var(--heart-text-soft);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-action-placeholder--primary {
+  background: rgba(35, 196, 131, 0.12);
+  color: #94f0c8;
+  border-color: rgba(35, 196, 131, 0.22);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-action-placeholder--landing2 {
+  background: rgba(124, 108, 247, 0.14);
+  color: #c7bdff;
+  border-color: rgba(124, 108, 247, 0.28);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-card--button {
+  color: inherit;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-build-panel {
+  border: 1px solid var(--heart-border);
+  border-radius: 22px;
+  background: rgba(0, 0, 0, 0.052);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-build-panel p {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-build-grid span {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-build-grid strong {
+  color: var(--heart-text-soft);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-build-note--warning {
+  color: #ffd67e;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-stat-box {
+  border-radius: 22px;
+  border: 1px solid var(--heart-border);
+  background: rgba(0, 0, 0, 0.063);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-stat-box strong {
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-card-footer {
+  border-top: 1px solid var(--heart-border);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-footer-icon {
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.069);
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-state {
+  border: 1px solid var(--heart-border);
+  border-radius: 28px;
+  background: rgba(0, 0, 0, 0.046);
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-state--warning {
+  color: #ffd67e;
+  border-color: rgba(244, 185, 66, 0.24);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-state--danger {
+  color: #ffad9f;
+  border-color: rgba(255, 107, 87, 0.28);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-modal-field span {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-modal-field input,
+:where(html[data-heart-theme="tag"]) .heart-crm-modal-field textarea,
+:where(html[data-heart-theme="tag"]) .heart-crm-modal-field select {
+  border: 1px solid var(--heart-border);
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.063);
+  color: var(--heart-text-soft);
+  outline: 0;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-modal-field input[readonly],
+:where(html[data-heart-theme="tag"]) .heart-crm-modal-field input:disabled,
+:where(html[data-heart-theme="tag"]) .heart-crm-modal-field textarea:disabled,
+:where(html[data-heart-theme="tag"]) .heart-crm-modal-field select:disabled {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-modal-field--checkbox {
+  border: 1px solid var(--heart-border);
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.063);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-modal-field--checkbox input {
+  accent-color: #23c483;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-modal-fieldset {
+  border: 1px solid var(--heart-border);
+  border-radius: 24px;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-modal-fieldset > p,
+:where(html[data-heart-theme="tag"]) .heart-crm-location-head p {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-image-editor {
+  border: 1px solid var(--heart-border);
+  border-radius: 24px;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-location-row {
+  border: 1px solid rgba(35, 196, 131, 0.14);
+  border-radius: 20px;
+  background: rgba(35, 196, 131, 0.055);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-location-row__head span,
+:where(html[data-heart-theme="tag"]) .heart-crm-coords-label {
+  color: #94f0c8;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-modal-notice {
+  border: 1px solid rgba(244, 185, 66, 0.24);
+  border-radius: 22px;
+  background: rgba(244, 185, 66, 0.12);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-modal-notice strong {
+  color: #ffd67e;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-modal-notice span {
+  color: var(--heart-text-soft);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-inline-editor {
+  border: 1px solid var(--heart-border);
+  border-radius: 30px;
+  background: rgba(10, 10, 12, 0.82);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.066);
+}
+
+:where(html[data-heart-theme="tag"]) #locationPickerModal {
+  background: transparent;
+}
+
+:where(html[data-heart-theme="tag"]) #pickerOverlay {
+  background: rgba(212, 219, 237, 0.8);
+}
+
+:where(html[data-heart-theme="tag"]) #pickerPanel {
+  border-radius: 40px 40px 0 0;
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+:where(html[data-heart-theme="tag"]) #pickerPanel > div:first-child,
+:where(html[data-heart-theme="tag"]) #pickerPanel > div:last-child {
+  background: #ffffff;
+}
+
+:where(html[data-heart-theme="tag"]) #pickerPanel > div:first-child {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+:where(html[data-heart-theme="tag"]) #pickerPanel > div:first-child h3 {
+  color: #0f172a;
+}
+
+:where(html[data-heart-theme="tag"]) #pickerPanel > div:first-child p {
+  color: #94a3b8;
+}
+
+:where(html[data-heart-theme="tag"]) #closeLocationPickerBtn {
+  border: 0;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+:where(html[data-heart-theme="tag"]) #pickerPanel > div:nth-child(2) {
+  background: #e2e8f0;
+}
+
+:where(html[data-heart-theme="tag"]) #pickerMap {
+  background: #e2e8f0;
+}
+
+:where(html[data-heart-theme="tag"]) #pickerPanel > div:nth-child(2) > div:nth-child(2) > div:first-child {
+  border: 4px solid #ffffff;
+  border-radius: 999px;
+  background: #4f46e5;
+  color: #ffffff;
+  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+}
+
+:where(html[data-heart-theme="tag"]) #pickerPanel > div:nth-child(2) > div:nth-child(2) svg {
+  color: #ffffff;
+  fill: #4f46e5;
+}
+
+:where(html[data-heart-theme="tag"]) #pickerPanel > div:nth-child(2) > div:nth-child(2) > div:last-child {
+  border-radius: 999px;
+  background: #1e293b;
+  box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.1), 0 4px 6px -4px rgba(15, 23, 42, 0.1);
+}
+
+:where(html[data-heart-theme="tag"]) #pickerPanel > div:last-child {
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.1);
+}
+
+:where(html[data-heart-theme="tag"]) #confirmLocationBtn {
+  border: 0;
+  border-radius: 16px;
+  background: #0f172a;
+  color: #ffffff;
+  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+}
+
+:where(html[data-heart-theme="tag"]) #locationPickerModal .leaflet-marker-icon.custom-div-icon,
+:where(html[data-heart-theme="tag"]) .leaflet-marker-icon.custom-div-icon {
+  border: 0;
+  background: transparent;
+}
+
+:where(html[data-heart-theme="tag"]) #locationPickerModal .custom-div-icon > div > div:first-child,
+:where(html[data-heart-theme="tag"]) .leaflet-marker-icon.custom-div-icon > div > div:first-child {
+  border: 3px solid #ffffff;
+  border-radius: 14.4px;
+  background: #ffffff;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.03), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
+}
+
+:where(html[data-heart-theme="tag"]) #locationPickerModal .custom-div-icon img,
+:where(html[data-heart-theme="tag"]) .leaflet-marker-icon.custom-div-icon img {
+  border-radius: 11.2px;
+}
+
+:where(html[data-heart-theme="tag"]) #locationPickerModal .custom-div-icon > div > div:last-child,
+:where(html[data-heart-theme="tag"]) .leaflet-marker-icon.custom-div-icon > div > div:last-child {
+  border-right: 6px solid transparent;
+  border-left: 6px solid transparent;
+  border-top: 8px solid #ffffff;
+}
+
+@media (max-width: 560px) {
+:where(html[data-heart-theme="tag"]) .heart-crm-social-view {
+  border-radius: 26px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-social-view--leads,
+:where(html[data-heart-theme="tag"]) .heart-crm-social-view--staff {
+  border-radius: 0;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-icon-button {
+  border-radius: 16px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-card {
+  border-radius: 24px;
+}
+}
+
+:where(html[data-heart-theme="tag"]) .heart-setup-hero__note,
+:where(html[data-heart-theme="tag"]) .heart-setup-inline-note {
+  color: var(--heart-text-soft);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-toggle-row {
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-destination-intro {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-destination-place {
+  border: 1px solid var(--heart-border);
+  border-radius: var(--heart-radius-md);
+  background: var(--heart-surface-soft);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-destination-place__title {
+  color: var(--heart-text-soft);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lead-destination-summary {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lead-destination-group__title {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lead-destination-place {
+  border: 1px solid var(--heart-border);
+  border-radius: var(--heart-radius-md);
+  background: var(--heart-surface-soft);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lead-destination-place__name {
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lead-destination-place__pin svg {
+  color: var(--heart-warning);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lead-destination-place__meta {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-destination-media {
+  border: 1px solid var(--heart-border);
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-destination-media__label {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-destination-media__thumb {
+  border: 1px solid var(--heart-border);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.069);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-destination-media__thumb--empty {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-destination-media__thumb button {
+  border: 0;
+  border-radius: 999px;
+  background: rgba(212, 219, 237, 0.72);
+  color: #161618;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-dest-picker {
+  background: transparent;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-dest-picker__overlay {
+  background: rgba(15, 23, 42, 0.8);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-dest-picker__panel {
+  border-radius: 40px 40px 0 0;
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-dest-picker__head,
+:where(html[data-heart-theme="tag"]) .heart-dest-picker__foot {
+  background: #ffffff;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-dest-picker__head {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-dest-picker__head h3 {
+  color: #0f172a;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-dest-picker__head p {
+  color: #94a3b8;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-dest-picker__close {
+  border: 0;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-dest-picker__map-wrap {
+  background: #e2e8f0;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-dest-picker__map {
+  background: #e2e8f0;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-dest-picker__pin-head {
+  border: 4px solid #ffffff;
+  border-radius: 999px;
+  background: #4f46e5;
+  color: #ffffff;
+  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-dest-picker__pin-head svg {
+  color: #ffffff;
+  fill: #4f46e5;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-dest-picker__pin-stem {
+  border-radius: 999px;
+  background: #1e293b;
+  box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.1), 0 4px 6px -4px rgba(15, 23, 42, 0.1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-dest-picker__foot {
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-dest-picker__confirm {
+  border: 0;
+  border-radius: 16px;
+  background: #0f172a;
+  color: #ffffff;
+  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-warn {
+  border-radius: var(--heart-radius-md, 12px);
+  border: 1px solid rgba(217, 119, 6, 0.35);
+  background: rgba(242, 191, 132, 0.1);
+  color: var(--heart-text, inherit);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-tab {
+  border: 1px solid var(--heart-border, #e2e8f0);
+  border-radius: 999px;
+  background: var(--heart-surface, #fff);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-tab.is-active {
+  border-color: var(--heart-accent, #4f46e5);
+  color: var(--heart-accent, #4f46e5);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-card {
+  border: 1px solid var(--heart-border, #e2e8f0);
+  border-radius: 16px;
+  background: var(--heart-surface, #fff);
+  color: inherit;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-card:active {
+  background: var(--heart-surface-soft, #f8fafc);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-card__avatar {
+  border-radius: 999px;
+  background: var(--heart-surface-soft, #e2e8f0);
+  border: 1px solid var(--heart-border, #e2e8f0);
+  color: var(--heart-text-soft, #64748b);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-card__stats {
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-card__stat + .heart-landing-card__stat {
+  border-left: 1px solid rgba(0, 0, 0, 0.077);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-card__stat--yes b {
+  color: var(--heart-success, #059669);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-search__input {
+  border: 1px solid var(--heart-border, #e2e8f0);
+  border-radius: 14px;
+  background: var(--heart-surface, #fff);
+  color: var(--heart-text, inherit);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-search__input:focus {
+  outline: none;
+  border-color: var(--heart-accent-2, #e11d48);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-suggestions {
+  border: 1px solid var(--heart-border, #e2e8f0);
+  border-radius: 14px;
+  background: var(--heart-surface-strong, #fff);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-suggestion {
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: inherit;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-suggestion:active {
+  background: var(--heart-surface-soft, #f1f5f9);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-suggestions-note {
+  border-radius: 12px;
+  background: var(--heart-surface-soft, #f1f5f9);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-move {
+  border: 1px solid var(--heart-border, #e2e8f0);
+  border-radius: 999px;
+  background: none;
+  color: var(--heart-text-muted, #64748b);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-move--float {
+  background: var(--heart-surface, #ebebec);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-move--wait {
+  border-color: var(--heart-accent, #4f46e5);
+  color: var(--heart-accent, #4f46e5);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-next-remove {
+  border: 1px solid var(--heart-border, #e2e8f0);
+  border-radius: 999px;
+  background: none;
+  color: var(--heart-text-muted, #64748b);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-copy {
+  border: 1px solid var(--heart-border-strong, #cbd5e1);
+  border-radius: 12px;
+  background: var(--heart-surface-soft, #f8fafc);
+  color: inherit;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-reset-button {
+  border: 1px solid var(--heart-border-strong, #cbd5e1);
+  border-radius: 999px;
+  background: none;
+  color: var(--heart-text-muted, #64748b);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-archive-button {
+  border: 0;
+  border-radius: 999px;
+  background: var(--heart-accent-2, #e11d48);
+  color: #ffffff;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-kpi {
+  border: 1px solid var(--heart-border, #e2e8f0);
+  border-radius: 12px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-step__bar {
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.16);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-step__fill {
+  border-radius: 999px;
+  background: var(--heart-accent, #4f46e5);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-answer {
+  border: 1px solid var(--heart-border, #e2e8f0);
+  border-radius: 12px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-answer__po {
+  color: #059669;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-answer__jo {
+  color: #b91c1c;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-session {
+  border-radius: 10px;
+  background: rgba(100, 116, 139, 0.06);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-session__outcome--yes {
+  color: #059669;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-session__outcome--no {
+  color: #b91c1c;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-start__motivation {
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-start__avatar {
+  border-radius: 999px;
+  background: rgba(236, 158, 180, 0.18);
+  border: 1px solid rgba(159, 18, 57, 0.42);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-start__avatar-initials {
+  color: #161618;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-start__identity strong {
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-start__identity span {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-start__tile {
+  border: 1px solid var(--heart-border);
+  border-radius: 22px;
+  background: var(--heart-surface);
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-start__tile:active {
+  border-color: var(--heart-border-strong);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-start__tile-icon {
+  color: var(--heart-accent-2);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-start__tile-label {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-start__news-head {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-start__news-row {
+  border: 1px solid var(--heart-border);
+  border-radius: 20px;
+  background: var(--heart-surface);
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-start__news-row:active {
+  border-color: var(--heart-border-strong);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-start__news-row--yes {
+  border-color: rgba(35, 196, 131, 0.42);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-start__news-icon {
+  border-radius: 12px;
+  background: rgba(236, 158, 180, 0.16);
+  color: var(--heart-accent-2);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-start__news-row--yes .heart-start__news-icon {
+  background: rgba(35, 196, 131, 0.16);
+  color: #23c483;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-start__news-detail {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-start__news-time {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-start__news-empty {
+  border: 1px solid var(--heart-border);
+  border-radius: 20px;
+  background: var(--heart-surface);
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-start__skeleton {
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(198, 198, 201, 0.28) 25%, rgba(113, 113, 122, 0.42) 50%, rgba(198, 198, 201, 0.28) 75%);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-note {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-note--warn {
+  color: #fda4af;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-landing-skeleton__row {
+  border: 1px solid var(--heart-border);
+  border-radius: 20px;
+  background: var(--heart-surface);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-section,
+:where(html[data-heart-theme="tag"]) .heart-crm-social-view,
+:where(html[data-heart-theme="tag"]) .heart-crm-inline-editor,
+:where(html[data-heart-theme="tag"]) .heart-crm-modal-fieldset,
+:where(html[data-heart-theme="tag"]) .heart-sidebar__panel {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-modal__backdrop {
+  border: 0;
+  background: rgba(0, 0, 0, 0.74);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-modal__sheet {
+  background: #f4f4f4;
+  border: 1px solid rgba(205, 205, 208, 0.9);
+  border-radius: 30px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-inline-editor .heart-modal__header {
+  border-bottom: 1px solid var(--heart-border);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-crm-inline-editor .heart-modal__footer {
+  border-top: 1px solid var(--heart-border);
+  background: var(--heart-bg);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-kacheln {
+  background: var(--heart-border, #e6e6e3);
+  border: 1px solid var(--heart-border, #e6e6e3);
+  border-radius: 12px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-kachel {
+  background: var(--heart-surface, #fff);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-kachel__marke {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-kachel__zusatz {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-kachel__zusatz--auf {
+  color: #2e6e4e;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-kachel__zusatz--ab {
+  color: #b4531f;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-block {
+  background: var(--heart-surface, #fff);
+  border: 1px solid var(--heart-border, #e6e6e3);
+  border-radius: 12px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-block__titel {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-block__fuss {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-leer {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-stufe__balken {
+  background: #00796a;
+  border-radius: 0 3px 3px 0;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-stufe__anteil {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-stufe__verlust {
+  color: #b4531f;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-zeile {
+  border: 0;
+  border-bottom: 1px solid var(--heart-border, #e6e6e3);
+  background: transparent;
+  color: inherit;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-zeile:last-child {
+  border-bottom: 0;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-zeile__zeit {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-zeile__leib small {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-marke {
+  border-radius: 999px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-marke--neu {
+  background: #e4efe9;
+  color: #0e5c4a;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-marke--offen {
+  background: #f7e9df;
+  color: #a5501a;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-abdeckung {
+  border-bottom: 1px solid var(--heart-border, #e6e6e3);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-abdeckung:last-child {
+  border-bottom: 0;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-abdeckung__kopf small {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-abdeckung__stand {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-abdeckung--luecke .heart-lifeskin-abdeckung__stand {
+  color: #b4531f;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-abdeckung--luecke .heart-lifeskin-abdeckung__kopf b {
+  color: #b4531f;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-neu {
+  border: 1px dashed var(--heart-border, #cfd4d1);
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-verteilung__titel {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-vzeile__spur {
+  background: var(--heart-border, #eceeeb);
+  border-radius: 4px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-vzeile__spur > span {
+  background: #00796a;
+  border-radius: 4px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-detail__kopf small {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-detail__block h4 {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-foto {
+  border-radius: 10px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-messzeile {
+  border-bottom: 1px solid var(--heart-border, #e6e6e3);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-messzeile > div {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-view-error {
+  border: 1px solid var(--heart-danger, #c0392b);
+  border-radius: 12px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-view-error p {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-view-error pre {
+  border-radius: 8px;
+  background: var(--heart-surface-2, #f4f5f4);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-zurueck {
+  border: 0;
+  background: transparent;
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-detailkopf {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-foto img {
+  border-radius: 10px;
+  background: var(--heart-surface-2, #f4f5f4);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-foto figcaption {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-befunde li {
+  border-bottom: 1px solid var(--heart-line, #ccd0d1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-befunde li:last-child {
+  border-bottom: 0;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-resetknopf {
+  border: 1px solid var(--heart-line, #ccd0d1);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-resetknopf--scharf {
+  border-color: var(--heart-danger, #c0392b);
+  color: var(--heart-danger, #c0392b);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-reset--gefragt {
+  border: 1px solid var(--heart-danger, #c0392b);
+  border-radius: 12px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-reset--laeuft {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-warnung {
+  border: 1px solid var(--heart-danger, #c0392b);
+  border-radius: 10px;
+  color: var(--heart-danger, #c0392b);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-feld > span {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-feld > small {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-feld input,
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-feld textarea,
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-feld select {
+  color: inherit;
+  background: var(--heart-surface-2, #f4f5f4);
+  border: 1px solid var(--heart-line, #ccd0d1);
+  border-radius: 9px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-feld--reihe > span {
+  color: inherit;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-resetknopf--speichern {
+  border-color: var(--heart-accent, #2e6e4e);
+  color: var(--heart-accent, #2e6e4e);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fallnummer {
+  border: 1px solid var(--heart-line, #ccd0d1);
+  border-radius: 10px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fallnummer span {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-akte {
+  border: 1px solid var(--heart-line, #ccd0d1);
+  border-radius: 12px;
+  background: var(--heart-surface-2, #ecedee);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-akte__nummer span {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-live__halt::before {
+  border-radius: 2px;
+  background: var(--heart-line, #26292a);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-live__punkt {
+  border-radius: 50%;
+  border: 2px solid var(--heart-line, #26292a);
+  background: var(--heart-surface-2, #16191a);
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-live__name {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-live__halt--an .heart-live__punkt {
+  border-color: #17c46a;
+  background: #10331f;
+  color: #7df0ae;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-live__halt--an::before {
+  background: #17c46a55;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-live__halt--an .heart-live__name {
+  color: var(--heart-text, #fafafa);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-live__halt--warten .heart-live__punkt {
+  border-color: #f0b429;
+  background: #3a2a06;
+  color: #ffd979;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-live__halt--warten::before {
+  background: #f0b42955;
+}
+
+@media (prefers-reduced-motion: reduce) {
+:where(html[data-heart-theme="tag"]) .heart-live__halt--an .heart-live__punkt {
+  box-shadow: 0 0 0 3px rgba(23, 196, 106, 0.3);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-live__halt--warten .heart-live__punkt {
+  box-shadow: 0 0 0 3px rgba(240, 180, 41, 0.3);
+}
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-akte__tel span {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-akte__tel a {
+  color: inherit;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-akte__tel--ohne strong {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-kopier {
+  border: 1px solid var(--heart-line, #ccd0d1);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-kopier:hover {
+  color: var(--heart-text, #161618);
+  border-color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-akte__liste dt {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-anamnese dt {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-anamnese__sq {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-anamnese h4 span {
+  border-radius: 999px;
+  background: var(--heart-line, #e2e4e4);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fotos--reihe img {
+  border-radius: 12px;
+  background: var(--heart-surface-2, #f4f5f4);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fotos--reihe figcaption {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-weg__kopf small {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-weg__zeile {
+  border-bottom: 1px solid var(--heart-line, #ccd0d1);
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-weg__zeile:last-child {
+  border-bottom: 0;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-weg__punkt {
+  border-radius: 999px;
+  border: 1px solid var(--heart-border, #e6e6e3);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-weg__zeile--an {
+  color: var(--heart-text, #161618);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-weg__zeile--an .heart-lifeskin-weg__punkt {
+  background: #4ea87a;
+  border-color: transparent;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fuellung {
+  border-radius: 999px;
+  border: 1px solid var(--heart-border, #e6e6e3);
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fuellung[data-voll="ja"] {
+  border-color: transparent;
+  background: #e3efe6;
+  color: #17683f;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fuellung[data-fuellung-art="text"][data-voll="ja"] {
+  background: #e6ecf5;
+  color: #244b86;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-chips--bogen .heart-lifeskin-chip--an {
+  background: var(--heart-text, #fafafa);
+  color: var(--heart-bg, #0d0f10);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-textblock {
+  border: 1px solid var(--heart-line, #ccd0d1);
+  border-radius: 10px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-textblock__zahl {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-textblock__fuss {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-textfeld code {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-textfeld__standard {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-editor {
+  background: var(--heart-surface-2, #ecedee);
+  border: 1px solid var(--heart-line, #ccd0d1);
+  border-radius: 12px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-feld > span {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-eingabe {
+  background: var(--heart-surface, #f0f1f1);
+  border: 1px solid var(--heart-line, #ccd0d1);
+  border-radius: 8px;
+  color: inherit;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-eingabe:focus {
+  outline: 2px solid var(--heart-accent, #3FBF9B);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-pwahl {
+  border: 1px solid var(--heart-line, #ccd0d1);
+  border-radius: 10px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-pwahl--an {
+  border-color: var(--heart-accent, #3FBF9B);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-pwahl input[type="checkbox"] {
+  accent-color: var(--heart-accent, #3FBF9B);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-pwahl__leib small {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-pwahl__fuss small {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-pwahl__neu {
+  background: none;
+  border: 0;
+  color: var(--heart-accent, #3FBF9B);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-bogen__mehr > summary {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-vorlage {
+  border: 1px dashed var(--heart-line, #ccd0d1);
+  border-radius: 10px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-vorlage__knopf {
+  background: var(--heart-accent, #3FBF9B);
+  color: #08211B;
+  border-radius: 8px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-vorlage__stand {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-vorlage__stand[data-art="gut"] {
+  color: var(--heart-accent, #3FBF9B);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-vorlage__stand[data-art="fehler"] {
+  color: var(--heart-danger, #E2725B);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-vorlage__stand[data-art="hinweis"] {
+  color: var(--heart-warning, #f4b942);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-bogen {
+  border: 1px solid var(--heart-line, #ccd0d1);
+  border-radius: 10px;
+  background: var(--heart-surface, #f0f1f1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-bogen > summary::before {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-bogen__gruppe {
+  border-bottom: 1px solid var(--heart-line, #ccd0d1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-bogen__gruppe:last-child {
+  border-bottom: 0;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-einfuegen summary {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-mess__zeile > span {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-mess__zeile--iga > span {
+  color: inherit;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-mehr {
+  border-top: 1px solid var(--heart-line, #ccd0d1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-mehr summary {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-knopf {
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--heart-line, #ccd0d1);
+  border-radius: 8px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-knopf--stark {
+  background: var(--heart-accent, #3FBF9B);
+  border-color: transparent;
+  color: #08211B;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-editor__versand {
+  border-top: 1px solid var(--heart-line, #ccd0d1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-editor__versand > span {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-link {
+  color: var(--heart-accent, #3FBF9B);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-code {
+  color: var(--heart-accent, #2e6e4e);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-chip {
+  border: 1px solid var(--heart-line, #ccd0d1);
+  background: transparent;
+  color: var(--heart-muted, #7b807d);
+  border-radius: 999px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-chip--an {
+  background: var(--heart-surface-2, #f4f5f4);
+  color: var(--heart-text, #0d0f10);
+  border-color: transparent;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fall {
+  border: 0;
+  border-bottom: 1px solid var(--heart-border, #e6e6e3);
+  background: transparent;
+  color: inherit;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fall:last-child {
+  border-bottom: 0;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fall__bild {
+  border-radius: 15px;
+  background: var(--heart-surface-2, #f4f5f4);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fall__anzahl {
+  color: #fafafa;
+  background: rgba(0, 0, 0, 0.66);
+  border-top-left-radius: 8px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fall__geraet {
+  color: #fafafa;
+  background: rgba(0, 0, 0, 0.66);
+  border-bottom-right-radius: 8px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fall__geraet--android .heart-lifeskin-fall__os {
+  color: #3ddc84;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fall__buchstabe {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fall__alter,
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fall__fotos {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fall__zeit {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-pill {
+  border-radius: 999px;
+  border: 1px solid var(--heart-border, #e6e6e3);
+  color: var(--heart-muted, #7b807d);
+  background: transparent;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-pill--an {
+  border-color: transparent;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-pill--wa.heart-lifeskin-pill--an {
+  background: #e3efe6;
+  color: #17683f;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-pill--auf.heart-lifeskin-pill--an {
+  background: #e6ecf5;
+  color: #244b86;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-pill--kauf.heart-lifeskin-pill--an {
+  background: #f3e9d8;
+  color: #8a5a12;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-pill--paskanim.heart-lifeskin-pill--an {
+  background: var(--heart-surface-2, #16191a);
+  border-color: var(--heart-border, #e6e6e3);
+  color: var(--heart-text, #fafafa);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-block__fuss--warnung {
+  color: #d9a441;
+}
+
+@media (max-width: 380px) {
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fall__bild {
+  border-radius: 14px;
+}
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fotowahl img,
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fotoleer {
+  border-radius: 12px;
+  background: var(--heart-surface-2, #f4f5f4);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fotoleer {
+  color: var(--heart-muted, #7b807d);
+  border: 1px dashed var(--heart-line, #ccd0d1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fotowahl small {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fotoneu {
+  color: var(--heart-warning, #f4b942);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fotoknopf {
+  border: 1px solid var(--heart-line, #ccd0d1);
+  border-radius: 999px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-landingbild img {
+  border-radius: 12px;
+  background: var(--heart-surface-2, #f4f5f4);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-landingbild figcaption {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-landingbild__schieb {
+  border: 1px solid var(--heart-line, #26292a);
+  border-radius: 999px;
+  background: var(--heart-surface, #1b1e1f);
+  color: var(--heart-text, #e9ecea);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-landingbild__schieb:not([disabled]):active {
+  background: var(--heart-surface-2, #f4f5f4);
+  color: var(--heart-bg, #101314);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-landingbild__weg {
+  border-radius: 999px;
+  border: 1px solid var(--heart-line, #26292a);
+  background: var(--heart-surface, #1b1e1f);
+  color: var(--heart-text, #e9ecea);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-landingbild__neu {
+  border-radius: 12px;
+  border: 1px dashed var(--heart-line, #26292a);
+  background: none;
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-vorschau {
+  border-radius: 10px;
+  background: var(--heart-surface-2, #f4f5f4);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-vorschau span {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-leer code {
+  border-radius: 5px;
+  background: var(--heart-surface-2, #f4f5f4);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-zweig {
+  border: 1px solid var(--heart-line, #ccd0d1);
+  border-radius: 12px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-zweig__kopf span {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-zweig__fuss {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-art {
+  border: 1px solid var(--heart-line, #ccd0d1);
+  border-radius: 5px;
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-art--foto,
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-art--trup,
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-art--pytje {
+  border-color: var(--heart-border, #e6e6e3);
+  color: var(--heart-text, #161618);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fall__text {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-anliegen__text {
+  border-left: 2px solid var(--heart-accent, #2e6e4e);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-mehr > summary {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-mehr > summary:hover {
+  color: var(--heart-text, #161618);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-still__gruppe {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-pfad__titel {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-pfad__balken > div {
+  border-bottom: 1px solid var(--heart-line, #26292a);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-pfad__seite {
+  color: var(--heart-accent, #3FBF9B);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-pfad__zeile {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.056);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-pfad__zeile span:last-child {
+  color: var(--heart-muted, #9aa09c);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-pfad__zeit {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-pfad__zeile--wichtig b {
+  color: #17c46a;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-shitja {
+  border: 1px solid var(--heart-line, #ccd0d1);
+  border-radius: 12px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-shitja__karte {
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.036);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-shitja__karte > b {
+  color: var(--heart-muted, #9aa09c);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-klapp__kopf::before {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-klapp__zahl {
+  color: var(--heart-muted, #7b807d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-klapp__zahl--offen {
+  color: var(--heart-warning, #f4b942);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-rasti-hinweis {
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.045);
+  color: var(--heart-muted, #9aa09c);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-rasti-zeile {
+  border: 1px solid var(--heart-line, #ccd0d1);
+  border-radius: 10px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-rasti-bild {
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.072);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-rasti-bild i {
+  background: #000000a0;
+  color: #fff;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-rasti-leib small {
+  color: var(--heart-muted, #9aa09c);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-rasti-aus {
+  color: var(--heart-warning, #f4b942) !important;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-rasti-ort {
+  border-radius: 999px;
+  border: 1px solid var(--heart-line, #ccd0d1);
+  background: transparent;
+  color: var(--heart-muted, #9aa09c);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-rasti-ort--an {
+  background: #3fbf9b22;
+  border-color: #3fbf9b;
+  color: #7fe0c3;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-rasti-mini {
+  border-radius: 8px;
+  border: 1px solid var(--heart-line, #ccd0d1);
+  background: transparent;
+  color: inherit;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-rasti-fotofeld img,
+:where(html[data-heart-theme="tag"]) .heart-rasti-fotoleer {
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.072);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-rasti-fotoleer {
+  color: var(--heart-muted, #9aa09c);
+  border: 1px dashed var(--heart-line, #c0c4c5);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-rasti-fotowort {
+  color: var(--heart-muted, #9aa09c);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-rasti-platz__nr {
+  border-radius: 50%;
+  background: #3fbf9b22;
+  color: #7fe0c3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+:where(html[data-heart-theme="tag"]) .heart-klapp--blink:not([open]) {
+  border-color: #f4b942;
+}
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund .heart-lifeskin-eingabe {
+  border-radius: 12px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund .heart-lifeskin-feld > span {
+  color: var(--heart-text-soft, #c7c7c2);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__schritt {
+  border-top: 1px solid var(--heart-line, #ccd0d1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__titel {
+  color: var(--heart-text, #161618);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__nr {
+  border-radius: 50%;
+  background: #3fbf9b26;
+  color: #7fe0c3;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__hilfe {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__zwischen {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__knopf {
+  border-radius: 14px;
+  border: 1px solid var(--heart-line, #c3c7c9);
+  background: rgba(0, 0, 0, 0.059);
+  color: var(--heart-text, #161618);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__knopf--haupt {
+  background: #3fbf9b;
+  border-color: transparent;
+  color: #06231b;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund .heart-lifeskin-vorlage {
+  border: 0;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund .heart-lifeskin-pwahl {
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.027);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund .heart-lifeskin-pwahl--an {
+  background: #3fbf9b12;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__klapp,
+:where(html[data-heart-theme="tag"]) .heart-befund__rueckfall {
+  border: 1px solid var(--heart-line, #ccd0d1);
+  border-radius: 14px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__klapp > summary::before,
+:where(html[data-heart-theme="tag"]) .heart-befund__rueckfall > summary::before {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__klapp > summary small,
+:where(html[data-heart-theme="tag"]) .heart-befund__rueckfall > summary small {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__rueckfall > summary {
+  color: var(--heart-text-soft, #c7c7c2);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund .heart-shitja {
+  border: 0;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund .heart-shitja__karte {
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.036);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund .heart-shitja__karte > b {
+  color: var(--heart-text-soft, #c7c7c2);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__geprueft {
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.036);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__geprueft input {
+  accent-color: #3fbf9b;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__link {
+  border-radius: 12px;
+  border: 1px solid var(--heart-line, #c3c7c9);
+  background: transparent;
+  color: #7fe0c3;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund > summary.heart-befund__kopf::before {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv {
+  background: var(--tv-paper);
+  color: var(--tv-ink);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.134);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__marke {
+  color: var(--tv-green);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__leer {
+  color: var(--tv-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__hyrja {
+  color: var(--tv-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__hyrja b {
+  color: var(--tv-ink);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__kasten {
+  border-left: 3px solid var(--tv-green);
+  background: var(--tv-green-soft);
+  border-radius: 0 10px 10px 0;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__karte {
+  background: #fff;
+  border: 1px solid var(--tv-line);
+  border-radius: 12px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__karte div p {
+  color: var(--tv-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__pfeil {
+  color: var(--tv-orange);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__zgjidhja {
+  border-top: 1px dashed var(--tv-line);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__zgjidhja b,
+:where(html[data-heart-theme="tag"]) .heart-tv__produkt h6 {
+  color: var(--tv-green);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__produkt {
+  background: #fff;
+  border: 1px solid var(--tv-line);
+  border-radius: 12px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__produkt li::marker {
+  color: var(--tv-green);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__zeit > span {
+  border-radius: 50%;
+  border: 1px solid #cbd7c9;
+  background: #fff;
+  color: var(--tv-green);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__zeit p {
+  color: var(--tv-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__leise {
+  color: var(--tv-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__knopf {
+  border-radius: 999px;
+  background: var(--tv-orange);
+  color: #fff;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__wa {
+  background: #dcf8c6;
+  color: #111b21;
+  border-radius: 10px 10px 10px 2px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-akte {
+  border-radius: 16px;
+  background: var(--heart-surface-2, #ecedee);
+  border: 1px solid var(--heart-line, #ccd0d1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-akte__feld > span:first-child {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-akte__feld b {
+  color: var(--heart-text, #161618);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-akte__wert {
+  border-radius: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--heart-text, #161618);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-akte__wert i {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-akte__wert:active {
+  background: rgba(0, 0, 0, 0.09);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-akte__anrufen {
+  border-radius: 10px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-akte__leer {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-fall-karte {
+  border-radius: 16px;
+  background: var(--heart-surface-2, #ecedee);
+  border: 1px solid var(--heart-line, #ccd0d1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-fall-karte__kopf::after,
+:where(html[data-heart-theme="tag"]) .heart-befund__gruppenkopf::after {
+  border-right: 2px solid var(--heart-muted, #8f918d);
+  border-bottom: 2px solid var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-fall-karte__titel {
+  color: var(--heart-text, #161618);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-fall-karte__meta {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-fall-karte__leib {
+  border-top: 1px solid var(--heart-line, #ccd0d1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-stand {
+  border-radius: 50%;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-stand[data-stand="voll"] {
+  background: #23c48326;
+  color: #3fdc9c;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-stand[data-stand="fehlt"] {
+  background: #f4b94226;
+  color: #f4b942;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-fall-knopf {
+  border-radius: 14px;
+  border: 1px solid var(--heart-line, #c3c7c9);
+  background: rgba(0, 0, 0, 0.045);
+  color: var(--heart-text, #161618);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-fall-knopf small {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-fall-knopf--haupt {
+  background: #3fbf9b;
+  border-color: transparent;
+  color: #06231b;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-fall-knopf--haupt small {
+  color: #0b3d30;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-fall-knopf--wa {
+  background: #25d36622;
+  border-color: #25d36655;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-fall-knopf--scharf {
+  color: #ff8a78;
+  border-color: #ff6b5755;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-antworten__zeile {
+  border-bottom: 1px solid var(--heart-line, #ccd0d1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-antworten__zeile:last-child {
+  border-bottom: 0;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-antworten dt {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-antworten dd {
+  color: var(--heart-text, #161618);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-antworten dd small {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-schritte__zeile {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-schritte__zeile:not(:last-child)::after {
+  background: var(--heart-line, #e2e4e4);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-schritte__zeile--an:not(:last-child)::after {
+  background: #3fbf9b66;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-schritte__nr {
+  border-radius: 50%;
+  border: 2px solid var(--heart-line, #c3c7c9);
+  background: var(--heart-surface-2, #ecedee);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-schritte__zeile--an {
+  color: var(--heart-text, #f7f7f2);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-schritte__zeile--an .heart-schritte__nr {
+  background: #3fbf9b;
+  border-color: #3fbf9b;
+  color: #06231b;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-schritte__zeile--stopp .heart-schritte__nr {
+  border-color: #f4b942;
+  color: #f4b942;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-schritte__zeile em {
+  color: #f4b942;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-schritte__neben {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-pfad__kurz {
+  color: var(--heart-text-soft, #c7c7c2);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-pfad__wichtig span {
+  border-radius: 999px;
+  background: #3fbf9b1f;
+  color: #7fe0c3;
+}
+
+:where(html[data-heart-theme="tag"]) h6.heart-pfad__titel {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-pfad__balken i {
+  border-radius: 3px;
+  background: #3fbf9b;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-pfad__verlauf > summary {
+  color: var(--heart-text, #161618);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-pfad__besuch {
+  border-top: 1px solid var(--heart-line, #ccd0d1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-pfad__seite {
+  color: #7fe0c3;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-pfad__zeit {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-pfad__zeile--wichtig {
+  color: #7fe0c3;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__gruppe {
+  border-top: 1px solid var(--heart-line, #ccd0d1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__gruppentitel {
+  color: var(--heart-text, #161618);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__gruppentitel small {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__gruppenleib > .heart-befund__schritt:first-child {
+  border-top: 0;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__freigabe {
+  border-top: 1px solid var(--heart-line, #ccd0d1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__knopf--bereit {
+  border-color: #25d366;
+  color: #25d366;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__knopf--bereit-an {
+  background: #25d366;
+  color: #062b16;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-rasti-wahl__karte {
+  border-radius: 14px;
+  border: 2px solid var(--heart-line, #c3c7c9);
+  background: rgba(0, 0, 0, 0.027);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-rasti-wahl__karte input {
+  accent-color: #3fbf9b;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-rasti-wahl__karte:has(input:checked) {
+  border-color: #3fbf9b;
+  background: #3fbf9b14;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-rasti-wahl__bilder {
+  border-radius: 10px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-rasti-wahl__ohne {
+  color: var(--heart-muted, #8f918d);
+  background: rgba(0, 0, 0, 0.045);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-rasti-wahl__text small {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__zahl b {
+  color: var(--tv-green);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__stufe i {
+  border-radius: 4px;
+  background: var(--tv-line);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__stufe i.an {
+  background: var(--tv-green);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__stufe span {
+  color: var(--tv-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__zone,
+:where(html[data-heart-theme="tag"]) .heart-tv__param {
+  background: #fff;
+  border: 1px solid var(--tv-line);
+  border-radius: 12px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__zone h6,
+:where(html[data-heart-theme="tag"]) .heart-tv__param h6 {
+  color: var(--tv-green);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-fall .heart-befund.heart-lifeskin-editor {
+  border-radius: 16px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-fall .heart-befund > summary.heart-befund__kopf::after {
+  border-right: 2px solid var(--heart-muted, #8f918d);
+  border-bottom: 2px solid var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-tv__plakette {
+  border: 1px solid #77958a;
+  border-radius: 999px;
+  color: var(--tv-green);
+  background: #fff;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-akte__icon {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-pfad__icon {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-pfad__zeile--wichtig .heart-pfad__icon {
+  color: #7fe0c3;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-pfad__wichtig .heart-pfad__icon {
+  color: #7fe0c3;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-fall .heart-befund__geprueft {
+  color: var(--heart-text-soft, #c7c7c2);
+  background: none;
+  border: 0;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-fall .heart-befund__geprueft input {
+  accent-color: #3fbf9b;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__textlink {
+  color: #7fe0c3;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__textlink small {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__patient {
+  border-top: 1px solid var(--heart-line, #ccd0d1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__knopf--wa {
+  background: #25d366;
+  border-color: transparent;
+  color: #062b16;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__knopf--wa small {
+  color: #0b4a26;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__knopf--klein small {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__zwischen--icon .heart-befund__knopficon {
+  color: #25d366;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__wataste {
+  border-radius: 14px;
+  background: var(--heart-surface-2, #16191a);
+  border: 1px solid var(--heart-line, #34383a);
+  color: var(--heart-text, #f7f7f2);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__wataste:active {
+  background: #25d3661a;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__wataicon {
+  color: #25d366;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__wataste--kopie .heart-befund__wataicon {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__patient .heart-befund__wataste {
+  border-radius: 12px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__wataste--passt {
+  border-color: #25d366;
+  background: #25d36614;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-akte__mehr {
+  border-top: 1px solid var(--heart-line, #ccd0d1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-akte__mehrkopf {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-akte__mehrkopf::after {
+  border-right: 2px solid var(--heart-muted, #8f918d);
+  border-bottom: 2px solid var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle-zahnrad {
+  border-radius: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle-zahnrad:active {
+  background: rgba(0, 0, 0, 0.09);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle-zahnrad--an {
+  background: #3fbf9b26;
+  color: #7fe0c3;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-fall {
+  border-bottom-color: var(--heart-line, #ccd0d1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-fall__bild {
+  border-radius: 16px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-fall__kopf b {
+  color: var(--heart-text, #161618);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fall__tel {
+  color: var(--heart-text-soft, #c7c7c2);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-fall__fuss .heart-lifeskin-art {
+  border-radius: 999px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-pill {
+  border-color: var(--heart-line, #c3c7c9);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-pill--an {
+  border-color: transparent;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-pill--auf.heart-lifeskin-pill--an {
+  background: #5b8def2e;
+  color: #a9c4ff;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-pill--kasse.heart-lifeskin-pill--an {
+  background: #f4b9422e;
+  color: #f6cd7a;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fall__wahl {
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #0000004d;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fall--an .heart-lifeskin-fall__wahl {
+  background: #3fbf9b;
+  border-color: #3fbf9b;
+  color: #06231b;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle-wahl {
+  border-bottom: 1px solid var(--heart-line, #ccd0d1);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle-wahl__alle,
+:where(html[data-heart-theme="tag"]) .heart-faelle-wahl__fertig {
+  border: 0;
+  background: transparent;
+  color: #7fe0c3;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle-wahl__zahl {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle-wahl__taste {
+  border-radius: 14px;
+  border: 1px solid var(--heart-line, #c3c7c9);
+  background: rgba(0, 0, 0, 0.059);
+  color: var(--heart-text, #161618);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle-wahl__taste--scharf {
+  color: #ff8a80;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle-wahl__taste--frage {
+  background: #e5484d;
+  border-color: transparent;
+  color: #fff;
+}
+
+@media (max-width: 380px) {
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-fall__bild {
+  border-radius: 15px;
+}
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-pill,
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-art,
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-fall__zeit {
+  border-radius: 999px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-art {
+  border: 1px solid var(--heart-line, #bfc3c5);
+  background: rgba(0, 0, 0, 0.068);
+  color: var(--heart-text, #161618);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-fall__zeit {
+  border: 1px solid var(--heart-line, #c3c7c9);
+  background: transparent;
+  color: var(--heart-text-soft, #c7c7c2);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-fall__zeit {
+  color: var(--heart-muted, #8f918d);
+  background: transparent;
+  border-color: var(--heart-line, #c3c7c9);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-pill--prompt.heart-lifeskin-pill--an {
+  background: #3fbf9b2e;
+  color: #7fe0c3;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-pill--bereit.heart-lifeskin-pill--an {
+  background: #25d366;
+  color: #062b16;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-pill--frei.heart-lifeskin-pill--an {
+  background: #3fbf9b2e;
+  color: #7fe0c3;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-fotos--reihe .heart-lifeskin-foto--platz {
+  border-radius: 12px;
+  background: linear-gradient(100deg, rgba(0, 0, 0, 0.036) 30%, rgba(0, 0, 0, 0.09) 50%, rgba(0, 0, 0, 0.036) 70%);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-pill--wert.heart-lifeskin-pill--an {
+  background: #3fbf9b2e;
+  color: #7fe0c3;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-fall__zeiten > .heart-lifeskin-fall__zeit {
+  border-radius: 999px;
+  color: var(--heart-muted, #8f918d);
+  background: transparent;
+  border: 1px solid var(--heart-line, #c3c7c9);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-live__person {
+  border-radius: 999px;
+  border: 1px solid var(--heart-line, #c3c7c9);
+  background: rgba(0, 0, 0, 0.045);
+  color: var(--heart-text, #161618);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-live__person span {
+  color: #7fe0c3;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-live__person--anonym b {
+  color: var(--heart-text-soft, #c7c7c2);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__wataicon--viber {
+  color: #8f7ff5;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__knopf--viber {
+  background: #7360f2;
+  border-color: transparent;
+  color: #fff;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-befund__knopf--viber small {
+  color: #e6e1ff;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-medium__oeffnen {
+  border: 0;
+  border-radius: 12px;
+  background: #ffffff0d;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-medium__bild--leer {
+  background: rgba(0, 0, 0, 0.059);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-medium__art {
+  border-radius: 50%;
+  background: #0008;
+  color: #fff;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-medium__art svg {
+  fill: currentColor;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-medium__aus {
+  border-radius: 999px;
+  background: #000b;
+  color: #fff;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-medium__views {
+  background: linear-gradient(to top, #000a, transparent);
+  color: #fff;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-medium-editor__buehne {
+  border-radius: 14px;
+  background: #000;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-medium-editor__datei small {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-reaktion {
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.036);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-reaktion__bild {
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.059);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-reaktion__name small {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-reaktionen__titel {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-kommentar {
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.036);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-kommentar__bild {
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.059);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-kommentar__kopf span {
+  color: var(--heart-muted, #8f918d);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-kommentar__kopf em {
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.117);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-kommentar__weg {
+  color: #ff8c7a;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-kachelklapp .heart-lifeskin-kacheln {
+  border-radius: 10px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-nav-gruppe__pfeil {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-nav-link--hier {
+  border-color: rgba(225, 29, 72, 0.45);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-nav-gruppe__inhalt {
+  border-left: 2px solid var(--heart-border);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-nav-link--unter {
+  border-radius: 13px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-nav-link--unter .heart-nav-link__icon {
+  border-radius: 9px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-theme-wahl {
+  border-radius: 14px;
+  background: var(--heart-surface-soft);
+  border: 1px solid var(--heart-border);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-theme-wahl__knopf {
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-theme-wahl__knopf--an {
+  background: var(--heart-surface);
+  color: var(--heart-text);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.054);
+}

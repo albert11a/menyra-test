@@ -53,7 +53,8 @@ import {
   setLandingReset as schreibeLandingReset
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
-import { ladeLifeskin, horcheLive, ladeFotos, ladeErstesFoto, loescheAlleSitzungen, loescheSitzung, setzeBerichtMarke, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand, speichereAnbieter,
+import { ladeLifeskin, ladeLifeskinSeit, horcheLive, ladeFotos, ladeErstesFoto, loescheAlleSitzungen, loescheSitzung, setzeBerichtMarke, speichereProdukt, loescheProdukt, gibBerichtFrei,
+  ladeBericht, setzeVersand, speichereAnbieter,
   ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX,
   speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder,
   ladeMedien, speichereMedien, speichereMedium, loescheMedium, ladeKommentare, setzeKommentarVerborgen, loescheKommentar } from "./heart-lifeskin-adapter.js";
@@ -946,11 +947,17 @@ function liveRechnen() {
   // Sekunde zeichnet den ganzen Bereich neu, auch wenn dieselben Zahlen
   // dastehen - und ein Bildschirm, der jede Sekunde flackert, ist nicht
   // zu gebrauchen.
+  // AUCH WER, nicht nur wie viele: Geht einer auf der Landing und kommt im
+  // selben Augenblick ein anderer, bleibt die Zahl gleich - der Name
+  // darunter aber nicht.
+  const wer = (reihe) => (reihe?.leute || []).map((l) => `${l.id}:${l.punkt}:${l.name}`).join("|");
   const gleich = vorher
     && vorher.analysen?.gesamt === stand.analysen.gesamt
     && vorher.bestellungen?.gesamt === stand.bestellungen.gesamt
     && vorher.analysen?.punkte?.every((p, i) => p.anzahl === stand.analysen.punkte[i].anzahl)
-    && vorher.bestellungen?.punkte?.every((p, i) => p.anzahl === stand.bestellungen.punkte[i].anzahl);
+    && vorher.bestellungen?.punkte?.every((p, i) => p.anzahl === stand.bestellungen.punkte[i].anzahl)
+    && wer(vorher.analysen) === wer(stand.analysen)
+    && wer(vorher.bestellungen) === wer(stand.bestellungen);
   if (gleich) return;
   actions.patchLifeskin({ live: stand });
 }
@@ -978,10 +985,43 @@ export function liveAnhalten() {
   liveSitzungen = [];
 }
 
-async function ladeLifeskinBereich({ force = false } = {}) {
+// Ab wann der naechste Abgleich nachholen muss: der Beginn des letzten
+// erfolgreichen Ladens, mit zwei Minuten Luft fuer Uhren, die nicht ganz
+// gleich gehen. Leer: Es wurde in dieser Sitzung noch nie vom Server
+// geladen - dann kommt alles.
+let lifeskinAbgleichAb = "";
+const ABGLEICH_LUFT_MS = 2 * 60 * 1000;
+
+async function lifeskinNachholen() {
+  const beginn = Date.now();
+  const neu = await ladeLifeskinSeit(lifeskinAbgleichAb);
+  if (!neu) return false;
+  const zustand = store.getState().lifeskin || {};
+  const berichte = neu.berichte;
+  actions.patchLifeskin({
+    berichte,
+    ...aktualisiereLifeskinSitzungen({ ...zustand, berichte }, [...neu.sitzungen, ...liveSitzungen]),
+    loadedAt: new Date().toISOString()
+  });
+  lifeskinAbgleichAb = new Date(beginn - ABGLEICH_LUFT_MS).toISOString();
+  liveRechnen();
+  return true;
+}
+
+async function ladeLifeskinBereich({ force = false, voll = false } = {}) {
   liveStarten();
   const vorher = store.getState().lifeskin || {};
   if (!force && vorher.status === "ready" && vorher.loadedFrom === "network") return;
+  // Schon einmal vom Server geladen: nur nachholen, was sich seitdem
+  // geaendert hat. Scheitert das, geht es unten mit allem weiter.
+  if (!voll && vorher.status === "ready" && vorher.loadedFrom === "network" && lifeskinAbgleichAb) {
+    try {
+      if (await lifeskinNachholen()) return;
+    } catch {
+      // Dann eben alles.
+    }
+  }
+  const ladeBeginn = Date.now();
 
   if (vorher.status !== "ready") {
     actions.setLifeskinLoading();
@@ -999,6 +1039,7 @@ async function ladeLifeskinBereich({ force = false } = {}) {
     const frisch = await ladeLifeskin();
     Object.assign(frisch, aktualisiereLifeskinSitzungen(frisch, liveSitzungen));
     actions.setLifeskinData(frisch, "network");
+    lifeskinAbgleichAb = new Date(ladeBeginn - ABGLEICH_LUFT_MS).toISOString();
     liveRechnen();
     // "Reaktionen" war beim letzten Mal offen: gleich die Kommentare dazu.
     if (klappOffen("reaktionen")) medienKommentareLaden();
@@ -1017,11 +1058,34 @@ async function ladeLifeskinBereich({ force = false } = {}) {
 // Die Fotos kommen erst jetzt, nicht mit der Liste: Sie liegen in einer
 // Untersammlung, damit der Reiter beim Oeffnen nicht die Bilder aller
 // Sitzungen zieht.
+// DIE AKTE OEFFNET OBEN, UND DIE LISTE FINDET IHRE STELLE WIEDER.
+//
+// Die Akte erschien an der Scrollstelle der Liste: Wer weit unten einen
+// Fall antippte, landete mitten in dessen Akte, die Fotos oben
+// abgeschnitten (gemessen am 25.09., lauf-heart.mjs) - von aussen genau
+// das "es springt komisch". Beim Zurueckgehen stand die Liste dafuer
+// wieder oben.
+let lifeskinListenStelle = 0;
+
+function lifeskinNachOben() {
+  try { globalThis.scrollTo?.({ top: 0, left: 0, behavior: "instant" }); } catch { globalThis.scrollTo?.(0, 0); }
+}
+
+function schliesseLifeskinSitzung() {
+  const offen = String(store.getState().lifeskin?.offen || "");
+  actions.patchLifeskin({ offen: "" });
+  if (!offen) return;
+  const ziel = lifeskinListenStelle;
+  try { globalThis.scrollTo?.({ top: ziel, left: 0, behavior: "instant" }); } catch { globalThis.scrollTo?.(0, ziel); }
+}
+
 async function oeffneLifeskinSitzung(sitzungId = "") {
   const id = String(sitzungId || "").trim();
   if (!id) return;
   const stand = store.getState().lifeskin || {};
+  if (!stand.offen) lifeskinListenStelle = Math.round(globalThis.scrollY || 0);
   actions.patchLifeskin({ offen: id });
+  lifeskinNachOben();
   // Die Miniaturbilder unter "Ergebnisse auf der Seite" - einmal je Fall.
   lifeskinRasteBilderLaden().catch(() => {});
 
@@ -1633,6 +1697,45 @@ function lifeskinProduktfotoWeg() {
   setToast("Produkt", "Foto entfernt. Nicht vergessen zu speichern.", "success");
 }
 
+// NACH EINER AENDERUNG NUR DAS NACHLESEN, WAS SICH GEAENDERT HAT.
+//
+// Hier stand nach jedem Freigeben, Markieren, Versenden und Loeschen
+// ladeLifeskinBereich({ force: true }) - alle Sitzungen, Berichte, Produkte
+// und Medien noch einmal. Gemessen am 25.09. (lauf-heart.mjs, ein paar
+// tausend Sitzungen, Telefon-Tempo): viele Sekunden, in denen die Seite
+// stand, und danach sprang alles an eine neue Stelle. Jetzt wird der eine
+// Bericht gelesen (bzw. der geloeschte Fall entfernt), und die Liste ordnet
+// sich daraus neu - ohne Ladepause. Geht das Nachlesen schief, bleibt der
+// volle Abgleich als Rueckfall.
+async function lifeskinBerichteNachlesen(ids = []) {
+  const kennungen = [...new Set((ids || []).map((id) => String(id || "").trim()).filter(Boolean))];
+  if (!kennungen.length) return;
+  try {
+    const gelesen = await Promise.all(kennungen.map((id) => ladeBericht(id)));
+    const zustand = store.getState().lifeskin || {};
+    const berichte = { ...(zustand.berichte || {}) };
+    kennungen.forEach((id, i) => {
+      if (gelesen[i]) berichte[id] = gelesen[i];
+      else delete berichte[id];
+    });
+    // Ein Bericht kann einen Fall zum eigenen Test machen (oder zurueck) -
+    // die Aufteilung in Faelle und Tests haengt daran.
+    actions.patchLifeskin({ berichte, ...aktualisiereLifeskinSitzungen({ ...zustand, berichte }, []) });
+  } catch {
+    await ladeLifeskinBereich({ force: true, voll: true }).catch(() => {});
+  }
+}
+
+function lifeskinFaelleEntfernen(ids = []) {
+  const weg = new Set((ids || []).map((id) => String(id || "").trim()).filter(Boolean));
+  if (!weg.size) return;
+  const zustand = store.getState().lifeskin || {};
+  const ohne = (liste) => (liste || []).filter((s) => !weg.has(s.id));
+  const berichte = { ...(zustand.berichte || {}) };
+  for (const id of weg) delete berichte[id];
+  actions.patchLifeskin({ sitzungen: ohne(zustand.sitzungen), tests: ohne(zustand.tests), berichte });
+}
+
 // Eine Marke am Bericht: abgehakt, oder als eigener Test.
 //
 // Sie liegt am Bericht und nicht an der Sitzung: Die Sitzung schreibt der
@@ -1643,7 +1746,7 @@ async function markiereLifeskinSitzung(id, marken = {}) {
   if (!kennung) return;
   try {
     await setzeBerichtMarke(kennung, marken);
-    await ladeLifeskinBereich({ force: true });
+    await lifeskinBerichteNachlesen([kennung]);
     const wort = "test" in marken
       ? (marken.test ? "Als eigener Test markiert - zaehlt in keiner Zahl mehr mit." : "Zaehlt wieder mit.")
       : "spaeter" in marken
@@ -1670,7 +1773,7 @@ async function loescheLifeskinSitzung(id) {
   try {
     await loescheSitzung(kennung);
     actions.patchLifeskin({ offen: "" });
-    await ladeLifeskinBereich({ force: true });
+    lifeskinFaelleEntfernen([kennung]);
     setToast("Analyse", "Geloescht - mit Fotos und Befund.", "success");
   } catch (fehler) {
     setToast("Analyse", fehler?.message || "Loeschen fehlgeschlagen.", "danger");
@@ -1717,20 +1820,23 @@ async function lifeskinAuswahlTun(was, knopf) {
   if (!marken && was !== "loeschen") return;
   if (knopf) knopf.disabled = true;
   let fertig = 0;
+  const erledigt = [];
   try {
     for (const id of ids) {
       if (was === "loeschen") await loescheSitzung(id);
       else await setzeBerichtMarke(id, marken);
+      erledigt.push(id);
       fertig += 1;
     }
     actions.patchLifeskin({ auswahl: [], auswahlLoeschen: false });
-    await ladeLifeskinBereich({ force: true });
+    if (was === "loeschen") lifeskinFaelleEntfernen(erledigt);
+    else await lifeskinBerichteNachlesen(erledigt);
     const wort = { archiv: "archiviert", "archiv-weg": "zurückgeholt", spaeter: "für später zurückgelegt",
       "spaeter-weg": "zurück in der Liste", loeschen: "gelöscht - mit Fotos und Befund" }[was];
     setToast("Fälle", `${fertig} ${fertig === 1 ? "Fall" : "Fälle"} ${wort}.`, "success");
   } catch (fehler) {
     actions.patchLifeskin({ auswahlLoeschen: false });
-    await ladeLifeskinBereich({ force: true }).catch(() => {});
+    await ladeLifeskinBereich({ force: true, voll: true }).catch(() => {});
     setToast("Fälle", `${fertig} von ${ids.length} erledigt. ${fehler?.message || "Der Rest ging nicht."}`, "danger");
   }
 }
@@ -1761,7 +1867,7 @@ async function lifeskinProdukteAnlegen() {
       await speichereProdukt({ ...felder });
     }
     actions.patchLifeskin({ produktStatus: "" });
-    await ladeLifeskinBereich({ force: true });
+    await ladeLifeskinBereich({ force: true, voll: true });
     setToast("Produkte", `${fehlend.length} Mittel angelegt. Fotos lassen sich jetzt hinzufuegen.`, "success");
   } catch (fehler) {
     actions.patchLifeskin({ produktStatus: "" });
@@ -1789,7 +1895,7 @@ async function lifeskinProdukteBizele() {
       await speichereProdukt({ id: p.id, perdorimi: { sasia: neu } });
     }
     actions.patchLifeskin({ produktStatus: "" });
-    await ladeLifeskinBereich({ force: true });
+    await ladeLifeskinBereich({ force: true, voll: true });
     setToast("Produkte", `${betroffen.map((p) => p.name || p.id).join(", ")}: Menge jetzt „sa një bizele …“.`, "success");
   } catch (fehler) {
     actions.patchLifeskin({ produktStatus: "" });
@@ -1820,7 +1926,7 @@ async function speichereLifeskinAnbieter() {
   try {
     const gespeichert = await speichereAnbieter(anbieter);
     actions.patchLifeskin({ anbieterStatus: "" });
-    await ladeLifeskinBereich({ force: true });
+    await ladeLifeskinBereich({ force: true, voll: true });
     const gefuellt = Object.values(gespeichert).filter((w) => w).length;
     setToast("Anbieter", gefuellt
       ? `Gespeichert. ${gefuellt} von 3 Angaben stehen jetzt auf der Befundseite.`
@@ -2434,7 +2540,7 @@ async function speichereLifeskinProdukt() {
   try {
     await speichereProdukt(produkt);
     actions.patchLifeskin({ produktStatus: "", produktOffen: "", produktEntwurf: null });
-    await ladeLifeskinBereich({ force: true });
+    await ladeLifeskinBereich({ force: true, voll: true });
     setToast("Produkt", `${produkt.name} gespeichert.`, "success");
   } catch (fehler) {
     actions.patchLifeskin({ produktStatus: "" });
@@ -2558,7 +2664,8 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff: nurStaffGewaehlt = 
   if (gedrueckt) gedrueckt.textContent = "Wird gespeichert …";
   const knoepfeZurueck = () => knoepfe.forEach((k, i) => { k.disabled = false; k.textContent = vorher[i]; });
 
-  actions.patchLifeskin({ berichtStatus: "laeuft" });
+  const knopfArt = bereit ? "bereit" : nurStaff ? "vorschau" : "freigeben";
+  actions.patchLifeskin({ berichtStatus: "laeuft", berichtKnopf: knopfArt });
   try {
     await gibBerichtFrei(id, { befund, produkte, preis: produkte.length ? preis : 0, schwere, raport,
     texte, ohneBild: art === "pa-foto",
@@ -2579,13 +2686,17 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff: nurStaffGewaehlt = 
     // "ready" ist das Fach der freigegebenen Faelle. Hier stand "fertig" -
     // ein Fach, das es nicht gibt: Die Liste war danach leer, bis jemand
     // einen Chip antippte.
-    actions.patchLifeskin({ berichtStatus: "", ...(nurStaff ? {} : { fach: "ready" }) });
+    actions.patchLifeskin({ berichtStatus: "", berichtKnopf: `${knopfArt}:ok`, ...(nurStaff ? {} : { fach: "ready" }) });
+    // "✓ Gespeichert" steht einen Moment, dann wieder die Beschriftung.
+    globalThis.setTimeout?.(() => {
+      if (store.getState().lifeskin?.berichtKnopf === `${knopfArt}:ok`) actions.patchLifeskin({ berichtKnopf: "" });
+    }, 2500);
     // Gespeichert ist gespeichert: der Entwurf auf dem Geraet hat ausgedient.
     entwurfLoeschen(id);
     bogenVergessen(id);
     knoepfeZurueck();
     if (gedrueckt) gedrueckt.textContent = "✓ Gespeichert";
-    await ladeLifeskinBereich({ force: true });
+    await lifeskinBerichteNachlesen([id]);
     // Was am Bogen auffaellt, steht HINTER der Freigabe und nicht davor:
     // Es ist eine Beobachtung, keine Bedingung.
     const nachsatz = bogenHinweise.length
@@ -2597,7 +2708,7 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff: nurStaffGewaehlt = 
       ? "Als Vorschau gespeichert. Der Patient sieht weiter seine Warteseite."
       : "Freigegeben. Der Patient sieht ihn innerhalb einer Minute.") + nachsatz, "success");
   } catch (fehler) {
-    actions.patchLifeskin({ berichtStatus: "" });
+    actions.patchLifeskin({ berichtStatus: "", berichtKnopf: "" });
     knoepfeZurueck();
     setToast("Befund", fehler?.message || "Freigabe fehlgeschlagen.", "danger");
   }
@@ -3165,7 +3276,7 @@ async function setzeLifeskinVersand(sitzungId, stand) {
       ? { status: "versandt", lieferVon: tag(2), lieferBis: tag(3) }
       : { status: "zugestellt" });
     actions.patchLifeskin({ berichtStatus: "" });
-    await ladeLifeskinBereich({ force: true });
+    await lifeskinBerichteNachlesen([id]);
     setToast("Versand", stand === "versandt" ? "Als versendet gemeldet." : "Als zugestellt gemeldet.", "success");
   } catch (fehler) {
     actions.patchLifeskin({ berichtStatus: "" });
@@ -3182,7 +3293,7 @@ async function loescheLifeskinProdukt() {
   try {
     await loescheProdukt(id);
     actions.patchLifeskin({ produktStatus: "", produktOffen: "", produktEntwurf: null });
-    await ladeLifeskinBereich({ force: true });
+    await ladeLifeskinBereich({ force: true, voll: true });
     setToast("Produkt", "Geloescht.", "success");
   } catch (fehler) {
     actions.patchLifeskin({ produktStatus: "" });
@@ -3202,7 +3313,7 @@ async function setzeLifeskinZurueck() {
   try {
     const anzahl = await loescheAlleSitzungen();
     actions.patchLifeskin({ resetStatus: "", offen: "", fotos: {} });
-    await ladeLifeskinBereich({ force: true });
+    await ladeLifeskinBereich({ force: true, voll: true });
     setToast("Lifeskin", `${anzahl} ${anzahl === 1 ? "Analyse" : "Analysen"} geloescht.`, "success");
   } catch (fehler) {
     actions.patchLifeskin({ resetStatus: "" });
@@ -3325,9 +3436,21 @@ const operations = {
       setToast("Abmeldung", error?.message || "Abmeldung fehlgeschlagen.", "danger");
     }
   },
+  // DER KNOPF DREHT SICH, SOBALD MAN IHN DRUECKT - und so lange, bis
+  // geladen ist, mindestens aber einen Augenblick: Ein Knopf, der nichts
+  // zeigt, wird dreimal gedrueckt.
   async refresh() {
+    if (store.getState().shell.aktualisiert) return;
     renderClock = Date.now();
-    await ensureViewData(store.getState().shell.activeView, { force: true });
+    actions.setAktualisiert(true);
+    const ab = Date.now();
+    try {
+      await ensureViewData(store.getState().shell.activeView, { force: true });
+    } finally {
+      const rest = 650 - (Date.now() - ab);
+      if (rest > 0) await new Promise((fertig) => setTimeout(fertig, rest));
+      actions.setAktualisiert(false);
+    }
   },
   openLanding(restaurantId) {
     actions.setLandingSelected(restaurantId);
@@ -3472,7 +3595,7 @@ const operations = {
     operations.openView(viewKey);
   },
   openLifeskinSitzung(sitzungId) { return oeffneLifeskinSitzung(sitzungId); },
-  closeLifeskinSitzung() { actions.patchLifeskin({ offen: "" }); },
+  closeLifeskinSitzung() { schliesseLifeskinSitzung(); },
   lifeskinZuruecksetzen() { return setzeLifeskinZurueck(); },
   lifeskinResetAbbrechen() { actions.patchLifeskin({ resetGefragt: false }); },
   setLifeskinZeitraum(id) {
@@ -4128,6 +4251,12 @@ const operations = {
   toggleNav() {
     actions.setNavOpen(!store.getState().shell.navOpen);
   },
+  toggleNavGruppe(offen) {
+    actions.setNavGruppe(offen);
+  },
+  setzeTheme(theme) {
+    actions.setTheme(theme);
+  },
   async searchSetupRestaurants(query) {
     await searchSetupRestaurants(query);
   },
@@ -4402,6 +4531,30 @@ store.subscribe((state) => {
     });
   }
 });
+
+// TAG ODER NACHT: gemerkt auf dem Geraet, angewandt am <html> (heart.css
+// kennt beide Farbsaetze). index.html setzt es schon vor dem ersten Bild,
+// damit nichts aufblitzt; hier kommt es in den Zustand, damit die
+// Schublade weiss, welcher Knopf leuchtet.
+const THEME_SPEICHER = "heart.theme";
+function gemerktesTheme() {
+  try { return globalThis.localStorage?.getItem(THEME_SPEICHER) === "tag" ? "tag" : "nacht"; } catch { return "nacht"; }
+}
+let angewandtesTheme = "";
+function themeAnwenden(theme) {
+  if (theme === angewandtesTheme) return;
+  angewandtesTheme = theme;
+  const html = document.documentElement;
+  if (html.dataset.heartTheme !== theme) html.dataset.heartTheme = theme;
+  try { globalThis.localStorage?.setItem(THEME_SPEICHER, theme); } catch { /* egal */ }
+  // Die Leiste des Browsers in derselben Farbe - bei Nacht wie bisher.
+  const farbe = theme === "tag" ? "#f4f4f2" : "transparent";
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta && meta.getAttribute("content") !== farbe) meta.setAttribute("content", farbe);
+}
+actions.setTheme(gemerktesTheme());
+themeAnwenden(store.getState().shell.theme || "nacht");
+store.subscribe((state) => themeAnwenden(state.shell.theme || "nacht"));
 
 renderHeartApp(root, store.getState(), getRenderRuntime());
 syncViewInAddress(store.getState());

@@ -199,8 +199,20 @@ export function netzLohntSich(verbindung = globalThis.navigator?.connection) {
 //
 // Wird vom ersten Bildschirm aufgerufen. Der Rueckgabewert darf ignoriert
 // werden - wer ihn braucht, wartet mit netzHolen() darauf.
+// EIN ZWEITER VERSUCH NACH EINEM FEHLSCHLAG.
+//
+// Gesehen am 25.09. im Pruefstand (lauf-wege.mjs, A1): Das Laden scheiterte
+// einmal nach vier Sekunden an der Leitung - und blieb danach fuer den
+// ganzen Besuch gescheitert, weil das Versprechen gemerkt war. Auf dem
+// Telefon ist so ein Aussetzer Alltag (Funkloch, Wechsel ins WLAN). Der
+// naechste Anlass - meist der Tipp auf "Hap kamerën" - versucht es noch
+// einmal. Danach nicht mehr: Wer zweimal scheitert, bekommt den Weg ohne
+// Netz, statt bei jedem Kameraoeffnen neun Sekunden zu warten.
+const VERSUCHE_HOECHSTENS = 2;
+let versuche = 0;
+
 export function netzVorladen(optionen = {}) {
-  if (laden) return laden;
+  if (laden && !(stand === "gescheitert" && versuche < VERSUCHE_HOECHSTENS)) return laden;
   if (!netzLohntSich(optionen.verbindung)) {
     // Sofort und endgueltig "nein": netzHolen() rennt damit nicht in seine
     // Frist, sondern ist gleich fertig, und der Scan faengt sofort an.
@@ -208,6 +220,7 @@ export function netzVorladen(optionen = {}) {
     laden = Promise.resolve(null);
     return laden;
   }
+  versuche += 1;
   stand = "laedt";
   laden = ladeWirklich(optionen).then((ergebnis) => {
     netz = ergebnis;
@@ -332,7 +345,7 @@ function mimikAus(kategorien) {
 // Nur fuer die Tests: den Ladeweg zuruecksetzen und einen Doppelgaenger
 // einsetzen, ohne echtes Netz aus dem Netz zu holen.
 export const __test__ = {
-  zuruecksetzen() { laden = null; netz = null; stand = "aus"; letzterFehler = null; fehlerFolge = 0; art = ""; },
+  zuruecksetzen() { laden = null; netz = null; stand = "aus"; letzterFehler = null; fehlerFolge = 0; art = ""; versuche = 0; },
   einsetzen(doppel) { netz = doppel; stand = "da"; laden = Promise.resolve(doppel); },
   ladeWirklich
 };

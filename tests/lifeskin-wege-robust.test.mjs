@@ -382,7 +382,11 @@ test("Ring ohne Fortschritt MIT Bildern: Hilfe geht auf, Kamera und Bilder bleib
   await laufend(p);
   p.app.kamera.modus = "ring";
   p.app.kamera.fotos.gerade = { erste: { leinwand: {}, abweichung: 0 }, mehr: [] };
-  await p.clock.weiter(26500);
+  // Nach 15 Sekunden ohne Fortschritt (gemessen am 25.09.: mit 25 stand
+  // ein Mensch, der den Kopf nicht dreht, 34 Sekunden vor der Kamera).
+  await p.clock.weiter(12000);
+  assert.equal(p.hol("#ls-blatt").classList.contains("ls-verstecken"), true, "Die Hilfe ging zu frueh auf");
+  await p.clock.weiter(4500);
   assert.equal(p.hol("#ls-blatt").classList.contains("ls-verstecken"), false, "Die Hilfe mit 'Vazhdo kështu' ging nicht auf");
   assert.equal(p.fehlerSichtbar(), false);
   assert.equal(p.app.kamera.laeuft, true, "Die Kamera wurde abgeschaltet");
@@ -392,6 +396,20 @@ test("Ring ohne Fortschritt MIT Bildern: Hilfe geht auf, Kamera und Bilder bleib
   await p.clock.weiter(30000);
   assert.equal(p.fehlerSichtbar(), false);
   p.app._kameraStoppen();
+});
+
+test("Ring ohne Fortschritt OHNE Bild: nach 30 s der Ausweg - noch einmal oder Telefonkamera", async () => {
+  const p = probe();
+  await laufend(p);
+  p.app.kamera.modus = "ring";
+  // Gemessen am 25.09.: Ohne erkanntes Gesicht kam der Ausweg erst nach
+  // 50 Sekunden - laenger, als jemand in einem App-Fenster wartet.
+  await p.clock.weiter(27000);
+  assert.equal(p.fehlerSichtbar(), false, "Der Ausweg kam zu frueh");
+  await p.clock.weiter(4500);
+  assert.equal(p.fehlerSichtbar(), true, "Nach 30 Sekunden ohne Bild steht kein Ausweg da");
+  assert.equal(p.hol("#ls-fehlernochmal").hidden, false, "'Provo sërish' fehlt");
+  assert.equal(p.hol("#ls-fehlerfoto").hidden, false, "Die Telefonkamera fehlt");
 });
 
 test("faellt die Erkennung Bild um Bild aus, macht der Weg ohne Netz fertig", () => {

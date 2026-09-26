@@ -92,6 +92,37 @@ test("scheitert das Laden, haelt es den Trichter nicht an", () => {
   );
 });
 
+test("nach einem Aussetzer wird das Netz EIN weiteres Mal geholt - nicht endlos", async () => {
+  // Gesehen am 25.09. im Pruefstand: ein Fehlschlag an der Leitung, und fuer
+  // den ganzen Besuch gab es keinen Ring mehr.
+  __test__.zuruecksetzen();
+  let aufrufe = 0;
+  const kaputt = { importiere: () => { aufrufe += 1; return Promise.reject(new Error("Funkloch")); } };
+  assert.equal(await netzVorladen(kaputt), null);
+  assert.equal(netzStand(), "gescheitert");
+  const doppel = { detectForVideo() { return { faceLandmarks: [] }; }, close() {} };
+  const heil = {
+    importiere: () => {
+      aufrufe += 1;
+      return Promise.resolve({
+        FilesetResolver: { forVisionTasks: async () => ({}) },
+        FaceLandmarker: { createFromOptions: async () => doppel }
+      });
+    }
+  };
+  assert.equal(await netzVorladen(heil), doppel, "Der zweite Versuch kam nicht");
+  assert.equal(netzStand(), "da");
+  assert.equal(aufrufe, 2);
+  // Ein drittes Mal wird nicht geladen - auch nicht nach einem weiteren Fehlschlag.
+  __test__.zuruecksetzen();
+  aufrufe = 0;
+  await netzVorladen(kaputt);
+  await netzVorladen(kaputt);
+  await netzVorladen(kaputt);
+  assert.equal(aufrufe, 2, "Nach zwei Fehlschlaegen wird nicht weiter geladen");
+  __test__.zuruecksetzen();
+});
+
 // ---------------------------------------------------------------------------
 // Sieben Megabyte ueber eine Leitung, die sie nicht traegt
 // ---------------------------------------------------------------------------

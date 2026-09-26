@@ -11,6 +11,9 @@ Browser von Instagram/Facebook, die fertige Analyse im normalen Browser
 
 Ausgangsstand: `9266399` (Branch `claude/lifeskin-user-journey-h4f5bb`).
 
+Fortsetzung (A–Z echt getestet, Heart schneller, Menue, Tag/Nacht):
+`docs/lifeskin-heart-a-z-2026-09-26.md`.
+
 ## 1. Die Wege
 
 | Seite | Datei | Wo sie meist laeuft |

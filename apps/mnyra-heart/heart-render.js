@@ -29,6 +29,16 @@ import {
   renderHeartDestinationsView
 } from "./heart-destinations-render.js";
 import { HEART_GO_CSS, renderHeartGoView } from "./heart-go-render.js";
+import { morphInhalt } from "./heart-morph.js";
+
+// Der Notschalter fuer das Abgleichen (heart-morph.js): Steht auf einem
+// Geraet localStorage "heart.morph" = "aus", schreibt Heart wieder wie
+// frueher alles per innerHTML neu. Nur fuer den Fall, dass ein Geraet
+// damit etwas falsch zeigt - im Normalfall steht dort nichts.
+function morphAn() {
+  try { return globalThis.localStorage?.getItem("heart.morph") !== "aus"; } catch { return true; }
+}
+const MORPH = morphAn();
 
 // Das Stylesheet der GO-Seite kommt mit ihrem Modul, nicht aus heart.css:
 // So bleibt die Seite ein Stueck und niemand muss zwei Dateien im Gleichschritt
@@ -65,8 +75,8 @@ const NAV_ICONS = Object.freeze({
   crmAds: "image",
   crmStaff: "users",
   destinations: "mapPin",
-  mnyraGo: "zap",
-  lifeskin: "zap",
+  mnyraGo: "pointer",
+  lifeskin: "sparkle",
   analytics: "activity",
   connections: "settings"
 });
@@ -307,11 +317,27 @@ function renderViewBodyInner(state, runtime = {}) {
   });
 }
 
-function renderDrawerNav(state) {
-  return HEART_NAV_ITEMS.map((item) => {
-    const isActive = state.shell.activeView === item.key;
-    return `
-      <button class="heart-nav-link ${isActive ? "heart-nav-link--active" : ""}" data-nav-key="${escapeHtml(item.key)}">
+// DIE SCHUBLADE HAT DREI EINTRAEGE.
+//
+// Gewuenscht am 25.09.: "nur drei - Lifeskin, und alles andere packst du
+// in Mnyra". Lifeskin ist die Arbeit des Tages und steht allein oben.
+// Alles, was zu Mnyra selbst gehoert - Start, Landings, das CRM, Orte, GO,
+// Analytics -, liegt unter "Mnyra" und klappt auf, wenn man es braucht.
+// Die Einrichtung bleibt der dritte Eintrag: Dort stehen Konto, Meldungen
+// und die Verbindungen, und sie gehoert zu keinem der beiden.
+//
+// Die Bereiche selbst und ihre Adressen (#landing, #crmLeads ...) bleiben,
+// wie sie sind - es aendert sich nur, wo sie im Menue stehen.
+export const NAV_MNYRA = Object.freeze([
+  "dashboard", "landing", "crmLeads", "crmCustomers", "crmAds", "crmStaff",
+  "destinations", "mnyraGo", "analytics"
+]);
+
+function renderNavLink(item, state, { unter = false } = {}) {
+  if (!item) return "";
+  const isActive = state.shell.activeView === item.key;
+  return `
+      <button class="heart-nav-link${unter ? " heart-nav-link--unter" : ""}${isActive ? " heart-nav-link--active" : ""}" data-nav-key="${escapeHtml(item.key)}">
         <span class="heart-nav-link__icon">${renderHeartIcon(NAV_ICONS[item.key] || "home")}</span>
         <span class="heart-nav-link__body">
           <span class="heart-nav-link__label">${escapeHtml(item.label)}</span>
@@ -319,7 +345,46 @@ function renderDrawerNav(state) {
         </span>
       </button>
     `;
-  }).join("");
+}
+
+function renderDrawerNav(state) {
+  const eintrag = new Map(HEART_NAV_ITEMS.map((item) => [item.key, item]));
+  const aktiv = state.shell.activeView;
+  const inMnyra = NAV_MNYRA.includes(aktiv);
+  const gewaehlt = state.shell.navGruppe;
+  const offen = gewaehlt === null || gewaehlt === undefined ? inMnyra : gewaehlt === true;
+  const hier = inMnyra ? eintrag.get(aktiv)?.label || "" : "";
+  const unter = NAV_MNYRA.map((key) => renderNavLink(eintrag.get(key), state, { unter: true })).join("");
+  return `
+    ${renderNavLink(eintrag.get("lifeskin"), state)}
+    <div class="heart-nav-gruppe${offen ? " heart-nav-gruppe--offen" : ""}">
+      <button class="heart-nav-link heart-nav-gruppe__kopf${inMnyra ? " heart-nav-link--hier" : ""}" data-action="nav-gruppe"
+              data-offen="${offen ? "1" : "0"}" aria-expanded="${offen}">
+        <span class="heart-nav-link__icon">${renderHeartIcon("grid")}</span>
+        <span class="heart-nav-link__body">
+          <span class="heart-nav-link__label">Mnyra</span>
+          <span class="heart-nav-link__hint">${escapeHtml(hier ? `Jetzt: ${hier}` : "Start, Landing, CRM, Orte, GO, Analytics")}</span>
+        </span>
+        <span class="heart-nav-gruppe__pfeil" aria-hidden="true">${renderHeartIcon("chevronDown")}</span>
+      </button>
+      <div class="heart-nav-gruppe__inhalt"${offen ? "" : " hidden"}>${unter}</div>
+    </div>
+    ${renderNavLink(eintrag.get("connections"), state)}
+  `;
+}
+
+// TAG ODER NACHT - zwei Knoepfe nebeneinander, der gewaehlte ist hervorgehoben.
+function renderThemeWahl(state) {
+  const tag = state.shell.theme === "tag";
+  return `
+      <div class="heart-theme-wahl" role="group" aria-label="Farbe">
+        <button type="button" class="heart-theme-wahl__knopf${tag ? " heart-theme-wahl__knopf--an" : ""}" data-action="theme-setzen" data-theme="tag" aria-pressed="${tag}">
+          ${renderHeartIcon("sun", "heart-theme-wahl__icon")}<span>Tag</span>
+        </button>
+        <button type="button" class="heart-theme-wahl__knopf${tag ? "" : " heart-theme-wahl__knopf--an"}" data-action="theme-setzen" data-theme="nacht" aria-pressed="${!tag}">
+          ${renderHeartIcon("moon", "heart-theme-wahl__icon")}<span>Nacht</span>
+        </button>
+      </div>`;
 }
 
 function renderDrawer(state, userName) {
@@ -334,6 +399,7 @@ function renderDrawer(state, userName) {
           <p class="heart-sidebar__label">Navigation</p>
           <nav class="heart-nav">${renderDrawerNav(state)}</nav>
         </section>
+        ${renderThemeWahl(state)}
       </div>
       ${renderDrawerProfile(state, userName)}
     </aside>
@@ -402,7 +468,8 @@ function renderShell(state, runtime = {}) {
                   <span>Analysen</span>
                 </button>
               ` : ""}
-              <button class="heart-icon-button" data-action="refresh-heart" aria-label="Aktualisieren">${renderHeartIcon("refresh")}</button>
+              <button class="heart-icon-button heart-icon-button--refresh${state.shell.aktualisiert ? " heart-icon-button--dreht" : ""}" data-action="refresh-heart"
+                      aria-label="Aktualisieren"${state.shell.aktualisiert ? ' aria-busy="true"' : ""}>${renderHeartIcon("refresh")}</button>
             `}
           </div>
         </header>
@@ -511,7 +578,8 @@ export function renderHeartApp(rootNode, state, runtime = {}) {
   const focusSnapshot = captureHeartActiveField(rootNode);
   const wischStand = captureChipScroll(rootNode);
   const bewahrt = captureBewahrt(rootNode);
-  rootNode.innerHTML = markup;
+  if (MORPH && typeof rootNode.ownerDocument?.createElement === "function") morphInhalt(rootNode, markup);
+  else rootNode.innerHTML = markup;
   rootNode.__heartLastMarkup = markup;
   restoreBewahrt(rootNode, bewahrt);
   restoreHeartActiveField(rootNode, focusSnapshot);
@@ -566,15 +634,21 @@ function chipReihen(rootNode) {
     .filter(([name]) => name);
 }
 
+// Eine Reihe, die beim Neuzeichnen DERSELBE Knoten geblieben ist
+// (heart-morph.js), hat ihre Stelle behalten - sie anzufassen hiesse nur,
+// den Browser die ganze Seite neu vermessen zu lassen. Gemessen am 25.09.:
+// fast eine Sekunde je Live-Zahl auf einem Telefon.
 function captureChipScroll(rootNode) {
   const stand = new Map();
-  for (const [name, reihe] of chipReihen(rootNode)) stand.set(name, reihe.scrollLeft);
+  for (const [name, reihe] of chipReihen(rootNode)) stand.set(name, { reihe, links: reihe.scrollLeft });
   return stand;
 }
 
 function restoreChipScroll(rootNode, stand) {
   for (const [name, reihe] of chipReihen(rootNode)) {
-    if (stand.has(name)) { reihe.scrollLeft = stand.get(name); continue; }
+    const vorher = stand.get(name);
+    if (vorher?.reihe === reihe) continue;
+    if (vorher) { reihe.scrollLeft = vorher.links; continue; }
     const an = reihe.querySelector('[aria-pressed="true"]');
     if (an && an.offsetLeft + an.offsetWidth > reihe.clientWidth) reihe.scrollLeft = an.offsetLeft - 16;
   }

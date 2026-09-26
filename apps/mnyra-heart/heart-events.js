@@ -199,6 +199,16 @@ export function bindHeartEvents({
       operations.toggleNav?.();
       return;
     }
+    // Die Gruppe "Mnyra" in der Schublade auf- und zuklappen.
+    if (action === "nav-gruppe") {
+      operations.toggleNavGruppe?.(target.getAttribute("data-offen") !== "1");
+      return;
+    }
+    // Tag oder Nacht.
+    if (action === "theme-setzen") {
+      operations.setzeTheme?.(target.getAttribute("data-theme"));
+      return;
+    }
     if (action === "select-setup-restaurant") {
       await operations.selectSetupRestaurant?.({
         restaurantId: target.getAttribute("data-restaurant-id"),

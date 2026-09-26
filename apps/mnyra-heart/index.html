@@ -11,6 +11,15 @@
   <title>MENYRA Heart</title>
   <link rel="icon" type="image/png" sizes="192x192" href="/apps/mnyra-heart/assets/icon-192.png?v=2026-03-20-heart-icon-normal-2" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apps/mnyra-heart/assets/apple-touch-icon.png?v=2026-03-20-heart-icon-normal-2" />
+  <script>
+    // Tag oder Nacht schon vor dem ersten Bild - sonst blitzt beim Start
+    // kurz die falsche Farbe auf (heart.js uebernimmt danach).
+    try {
+      document.documentElement.dataset.heartTheme = localStorage.getItem("heart.theme") === "tag" ? "tag" : "nacht";
+    } catch (e) {
+      document.documentElement.dataset.heartTheme = "nacht";
+    }
+  </script>
   <link rel="stylesheet" href="/apps/mnyra-heart/heart.css" />
 </head>
 <body>

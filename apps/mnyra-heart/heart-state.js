@@ -182,6 +182,13 @@ export function createHeartInitialState() {
     shell: {
       activeView: "dashboard",
       navOpen: false,
+      // Die Gruppe "Mnyra" in der Schublade: null heisst "wie es passt" -
+      // offen, wenn man gerade in einem ihrer Bereiche ist.
+      navGruppe: null,
+      // Der Knopf "Aktualisieren" dreht sich, solange geladen wird.
+      aktualisiert: false,
+      // Tag oder Nacht - "" bis heart.js die gemerkte Wahl gelesen hat.
+      theme: "",
       standalone: false,
       toast: null,
       modal: createEmptyModal()
@@ -288,12 +295,31 @@ export function createHeartInitialState() {
   };
 }
 
+// WAS SCHON BEREINIGT IST, WIRD NICHT NOCH EINMAL BEREINIGT.
+//
+// Jede Aenderung am Lifeskin-Bereich lief hier ganz durch - bei einer
+// Live-Zahl also durch alle Sitzungen mit ihrem Klickpfad, obwohl sich
+// eine einzige geaendert hatte. Gemessen am 25.09. (lauf-heart.mjs): rund
+// 400 ms je Aenderung auf einem Telefon. Jedes bereinigte Objekt wird
+// gemerkt - das Ergebnis UND das, woraus es entstand. Kommt eines davon
+// wieder herein, geht dasselbe Ergebnis hinaus: gleich schnell und mit
+// derselben Identitaet, an der die Fallliste erkennt, dass sich eine
+// Zeile nicht geaendert hat (heart-lifeskin-render.js, fallKnopf).
+//
+// Das haelt, weil der Zustand nicht von innen geaendert wird: Eine
+// Aenderung ersetzt das Objekt (siehe patch() weiter unten), und ein neues
+// Objekt steht nicht in dieser Liste. Listen werden nicht gemerkt - sie
+// sind billig, sobald ihre Eintraege es sind.
+const bereinigt = new WeakMap();
+
 export function sanitizeStateValue(value) {
   if (value === null || value === undefined) return value;
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
   if (value instanceof Date) return value.toISOString();
   if (Array.isArray(value)) return value.map((item) => sanitizeStateValue(item));
   if (typeof value === "object") {
+    const gemerkt = bereinigt.get(value);
+    if (gemerkt !== undefined) return gemerkt;
     if (typeof value.toDate === "function") {
       try {
         return value.toDate().toISOString();
@@ -303,9 +329,12 @@ export function sanitizeStateValue(value) {
     }
     const prototype = Object.getPrototypeOf(value);
     if (prototype === Object.prototype || prototype === null) {
-      return Object.fromEntries(
+      const sauber = Object.fromEntries(
         Object.entries(value).map(([key, entryValue]) => [key, sanitizeStateValue(entryValue)])
       );
+      bereinigt.set(value, sauber);
+      bereinigt.set(sauber, sauber);
+      return sauber;
     }
     return String(value);
   }
@@ -382,6 +411,28 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       draft.shell.activeView = String(viewKey || "dashboard");
       draft.shell.navOpen = false;
       draft.shell.modal = createEmptyModal();
+    });
+  }
+
+  function setNavGruppe(offen) {
+    patch((draft) => {
+      draft.shell.navGruppe = !!offen;
+    });
+  }
+
+  function setTheme(theme) {
+    const naechstes = theme === "tag" ? "tag" : "nacht";
+    if (state.shell.theme === naechstes) return;
+    patch((draft) => {
+      draft.shell.theme = naechstes;
+    });
+  }
+
+  function setAktualisiert(laeuft) {
+    const naechster = !!laeuft;
+    if (state.shell.aktualisiert === naechster) return;
+    patch((draft) => {
+      draft.shell.aktualisiert = naechster;
     });
   }
 
@@ -1063,6 +1114,9 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setToast,
       setActiveView,
       setNavOpen,
+      setNavGruppe,
+      setAktualisiert,
+      setTheme,
       setModal,
       closeModal,
       patchAuthProfile,
