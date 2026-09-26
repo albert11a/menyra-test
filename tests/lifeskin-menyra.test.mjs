@@ -73,15 +73,12 @@ test("drei Karten, in dieser Reihenfolge - und die empfohlene ist erkennbar", ()
   assert.ok(wege.indexOf("trup") > wege.indexOf("skanim"));
 
   // DREI GLEICH AUSSEHENDE KARTEN WAEREN EINE FRAGE OHNE RAT - und eine
-  // Frage ohne Rat kostet genau die Leute, die unsicher sind. Die erste
-  // traegt deshalb ein Schild und eine eigene Klasse, an der das
-  // Stilblatt Rahmen und Farbe aufzieht.
-  assert.match(wahl, /class="ls-wahlkarte ls-wahlkarte--rat" data-ls-weg="skanim"/,
-    "Die empfohlene Karte ist nicht als solche ausgezeichnet");
-  assert.match(wahl, /class="ls-wahlkarte__marke" data-text="wahlScanMarke"/,
-    "Der empfohlenen Karte fehlt ihr Schild");
-  // SEIT DEM 25.09. IST AUCH DAS FOTO EMPFOHLEN - mit demselben Schild.
-  // Der niedrigste Einstieg (Trup) bleibt ohne.
+  // Frage ohne Rat kostet genau die Leute, die unsicher sind. SEIT DEM
+  // 26.09. IST NUR NOCH DAS FOTO EMPFOHLEN: Es traegt das Schild und die
+  // eigene Klasse, an der das Stilblatt Rahmen und Farbe aufzieht.
+  assert.match(wahl, /class="ls-wahlkarte" data-ls-weg="skanim"/,
+    "Der Scan ist wieder als empfohlen ausgezeichnet");
+  assert.ok(!wahl.includes('data-text="wahlScanMarke"'), "Der Scan traegt noch ein Schild");
   assert.match(wahl, /class="ls-wahlkarte ls-wahlkarte--rat" data-ls-weg="foto">\s*(?:<!--[\s\S]*?-->\s*)?<span class="ls-wahlkarte__marke" data-text="wahlFotoMarke"/,
     "Das Foto traegt kein Schild");
   assert.match(wahl, /class="ls-wahlkarte" data-ls-weg="trup"/, "Auch Trup ist jetzt empfohlen");
