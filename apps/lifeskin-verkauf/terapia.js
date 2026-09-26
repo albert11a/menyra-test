@@ -248,6 +248,7 @@ export class Terapia {
 
     if (this.neu) document.documentElement.dataset.fassung = this.variante;
     this.#zeichnen();
+    this.#analyseFotos();
     zeigen($("#t-laedt"), false);
     zeigen($("#t-faqja"), true);
     // Die Vorher/Nachher-Faelle kommen nach: Die Seite steht schon, und
@@ -787,6 +788,13 @@ export class Terapia {
       if (p.perdorimi?.kujdes) pjese.append(element("p", "mjetiblatt__kujdes", p.perdorimi.kujdes));
       teile.push(pjese);
     }
+    this.#blattZeigen(teile);
+    this.klickpfad?.melde("produkt", p.name);
+  }
+
+  #blattZeigen(teile) {
+    const blatt = $("#mjetiblatt");
+    const trup = $("#mjetiblatt-trup");
     trup.replaceChildren(...teile);
     trup.scrollTop = 0;
     this.blattVon = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -794,7 +802,83 @@ export class Terapia {
     document.body.classList.add("pa-rreshqitje");
     this.#mjetetPunkte();
     blatt.querySelector(".mjetiblatt__mbyll")?.focus({ preventScroll: true });
-    this.klickpfad?.melde("produkt", p.name);
+  }
+
+  // DIE FOTOS AUS DEM SCAN, als kleiner Stapel neben der Aerztin - die
+  // kleinen Fassungen, die auch die Warteseite zeigt (astra-daten.js
+  // miniaturen). Ohne Foto (Analyse nach Beschreibung) oder ohne
+  // Aufnahmen bleibt der Stapel weg; die Karte sieht dann aus wie vorher.
+  async #analyseFotos() {
+    if (this.ohneFoto) return;
+    const minis = await this.quelle.miniaturen().catch(() => []);
+    this.analyseBilder = minis.map((m) => m.jpeg).filter(Boolean);
+    const n = this.analyseBilder.length;
+    const knopf = $("#t-fotot");
+    if (!knopf || !n) return;
+    $("#t-fototstapel")?.replaceChildren(...this.analyseBilder.slice(0, 3).map((src) => {
+      const img = element("img");
+      img.src = src;
+      img.alt = "";
+      img.decoding = "async";
+      return img;
+    }));
+    schreibe($("#t-fototzahl"), n === 1 ? "1 foto →" : `${n} foto →`);
+    knopf.setAttribute("aria-label", `Shikoni fotot e analizës (${n})`);
+    zeigen(knopf, true);
+    this.#stapelEinpassen();
+    if (!this.stapelGebunden) {
+      this.stapelGebunden = true;
+      let wartet = false;
+      window.addEventListener("resize", () => {
+        if (wartet) return;
+        wartet = true;
+        requestAnimationFrame(() => { wartet = false; this.#stapelEinpassen(); });
+      }, { passive: true });
+    }
+  }
+
+  // DIE ZEILE "E zgjodhi Dr. Violeta Gashi" BRICHT NIE UM. Also wird
+  // gemessen, wie viele Fotos daneben passen - 3, 2, 1 -, und erst wenn
+  // keines passt, geht der Stapel unter den Namen. Gemessen statt nach
+  // Bildschirmbreite: Schrift und Name sind nicht auf jedem Telefon gleich
+  // breit.
+  #stapelEinpassen() {
+    const knopf = $("#t-fotot");
+    const stapel = $("#t-fototstapel");
+    const text = $("#t-mjeku p");
+    if (!knopf || knopf.hidden || !stapel || !text) return;
+    const nebeneinander = () => Math.abs(knopf.offsetTop - text.offsetTop) < text.offsetHeight;
+    knopf.classList.remove("unten");
+    for (let zahl = Math.min(3, stapel.children.length); zahl >= 1; zahl -= 1) {
+      stapel.dataset.zeige = String(zahl);
+      if (nebeneinander()) return;
+    }
+    stapel.dataset.zeige = String(Math.min(3, stapel.children.length));
+    knopf.classList.add("unten");
+  }
+
+  #fototOeffnen() {
+    const bilder = this.analyseBilder || [];
+    if (!bilder.length) return;
+    schreibe($("#mjetiblatt-titull"), "Fotot e analizës");
+    const pamjet = element("div", "mjetiblatt__pamjet");
+    const bahn = element("div", "mjetiblatt__bahn");
+    bahn.dataset.bahn = "";
+    bahn.append(...bilder.map((src, i) => {
+      const fig = element("figure", "mjetiblatt__foto");
+      const img = element("img");
+      img.src = src;
+      img.alt = `Foto ${i + 1} nga analiza juaj`;
+      img.decoding = "async";
+      fig.append(img);
+      return fig;
+    }));
+    pamjet.append(bahn);
+    const pika = Terapia.#punkteVon(bilder.length);
+    if (pika) pamjet.append(pika);
+    const text = element("p", "mjetiblatt__kurz", "Fotot nga skanimi juaj.");
+    this.#blattZeigen([pamjet, text]);
+    this.klickpfad?.melde("fotot", String(bilder.length));
   }
 
   #blattSchliessen() {
@@ -1182,6 +1266,7 @@ export class Terapia {
     document.addEventListener("click", (ereignis) => {
       const ziel = ereignis.target;
       if (!(ziel instanceof Element)) return;
+      if (ziel.closest("#t-fotot")) { this.#fototOeffnen(); return; }
       const mjeti = ziel.closest("[data-mjeti-hap]");
       if (mjeti) { this.#blattOeffnen(mjeti.dataset.mjetiHap); return; }
       if (ziel.closest("[data-mjeti-mbyll]")) { this.#blattSchliessen(); return; }

@@ -39,11 +39,22 @@
       <section class="hero" id="terapia" data-pfad="Therapie oben (Preis)">
         <p class="syri" id="t-syri">Terapia juaj është gati</p>
         <h1 id="t-titulli"></h1>
-        <div class="mjeku" id="t-mjeku" hidden>
-          <img src="/apps/lifeskin/dr-gashi.jpg" alt="Dr. Violeta Gashi" width="52" height="52">
-          <p><strong id="t-mjekuemri">E zgjodhi Dr. Violeta Gashi</strong><span id="t-mjekudata"></span></p>
+        <!-- ÄRZTIN, FOTOS UND BEFUND IN EINER KARTE. Die Fotos aus dem Scan
+             stehen als kleiner Stapel neben der Aerztin; ein Tipp oeffnet
+             sie gross (terapia.js #fototOeffnen). Die Zeile "E zgjodhi Dr.
+             Violeta Gashi" bricht nie um - auf schmalen Telefonen rutscht
+             der Stapel unter den Namen. -->
+        <div class="hero__karte">
+          <div class="mjeku" id="t-mjeku" hidden>
+            <img src="/apps/lifeskin/dr-gashi.jpg" alt="Dr. Violeta Gashi" width="52" height="52">
+            <p><strong id="t-mjekuemri">E zgjodhi Dr. Violeta Gashi</strong><span id="t-mjekudata"></span></p>
+            <button type="button" class="mjeku__fotot" id="t-fotot" hidden>
+              <span class="mjeku__stapel" id="t-fototstapel" aria-hidden="true"></span>
+              <span class="mjeku__zahl" id="t-fototzahl"></span>
+            </button>
+          </div>
+          <p class="hero__pse" id="t-hyrja"></p>
         </div>
-        <p class="hero__pse" id="t-hyrja"></p>
         <p class="shqetesimi" id="t-shqetesimi" hidden></p>
         <p class="kontroll" id="t-kontroll" hidden>Dr. Gashi rekomandon edhe një kontroll të afërt te mjeku për këtë pamje.</p>
 

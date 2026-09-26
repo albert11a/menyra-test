@@ -50,6 +50,34 @@ a { color: var(--green); }
 /* 1. Der erste Bildschirm */
 .hero { padding: 26px 0 36px; border-bottom: 1px solid var(--line); }
 .mjeku { display: flex; align-items: center; gap: 12px; margin: 18px 0 14px; }
+/* Aerztin, Fotos und Befund in einer Karte (wie die Karten darunter). */
+.hero__karte {
+  margin-top: 18px; background: var(--white); border: 1px solid var(--line); border-radius: 20px;
+  padding: 15px; box-shadow: 0 4px 16px #10171810;
+}
+.hero__karte .mjeku { margin: 0 0 12px; flex-wrap: wrap; row-gap: 8px; column-gap: 10px; }
+.hero__karte .mjeku > img { width: 48px; height: 48px; }
+.hero__karte .mjeku p { flex: 1 1 auto; min-width: 0; }
+/* Der Name bricht nie um. */
+.mjeku strong, .mjeku span { white-space: nowrap; }
+.hero__karte .hero__pse { font-size: .95rem; }
+.mjeku__fotot {
+  flex: none; margin-left: auto; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 0; border: 0; background: none; color: var(--green); -webkit-tap-highlight-color: transparent;
+}
+.mjeku__stapel { display: flex; }
+.mjeku .mjeku__stapel img {
+  width: 32px; height: 42px; border-radius: 8px; object-fit: cover; margin-left: -13px;
+  border: 2px solid #fff; box-shadow: 0 1px 4px #0003; background: #eee;
+}
+.mjeku .mjeku__stapel img:first-child { margin-left: 0; }
+.mjeku__zahl { font-size: .72rem; font-weight: 700; line-height: 1.1; white-space: nowrap; }
+.mjeku__fotot:active { transform: scale(.97); }
+/* Wie viele Fotos neben die Aerztin passen, misst terapia.js
+   (#stapelEinpassen): 3, 2 oder 1 - und nur wenn keines passt, rutscht
+   der Stapel unter den Namen, eingerueckt wie der Text. */
+.mjeku__stapel[data-zeige="1"] img:nth-child(n+2), .mjeku__stapel[data-zeige="2"] img:nth-child(n+3) { display: none; }
+.hero__karte .mjeku__fotot.unten { order: 3; flex-basis: calc(100% - 58px); flex-direction: row; justify-content: flex-start; gap: 8px; margin-left: 58px; }
 .mjeku img { border-radius: 50%; object-fit: cover; border: 2px solid #fff; box-shadow: 0 1px 4px #0002; }
 .mjeku p { display: flex; flex-direction: column; font-size: .875rem; line-height: 1.4; }
 .mjeku strong { color: var(--green); }
@@ -175,6 +203,9 @@ a { color: var(--green); }
 .mjetiblatt__perdorimi > div { display: grid; grid-template-columns: 44px 1fr; gap: 10px; padding: 10px 12px; background: var(--white); }
 .mjetiblatt__perdorimi dt { font-size: .8rem; font-weight: 700; color: var(--green); }
 .mjetiblatt__perdorimi dd { margin: 0; font-size: .9rem; line-height: 1.4; }
+.mjetiblatt__foto { flex: 0 0 100%; margin: 0; scroll-snap-align: center; border-radius: 16px; overflow: hidden; background: #f0eee6; }
+.mjetiblatt__foto img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; display: block; }
+.mjetiblatt__bahn:has(> :nth-child(2)) .mjetiblatt__foto { flex-basis: 86%; }
 .mjetiblatt__kujdes { margin-top: 10px; font-size: .85rem; line-height: 1.45; color: var(--muted); }
 @keyframes mjetiblatt-rein { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes mjetiblatt-prapa { from { opacity: 0; } to { opacity: 1; } }
