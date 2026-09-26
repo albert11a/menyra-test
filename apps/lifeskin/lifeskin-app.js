@@ -2838,7 +2838,17 @@ export class Trichter {
   // Auf ein dekodiertes, laufendes Bild warten. Schnelle Geraete behalten
   // die kurze Beruhigungszeit; langsame bekommen bis zu zehn sichtbare
   // Sekunden. Abbruch entfernt alle Listener und Timer des alten Laufs.
-  async #videoBereit(video, { fristMs = 1400, ruheMs = 450, lauf = this.kamera.lauf } = {}) {
+  //
+  // KUERZER ALS FRUEHER: 200 ms ruhige Groesse, hoechstens 700 ms ab dem
+  // ersten Bild (vorher 450 / 1400). Der Kreis ist nur so lange
+  // verborgen, bis das Bild ein Seitenverhaeltnis hat - das hat es mit
+  // dem ersten dekodierten Bild. Die restliche Wartezeit war Spinner vor
+  // einem Bild, das laengst da war; auf einem alten Android, dessen
+  // Kamera beim Anlaufen ein- oder zweimal die Aufloesung wechselt, lag
+  // hier bis zu anderthalb Sekunden nichts. Wechselt sie danach noch
+  // einmal, rechnet `object-fit: cover` neu - verzerrt wird nichts.
+  // Dieselben Zahlen stehen in #bildBereit() in lifeskin-foto.js.
+  async #videoBereit(video, { fristMs = 700, ruheMs = 200, lauf = this.kamera.lauf } = {}) {
     const kasten = $(".ls-kamera");
     if (kasten) kasten.dataset.bereit = "nein";
     return new Promise((aufloesen) => {

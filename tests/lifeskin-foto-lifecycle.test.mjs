@@ -262,3 +262,14 @@ test("Handykamera: kein Bild, kein Foto - und nichts bleibt liegen", async () =>
   assert.equal(await p.ausDatei({ type: "image/heic" }), null);
   assert.equal(p.adressen.freigegeben.length, 1);
 });
+
+test("Foto: ein ruhiges Bild ist nach 200 ms bereit, nicht erst nach 450", async () => {
+  const p = probe(); const start = p.kamera.starte();
+  let fertig = null;
+  start.then((ok) => { fertig = ok; });
+  await p.clock.weiter(120);
+  assert.equal(fertig, null, "Bereit, bevor das Bild ruhig stand");
+  await p.clock.weiter(180);
+  assert.equal(fertig, true, "Das Bild steht, aber der Spinner laeuft weiter");
+  p.stop();
+});

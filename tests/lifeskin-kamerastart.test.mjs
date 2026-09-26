@@ -143,7 +143,9 @@ test("Videoereignisse beschleunigen die Bereitschaft und werden wieder entfernt"
   // Besucher und der Fuehrung: Zu sehen bekommt er das Bild frueher, und
   // der Zuschnitt wird bei jedem Bild neu gerechnet.
   const frist = Number(APP.match(/#videoBereit\(video, \{ fristMs = (\d+)/)?.[1]);
-  assert.ok(frist <= 1400, `Es wird bis zu ${frist} ms gewartet, bevor gemessen werden darf`);
+  assert.ok(frist <= 700, `Es wird bis zu ${frist} ms gewartet, bevor gemessen werden darf`);
+  const ruhe = Number(APP.match(/#videoBereit\(video, \{ fristMs = \d+, ruheMs = (\d+)/)?.[1]);
+  assert.ok(ruhe > 0 && ruhe <= 200, `Das fertige Bild bleibt ${ruhe} ms hinter dem Spinner`);
 });
 
 test("die Seite sagt sofort, dass die Kamera aufgeht", () => {

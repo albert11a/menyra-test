@@ -357,6 +357,8 @@ export class Flaechenkamera {
 
   // play() kann offen bleiben, obwohl Bilder kommen. Entscheidend ist
   // ein dekodiertes Bild mit kurz stabiler Aufloesung, nicht das Promise.
+  // 200 ms ruhig oder 700 ms ab dem ersten Bild - dieselben Zahlen wie
+  // #videoBereit() beim Scan (dort steht, warum nicht mehr 450 / 1400).
   #bildBereit(lauf) {
     const video = this.video;
     return new Promise((ja) => {
@@ -380,7 +382,7 @@ export class Flaechenkamera {
           const neu = `${video.videoWidth}x${video.videoHeight}`;
           if (!erstesBild) erstesBild = sichtbarMs;
           if (neu !== masse) { masse = neu; ruhigSeit = sichtbarMs; }
-          if (sichtbarMs - ruhigSeit >= 450 || sichtbarMs - erstesBild >= 1400) {
+          if (sichtbarMs - ruhigSeit >= 200 || sichtbarMs - erstesBild >= 700) {
             fertig(true); return;
           }
         } else { masse = ""; erstesBild = 0; }

@@ -494,13 +494,29 @@ test("Aufloesungswechsel beim Start bleiben verborgen bis das Bild stabil ist", 
   const p = probe();
   const start = p.app._kameraStarten();
   await p.clock.pumpen(); p.bild();
-  await p.clock.weiter(300);
+  await p.clock.weiter(120);
   assert.equal(p.buehne.dataset.bereit, "nein");
   Object.assign(p.video, { videoWidth: 720, videoHeight: 1280 });
   p.video.sende("resize");
-  await p.clock.weiter(300);
+  await p.clock.weiter(120);
   assert.equal(p.buehne.dataset.bereit, "nein");
-  await p.clock.weiter(180); await start;
+  await p.clock.weiter(120); await start;
+  assert.equal(p.buehne.dataset.bereit, "ja");
+  assert.equal(p.aufrufe.fallback, 1);
+  p.app._kameraStoppen();
+});
+
+test("Das Bild erscheint spaetestens 700 ms nach dem ersten Bild, auch wenn die Groesse springt", async () => {
+  const p = probe();
+  const start = p.app._kameraStarten();
+  await p.clock.pumpen(); p.bild();
+  for (let i = 0; i < 5; i++) {
+    await p.clock.weiter(120);
+    Object.assign(p.video, { videoWidth: i % 2 ? 1280 : 720, videoHeight: i % 2 ? 720 : 1280 });
+    p.video.sende("resize");
+  }
+  assert.equal(p.buehne.dataset.bereit, "nein");
+  await p.clock.weiter(120); await start;
   assert.equal(p.buehne.dataset.bereit, "ja");
   assert.equal(p.aufrufe.fallback, 1);
   p.app._kameraStoppen();
