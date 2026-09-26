@@ -55,29 +55,35 @@ a { color: var(--green); }
   margin-top: 18px; background: var(--white); border: 1px solid var(--line); border-radius: 20px;
   padding: 15px; box-shadow: 0 4px 16px #10171810;
 }
-.hero__karte .mjeku { margin: 0 0 12px; flex-wrap: wrap; row-gap: 8px; column-gap: 10px; }
-.hero__karte .mjeku > img { width: 48px; height: 48px; }
-.hero__karte .mjeku p { flex: 1 1 auto; min-width: 0; }
+/* DIE ZEILE MIT DER AERZTIN BLEIBT IMMER EINE ZEILE: Bild, Name, Stapel,
+   "3 foto →". Wird es eng, macht terapia.js (#stapelEinpassen) die ganze
+   Zeile etwas kleiner (--s) und zeigt weniger Fotos im Stapel - sie
+   bricht nie um. */
+.hero__karte .mjeku { --s: 1; margin: 0 0 12px; flex-wrap: nowrap; gap: calc(10px * var(--s)); }
+.hero__karte .mjeku > img { width: calc(48px * var(--s)); height: calc(48px * var(--s)); flex: none; }
+.hero__karte .mjeku p { flex: 0 1 auto; font-size: calc(14px * var(--s)); }
 /* Der Name bricht nie um. */
 .mjeku strong, .mjeku span { white-space: nowrap; }
 .hero__karte .hero__pse { font-size: .95rem; }
 .mjeku__fotot {
-  flex: none; margin-left: auto; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  flex: none; margin-left: auto; display: flex; align-items: center; gap: calc(8px * var(--s, 1));
   padding: 0; border: 0; background: none; color: var(--green); -webkit-tap-highlight-color: transparent;
 }
 .mjeku__stapel { display: flex; }
 .mjeku .mjeku__stapel img {
-  width: 32px; height: 42px; border-radius: 8px; object-fit: cover; margin-left: -13px;
+  width: calc(32px * var(--s, 1)); height: calc(42px * var(--s, 1)); border-radius: calc(8px * var(--s, 1));
+  object-fit: cover; margin-left: calc(-13px * var(--s, 1));
   border: 2px solid #fff; box-shadow: 0 1px 4px #0003; background: #eee;
 }
 .mjeku .mjeku__stapel img:first-child { margin-left: 0; }
-.mjeku__zahl { font-size: .72rem; font-weight: 700; line-height: 1.1; white-space: nowrap; }
+/* "3 foto" und darunter der Pfeil, rechts neben den Bildern. */
+.mjeku__zahl {
+  display: flex; flex-direction: column; align-items: center;
+  font-size: calc(13px * var(--s, 1)); font-weight: 700; line-height: 1.15; white-space: nowrap;
+}
+.mjeku__zahl i { font-style: normal; font-weight: 700; font-size: 1.15em; line-height: 1; }
 .mjeku__fotot:active { transform: scale(.97); }
-/* Wie viele Fotos neben die Aerztin passen, misst terapia.js
-   (#stapelEinpassen): 3, 2 oder 1 - und nur wenn keines passt, rutscht
-   der Stapel unter den Namen, eingerueckt wie der Text. */
 .mjeku__stapel[data-zeige="1"] img:nth-child(n+2), .mjeku__stapel[data-zeige="2"] img:nth-child(n+3) { display: none; }
-.hero__karte .mjeku__fotot.unten { order: 3; flex-basis: calc(100% - 58px); flex-direction: row; justify-content: flex-start; gap: 8px; margin-left: 58px; }
 .mjeku img { border-radius: 50%; object-fit: cover; border: 2px solid #fff; box-shadow: 0 1px 4px #0002; }
 .mjeku p { display: flex; flex-direction: column; font-size: .875rem; line-height: 1.4; }
 .mjeku strong { color: var(--green); }

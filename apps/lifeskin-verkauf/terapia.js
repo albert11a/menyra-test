@@ -822,7 +822,8 @@ export class Terapia {
       img.decoding = "async";
       return img;
     }));
-    schreibe($("#t-fototzahl"), n === 1 ? "1 foto →" : `${n} foto →`);
+    const pfeil = element("i", null, "→");
+    $("#t-fototzahl")?.replaceChildren(`${n} foto`, pfeil);
     knopf.setAttribute("aria-label", `Shikoni fotot e analizës (${n})`);
     zeigen(knopf, true);
     this.#stapelEinpassen();
@@ -837,24 +838,26 @@ export class Terapia {
     }
   }
 
-  // DIE ZEILE "E zgjodhi Dr. Violeta Gashi" BRICHT NIE UM. Also wird
-  // gemessen, wie viele Fotos daneben passen - 3, 2, 1 -, und erst wenn
-  // keines passt, geht der Stapel unter den Namen. Gemessen statt nach
-  // Bildschirmbreite: Schrift und Name sind nicht auf jedem Telefon gleich
-  // breit.
+  // DIE ZEILE "E zgjodhi Dr. Violeta Gashi" BRICHT NIE UM, und "3 foto →"
+  // steht immer neben den Bildern. Passt die Zeile nicht, wird sie in
+  // kleinen Schritten kleiner (--s) und der Stapel schmaler - in dieser
+  // Reihenfolge, bis sie passt. Gemessen statt nach Bildschirmbreite:
+  // Schrift und Name sind nicht auf jedem Telefon gleich breit.
   #stapelEinpassen() {
     const knopf = $("#t-fotot");
     const stapel = $("#t-fototstapel");
-    const text = $("#t-mjeku p");
-    if (!knopf || knopf.hidden || !stapel || !text) return;
-    const nebeneinander = () => Math.abs(knopf.offsetTop - text.offsetTop) < text.offsetHeight;
-    knopf.classList.remove("unten");
-    for (let zahl = Math.min(3, stapel.children.length); zahl >= 1; zahl -= 1) {
+    const zeile = $("#t-mjeku");
+    if (!knopf || knopf.hidden || !stapel || !zeile) return;
+    const hoechstens = Math.min(3, stapel.children.length);
+    // Erst kleiner, dann schmaler - bei weniger Fotos faengt es bei
+    // voller Groesse an.
+    const stufen = [[3, 1], [3, .94], [3, .88], [2, .88], [2, .82], [1, .82], [1, .76], [1, .7]]
+      .map(([zahl, s]) => [Math.min(zahl, hoechstens), s]);
+    for (const [zahl, s] of stufen) {
       stapel.dataset.zeige = String(zahl);
-      if (nebeneinander()) return;
+      zeile.style.setProperty("--s", String(s));
+      if (zeile.scrollWidth <= zeile.clientWidth + 1) return;
     }
-    stapel.dataset.zeige = String(Math.min(3, stapel.children.length));
-    knopf.classList.add("unten");
   }
 
   #fototOeffnen() {
