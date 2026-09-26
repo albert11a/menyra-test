@@ -1580,7 +1580,10 @@ export class Terapia {
     const leiste = $("#leiste");
     if (!this.mitAngebot) { zeigen(leiste, false); return; }
     zeigen(leiste, true);
-    const knoepfe = ["#hero-knopf", "#vendimi"].map((w) => $(w)).filter(Boolean);
+    // Die ganze Paket-Karte zaehlt, nicht nur ihr Knopf: Sonst liegt die
+    // Leiste ueber Liste und Preis der Karte und zeigt denselben Knopf
+    // ein zweites Mal, bis man bis zum Knopf der Karte gescrollt hat.
+    const knoepfe = ["#t-seti", "#vendimi"].map((w) => $(w)).filter(Boolean);
     const sichtbar = new Set();
     let beobachtet = false;
     const imBild = (el) => {
