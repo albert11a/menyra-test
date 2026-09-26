@@ -627,6 +627,12 @@ export function bindHeartEvents({
       );
       return;
     }
+    // Die Begleitung (heart-lifeskin-ndjekja.js): ein Knopf, was er tut,
+    // steht in data-was.
+    if (action === "ndjekja") {
+      await operations.ndjekja?.(target.getAttribute("data-was"), target);
+      return;
+    }
     if (action === "lifeskin-reset-abbrechen") {
       operations.lifeskinResetAbbrechen?.();
       return;

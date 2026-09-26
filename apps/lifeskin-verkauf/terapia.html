@@ -49,7 +49,12 @@
 
         <div class="seti" id="t-seti" hidden>
           <div class="seti__produkte" id="t-setiprodukte" aria-hidden="true"></div>
+          <!-- Nur in der neuen Fassung (?ndjekja=1): was genau im Paket
+               liegt, mit Menge - fuer Screenreader die einzige Liste der
+               Produkte, die Bilder darueber sind aria-hidden. -->
+          <p class="seti__pako" id="t-pako" hidden></p>
           <ul class="seti__cipa" id="t-seticipa"></ul>
+          <a class="seti__ndjekja" id="t-ndjekjalink" href="#ndjekja" hidden></a>
           <div class="cmimi" id="t-cmimi1">
             <div><strong data-cmimi></strong><span data-dita></span></div>
             <p>Transport falas<br><b>Paguani te dera</b></p>
@@ -111,6 +116,14 @@
         </div>
       </section>
 
+      <!-- 4a. DIE BEGLEITUNG - nur in der neuen Fassung (?ndjekja=1, bis
+           NDJEKJA.imVerkauf in shared/lifeskin-ndjekja.js an ist). Ersetzt
+           "Nuk mbeteni vetëm" darunter. Die Beispielkarte ist ein Beispiel:
+           Antippen bleibt auf diesem Geraet, nichts wird gespeichert.
+           Inhalt baut terapia.js aus NDJEKJA_TEXTE - dieselben Worte wie
+           im Kundenbereich (/ndjekja). -->
+      <section class="pjese ndjekja" id="ndjekja" data-pfad="Betreuung" hidden></section>
+
       <!-- 4. DIE 4 WOCHEN (data-pfad bleibt "28 Tage" - der Klickpfad in
            Heart vergleicht damit auch alte Besuche) -->
       <section class="pjese" id="ditet" data-pfad="28 Tage" hidden>
@@ -169,8 +182,9 @@
           <p id="t-faq2">Brenda 4 javëve lëkura juaj ndryshon dukshëm – synimi është që problemet që pamë të largohen plotësisht. Dr. Gashi e kontrollon çdo javë me skanim.</p></details>
         <details><summary>Si paguaj dhe sa kushton dërgesa?<i aria-hidden="true">+</i></summary>
           <p id="t-pagesa"></p></details>
-        <details><summary>Po nëse nuk jam i kënaqur?<i aria-hidden="true">+</i></summary>
-          <p id="t-garancia"></p></details>
+        <details id="garancia"><summary>Po nëse nuk jam i kënaqur?<i aria-hidden="true">+</i></summary>
+          <p id="t-garancia"></p>
+          <ul class="kushtet" id="t-kushtet" hidden></ul></details>
         <button class="lidhje" type="button" data-hilfe>Kam një pyetje tjetër</button>
       </section>
 
@@ -262,20 +276,39 @@
       <p><b>Terapia 4-javore</b><span id="t-shportaprodukte"></span></p>
       <strong data-cmimi></strong>
     </div>
+    <!-- Neue Fassung: Preis, Lieferung und Zahlung stehen VOR dem
+         Bestaetigen da - nicht erst in einer Frage weiter oben. -->
+    <dl class="porosia__fatura" id="t-fatura" hidden></dl>
     <form class="porosia__forma" id="forma" novalidate>
       <label>Emri dhe mbiemri<input id="t-emri" autocomplete="name" required maxlength="100"></label>
-      <label>Numri i telefonit<input id="t-telefon" type="tel" inputmode="tel" autocomplete="tel" required maxlength="30"></label>
+      <small class="porosia__fushe-gabim" id="t-emri-gabim" hidden></small>
+      <!-- Neue Fassung: Hat er die Nummer schon in der Analyse gegeben,
+           wird sie nicht noch einmal verlangt. Die Seite kennt sie nicht
+           (sie steht nur in der Sitzung, die das CEO-Konto liest) - und
+           sie kommt nie in den oeffentlichen Bericht oder in eine URL. -->
+      <div class="porosia__numri" id="t-numrianalize" hidden>
+        <p><b>Numri i telefonit</b><span>Ju kontaktojmë në numrin që na dhatë gjatë analizës.</span></p>
+        <button type="button" class="porosia__ndrysho" id="t-numritjeter">Përdor një numër tjetër</button>
+      </div>
+      <label id="t-telefonlabel">Numri i telefonit<input id="t-telefon" type="tel" inputmode="tel" autocomplete="tel" required maxlength="30"></label>
+      <small class="porosia__fushe-gabim" id="t-telefon-gabim" hidden></small>
+      <button type="button" class="porosia__ndrysho porosia__ndrysho--vetem" id="t-numriperseri" hidden>Përdor numrin nga analiza</button>
       <label>Rruga dhe numri<input id="t-adresa" autocomplete="street-address" required maxlength="150"></label>
+      <small class="porosia__fushe-gabim" id="t-adresa-gabim" hidden></small>
       <label>Qyteti<input id="t-qyteti" autocomplete="address-level2" required maxlength="100"></label>
+      <small class="porosia__fushe-gabim" id="t-qyteti-gabim" hidden></small>
       <p class="porosia__gabim" id="t-gabim" role="alert" hidden></p>
     </form>
     <div class="porosia__fund" id="t-porosifund">
       <p class="porosia__siguria" id="t-porosisiguria"></p>
+      <details class="porosia__garancia" id="t-porosigarancia" hidden><summary></summary><ul></ul></details>
+      <p class="porosia__statusi" id="t-porosistatusi" role="status" aria-live="polite" hidden></p>
       <button class="knopf" type="submit" form="forma" id="t-dergo"></button>
+      <a class="porosia__wa" id="t-porosiwa" href="#" target="_blank" rel="noopener" hidden>Preferoni ta porosisni në WhatsApp?</a>
     </div>
     <div class="porosia__faleminderit" id="t-faleminderit" hidden role="status">
-      <h2>Porosia juaj është regjistruar.</h2>
-      <p>Ju kontaktojmë për konfirmimin e adresës. Pagesa bëhet kur ta merrni pakon.</p>
+      <h2 id="t-faleminderittitulli">Porosia juaj është regjistruar.</h2>
+      <p id="t-faleminderittext">Ju kontaktojmë për konfirmimin e adresës. Pagesa bëhet kur ta merrni pakon.</p>
       <button class="knopf" type="button" data-mbyll>Kthehu te terapia</button>
     </div>
   </div>

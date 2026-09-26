@@ -129,6 +129,10 @@ export function starteKlickpfad({
     // der Landingpage druecken den Startknopf) - die hat niemand getippt.
     if (ereignis.isTrusted === false) return;
     const ziel = ereignis.target instanceof Element ? ereignis.target : null;
+    // Was in [data-pfad-still] liegt, wird nicht aufgezeichnet - die
+    // Beispielkarte der Begleitung: Ein Tippen auf "Skuqje" dort ist keine
+    // Hautreaktion und gehoert in keinen Pfad.
+    if (ziel?.closest("[data-pfad-still]")) return;
     const el = ziel?.closest("button, a, summary, label, [role=button], [data-pfad-klick], input[type=checkbox], input[type=radio]");
     if (!el) return;
     const wo = abschnittVon(el, namen);

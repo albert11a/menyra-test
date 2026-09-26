@@ -146,7 +146,7 @@ test("die Schritte des Patienten stehen der Reihe nach, von 0 bis zur Bestellung
   }], { offen: "abc" }));
   const liste = html.slice(html.indexOf('class="heart-schritte"'), html.indexOf("</ol>", html.indexOf('class="heart-schritte"')));
   const reihe = ["Analyse abgeschickt", "Nummer hinterlassen", "Warteseite geöffnet", "Befund geöffnet",
-    "Befund gelesen", "Therapie gesehen", "Preis gesehen", "Kasse geöffnet", "Anschrift eingegeben", "Bestellt"];
+    "Befund gesehen", "Therapie gesehen", "Preis gesehen", "Kasse geöffnet", "Anschrift eingegeben", "Bestellt"];
   const stellen = reihe.map((w) => liste.indexOf(w));
   assert.ok(stellen.every((i) => i > -1), JSON.stringify(stellen));
   assert.deepEqual([...stellen].sort((a, b) => a - b), stellen, "Die Schritte stehen nicht der Reihe nach");

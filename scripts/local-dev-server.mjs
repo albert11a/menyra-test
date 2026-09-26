@@ -148,6 +148,9 @@ function rewritePath(pathname = "/") {
   if (/^\/analiza\/[^/]+$/.test(path)) return ANALIZA_INDEX;
   // Die neue Therapieseite (vercel.json: /terapia/:kennung).
   if (/^\/terapia\/[^/]+$/.test(path)) return "/apps/lifeskin-verkauf/terapia.html";
+  // Der Kundenbereich der Begleitung (vercel.json: /ndjekja). Der Zugang
+  // steht im Fragment (#...) und kommt nie beim Server an.
+  if (path === "/ndjekja") return "/apps/lifeskin-verkauf/ndjekja.html";
   if (path === "/lifeskinlifeskintesttest") return BERICHT_INDEX;
   // Die Vorlage: die fruehere Hauptanalyse, aufbewahrt unter eigener
   // Adresse, damit ihre Gestaltung nicht verloren geht.

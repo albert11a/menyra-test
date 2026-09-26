@@ -440,6 +440,14 @@
       "destination": "/apps/lifeskin-verkauf/terapia.html"
     },
     {
+      "source": "/ndjekja",
+      "destination": "/apps/lifeskin-verkauf/ndjekja.html"
+    },
+    {
+      "source": "/ndjekja/",
+      "destination": "/apps/lifeskin-verkauf/ndjekja.html"
+    },
+    {
       "source": "/120992",
       "destination": "/apps/lifeskin-verkauf/index.html"
     },

@@ -61,6 +61,14 @@ const NON_SOCIAL_NAVIGATION_PREFIXES = [
   '/apps/lifeskin-bericht',
   '/analysetemplateastra',
   '/apps/lifeskin-astra',
+  // Die Therapieseite (Kauf) und der Kundenbereich der Begleitung - aus
+  // demselben Grund. /terapia/<kennung> stand hier nicht: Bei einem
+  // Netz-Aussetzer lieferte der Service Worker dort die gecachte
+  // Social-Shell aus statt der Therapie. Gefunden am 26.09.
+  '/terapia',
+  '/ndjekja',
+  '/apps/lifeskin-verkauf',
+  '/120992',
   '/apps/mnyra-heart',
   '/apps/waiter',
   '/apps/menyra-social/lead-landing'

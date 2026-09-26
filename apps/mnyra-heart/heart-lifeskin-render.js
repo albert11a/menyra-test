@@ -39,6 +39,7 @@ import { mitFingerabdruck } from "./heart-morph.js";
 import { renderMedien, renderMediumEditor, renderMedienReaktionen, renderBefundMedienAuswahl } from "./heart-lifeskin-medien.js";
 import { vorschauKasten } from "./heart-lifeskin-vorschau.js";
 import { ohneSeite, ohneSeiteTief } from "../../shared/lifeskin-ohne-seite.js";
+import { renderBetreuung, renderBetreuungFall, renderFallBestellung, renderKaufweg } from "./heart-lifeskin-ndjekja-render.js";
 
 // Die Platzhalter im persoenlichen Satz.
 //
@@ -467,7 +468,7 @@ function baueTrichterListe(sitzungen, imBlick, zeitraum) {
       return { ...chip, chipStufe: 0, stufen: baueLesetiefe(sitzungen || [], zeitraum || "max"),
         // Die Lesetiefe zaehlt NICHT kumulativ: Jede Marke steht fuer
         // sich, und der Anteil ist der an den aktiven Berichten.
-        fuss: "Wie weit der fertige Bericht gelesen wird. Jede Marke zaehlt fuer sich; * heisst geschaetzt." };
+        fuss: "Wie weit der fertige Bericht gesehen wird (im Bild - nicht: gelesen oder verstanden). Jede Marke zaehlt fuer sich; * heisst geschaetzt." };
     }
     // Die drei Wege der Menyra. Der Chip traegt das kurze Wort, die
     // Ueberschrift darunter den ganzen Namen: "Për trupin ose vetëm
@@ -546,7 +547,7 @@ function renderBestellungen(sitzungen, zeitraum = "heute") {
       </span>
       <span class="heart-lifeskin-zeile__wert">${escapeHtml(euro(s.order?.total))}</span>
       <span class="heart-lifeskin-marke ${s.order?.still ? "heart-lifeskin-marke--offen" : "heart-lifeskin-marke--neu"}">${
-        escapeHtml(s.order?.still ? "still · Test?" : (s.order?.status || "neu"))}</span>
+        escapeHtml(s.order?.still ? "still · Test?" : ({ bestaetigt: "bestätigt" })[s.order?.status] || s.order?.status || "neu")}</span>
     </button>`).join("") + (gewaehlt.length > 300
     ? `<p class="heart-lifeskin-leer">+ ${gewaehlt.length - 300} ältere – kleineren Zeitraum wählen.</p>` : "");
 
@@ -1662,7 +1663,7 @@ export function fallSchritte(sitzung) {
     ["Nummer hinterlassen", sitzung.hatTelefon],
     ["Warteseite geöffnet", sitzung.warteseiteGeoeffnet],
     ["Befund geöffnet", sitzung.berichtGeoeffnet],
-    ["Befund gelesen", sitzung.sahSchnitt],
+    ["Befund gesehen", sitzung.sahSchnitt],
     ["Therapie gesehen", sitzung.sahTherapie],
     ["Preis gesehen", sitzung.sahPreis],
     ["Kasse geöffnet", sitzung.kasseGeoeffnet],
@@ -1914,6 +1915,8 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
         ${sitzung.address ? `<div class="heart-fall-anschrift">
           ${kopierWert([sitzung.address.name, sitzung.address.strasse, [sitzung.address.plz, sitzung.address.ort].filter(Boolean).join(" "), sitzung.address.telefon].filter(Boolean).join(", "), "Anschrift")}
         </div>` : ""}`, { meta: sitzung.order ? escapeHtml(euro(sitzung.order.total)) : "begonnen", stand: sitzung.order ? "voll" : "fehlt" }) : ""}
+
+      ${renderFallBestellung(sitzung, bericht, zustand)}
 
       ${fallKarte("herkunft", "Herkunft", renderHerkunftInhalt(sitzung), { meta: escapeHtml(h.quelle) })}
 
@@ -2681,6 +2684,10 @@ function renderProduktEditor(produkt, status, entwurf) {
                   placeholder="Benzoyl Peroxide | 4% | Ul bakterin C. acnes | Senkt das Bakterium&#10;Niacinamide | 4% | Qetëson skuqjen | Beruhigt die Roetung">${escapeHtml(feldwert("perberesit", (p.perberesit || []).map((w) =>
                     [w.emri, w.sasia || "", w.roli?.sq || "", w.roli?.de || ""].join(" | ")).join("\n")))}</textarea>
       </label>
+      <label class="heart-befund__geprueft">
+        <input type="checkbox" data-produktfeld="perberesitGeprueft"${feldwert("perberesitGeprueft", p.perberesitGeprueft ? "1" : "") === "1" ? " checked" : ""} />
+        <span>Gegen die echte INCI-Liste geprüft – erst dann stehen die Wirkstoffe auf der Therapieseite (neue Fassung).</span>
+      </label>
 
       <!-- Die Anwendung.
            "Und wie benutze ich das?" wird VOR dem Kauf gestellt. Wer die
@@ -3017,6 +3024,11 @@ export function renderLifeskin(zustand) {
     return `<div class="heart-lifeskin">${renderProduktEditor(produkt, zustand.produktStatus, zustand.produktEntwurf)}</div>`;
   }
 
+  // Ein Fall der Begleitung ist offen: er steht allein da, wie eine Akte.
+  if (zustand.ndjekja?.an && zustand.ndjekja?.offen) {
+    return `<div class="heart-lifeskin">${renderBetreuungFall(zustand, { sitzungen: sitzungen || [], berichte: zustand.berichte || {} })}</div>`;
+  }
+
   if (zustand.offen) {
     const sitzung = findeSitzung(zustand, zustand.offen);
     return `<div class="heart-lifeskin">${renderSitzungDetail(
@@ -3063,6 +3075,7 @@ export function renderLifeskin(zustand) {
       ${renderTrichter(trichterListe, zustand.trichterOffen || "main")}
       ${renderAnalysen(sitzungen, zustand.berichte || {}, zustand.fach || "alle", "Fälle", "",
         zustand.vorschau || {}, { auswahl: zustand.auswahl ?? null, auswahlLoeschen: !!zustand.auswahlLoeschen })}
+      ${renderBetreuung(zustand)}
       ${renderBestellungen(sitzungen, zustand.bestellZeitraum || "heute")}
       ${renderNachfassen(zahlen)}
       ${renderMedienReaktionen(zustand)}
@@ -3088,6 +3101,7 @@ export function renderLifeskin(zustand) {
           ${renderRaste(zustand)}
           ${renderMedien(zustand)}
           ${alsKlapp(renderVerteilung(baueVerteilung(imBlick)), "verteilung", { standard: false })}
+          ${alsKlapp(renderKaufweg(imBlick, zustand.berichte || {}, { zeitraum: ZEITRAEUME.find((z) => z.id === (zeitraum || "heute"))?.label || "" }), "kaufweg", { standard: false })}
           ${alsKlapp(renderTests(zustand.tests, zustand.berichte || {}), "tests", { standard: false })}
           ${alsKlapp(renderAnbieter(zustand.konfig?.anbieter, zustand.anbieterStatus), "anbieter", { standard: false })}
         </div>

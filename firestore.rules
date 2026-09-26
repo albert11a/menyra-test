@@ -1352,6 +1352,104 @@ service cloud.firestore {
           allow delete: if isCeoActor();
         }
       }
+
+      // DIE BEGLEITUNG NACH DEM KAUF ("ndjekja", vier Wochen).
+      //
+      // Der Kunde hat kein Konto. Sein Bereich haengt an einem ZUGANG: 32
+      // zufaellige Hexzeichen (128 Bit), die nur in seinem Link stehen
+      // (mnyra.com/ndjekja#<zugang> - im Fragment, also in keinem
+      // Serverprotokoll). Wer den Zugang hat, liest seinen Bereich und
+      // schreibt seine Eintraege; aufzaehlen laesst sich keiner.
+      //
+      // BEWUSST GETRENNT vom oeffentlichen Bericht: Die Analyseseite wird
+      // weitergeleitet, der Verlauf nicht. Im Bericht steht der Zugang nie.
+      //
+      // Heart legt den Fall an (nach der bestaetigten Bestellung), setzt
+      // Termine und schreibt Rueckmeldungen. Interne Notizen stehen in
+      // einer EIGENEN Sammlung (ndjekjaIntern), die nur Heart liest - keine
+      // Abfrage des Kundenbereichs kommt je an sie heran.
+      function ndjekjaZugangOk(zugang) {
+        return zugang.matches('^[0-9a-f]{32}$');
+      }
+
+      function ndjekjaDatumOk(wert) {
+        return wert is string && wert.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+      }
+
+      function ndjekjaZeitOk(wert) {
+        return wert is string && wert.size() <= 40;
+      }
+
+      // Was der Kunde am Fall selbst aendern darf - zwei Dinge, sonst nichts:
+      //   1. die Zusammenfassung seines letzten Eintrags (fundit), im selben
+      //      Schreibvorgang wie der Eintrag - so sieht Heart die Rueckmeldung
+      //   2. den Anwendungsstart, EINMAL. Korrigieren kann ihn nur Heart.
+      function ndjekjaKundeAendert() {
+        let neu = request.resource.data;
+        let alt = resource.data;
+        let geaendert = neu.diff(alt).affectedKeys();
+        return (geaendert.hasOnly(["fundit", "updatedAt"])
+            && neu.fundit is map
+            && neu.fundit.keys().hasOnly(["dita", "at", "blickAt"])
+            && neu.fundit.dita is int && neu.fundit.dita >= 1 && neu.fundit.dita <= 60
+            && ndjekjaZeitOk(neu.fundit.at)
+            && ndjekjaZeitOk(neu.fundit.blickAt)
+            && ndjekjaZeitOk(neu.updatedAt))
+          || (geaendert.hasOnly(["startAt", "startVon", "updatedAt"])
+            && alt.get("startAt", "") == ""
+            && ndjekjaDatumOk(neu.startAt)
+            && neu.startVon == "klienti"
+            && ndjekjaZeitOk(neu.updatedAt));
+      }
+
+      // Ein Eintrag: angewendet ja/teilweise/nein, wie sich die Haut
+      // anfuehlte (nur die fuenf Antworten), eine kurze Nachricht. Einer je
+      // Anwendungstag - die Kennung ist der Tag (t01 ... t60).
+      function ndjekjaEintragOk(eintragId) {
+        let d = request.resource.data;
+        return d.keys().hasOnly(["dita", "data", "perdorimi", "ndjesia", "mesazh", "createdAt", "updatedAt"])
+          && d.dita is int && d.dita >= 1 && d.dita <= 60
+          && eintragId == ("t" + (d.dita < 10 ? "0" : "") + string(d.dita))
+          && (d.data == "" || ndjekjaDatumOk(d.data))
+          && d.perdorimi in ["po", "pjeserisht", "jo"]
+          && d.ndjesia is list && d.ndjesia.size() <= 5
+          && d.ndjesia.hasOnly(["mire", "thatesi", "skuqje", "djegie", "tjeter"])
+          && d.mesazh is string && d.mesazh.size() <= 500
+          && ndjekjaZeitOk(d.createdAt)
+          && ndjekjaZeitOk(d.updatedAt);
+      }
+
+      match /ndjekja/{zugang} {
+        allow get: if isCeoActor() || ndjekjaZugangOk(zugang);
+        allow list: if isCeoActor();
+        allow create, delete: if isCeoActor();
+        allow update: if isCeoActor() || (ndjekjaZugangOk(zugang) && ndjekjaKundeAendert());
+
+        match /shenime/{eintragId} {
+          allow read: if isCeoActor() || ndjekjaZugangOk(zugang);
+          allow create: if ndjekjaZugangOk(zugang)
+            && exists(/databases/$(database)/documents/lifeskin/$(tenantId)/ndjekja/$(zugang))
+            && ndjekjaEintragOk(eintragId);
+          // Korrigieren ja - der erste Zeitpunkt bleibt.
+          allow update: if ndjekjaZugangOk(zugang)
+            && ndjekjaEintragOk(eintragId)
+            && request.resource.data.createdAt == resource.data.createdAt;
+          allow delete: if isCeoActor();
+        }
+
+        // Rueckmeldungen des Teams - mit Datum und dem, der sie wirklich
+        // geschrieben hat. Schreiben darf nur Heart.
+        match /pergjigjet/{antwortId} {
+          allow read: if isCeoActor() || ndjekjaZugangOk(zugang);
+          allow write: if isCeoActor();
+        }
+      }
+
+      // Intern: Notizen, verantwortliche Person, offene Aufgaben, bis wann
+      // gelesen, und welcher Zugang zu welchem Fall gehoert. Nur Heart.
+      match /ndjekjaIntern/{kennung} {
+        allow read, write: if isCeoActor();
+      }
     }
 
     match /restaurants/{restaurantId} {

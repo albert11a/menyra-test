@@ -6655,6 +6655,82 @@ button,
   }
 }
 
+/* ---------- Betreuung (Lifeskin, heart-lifeskin-ndjekja-render.js) ----------
+   Kunde und intern sind zwei Kaesten mit zwei Farben: gruen = sieht der
+   Kunde, rot = nur Heart. */
+.heart-ndj__vorschau {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 999px; background: #f4b94226; color: #f4b942; vertical-align: middle;
+}
+.heart-ndj__chips { flex-wrap: wrap; }
+.heart-ndj-chip--dringend span { background: #ff6b57; color: #1a0703; border-radius: 999px; padding: 0 6px; }
+.heart-ndj-zeile { grid-template-columns: 1fr auto; }
+.heart-ndj-zeile__marken { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.heart-ndj-fall { display: flex; flex-direction: column; gap: 14px; padding-bottom: 40px; }
+.heart-ndj-fall__kopf h3 { margin: 10px 0 4px; font-size: 20px; }
+.heart-ndj-fall__kopf p { margin: 0; color: var(--heart-text-muted); font-size: 14px; }
+.heart-ndj-fall__marken { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.heart-ndj-zurueck { width: auto; align-self: flex-start; }
+.heart-ndj-kasten {
+  border: 1px solid var(--heart-border); border-radius: 16px; padding: 14px;
+  display: flex; flex-direction: column; gap: 12px; background: #ffffff05;
+}
+.heart-ndj-kasten h4 { margin: 0; font-size: 15px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.heart-ndj-kasten h4 small { font-size: 12px; font-weight: 400; color: var(--heart-text-muted); }
+.heart-ndj-kasten p { margin: 0; }
+.heart-ndj-kasten--kunde { border-color: #3fbf9b66; background: #3fbf9b0f; }
+.heart-ndj-form { display: flex; flex-direction: column; gap: 12px; }
+.heart-ndj-kasten--intern { border-color: #ff6b5766; background: #ff6b570d; }
+.heart-ndj-kasten--intern h4 { color: #ff8a7a; }
+.heart-ndj-kasten--bestellung { margin: 4px 0; }
+.heart-ndj-reihe { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
+.heart-ndj-reihe--drei { grid-template-columns: 1fr; }
+.heart-ndj-reihe--stapel { grid-template-columns: 1fr; }
+.heart-ndj-mini { min-height: 42px; width: auto; padding: 8px 14px; }
+.heart-ndj-leise { opacity: .75; font-size: 13px; }
+.heart-ndj-klein { font-size: 13px; color: var(--heart-text-muted); }
+.heart-ndj-termine { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.heart-ndj-termin {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--heart-border); font-size: 14px;
+}
+.heart-ndj-termin:last-child { border-bottom: 0; }
+.heart-ndj-termin--kryer { color: var(--heart-text-muted); }
+.heart-ndj-termin--faellig b { color: #f4b942; }
+.heart-ndj-streifen { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.heart-ndj-tag {
+  display: flex; flex-direction: column; align-items: center; padding: 4px 0; border-radius: 8px;
+  font-size: 10.5px; color: var(--heart-text-muted); background: #ffffff08; border: 1px solid transparent;
+}
+.heart-ndj-tag i { font-style: normal; font-size: 15px; font-weight: 700; color: var(--heart-text); line-height: 1.2; }
+.heart-ndj-tag--po i { color: #3fbf9b; }
+.heart-ndj-tag--pjeserisht i { color: #f4b942; }
+.heart-ndj-tag--jo i { color: #ff6b57; }
+.heart-ndj-tag--pa i { color: var(--heart-text-muted); }
+.heart-ndj-tag--blick { border-color: #ff6b57; }
+.heart-ndj-legende { font-size: 11.5px; color: var(--heart-text-muted); }
+.heart-ndj-eintraege, .heart-ndj-antworten, .heart-ndj-notizen { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.heart-ndj-eintrag, .heart-ndj-antwort, .heart-ndj-notizen li {
+  display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border-radius: 12px;
+  background: #ffffff08; font-size: 14px;
+}
+.heart-ndj-eintrag--neu { outline: 1px solid #ff6b57; }
+.heart-ndj-eintrag__gefuehl { color: var(--heart-text-soft); }
+.heart-ndj-eintrag__text, .heart-ndj-antwort__text, .heart-ndj-notizen li span { white-space: pre-line; overflow-wrap: anywhere; }
+.heart-ndj-eintrag small, .heart-ndj-antwort small, .heart-ndj-notizen small { font-size: 11.5px; color: var(--heart-text-muted); }
+.heart-ndj-kw { overflow-x: auto; }
+.heart-ndj-kw table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.heart-ndj-kw th, .heart-ndj-kw td { padding: 7px 6px; border-bottom: 1px solid var(--heart-border); text-align: right; vertical-align: top; }
+.heart-ndj-kw tbody th, .heart-ndj-kw thead th:first-child { text-align: left; font-weight: 500; color: var(--heart-text-soft); }
+.heart-ndj-kw thead th small { display: block; font-weight: 400; font-size: 11px; color: var(--heart-text-muted); }
+.heart-ndj-kw td small { color: var(--heart-text-muted); }
+.heart-ndj-kw__ziel th, .heart-ndj-kw__ziel td b { color: #3fbf9b; font-weight: 700; }
+.heart-ndj-kw__leer { color: var(--heart-text-muted); }
+@media (min-width: 640px) {
+  .heart-ndj-reihe--drei { grid-template-columns: 1fr 1fr 1fr; }
+  .heart-ndj-reihe--stapel { grid-template-columns: 1fr 1fr; }
+}
+
 /* ===== TAG (erzeugt) =====
    Der helle Farbsatz. Gewuenscht am 25.09.: "Tag und Nacht". Umgeschaltet
    wird in der Schublade (heart-render.js, renderThemeWahl); gemerkt wird
@@ -6689,7 +6765,7 @@ html[data-heart-theme="tag"] {
   --heart-shadow: 0 14px 36px rgba(24, 24, 27, 0.08);
 }
 
-/* 172 Farbangaben uebersetzt */
+/* 175 Farbangaben uebersetzt */
 html:where([data-heart-theme="tag"]),
 :where(html[data-heart-theme="tag"]) body {
   background: radial-gradient(circle at top left, rgba(35, 196, 131, 0.12), transparent 26%), radial-gradient(circle at top right, rgba(0, 0, 0, 0.092), transparent 30%), linear-gradient(180deg, #f6f6f6 0%, #fafafa 100%);
@@ -9936,4 +10012,151 @@ html:where([data-heart-theme="tag"]),
   background: var(--heart-surface);
   color: var(--heart-text);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.054);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj__vorschau {
+  border-radius: 999px;
+  background: #f4b94226;
+  color: #f4b942;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-chip--dringend span {
+  background: #ff6b57;
+  color: #1a0703;
+  border-radius: 999px;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-fall__kopf p {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-kasten {
+  border: 1px solid var(--heart-border);
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.023);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-kasten h4 small {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-kasten--kunde {
+  border-color: #3fbf9b66;
+  background: #3fbf9b0f;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-kasten--intern {
+  border-color: #ff6b5766;
+  background: #ff6b570d;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-kasten--intern h4 {
+  color: #ff8a7a;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-klein {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-termin {
+  border-bottom: 1px solid var(--heart-border);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-termin:last-child {
+  border-bottom: 0;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-termin--kryer {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-termin--faellig b {
+  color: #f4b942;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-tag {
+  border-radius: 8px;
+  color: var(--heart-text-muted);
+  background: rgba(0, 0, 0, 0.036);
+  border: 1px solid transparent;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-tag i {
+  color: var(--heart-text);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-tag--po i {
+  color: #3fbf9b;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-tag--pjeserisht i {
+  color: #f4b942;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-tag--jo i {
+  color: #ff6b57;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-tag--pa i {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-tag--blick {
+  border-color: #ff6b57;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-legende {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-eintrag,
+:where(html[data-heart-theme="tag"]) .heart-ndj-antwort,
+:where(html[data-heart-theme="tag"]) .heart-ndj-notizen li {
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.036);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-eintrag--neu {
+  outline: 1px solid #ff6b57;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-eintrag__gefuehl {
+  color: var(--heart-text-soft);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-eintrag small,
+:where(html[data-heart-theme="tag"]) .heart-ndj-antwort small,
+:where(html[data-heart-theme="tag"]) .heart-ndj-notizen small {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-kw table {
+  border-collapse: collapse;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-kw th,
+:where(html[data-heart-theme="tag"]) .heart-ndj-kw td {
+  border-bottom: 1px solid var(--heart-border);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-kw tbody th,
+:where(html[data-heart-theme="tag"]) .heart-ndj-kw thead th:first-child {
+  color: var(--heart-text-soft);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-kw thead th small {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-kw td small {
+  color: var(--heart-text-muted);
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-kw__ziel th,
+:where(html[data-heart-theme="tag"]) .heart-ndj-kw__ziel td b {
+  color: #3fbf9b;
+}
+
+:where(html[data-heart-theme="tag"]) .heart-ndj-kw__leer {
+  color: var(--heart-text-muted);
 }

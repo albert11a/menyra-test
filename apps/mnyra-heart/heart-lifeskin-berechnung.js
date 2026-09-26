@@ -610,11 +610,14 @@ export function baueZweige(sitzungen) {
 // ist: ihre Arbeit. Und weil jede Marke hier fuer sich zaehlt statt
 // kumulativ - wer den Preis sieht, ohne den Befund zu Ende gelesen zu
 // haben, soll genau so dastehen.
+// "GESEHEN", NICHT "GELESEN" (Auftrag vom 26.09., Punkt 13): Die Marke
+// sagt, dass der Abschnitt im Bild stand - nicht, dass er gelesen oder
+// verstanden wurde.
 export const LESEMARKEN = Object.freeze([
   { id: "berichtGeoeffnet", label: "Analyse geoeffnet" },
-  { id: "sahSchnitt", label: "Analyse gelesen" },
-  { id: "sahTherapie", label: "Therapie gelesen" },
-  { id: "sahPreis", label: "Preis gelesen" },
+  { id: "sahSchnitt", label: "Analyse gesehen" },
+  { id: "sahTherapie", label: "Therapie gesehen" },
+  { id: "sahPreis", label: "Preis gesehen" },
   { id: "kasseGeoeffnet", label: "Kasse geoeffnet" },
   { id: "hatAnschrift", label: "Anschrift begonnen" },
   { id: "hatBestellt", label: "Bestellt" }

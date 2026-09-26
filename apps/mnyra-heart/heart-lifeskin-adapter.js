@@ -611,6 +611,8 @@ export async function setzeVersand(sitzungId, { status, lieferVon, lieferBis }) 
   if (lieferVon) daten.lieferVon = String(lieferVon);
   if (lieferBis) daten.lieferBis = String(lieferBis);
   if (status === "versandt") daten.versandtAt = new Date().toISOString();
+  // Wann zugestellt wurde - fuer die Auswertung je Gruppe (Zeitraum).
+  if (status === "zugestellt") daten.zugestelltAt = new Date().toISOString();
   await setDoc(doc(db, "lifeskin", TENANT, "reports", sitzungId), daten, { merge: true });
 }
 

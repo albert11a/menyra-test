@@ -1,0 +1,75 @@
+<!doctype html>
+<!-- DER KUNDENBEREICH DER BEGLEITUNG - /ndjekja#<zugang>.
+     Nach der bestaetigten Bestellung schickt das Team diesen Link. Keine
+     App, keine Anmeldung: Der Zugang steht im Fragment (#), geht also nie
+     an einen Server, in kein Protokoll und in keinen Referer.
+     Kein Pixel, kein Klickpfad - was hier steht (Hautreaktionen,
+     Nachrichten), ist Betreuung und keine Werbemessung.
+     Aufbau: ndjekja.js, Daten: ndjekja-daten.js, Regeln: firestore.rules
+     ("ndjekja"). -->
+<html lang="sq">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#f8f7f3">
+  <title>Ndjekja juaj · LifeSkin</title>
+  <meta property="og:title" content="Ndjekja juaj · LifeSkin">
+  <meta property="og:description" content="Zona juaj personale për 4 javët e terapisë.">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/apps/lifeskin-verkauf/verkauf.css">
+  <script type="module" src="/apps/lifeskin-verkauf/ndjekja.js"></script>
+</head>
+<body class="ndj-faqe">
+  <header class="kopf">
+    <span class="marke">LIFESKIN<small id="n-kodi"></small></span>
+    <a class="kopf__pyetje" id="n-kopfwa" href="#" target="_blank" rel="noopener" hidden>Keni një pyetje?</a>
+  </header>
+
+  <main class="faqe">
+    <p class="ndj-ekipi" id="n-shiko" hidden>Pamje e ekipit – vetëm për lexim. Asgjë nuk ndryshohet.</p>
+    <p class="gjendja" id="n-laedt">Po hapet zona juaj…</p>
+
+    <div class="gjendja" id="n-weg" hidden>
+      <h1>Ky link nuk është i plotë.</h1>
+      <p>Hapeni përsëri linkun që ju dërguam, të plotë. Nëse nuk funksionon, na shkruani dhe jua dërgojmë sërish.</p>
+      <a class="knopf knopf--wa ndj-knopf-poshte" id="n-wegwa" href="#" target="_blank" rel="noopener" hidden>Na shkruani në WhatsApp</a>
+    </div>
+
+    <div class="gjendja" id="n-netz" hidden>
+      <h1>Nuk ka lidhje për momentin.</h1>
+      <p>Kontrolloni internetin dhe provoni përsëri.</p>
+      <button class="knopf ndj-knopf-poshte" type="button" id="n-provo">Provo përsëri</button>
+    </div>
+
+    <div id="n-faqja" hidden>
+      <section class="ndj-kreu">
+        <p class="syri" id="n-syri">Zona juaj personale</p>
+        <h1 id="n-titulli"></h1>
+        <p class="ndj-kreu__teksti" id="n-gjendja"></p>
+      </section>
+
+      <!-- Vor dem Start: Bestellung, naechster Schritt, Start bestaetigen. -->
+      <section class="ndj-blloku" id="n-pritet" hidden></section>
+
+      <!-- Waehrend der vier Wochen: der Eintrag von heute (oder einem
+           frueheren Tag, zum Korrigieren). -->
+      <section class="ndj-blloku" id="n-sot" hidden></section>
+
+      <!-- Der naechste geplante Termin, der letzte wirklich erledigte. -->
+      <section class="ndj-blloku" id="n-kontrolli" hidden></section>
+
+      <!-- Was das Team geschrieben hat - mit Datum und Absender. -->
+      <section class="ndj-blloku" id="n-pergjigjet" hidden></section>
+
+      <!-- Die Tage bisher: Eintrag oder "Nuk është shënuar". -->
+      <section class="ndj-blloku" id="n-historia" hidden></section>
+
+      <section class="ndj-blloku" id="n-plani" hidden></section>
+
+      <section class="ndj-blloku ndj-kontakt" id="n-kontakt"></section>
+    </div>
+  </main>
+</body>
+</html>

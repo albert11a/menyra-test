@@ -24,6 +24,7 @@ import { statistikPatch } from "../../shared/lifeskin-statistik.js";
 import { felder } from "../lifeskin/lifeskin-session.js";
 import { pfadPatch } from "../../shared/lifeskin-klickpfad.js";
 import { meldungAnstossen } from "../../shared/lifeskin-melden.js";
+import { kaufPatch } from "../../shared/lifeskin-kaufweg.js";
 
 // Firestore verpackt jeden Wert in seinen Typ. Ausgepackt werden nur die
 // Formen, die im Befund wirklich vorkommen - mehr braucht diese Seite
@@ -220,6 +221,11 @@ export class AnalyseDaten {
           roli: sprachtext(x?.roli, sprache)
         }))
         .filter((x) => x.emri),
+      // NUR MIT HAKEN IN HEART ("gegen die INCI-Liste geprueft") duerfen
+      // die Wirkstoffe auf der Therapieseite stehen. Die Katalogwerte sind
+      // nach den Produktnamen angesetzt (lifeskin-catalog.js) - gezeigt
+      // wuerde sonst etwas, das niemand geprueft hat.
+      perberesitGeprueft: stamm.perberesitGeprueft === true,
       perdorimi: stamm.perdorimi ? {
         hapi: Number(stamm.perdorimi.hapi) || 0,
         koha: sprachtext(stamm.perdorimi.koha, sprache),
@@ -287,6 +293,26 @@ export class AnalyseDaten {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fields: felder(daten) }),
+        keepalive: true
+      });
+    } catch {
+      return undefined;
+    }
+  }
+
+  // Eine Marke des Kaufwegs (shared/lifeskin-kaufweg.js): ein Blatt unter
+  // timings.kauf, mit Maske je Blatt - und nur in eine bestehende Sitzung,
+  // wie der Klickpfad. Nie Inhalte: nur, DASS etwas geschah, und wann.
+  async kaufMarke(marke, optionen = {}) {
+    if (!this.kennung) return undefined;
+    const patch = kaufPatch(marke, optionen);
+    if (!patch) return undefined;
+    const maske = [...patch.masken.map((f) => `updateMask.fieldPaths=${encodeURIComponent(f)}`), "currentDocument.exists=true"].join("&");
+    try {
+      return await this.fetchFn(this.#sitzung(`?${maske}`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fields: felder(patch.daten) }),
         keepalive: true
       });
     } catch {

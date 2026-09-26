@@ -33,6 +33,10 @@ import {
 } from "../../shared/lifeskin-raste.js";
 import { KundenMedien } from "./terapia-medien.js";
 import { untenNachziehenStarten } from "../../shared/lifeskin-unten.js";
+import { NDJEKJA, NDJEKJA_TEXTE, KAUFWEG_VERSION, ndjekjaSichtbar } from "../../shared/lifeskin-ndjekja.js";
+import { garancia } from "../../shared/lifeskin-garancia.js";
+import { telefonPruefen } from "../../shared/lifeskin-telefon.js";
+import { beispielKarte, ikone } from "./ndjekja-teile.js";
 
 const $ = (wahl) => document.querySelector(wahl);
 const $$ = (wahl) => Array.from(document.querySelectorAll(wahl));
@@ -122,6 +126,23 @@ export function wochenStattTage(text) {
     .replace(/\b28\s+ditë(?![a-zë])/g, "4 javë");
 }
 
+// WAS DIE SEITE UEBER DIE BEGLEITUNG SAGT, MUSS STIMMEN (Auftrag vom
+// 26.09., Punkt 2): "Dr. Gashi ... çdo javë" nur, wenn festgelegt ist,
+// dass sie die Eintraege prueft (NDJEKJA.pruefer). Sonst spricht die neue
+// Fassung von "ne" - ohne jemanden zu nennen und ohne "me skanim": Die
+// woechentliche Kontrolle ist die Durchsicht der Eintraege, kein Scan.
+// Nur in der neuen Fassung; die klassische bleibt Wort fuer Wort.
+export function ohneWochenversprechen(text, pruefer = NDJEKJA.pruefer) {
+  const t = String(text || "");
+  if (String(pruefer || "").trim()) return t;
+  return t
+    .replace(/Dr\.? Gashi ju ndjek çdo javë dhe e përshtat planin/g, "ju ndjekim çdo javë dhe e përshtatim planin")
+    .replace(/Dr\.? Gashi pranë jush çdo javë/g, "ndjekje çdo javë")
+    .replace(/Dr\.? Gashi e kontrollon çdo javë me skanim/g, "Në kontrollet e planifikuara shqyrtojmë ecurinë")
+    .replace(/(^|[.!?]\s+)Dr\.? Gashi ju ndjek/g, "$1Ju ndjekim")
+    .replace(/Dr\.? Gashi ju ndjek/g, "ju ndjekim");
+}
+
 export function faqNdryshimi(problemet, wochen = 4) {
   const liste = [...new Set((problemet || [])
     .map((p) => [p?.gjetja, p?.ku].map((x) => String(x || "").trim()).filter(Boolean).join(" "))
@@ -140,9 +161,15 @@ export class Terapia {
     this.daten = null;
     this.produkte = [];
     this.marken = new Set();
+    // WELCHE FASSUNG: die klassische, oder die mit der Begleitung - diese
+    // nur mit ?ndjekja=1, bis NDJEKJA.imVerkauf an ist (Vorschau).
+    this.variante = ndjekjaSichtbar(this.ort?.search) ? KAUFWEG_VERSION.ndjekja : KAUFWEG_VERSION.klassisch;
+    this.kaufMarken = new Set();
   }
 
   get kennung() { return this.quelle.kennung; }
+  // Die neue Fassung (Begleitung, Angebot, Kasse) - siehe oben.
+  get neu() { return this.variante === KAUFWEG_VERSION.ndjekja; }
   get raport() { return this.daten?.raport || {}; }
   get preis() { return Number(this.daten?.preis) || STANDARD_KONFIG.setPreis; }
   get bestellt() { return BESTELLT.includes(this.daten?.status); }
@@ -179,6 +206,7 @@ export class Terapia {
     }
     this.produkte = await this.quelle.produkte(this.daten, "sq");
 
+    if (this.neu) document.documentElement.dataset.fassung = this.variante;
     this.#zeichnen();
     zeigen($("#t-laedt"), false);
     zeigen($("#t-faqja"), true);
@@ -200,6 +228,7 @@ export class Terapia {
       if (this.pixel.starte()) this.pixel.melde("opened");
       this.quelle.merken({ timings: { live: this.bestellt ? "ordered" : "fertig" } });
       this.#marke("berichtGeoeffnet");
+      this.#kauf("geoeffnet");
     }
     if (globalThis.__mnyraStill === true && this.#suche("kasse") === "1") this.#porosia(true);
   }
@@ -297,15 +326,20 @@ export class Terapia {
       s.hyrja = `Për ${teile.join(" dhe ")} — ${n === 1 ? "një produkt" : `${n} produkte`}, një plan i qartë dhe Dr. Gashi pranë jush çdo javë.`;
     }
     const imText = [...new Set((s.produktet || []).map((p) => p.produkt_id))];
-    mitFett($("#t-hyrja"), s.hyrja
+    const hyrja = s.hyrja
       ? fettNachtragen(hyrjaAbgleichen(s.hyrja, this.produkte.length, imText), s.problemet)
-      : this.#hyrjaErsatz());
+      : this.#hyrjaErsatz();
+    mitFett($("#t-hyrja"), this.neu ? ohneWochenversprechen(hyrja) : hyrja);
     schreibe($("#t-shqetesimi"), s.shqetesimi || "");
     zeigen($("#t-shqetesimi"), Boolean(s.shqetesimi));
     zeigen($("#t-kontroll"), brauchtAbklaerung(r));
 
     for (const el of $$("[data-cmimi]")) schreibe(el, euro(this.preis));
-    for (const el of $$("[data-dita]")) schreibe(el, `vetëm ${zahl(Math.round((this.preis / TAGE) * 100) / 100)} € në ditë`);
+    const jeTag = zahl(Math.round((this.preis / TAGE) * 100) / 100);
+    for (const el of $$("[data-dita]")) schreibe(el, `vetëm ${jeTag} € në ditë`);
+    // Neue Fassung: oben steht ausdruecklich, dass der Preis der Endpreis
+    // ist - mit Lieferung (Auftrag, Punkt 9). Der Preis selbst bleibt.
+    if (this.neu) schreibe($("#t-cmimi1 [data-dita]"), `gjithsej me dërgesë · ${jeTag} € në ditë`);
     for (const el of $$("[data-porosi]")) schreibe(el, `Fillo terapinë — ${euro(this.preis)}`);
     schreibe($("#t-dergo"), `Konfirmo porosinë — ${euro(this.preis)}`);
 
@@ -337,7 +371,10 @@ export class Terapia {
     // 3.-6. Nur, wenn es eine Therapie gibt.
     this.#produktet();
     zeigen($("#merrni"), mitProdukten);
-    zeigen($("#ditet"), mitProdukten);
+    // Die neue Fassung ersetzt "Nuk mbeteni vetëm" durch die Begleitung.
+    zeigen($("#ditet"), mitProdukten && !this.neu);
+    zeigen($("#ndjekja"), mitProdukten && this.neu);
+    if (mitProdukten && this.neu) this.#ndjekja();
     zeigen($("#rezultate"), mitProdukten && !this.rasteLeer);
     // Kundenfotos und -videos: nur die, die Heart fuer diesen Befund
     // gewaehlt hat, in dieser Reihenfolge. Keines gewaehlt: kein Abschnitt.
@@ -346,12 +383,40 @@ export class Terapia {
     schreibe($("#t-dita28"), s.dita_28 || this.produkte[0]?.synimi || "Krahasojmë lëkurën tuaj me foton e sotme.");
     schreibe($("#t-psetani"), s.pse_tani || "");
     // "Kur shoh ndryshim?" - mit SEINEN Problemen, als Ziel: weg in 4 Wochen.
-    const faq2 = faqNdryshimi((s.problemet || []).filter((p) => this.#karteGilt(p)), WOCHEN);
-    if (faq2) schreibe($("#t-faq2"), faq2);
+    const faq2 = faqNdryshimi((s.problemet || []).filter((p) => this.#karteGilt(p)), WOCHEN)
+      || $("#t-faq2")?.textContent || "";
+    schreibe($("#t-faq2"), this.neu ? ohneWochenversprechen(faq2) : faq2);
     zeigen($("#t-psetani"), Boolean(s.pse_tani));
 
     // 8. Die ganze Analyse.
     this.#analiza();
+    if (this.neu) this.#neueWorte();
+  }
+
+  // DIE UEBRIGEN SAETZE UEBER DIE BEGLEITUNG - nur in der neuen Fassung,
+  // damit oben, in der Mitte und unten dasselbe steht wie im Abschnitt
+  // "Katër javë". Einmal gesetzt, bleibt es beim Neuzeichnen stehen.
+  #neueWorte() {
+    const liste = $("#merrni .perfshihet");
+    if (liste && liste.dataset.fassung !== this.variante) {
+      liste.dataset.fassung = this.variante;
+      const punkt = (fett, rest) => {
+        const li = element("li");
+        li.append(element("b", null, fett), ` — ${rest}`);
+        return li;
+      };
+      liste.replaceChildren(
+        punkt("Plani juaj personal", "çfarë, kur dhe në çfarë radhe"),
+        punkt(`Ndjekje ${WOCHEN}-javore`, "shënime të shkurtra dhe kontroll javor i planifikuar"),
+        punkt("Vlerësimi përmbyllës", `në ditën ${TAGE}, me hapin e radhës`)
+      );
+    }
+    for (const el of $$("#rezultate .shenim")) schreibe(el, ohneWochenversprechen(el.textContent));
+    // "Na shkruani 24/7" versprach Betreuung rund um die Uhr - das ist
+    // organisatorisch nicht abgesichert (Auftrag, Punkt 4).
+    for (const li of $$("#instagram .insta__fakten li")) {
+      if (/24\/7/.test(li.textContent || "")) li.replaceChildren("Na shkruani në ", element("b", null, "WhatsApp"));
+    }
   }
 
   // Eine Karte gilt, wenn ihr Produkt im Set ist - oder wenn sie ehrlich
@@ -403,9 +468,25 @@ export class Terapia {
     }
     const n = this.produkte.length;
     const cipa = $("#t-seticipa");
-    cipa.replaceChildren(...[n === 1 ? "1 produkt" : `${n} produkte`, `${WOCHEN} javë`, "Plan personal", "Dr. Gashi çdo javë"]
+    cipa.replaceChildren(...[n === 1 ? "1 produkt" : `${n} produkte`, `${WOCHEN} javë`, "Plan personal",
+      this.neu ? `Ndjekje ${WOCHEN}-javore` : "Dr. Gashi çdo javë"]
       .map((x) => element("li", null, x)));
     schreibe($("#t-shportaprodukte"), `${this.produkte.map((p) => p.name).join(" + ")} · plan · ndjekje`);
+
+    // NEUE FASSUNG: was genau im Paket liegt - Name, Menge, Inhalt - und
+    // ein kurzer Sprung zur Begleitung. Kein langer Text oben.
+    const pako = $("#t-pako");
+    zeigen(pako, this.neu && n > 0);
+    if (this.neu && pako) {
+      pako.replaceChildren("Në pako: ", ...this.produkte.flatMap((p, i) => {
+        const teil = [element("b", null, `1 × ${p.name}`)];
+        if (p.inhalt) teil.push(` (${p.inhalt})`);
+        return i ? [" · ", ...teil] : teil;
+      }));
+    }
+    const link = $("#t-ndjekjalink");
+    zeigen(link, this.neu && n > 0);
+    if (this.neu) schreibe(link, `Si funksionon ndjekja ${WOCHEN}-javore ↓`);
   }
 
   // Nur was wirklich gilt - aus der Konfiguration, nicht aus dem Text.
@@ -420,20 +501,45 @@ export class Terapia {
     // wie zahle ich, und wenn es nicht wirkt. Die anderen verliessen die
     // Seite nach vier Minuten, ohne die Antworten je gesehen zu haben.
     // Garantie und Zahlung kommen aus der Konfiguration, nie aus dem Text.
-    const antworten = [
+    // DIE GARANTIE DER NEUEN FASSUNG: derselbe Ablauf kurz wie lang - erst
+    // die Routine anpassen, dann das Geld (shared/lifeskin-garancia.js).
+    const g = this.neu ? garancia(tage, { nachnahme }) : null;
+    const antworten = (this.neu ? [
+      ["Për lëkurën tuaj", this.ohneFoto ? "Dr. Gashi e zgjodhi sipas përshkrimit tuaj." : "Dr. Gashi e zgjodhi sipas fotove tuaja."],
+      ["Ndjekja", `${WOCHEN} javë, me kontroll javor të planifikuar.`, { text: "Si funksionon", href: "#ndjekja" }],
+      nachnahme ? ["Pagesa", "Te dera, kur pakoja është në dorën tuaj."] : null,
+      g ? ["Garancia", `${g.tage} ditë nga marrja e pakos.`, { text: "Kushtet", href: "#garancia" }] : null
+    ] : [
       ["Për lëkurën tuaj", this.ohneFoto ? "Dr. Gashi e zgjodhi sipas përshkrimit tuaj." : "Dr. Gashi e zgjodhi sipas fotove tuaja."],
       ["Ndryshimi", "Pas disa javësh – ju kontrollojmë çdo javë."],
       nachnahme ? ["Pagesa", "Te dera, kur pakoja është në dorën tuaj."] : null,
       tage ? ["Garancia", `${tage} ditë – ose ju kthejmë paratë.`] : null
-    ].filter(Boolean);
-    const antwortenBauen = () => antworten.map(([frage, antwort]) => {
+    ]).filter(Boolean);
+    const antwortenBauen = () => antworten.map(([frage, antwort, link]) => {
       const zelle = element("div");
-      zelle.append(element("b", null, frage), element("span", null, antwort));
+      const text = element("span", null, antwort);
+      if (link) {
+        const a = element("a", null, `${link.text} ↓`);
+        a.href = link.href;
+        text.append(" ", a);
+      }
+      zelle.append(element("b", null, frage), text);
       return zelle;
     });
     $("#t-siguria")?.replaceChildren(...antwortenBauen());
     schreibe($("#t-porosisiguria"), [nachnahme ? "Paguani kur ta merrni" : "", tage ? `${tage} ditë garanci` : "", "Transport falas"].filter(Boolean).join(" · "));
     schreibe($("#t-leistegaranci"), tage ? `${tage} ditë garanci` : "");
+    // In der Kasse: die Garantie aufklappbar, mit den ganzen Bedingungen -
+    // erreichbar, ohne den Bestellschirm zu verlassen.
+    const kasseGarancia = $("#t-porosigarancia");
+    zeigen(kasseGarancia, Boolean(g));
+    zeigen($("#t-porosisiguria"), !g);
+    if (g && kasseGarancia) {
+      const plus = element("i", null, "+");
+      plus.setAttribute("aria-hidden", "true");
+      kasseGarancia.querySelector("summary")?.replaceChildren(`${g.kurz} nga marrja e pakos`, plus);
+      kasseGarancia.querySelector("ul")?.replaceChildren(...g.kushtet.map((x) => element("li", null, x)));
+    }
 
     const lang = [];
     if (nachnahme) lang.push(["Sot nuk jepni asnjë kartë.", " Paguani te dera, kur pakoja është në dorën tuaj."]);
@@ -449,9 +555,12 @@ export class Terapia {
       return li;
     }));
     schreibe($("#t-pagesa"), `${euro(this.preis)} gjithsej. Transporti është falas${nachnahme ? " dhe paguani te dera" : ""}. Nuk ka abonim dhe asnjë pagesë të përsëritur.`);
-    schreibe($("#t-garancia"), tage
+    schreibe($("#t-garancia"), g ? g.permbledhje : tage
       ? `Keni ${tage} ditë nga marrja e pakos. Na shkruani dhe ju kthejmë shumën e paguar.`
       : "Na shkruani dhe e gjejmë bashkë një zgjidhje.");
+    const kushtet = $("#t-kushtet");
+    zeigen(kushtet, Boolean(g));
+    if (g) kushtet?.replaceChildren(...g.kushtet.map((x) => element("li", null, x)));
   }
 
   #bestellstand() {
@@ -460,7 +569,7 @@ export class Terapia {
       versandt: "Pakoja juaj është nisur. Pagesa bëhet kur ta merrni.",
       zugestellt: `Pakoja juaj është dorëzuar. Dr. Gashi ju ndjek gjatë ${WOCHEN} javëve.`
     }[this.daten.status] || "";
-    schreibe($("#t-porositurtext"), text);
+    schreibe($("#t-porositurtext"), this.neu ? ohneWochenversprechen(text) : text);
   }
 
   // Befund -> Mittel. Aus shitja.problemet; ohne ihn aus den Saetzen, die
@@ -542,6 +651,14 @@ export class Terapia {
         ul.append(...punkte.map((x) => element("li", null, x)));
         art.append(ul);
       }
+      // Wirkstoffe NUR, wenn sie in Heart als gegen die INCI-Liste geprueft
+      // markiert sind - und nur in der neuen Fassung (Auftrag, Punkt 9).
+      if (this.neu && p.perberesitGeprueft && (p.perberesit || []).length) {
+        const zeile = element("p", "perberesit");
+        zeile.append(element("b", null, "Përbërës kryesorë: "),
+          p.perberesit.slice(0, 4).map((x) => [x.emri, x.sasia].filter(Boolean).join(" ")).join(" · "));
+        art.append(zeile);
+      }
       return art;
     }));
 
@@ -598,7 +715,8 @@ export class Terapia {
       schreibe($("#t-analizatitulli"), "Nga ajo që na treguat.");
       schreibe($("#t-faq1"), "Po. Dr. Gashi e zgjodhi sipas përshkrimit tuaj, për problemet që na treguat. Mund të filloni që sot.");
       const metoda = $("#t-metoda");
-      schreibe(metoda, `Ky plan bazohet në atë që na përshkruat: çfarë ju shqetëson, ku dhe prej kur. Gjatë ${WOCHEN} javëve Dr. Gashi ju ndjek çdo javë dhe e përshtat planin nëse duhet.`);
+      const wie = `Ky plan bazohet në atë që na përshkruat: çfarë ju shqetëson, ku dhe prej kur. Gjatë ${WOCHEN} javëve Dr. Gashi ju ndjek çdo javë dhe e përshtat planin nëse duhet.`;
+      schreibe(metoda, this.neu ? ohneWochenversprechen(wie) : wie);
       const summe = $("#t-metodablock summary");
       if (summe?.firstChild) summe.firstChild.textContent = "Si u zgjodh plani?";
       zeigen($("#t-diagnoza"), false);
@@ -716,16 +834,23 @@ export class Terapia {
     document.addEventListener("click", (ereignis) => {
       const ziel = ereignis.target;
       if (!(ziel instanceof Element)) return;
-      if (ziel.closest("[data-porosi]")) this.#porosia(true);
-      else if (ziel.closest("[data-mbyll]")) this.#porosia(false);
+      if (ziel.closest("[data-porosi]")) {
+        this.#kauf("knopf");
+        this.#porosia(true);
+      } else if (ziel.closest("[data-mbyll]")) this.#porosia(false);
       else if (ziel.closest("[data-hilfe]") && LIFESKIN_WHATSAPP) {
         globalThis.open?.(this.#waLink(), "_blank", "noopener");
+      } else if (ziel.closest('a[href="#garancia"]')) {
+        // "Kushtet ↓": die Bedingungen aufklappen, dann dorthin springen.
+        const block = $("#garancia");
+        if (block) block.open = true;
       }
     });
     $("#forma")?.addEventListener("submit", (ereignis) => {
       ereignis.preventDefault();
       this.#bestellen();
     });
+    if (this.neu) this.#kasseEreignisse();
 
     // Anschrift begonnen / eingegeben - dieselben Schreibwege wie auf der
     // Analyseseite, damit "Nachfassen" in Heart dieselbe Liste bleibt.
@@ -747,6 +872,14 @@ export class Terapia {
   #porosia(auf) {
     const blatt = $("#porosia");
     if (!auf) {
+      // NEUE FASSUNG: Der Bestellschirm hat einen eigenen Eintrag im
+      // Verlauf. Schliessen geht ueber "zurueck" - dann schliesst der
+      // Knopf dasselbe wie die Zurueck-Geste am Telefon, und der Verlauf
+      // bleibt sauber. Geschlossen wird dann in #kasseEreignisse.
+      if (this.neu && this.kasseImVerlauf) {
+        globalThis.history?.back();
+        return;
+      }
       blatt.hidden = true;
       document.body.classList.remove("pa-rreshqitje");
       document.activeElement?.blur?.();
@@ -761,9 +894,11 @@ export class Terapia {
     if (tel && !tel.value && LIFESKIN_TELEFON_VORWAHL) tel.value = LIFESKIN_TELEFON_VORWAHL;
     zeigen($("#t-faleminderit"), false);
     for (const teil of ["#t-porosititulli", "#t-shporta", "#forma", "#t-porosifund"]) zeigen($(teil), true);
+    if (this.neu) this.#kasseNeu();
     blatt.hidden = false;
     document.body.classList.add("pa-rreshqitje");
     this.leistePruefen?.();
+    this.#kauf("kasse");
 
     this.#marke("kasseGeoeffnet");
     this.klickpfad?.melde("kasse", `Bestellschirm geöffnet · ${euro(this.preis)}`);
@@ -775,6 +910,7 @@ export class Terapia {
   }
 
   async #bestellen() {
+    if (this.neu) return this.#bestellenNeu();
     if (this.nurVorschau || this.bestellt) return;
     const werte = {
       name: $("#t-emri")?.value.trim() || "",
@@ -828,6 +964,315 @@ export class Terapia {
     zeigen($("#t-faleminderit"), true);
     this.#zeichnen();
     this.leistePruefen?.();
+  }
+
+  // ---------- Die Kasse der neuen Fassung (Auftrag, Punkt 11) ----------
+  //
+  // Was anders ist als in der klassischen:
+  //   - die Nummer aus der Analyse wird uebernommen, nicht neu verlangt
+  //     (die Seite kennt sie nicht - sie bleibt in der Sitzung)
+  //   - Endpreis, Lieferung, Nachnahme und die Garantie VOR dem Bestaetigen
+  //   - Fehler am Feld, nicht nur oben; Speichern mit sichtbarem Stand
+  //   - "zurueck" am Telefon schliesst die Kasse, die Eingaben bleiben
+  //     (auch ueber ein Neuladen: sessionStorage dieses Tabs)
+  //   - kein zweites Absenden, solange eines laeuft; nach einem Fehler
+  //     wird erst nachgesehen, ob die Bestellung doch angekommen ist
+  //   - "Faleminderit" erst, wenn die Bestellung gespeichert ist
+
+  get #entwurfSchluessel() { return `lifeskin:porosia:${this.kennung}`; }
+
+  #entwurfLesen() {
+    try { return JSON.parse(globalThis.sessionStorage?.getItem(this.#entwurfSchluessel) || "null") || {}; } catch { return {}; }
+  }
+
+  #entwurfSchreiben() {
+    const entwurf = {
+      emri: $("#t-emri")?.value || "",
+      telefon: this.numriNgaAnaliza ? "" : ($("#t-telefon")?.value || ""),
+      adresa: $("#t-adresa")?.value || "",
+      qyteti: $("#t-qyteti")?.value || "",
+      numriTjeter: !this.numriNgaAnaliza
+    };
+    try { globalThis.sessionStorage?.setItem(this.#entwurfSchluessel, JSON.stringify(entwurf)); } catch { /* ohne Speicher bleibt das Feld */ }
+  }
+
+  #entwurfLoeschen() {
+    try { globalThis.sessionStorage?.removeItem(this.#entwurfSchluessel); } catch { /* nichts zu tun */ }
+  }
+
+  #kasseEreignisse() {
+    // "zurueck" am Telefon, im Instagram- oder Facebook-Browser: schliesst
+    // die Kasse, statt die Seite zu verlassen.
+    if (globalThis.history?.state?.lifeskinPorosia) globalThis.history.replaceState(null, "");
+    globalThis.addEventListener?.("popstate", () => {
+      if (!this.kasseImVerlauf) return;
+      this.kasseImVerlauf = false;
+      this.#porosia(false);
+    });
+    const felder = ["#t-emri", "#t-telefon", "#t-adresa", "#t-qyteti"];
+    for (const id of felder) {
+      $(id)?.addEventListener("input", () => {
+        this.#kauf("eingabe");
+        this.#feldFehler(id, "");
+        // Ist kein Feld mehr rot, verschwindet auch der Hinweis darunter.
+        if (!document.querySelector("#forma [aria-invalid=true]")) zeigen($("#t-gabim"), false);
+        this.#entwurfSchreiben();
+      });
+    }
+    $("#t-numritjeter")?.addEventListener("click", () => {
+      this.numriNgaAnaliza = false;
+      this.#numriZeigen();
+      this.#entwurfSchreiben();
+      $("#t-telefon")?.focus();
+    });
+    $("#t-numriperseri")?.addEventListener("click", () => {
+      this.numriNgaAnaliza = true;
+      this.#feldFehler("#t-telefon", "");
+      this.#numriZeigen();
+      this.#entwurfSchreiben();
+    });
+  }
+
+  // Beim Oeffnen: Zusammenfassung, Felder, Entwurf. Mehrfach aufrufbar.
+  #kasseNeu() {
+    if (!this.kasseImVerlauf && globalThis.history?.pushState) {
+      globalThis.history.pushState({ lifeskinPorosia: true }, "");
+      this.kasseImVerlauf = true;
+    }
+    const attribute = {
+      "#t-emri": { name: "name", autocapitalize: "words", enterkeyhint: "next" },
+      "#t-telefon": { name: "tel", enterkeyhint: "next" },
+      "#t-adresa": { name: "address", autocapitalize: "words", enterkeyhint: "next" },
+      "#t-qyteti": { name: "city", autocapitalize: "words", enterkeyhint: "send" }
+    };
+    for (const [id, werte] of Object.entries(attribute)) {
+      const feld = $(id);
+      if (!feld) continue;
+      for (const [k, v] of Object.entries(werte)) feld.setAttribute(k, v);
+      feld.setAttribute("aria-describedby", `${id.slice(1)}-gabim`);
+    }
+    if (!this.kasseEntwurfGeladen) {
+      this.kasseEntwurfGeladen = true;
+      const e = this.#entwurfLesen();
+      for (const [id, wert] of [["#t-emri", e.emri], ["#t-telefon", e.telefon], ["#t-adresa", e.adresa], ["#t-qyteti", e.qyteti]]) {
+        if (wert && $(id)) $(id).value = wert;
+      }
+      this.numriNgaAnaliza = this.daten?.numri === true && e.numriTjeter !== true;
+    }
+    this.#numriZeigen();
+
+    const versand = Number(STANDARD_KONFIG.versandKosten) || 0;
+    const nachnahme = (STANDARD_KONFIG.zahlarten || []).includes("nachnahme");
+    const zeilen = [
+      [`Ndjekja ${WOCHEN}-javore`, "E përfshirë"],
+      ["Dërgesa", versand ? euro(versand) : "Falas"],
+      nachnahme ? ["Pagesa", "Te dera, kur e merrni pakon"] : null,
+      ["Gjithsej", euro(this.preis + versand), "gjithsej"]
+    ].filter(Boolean);
+    const fatura = $("#t-fatura");
+    fatura?.replaceChildren(...zeilen.map(([k, v, klasse]) => {
+      const div = element("div", klasse || "");
+      div.append(element("dt", null, k), element("dd", null, v));
+      return div;
+    }));
+    zeigen(fatura, true);
+    schreibe($("#t-dergo"), `Konfirmo porosinë — ${euro(this.preis + versand)}`);
+
+    const wa = $("#t-porosiwa");
+    zeigen(wa, Boolean(LIFESKIN_WHATSAPP));
+    if (wa && LIFESKIN_WHATSAPP) wa.href = this.#waBestellLink();
+  }
+
+  #numriZeigen() {
+    const ausAnalyse = this.numriNgaAnaliza === true;
+    zeigen($("#t-numrianalize"), ausAnalyse);
+    zeigen($("#t-telefonlabel"), !ausAnalyse);
+    zeigen($("#t-numriperseri"), !ausAnalyse && this.daten?.numri === true);
+    if (ausAnalyse) zeigen($("#t-telefon-gabim"), false);
+  }
+
+  // Fuer "lieber per WhatsApp": ein eigener Satz mit der Fallnummer, damit
+  // Heart die Bestellung dem richtigen Fall zuordnet.
+  #waBestellLink() {
+    const code = String(this.daten?.code || "");
+    const text = `Përshëndetje! Dua ta porosis terapinë time.${code ? ` Kodi: ${code}` : ""}`;
+    return `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(text)}`;
+  }
+
+  #feldFehler(id, text) {
+    const feld = $(id);
+    const hinweis = $(`${id}-gabim`);
+    if (feld) {
+      if (text) feld.setAttribute("aria-invalid", "true");
+      else feld.removeAttribute("aria-invalid");
+    }
+    schreibe(hinweis, text);
+    zeigen(hinweis, Boolean(text));
+  }
+
+  #felderPruefen() {
+    const wert = (id) => $(id)?.value.trim() || "";
+    const werte = { name: wert("#t-emri"), telefon: "", strasse: wert("#t-adresa"), ort: wert("#t-qyteti") };
+    const fehler = [];
+    if (!werte.name) fehler.push(["#t-emri", "Shkruani emrin dhe mbiemrin."]);
+    if (!this.numriNgaAnaliza) {
+      const nummer = telefonPruefen(wert("#t-telefon"), LIFESKIN_TELEFON_VORWAHL);
+      if (nummer.ok) werte.telefon = nummer.nummer;
+      else fehler.push(["#t-telefon", "Shkruani numrin e telefonit."]);
+    }
+    if (!werte.strasse) fehler.push(["#t-adresa", "Shkruani rrugën dhe numrin."]);
+    if (!werte.ort) fehler.push(["#t-qyteti", "Shkruani qytetin."]);
+    for (const id of ["#t-emri", "#t-telefon", "#t-adresa", "#t-qyteti"]) {
+      this.#feldFehler(id, fehler.find(([f]) => f === id)?.[1] || "");
+    }
+    return { ok: fehler.length === 0, werte, erstes: fehler[0]?.[0] || "" };
+  }
+
+  // Der sichtbare Stand beim Speichern: "ruan" / "gabim" / leer.
+  #kasseStand(stand) {
+    const knopf = $("#t-dergo");
+    const zeile = $("#t-porosistatusi");
+    const versand = Number(STANDARD_KONFIG.versandKosten) || 0;
+    if (knopf) {
+      knopf.disabled = stand === "ruan";
+      knopf.setAttribute("aria-busy", stand === "ruan" ? "true" : "false");
+      schreibe(knopf, stand === "ruan" ? "Po ruhet…" : `Konfirmo porosinë — ${euro(this.preis + versand)}`);
+    }
+    const text = {
+      ruan: "Po ruhet porosia juaj…",
+      gabim: "Porosia nuk u ruajt. Të dhënat tuaja mbeten këtu – provoni përsëri."
+    }[stand] || "";
+    schreibe(zeile, text);
+    if (zeile) zeile.dataset.art = stand || "";
+    zeigen(zeile, Boolean(text));
+  }
+
+  async #bestellenNeu() {
+    if (this.nurVorschau || this.bestellt || this.sendet) return;
+    const allgemein = $("#t-gabim");
+    const pruefung = this.#felderPruefen();
+    if (!pruefung.ok) {
+      this.klickpfad?.melde("fehler", "Bestellung: Felder unvollständig");
+      this.#kauf("fehler", "felder");
+      schreibe(allgemein, "Kontrolloni fushat e shënuara.");
+      zeigen(allgemein, true);
+      $(pruefung.erstes)?.focus();
+      return;
+    }
+    zeigen(allgemein, false);
+    this.sendet = true;
+    this.#kasseStand("ruan");
+
+    const { werte } = pruefung;
+    const jetzt = new Date().toISOString();
+    const address = { name: werte.name, strasse: werte.strasse, ort: werte.ort };
+    if (werte.telefon) address.telefon = werte.telefon;
+    else address.telefonNgaAnaliza = true;
+    const auftrag = {
+      address,
+      timings: { live: "ordered" },
+      order: {
+        createdAt: jetzt,
+        total: this.preis,
+        payment: "nachnahme",
+        status: "neu",
+        orderId: this.daten.code || this.kennung,
+        fassung: this.variante,
+        ...pixelKennungen()
+      },
+      step: "ordered"
+    };
+    // Eine neue Nummer ersetzt die aus der Analyse - sonst bleibt diese.
+    if (werte.telefon) auftrag.phone = werte.telefon.slice(0, 40);
+    let gespeichert = false;
+    try {
+      gespeichert = Boolean((await this.quelle.merken(auftrag))?.ok);
+    } catch {
+      gespeichert = false;
+    }
+    if (gespeichert) {
+      // Der Bericht zeigt danach "bestellt". Scheitert das, bleibt die
+      // Bestellung trotzdem in der Sitzung - Heart hat sie.
+      if (!(await this.quelle.zustandSchreiben({ status: "bestellt", bestelltAt: jetzt }))) {
+        await this.quelle.zustandSchreiben({ status: "bestellt", bestelltAt: jetzt });
+      }
+    } else {
+      // KAM EIN FRUEHERER VERSUCH DOCH AN? Dann steht der Bericht auf
+      // "bestellt" (er wird erst nach der Sitzung geschrieben) - und es
+      // wird nicht ein zweites Mal bestellt.
+      const stand = await this.quelle.bericht();
+      gespeichert = BESTELLT.includes(String(stand?.status || ""));
+    }
+    this.sendet = false;
+    if (!gespeichert) {
+      this.#kasseStand("gabim");
+      this.#kauf("fehler", "speichern");
+      this.klickpfad?.melde("fehler", "Bestellung: nicht gespeichert");
+      return;
+    }
+    this.#kasseStand("");
+    this.#entwurfLoeschen();
+    this.#kauf("gespeichert");
+    this.pixel.melde("ordered", { order: { total: this.preis, orderId: this.daten.code } });
+    this.klickpfad?.melde("bestellt", `${euro(this.preis)} · ${this.produkte.map((p) => p.name).join(" + ")}`);
+    this.klickpfad?.schicke();
+    this.daten.status = "bestellt";
+    this.daten.bestelltAt = jetzt;
+    schreibe($("#t-faleminderittitulli"), "Porosia juaj u ruajt.");
+    schreibe($("#t-faleminderittext"), `Ju kontaktojmë për ta konfirmuar porosinë. Pagesa bëhet te dera, kur ta merrni pakon. Pas konfirmimit ju dërgojmë linkun e zonës suaj personale për ${WOCHEN} javët.`);
+    for (const teil of ["#t-porosititulli", "#t-shporta", "#t-fatura", "#forma", "#t-porosifund"]) zeigen($(teil), false);
+    zeigen($("#t-faleminderit"), true);
+    this.#zeichnen();
+    this.leistePruefen?.();
+  }
+
+  // ---------- Die Begleitung (neue Fassung, Auftrag Punkte 2-4) ----------
+
+  #ndjekja() {
+    const ort = $("#ndjekja");
+    if (!ort || ort.dataset.gebaut === "1") return;
+    ort.dataset.gebaut = "1";
+    const T = NDJEKJA_TEXTE;
+    const titel = element("h2", null, T.titulli);
+    titel.id = "t-ndjekjatitulli";
+    ort.setAttribute("aria-labelledby", titel.id);
+
+    const pikat = element("ul", "ndj-pikat");
+    pikat.append(...T.pikat.map(([fett, rest], i) => {
+      const li = element("li");
+      const text = element("div");
+      text.append(element("b", null, fett), element("span", null, rest));
+      li.append(ikone(["shenim", "kalendar", "mesazh"][i]), text);
+      return li;
+    }));
+
+    const rruga = element("ol", "ndj-rruga");
+    rruga.setAttribute("aria-label", `Rruga e ${WOCHEN} javëve`);
+    rruga.append(...T.rruga.map(([wann, was]) => {
+      const li = element("li");
+      const text = element("div");
+      text.append(element("b", null, wann), element("span", null, was));
+      li.append(text);
+      return li;
+    }));
+
+    const teile = [element("p", "syri", `${WOCHEN} javët tuaja`), titel, element("p", "ndjekja__hyrja", T.hyrja), beispielKarte({ wochen: WOCHEN }), pikat];
+    // Wer die Eintraege prueft - NUR wenn es festgelegt ist.
+    const pruefer = String(NDJEKJA.pruefer || "").trim();
+    if (pruefer) teile.push(element("p", "ndj-pergjegjes", `Ecurinë tuaj e shqyrton: ${pruefer}.`));
+    teile.push(element("p", "ndj-joditore", T.joDitore), rruga);
+    ort.replaceChildren(...teile);
+  }
+
+  // Der Kaufweg (shared/lifeskin-kaufweg.js) - nur in der neuen Fassung,
+  // nie in der Vorschau fuer uns und nie im stillen Modus. Jede Marke
+  // einmal je Besuch, ein Fehler einmal je Art.
+  #kauf(marke, art = "") {
+    if (!this.neu || this.nurVorschau || globalThis.__mnyraStill === true) return;
+    const schluessel = art ? `${marke}:${art}` : marke;
+    if (this.kaufMarken.has(schluessel)) return;
+    this.kaufMarken.add(schluessel);
+    this.quelle.kaufMarke(marke, { version: this.variante, art });
   }
 
   // ---------- Leiste und Lesemarken ----------
@@ -894,6 +1339,23 @@ export class Terapia {
       if (!knoten || knoten.hidden || knoten.closest("[hidden]")) continue;
       knoten.dataset.lesemarke = feld;
       beobachter.observe(knoten);
+    }
+    // Der Kaufweg der neuen Fassung: Angebot und Begleitung GESEHEN - der
+    // Abschnitt stand zu einem Viertel im Bild. Das sagt nicht, dass er
+    // gelesen oder verstanden wurde.
+    if (!this.neu) return;
+    const kauf = new IntersectionObserver((eintraege) => {
+      for (const e of eintraege) {
+        if (!e.isIntersecting) continue;
+        kauf.unobserve(e.target);
+        this.#kauf(e.target.dataset.kaufmarke);
+      }
+    }, { threshold: 0.25 });
+    for (const [wahl, marke] of [["#t-seti", "angebot"], ["#ndjekja", "betreuung"]]) {
+      const knoten = $(wahl);
+      if (!knoten || knoten.hidden || knoten.closest("[hidden]")) continue;
+      knoten.dataset.kaufmarke = marke;
+      kauf.observe(knoten);
     }
   }
 

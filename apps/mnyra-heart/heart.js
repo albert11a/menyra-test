@@ -53,6 +53,7 @@ import {
   setLandingReset as schreibeLandingReset
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
+import { createNdjekjaOperationen } from "./heart-lifeskin-ndjekja.js";
 import { ladeLifeskin, ladeLifeskinSeit, horcheLive, ladeFotos, ladeErstesFoto, loescheAlleSitzungen, loescheSitzung, setzeBerichtMarke, speichereProdukt, loescheProdukt, gibBerichtFrei,
   ladeBericht, setzeVersand, speichereAnbieter,
   ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX,
@@ -114,6 +115,11 @@ import {
 const root = document.getElementById("heartApp");
 const store = createHeartStore(createHeartInitialState());
 const actions = store.actions;
+// Die Begleitung nach dem Kauf (heart-lifeskin-ndjekja.js) - nur mit
+// Schalter (?ndjekja=1), solange sie nicht im Verkauf ist.
+const ndjekjaOps = createNdjekjaOperationen({
+  store, actions, setToast: (...a) => setToast(...a), berichteNachlesen: (ids) => lifeskinBerichteNachlesen(ids)
+});
 const initialRouteView = resolveHeartRouteView();
 // Ohne ausdrueckliche Ansicht in der Adresse oeffnet Heart mit Lifeskin -
 // das ist der Bereich, der jeden Tag gebraucht wird.
@@ -980,6 +986,7 @@ function liveStarten() {
 // kostet bei jeder Aenderung eine Leseoperation - fuer eine Ansicht, die
 // niemand sieht.
 export function liveAnhalten() {
+  ndjekjaOps.stoppen();
   if (liveAbmelden) { try { liveAbmelden(); } catch { /* egal */ } liveAbmelden = null; }
   if (liveTakt) { globalThis.clearInterval(liveTakt); liveTakt = null; }
   liveSitzungen = [];
@@ -1010,6 +1017,8 @@ async function lifeskinNachholen() {
 
 async function ladeLifeskinBereich({ force = false, voll = false } = {}) {
   liveStarten();
+  if (store.getState().lifeskin?.ndjekja?.an && force) ndjekjaOps.laden();
+  ndjekjaOps.starten();
   const vorher = store.getState().lifeskin || {};
   if (!force && vorher.status === "ready" && vorher.loadedFrom === "network") return;
   // Schon einmal vom Server geladen: nur nachholen, was sich seitdem
@@ -1398,6 +1407,10 @@ function produktAusFormular(vorhandenerId = "") {
     lloji: wert("lloji") || "tonik",
     roli: wert("roli") || "baze",
     perberesit: wirkstoffe(wert("perberesit")),
+    // Erst mit diesem Haken zeigt die Therapieseite (neue Fassung) die
+    // Wirkstoffe: Die Katalogwerte sind nach den Namen angesetzt und muessen
+    // gegen die echte INCI-Liste geprueft sein (Auftrag vom 26.09., Punkt 9).
+    perberesitGeprueft: document.querySelector('[data-produktfeld="perberesitGeprueft"]')?.checked === true,
     perdorimi: {
       hapi: Number(wert("perdorimi_hapi")) || 2,
       koha: { sq: wert("perdorimi_koha_sq"), de: wert("perdorimi_koha_de") },
@@ -1615,7 +1628,7 @@ function produktEntwurfLesen(zusatz = {}) {
   const felder = {};
   for (const knoten of document.querySelectorAll("[data-produktfeld]")) {
     const name = String(knoten.getAttribute("data-produktfeld") || "").trim();
-    if (name) felder[name] = String(knoten.value ?? "");
+    if (name) felder[name] = knoten.type === "checkbox" ? (knoten.checked ? "1" : "") : String(knoten.value ?? "");
   }
   return { ...felder, ...zusatz };
 }
@@ -3277,6 +3290,7 @@ async function setzeLifeskinVersand(sitzungId, stand) {
       : { status: "zugestellt" });
     actions.patchLifeskin({ berichtStatus: "" });
     await lifeskinBerichteNachlesen([id]);
+    ndjekjaOps.versandGemeldet(id, stand);
     setToast("Versand", stand === "versandt" ? "Als versendet gemeldet." : "Als zugestellt gemeldet.", "success");
   } catch (fehler) {
     actions.patchLifeskin({ berichtStatus: "" });
@@ -3693,6 +3707,7 @@ const operations = {
   lifeskinVorschau() { vorschauAuffrischen(document); befundStandAuffrischen(document); },
   lifeskinProduktSatzNeu(id) { return lifeskinTherapieNeu(id); },
   setzeLifeskinVersand(id, stand) { return setzeLifeskinVersand(id, stand); },
+  ndjekja(was, knopf) { return ndjekjaOps.aktion(was, knopf); },
   openView(viewKey) {
     const safeViewKey = String(viewKey || "").trim() || "dashboard";
     if (store.getState().shell.activeView === safeViewKey) {
