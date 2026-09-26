@@ -321,7 +321,9 @@ svg.rutina__foto { padding: 4px; }
 .rruga h3 { margin: 8px 0 3px; font-size: .98rem; }
 .rruga p { font-size: .9rem; color: var(--muted); }
 
-/* 5. Ergebnisse */
+/* 5. Ergebnisse - eine Reihe zum Wischen (26.09.), die naechste Karte
+   lugt hervor. Nur unter #rezultate: Die Vorlage /120992 (index.html)
+   behaelt die alte Liste. */
 .raste { display: grid; gap: 14px; }
 .rasti { margin: 0; background: var(--white); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
 .rasti__foto { display: grid; grid-template-columns: 1fr 1fr; position: relative; }
@@ -333,6 +335,41 @@ svg.rutina__foto { padding: 4px; }
 .rasti__foto span.pas { left: calc(50% + 8px); background: var(--green); color: #fff; }
 .rasti figcaption { padding: 12px 14px; font-size: .85rem; color: var(--muted); }
 .rasti figcaption b { color: var(--green); }
+
+.rezultate__unter { margin-top: -12px; color: var(--muted); font-size: .92rem; }
+#rezultate .raste {
+  display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain;
+  scrollbar-width: none; margin: 0 -20px; padding: 18px 20px 6px; scroll-padding-inline: 20px;
+}
+#rezultate .raste::-webkit-scrollbar { display: none; }
+#rezultate .raste:focus-visible { outline: 2px solid var(--green); outline-offset: -2px; }
+#rezultate .rasti {
+  flex: 0 0 86%; max-width: 440px; scroll-snap-align: start; display: flex; flex-direction: column;
+  border-color: #d6ddd8; border-radius: 20px; box-shadow: 0 6px 20px #10171812;
+}
+#rezultate .raste--nje .rasti { flex-basis: 100%; max-width: none; }
+#rezultate .rasti__foto { gap: 2px; background: var(--white); }
+#rezultate .rasti__foto img { aspect-ratio: 4 / 5; }
+#rezultate .rasti__foto span { top: auto; bottom: 10px; left: 10px; font-size: .75rem; padding: 4px 10px; }
+#rezultate .rasti__foto span.pas { left: calc(50% + 11px); }
+.rasti__pfeil {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--white); color: var(--green); font-size: .95rem; box-shadow: 0 2px 8px #0000002e;
+}
+#rezultate .rasti figcaption { padding: 13px 15px 15px; font-size: .82rem; }
+.rasti__titel { font-size: 1rem; font-weight: 700; color: var(--ink); line-height: 1.3; }
+.rasti__meta { margin-top: 1px; font-size: .82rem; color: var(--muted); }
+.rasti__mittel { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.rasti__mittel i {
+  font-style: normal; font-size: .72rem; font-weight: 700; letter-spacing: .02em; color: var(--green);
+  border: 1px solid #cfdcd3; padding: 3px 8px; border-radius: 8px;
+}
+.raste__fuss { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
+.raste__pika { display: flex; gap: 5px; }
+.raste__pika i { width: 6px; height: 6px; border-radius: 99px; background: #cfd6d1; transition: width .18s ease, background .18s ease; }
+.raste__pika i[data-an] { width: 16px; background: var(--green); }
+.raste__zahl { font-size: .78rem; color: var(--muted); }
 
 /* 1b. Kundenfotos und -videos - eine schmale Reihe kleiner Hochformat-
    Kacheln gleich unter dem Preis (terapia-medien.js). Feste Groesse:

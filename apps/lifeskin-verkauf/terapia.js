@@ -280,6 +280,7 @@ export class Terapia {
   async #raste() {
     const behaelter = $("#rezultate .raste");
     if (!behaelter) return;
+    this.#rastePunkte();
     const basis = `${LIFESKIN_FIRESTORE_BASE}/lifeskin/${LIFESKIN_TENANT}/config`;
     const holen = this.quelle.fetchFn;
     let faelle;
@@ -302,13 +303,57 @@ export class Terapia {
       para.src = r.para; para.alt = "Para terapisë"; para.loading = "lazy";
       const pas = element("img");
       pas.src = r.pas; pas.alt = `Pas ${WOCHEN} javësh`; pas.loading = "lazy";
-      foto.append(para, element("span", null, "Para"), pas, element("span", "pas", `Java ${WOCHEN}`));
-      const gjetja = r.gjetja ? r.gjetja.charAt(0).toLowerCase() + r.gjetja.slice(1) : "";
-      const text = element("figcaption", null, [r.emri, gjetja].filter(Boolean).join(" · "));
-      if (r.produkte.length) text.append(document.createElement("br"), element("b", null, rastiProdukteText(r)));
+      const pfeil = element("b", "rasti__pfeil", "→");
+      pfeil.setAttribute("aria-hidden", "true");
+      foto.append(para, element("span", null, "Para"), pas, element("span", "pas", `Java ${WOCHEN}`), pfeil);
+      // Die Karte: der Befund fett, darunter wer und wie lange, dann die
+      // Mittel als Etiketten.
+      const gjetja = String(r.gjetja || "").trim();
+      const text = element("figcaption");
+      text.append(element("p", "rasti__titel", gjetja ? gjetja.charAt(0).toUpperCase() + gjetja.slice(1) : r.emri));
+      const meta = [gjetja ? r.emri : "", `${WOCHEN} javë`].filter(Boolean).join(" · ");
+      text.append(element("p", "rasti__meta", meta));
+      if (r.produkte.length) {
+        const mittel = element("p", "rasti__mittel");
+        mittel.append(...rastiProdukteText(r).split(" + ").map((x) => element("i", null, x)));
+        text.append(mittel);
+      }
       figur.append(foto, text);
       return figur;
     }));
+    this.#rastePunkte();
+  }
+
+  // Punkte und "1 / 4" unter der Reihe - sie laufen mit dem Finger
+  // (requestAnimationFrame, wie bei den Produktkarten).
+  #rastePunkte() {
+    const reihe = $("#rezultate .raste");
+    const pika = $("#rezultate .raste__pika");
+    const zahl = $("#rezultate .raste__zahl");
+    if (!reihe || !pika) return;
+    const karten = [...reihe.children];
+    // Ein einziger Fall: ueber die ganze Breite, ohne Punkte.
+    reihe.classList.toggle("raste--nje", karten.length === 1);
+    zeigen($("#rezultate .raste__fuss"), karten.length > 1);
+    pika.replaceChildren(...karten.map(() => element("i")));
+    this.rastePunkteSetzen = () => {
+      // Jedes Mal frisch gezaehlt: Die Faelle aus Heart ersetzen die
+      // Standardfaelle, der Horcher bleibt derselbe.
+      const alle = [...reihe.children];
+      const schritt = (alle[1]?.offsetLeft ?? 0) - (alle[0]?.offsetLeft ?? 0) || reihe.clientWidth || 1;
+      const an = Math.max(0, Math.min(alle.length - 1, Math.round(reihe.scrollLeft / schritt)));
+      [...pika.children].forEach((x, i) => x.toggleAttribute("data-an", i === an));
+      schreibe(zahl, `${an + 1} / ${alle.length} · rrëshqitni →`);
+    };
+    this.rastePunkteSetzen();
+    if (reihe.dataset.gebunden) return;
+    reihe.dataset.gebunden = "1";
+    let wartet = false;
+    reihe.addEventListener("scroll", () => {
+      if (wartet) return;
+      wartet = true;
+      requestAnimationFrame(() => { wartet = false; this.rastePunkteSetzen?.(); });
+    }, { passive: true });
   }
 
   // DIE KUNDENFOTOS UND -VIDEOS (terapia-medien.js). Einmal gebaut; nach

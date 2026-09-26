@@ -150,26 +150,32 @@
       </section>
 
       <!-- 5. ERGEBNISSE -->
+      <!-- 5. ERGEBNISSE - eine Reihe zum Wischen, die naechste Karte lugt
+           hervor. Die Faelle kommen aus Heart (terapia.js #raste); bis
+           dahin stehen hier die Standardfaelle. -->
       <section class="pjese" id="rezultate" data-pfad="Ergebnisse anderer" hidden>
         <p class="syri">Raste të dokumentuara</p>
         <h2>Rezultate me terapitë LifeSkin.</h2>
-        <div class="raste">
+        <p class="rezultate__unter">Pacientë realë, para dhe pas 4 javësh.</p>
+        <div class="raste" tabindex="0" role="group" aria-label="Rezultate">
           <figure class="rasti">
             <div class="rasti__foto">
               <img src="/apps/lifeskin-landing/fotot/rasti-1-dita1.jpg" alt="Para terapisë" loading="lazy"><span>Para</span>
               <img src="/apps/lifeskin-landing/fotot/rasti-1-dita28.jpg" alt="Pas 4 javësh" loading="lazy"><span class="pas">Java 4</span>
+              <b class="rasti__pfeil" aria-hidden="true">→</b>
             </div>
-            <figcaption>Pacienti 1 · 26 vjeç · akne inflamatore<br><b>LF ACNE + LF MOISTUR</b></figcaption>
+            <figcaption><p class="rasti__titel">Akne inflamatore</p><p class="rasti__meta">Pacienti 1 · 26 vjeç · 4 javë</p><p class="rasti__mittel"><i>LF ACNE</i><i>LF MOISTUR</i></p></figcaption>
           </figure>
           <figure class="rasti">
             <div class="rasti__foto">
               <img src="/apps/lifeskin-landing/fotot/rasti-3-dita1.jpg" alt="Para terapisë" loading="lazy"><span>Para</span>
               <img src="/apps/lifeskin-landing/fotot/rasti-3-dita28.jpg" alt="Pas 4 javësh" loading="lazy"><span class="pas">Java 4</span>
+              <b class="rasti__pfeil" aria-hidden="true">→</b>
             </div>
-            <figcaption>Pacienti 3 · 22 vjeç · akne & pore të mëdha<br><b>LF ACNE + LF MOISTUR + LF PORE</b></figcaption>
+            <figcaption><p class="rasti__titel">Akne & pore të mëdha</p><p class="rasti__meta">Pacienti 3 · 22 vjeç · 4 javë</p><p class="rasti__mittel"><i>LF ACNE</i><i>LF MOISTUR</i><i>LF PORE</i></p></figcaption>
           </figure>
         </div>
-        <p class="shenim">Çdo lëkurë reagon ndryshe. Prandaj Dr. Gashi ju ndjek çdo javë.</p>
+        <div class="raste__fuss" aria-hidden="true"><div class="raste__pika"></div><span class="raste__zahl"></span></div>
       </section>
 
       <!-- 6. DIE ENTSCHEIDUNG -->
