@@ -60,10 +60,10 @@
 
         <!-- DIE PRODUKTE WIE AUF DER LANDINGPAGE: eigene Karten direkt auf
              der Seite (keine Karte in der Karte), mehrere Bilder zum
-             Wischen. Antippen oeffnet das Blatt #mjetiblatt - ohne
-             Kaufknopf, gekauft wird das ganze Paket darunter. -->
+             Wischen. Sie oeffnen sich nicht und haben keinen Kaufknopf -
+             gekauft wird das ganze Paket darunter. -->
         <div class="mjetet" id="t-mjetet" hidden>
-          <div class="mjetet__kopf"><h2>Produktet tuaja</h2><span>Prekni për detaje</span></div>
+          <div class="mjetet__kopf"><h2>Produktet tuaja</h2></div>
           <div class="mjetet__rrjeta" id="t-setiprodukte"></div>
         </div>
 
@@ -293,19 +293,6 @@
   <div class="leiste" id="leiste" data-pfad="Leiste unten" data-an="nein" hidden>
     <button class="knopf" type="button" data-porosi></button>
     <p>Paguani te dera · Transport falas · <span id="t-leistegaranci"></span></p>
-  </div>
-
-  <!-- DAS PRODUKT IM EINZELNEN - wie das Blatt der Landingpage, aber ohne
-       "Shto": gekauft wird hier das Paket, nicht ein einzelnes Mittel. -->
-  <div class="mjetiblatt" id="mjetiblatt" role="dialog" aria-modal="true" aria-labelledby="mjetiblatt-titull" hidden>
-    <div class="mjetiblatt__prapa" data-mjeti-mbyll></div>
-    <div class="mjetiblatt__flete">
-      <div class="mjetiblatt__kok">
-        <h2 id="mjetiblatt-titull"></h2>
-        <button type="button" class="mjetiblatt__mbyll" data-mjeti-mbyll aria-label="Mbyll">✕</button>
-      </div>
-      <div class="mjetiblatt__trup" id="mjetiblatt-trup"></div>
-    </div>
   </div>
 
   <div class="porosia" id="porosia" data-pfad="Bestellschirm" hidden>

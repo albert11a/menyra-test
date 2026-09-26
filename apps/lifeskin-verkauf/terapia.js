@@ -129,12 +129,6 @@ function svgZeichen(klasse, inhalt, strich = "2") {
   return svg;
 }
 const ikonHaken = () => svgZeichen("seti__haken", '<circle cx="12" cy="12" r="10" fill="#edf2ed" stroke="none"/><path d="M7.5 12.5l3 3 6-6.5"/>', "2.4");
-function ikoneAufziehen() {
-  const span = element("span", "mjeti__shenje");
-  span.setAttribute("aria-hidden", "true");
-  span.append(svgZeichen("", '<path d="M9 4H4v5"/><path d="M15 4h5v5"/><path d="M15 20h5v-5"/><path d="M9 20H4v-5"/>', "2.2"));
-  return span;
-}
 const ikoneZeit = (art) => svgZeichen("mjeti__kohaikona", art === "hena"
   ? '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>'
   : '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/>', "2.4");
@@ -541,8 +535,8 @@ export class Terapia {
   }
 
   // DIE PRODUKTE WIE AUF DER LANDINGPAGE (shop.js #karte): eigene Karten
-  // direkt auf der Seite, Bilder zum Wischen, Antippen oeffnet das Blatt.
-  // Kein Kaufknopf je Mittel - gekauft wird das Paket darunter.
+  // direkt auf der Seite, Bilder zum Wischen. Sie oeffnen sich nicht, und
+  // es gibt keinen Kaufknopf je Mittel - gekauft wird das Paket darunter.
   //
   // In der Reihenfolge der Anwendung (perdorimi.hapi), mit Nummer: So
   // liest sich die Reihe als Behandlung und nicht als Regal.
@@ -644,7 +638,6 @@ export class Terapia {
 
   #mjetiKarte(p, nr) {
     const art = element("article", "mjeti");
-    art.dataset.mjetiHap = p.id;
     const pamjet = element("div", "mjeti__pamjet");
     // Solange die Bilder der Landingpage unterwegs sind, steht nur die
     // Flaeche da (Platz reserviert) - kein Packshot, der gleich danach
@@ -663,7 +656,7 @@ export class Terapia {
     }
     const nummer = element("span", "mjeti__nr", String(nr));
     nummer.setAttribute("aria-hidden", "true");
-    pamjet.append(nummer, ikoneAufziehen());
+    pamjet.append(nummer);
     art.append(pamjet);
 
     const fjale = element("div", "mjeti__fjale");
@@ -680,10 +673,6 @@ export class Terapia {
       fjale.append(chip);
     }
     art.append(fjale);
-    // Tastatur und Vorleser: die ganze Karte ist ein Knopf.
-    art.tabIndex = 0;
-    art.setAttribute("role", "button");
-    art.setAttribute("aria-label", `${p.name}${p.nenName ? ` · ${p.nenName}` : ""} – shiko detajet`);
     return art;
   }
 
@@ -722,7 +711,7 @@ export class Terapia {
   }
 
   #mjetetPunkte() {
-    for (const pamjet of $$(".mjeti__pamjet, .mjetiblatt__pamjet")) {
+    for (const pamjet of $$(".mjeti__pamjet")) {
       const bahn = pamjet.querySelector("[data-bahn]");
       const punkte = pamjet.querySelector(".mjeti__pika");
       if (!bahn || !punkte || bahn.dataset.gebunden) continue;
@@ -739,69 +728,6 @@ export class Terapia {
         requestAnimationFrame(() => { wartet = false; setzen(); });
       }, { passive: true });
     }
-  }
-
-  // DAS BLATT: dieselbe Reihenfolge wie auf der Landingpage (shop.js
-  // #blatt) - Bilder, wofuer, Versprechen, Wirkung, Anwendung. Dazu der
-  // Satz, den Dr. Gashi fuer DIESEN Befund geschrieben hat.
-  #blattOeffnen(id) {
-    const p = this.produkte.find((x) => x.id === id);
-    const blatt = $("#mjetiblatt");
-    const trup = $("#mjetiblatt-trup");
-    if (!p || !blatt || !trup) return;
-    schreibe($("#mjetiblatt-titull"), p.name);
-    const pamjet = element("div", "mjetiblatt__pamjet");
-    const { bahn, anzahl } = this.#bahn(p, "mjetiblatt");
-    pamjet.append(bahn);
-    const pika = Terapia.#punkteVon(anzahl);
-    if (pika) pamjet.append(pika);
-    const teile = [pamjet];
-    const unter = [p.nenName, p.inhalt].filter(Boolean).join(" · ");
-    if (unter) teile.push(element("p", "mjetiblatt__nen", unter));
-    const satz = String(p.satz || p.kurz || "").trim();
-    if (satz) teile.push(element("p", "mjetiblatt__kurz", satz));
-    // Die Seite sagt ueberall Wochen, nie "Tag 28" (siehe WOCHEN).
-    const frist = wochenStattTage(p.synimi).replace(/\bDeri në ditën\s+28\b/g, `Brenda ${WOCHEN} javësh`);
-    const synimi = this.neu ? ohneWochenversprechen(frist) : frist;
-    if (synimi) teile.push(element("p", "mjetiblatt__synim", synimi));
-    if ((p.veprimi || []).length) {
-      const pjese = element("section", "mjetiblatt__pjese");
-      const ul = element("ul", "mjetiblatt__lista");
-      ul.append(...p.veprimi.slice(0, 5).map((x) => element("li", null, x)));
-      pjese.append(element("h3", null, "Si vepron"), ul);
-      teile.push(pjese);
-    }
-    const anwendung = [["Kur", p.perdorimi?.koha], ["Sa", p.perdorimi?.sasia], ["Si", p.perdorimi?.si]]
-      .filter(([, wert]) => String(wert || "").trim());
-    if (anwendung.length || p.perdorimi?.kujdes) {
-      const pjese = element("section", "mjetiblatt__pjese");
-      pjese.append(element("h3", null, "Si përdoret"));
-      if (anwendung.length) {
-        const dl = element("dl", "mjetiblatt__perdorimi");
-        dl.append(...anwendung.map(([marke, wert]) => {
-          const zeile = element("div");
-          zeile.append(element("dt", null, marke), element("dd", null, wert));
-          return zeile;
-        }));
-        pjese.append(dl);
-      }
-      if (p.perdorimi?.kujdes) pjese.append(element("p", "mjetiblatt__kujdes", p.perdorimi.kujdes));
-      teile.push(pjese);
-    }
-    this.#blattZeigen(teile);
-    this.klickpfad?.melde("produkt", p.name);
-  }
-
-  #blattZeigen(teile) {
-    const blatt = $("#mjetiblatt");
-    const trup = $("#mjetiblatt-trup");
-    trup.replaceChildren(...teile);
-    trup.scrollTop = 0;
-    this.blattVon = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    blatt.hidden = false;
-    document.body.classList.add("pa-rreshqitje");
-    this.#mjetetPunkte();
-    blatt.querySelector(".mjetiblatt__mbyll")?.focus({ preventScroll: true });
   }
 
   // DIE FOTOS AUS DEM SCAN, als kleiner Stapel neben der Aerztin - die
@@ -858,14 +784,6 @@ export class Terapia {
       zeile.style.setProperty("--s", String(s));
       if (zeile.scrollWidth <= zeile.clientWidth + 1) return;
     }
-  }
-
-  #blattSchliessen() {
-    const blatt = $("#mjetiblatt");
-    if (!blatt || blatt.hidden) return;
-    blatt.hidden = true;
-    if ($("#porosia")?.hidden !== false) document.body.classList.remove("pa-rreshqitje");
-    this.blattVon?.focus?.({ preventScroll: true });
   }
 
   // Nur was wirklich gilt - aus der Konfiguration, nicht aus dem Text.
@@ -1234,20 +1152,9 @@ export class Terapia {
   // ---------- Handlungen ----------
 
   #ereignisse() {
-    document.addEventListener("keydown", (ereignis) => {
-      if (ereignis.key === "Escape") { this.#blattSchliessen(); return; }
-      const ziel = ereignis.target;
-      if ((ereignis.key === "Enter" || ereignis.key === " ") && ziel instanceof Element && ziel.matches("[data-mjeti-hap]")) {
-        ereignis.preventDefault();
-        this.#blattOeffnen(ziel.dataset.mjetiHap);
-      }
-    });
     document.addEventListener("click", (ereignis) => {
       const ziel = ereignis.target;
       if (!(ziel instanceof Element)) return;
-      const mjeti = ziel.closest("[data-mjeti-hap]");
-      if (mjeti) { this.#blattOeffnen(mjeti.dataset.mjetiHap); return; }
-      if (ziel.closest("[data-mjeti-mbyll]")) { this.#blattSchliessen(); return; }
       if (ziel.closest("[data-porosi]")) {
         this.#kauf("knopf");
         this.#porosia(true);
