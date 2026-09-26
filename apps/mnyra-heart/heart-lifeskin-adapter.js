@@ -706,6 +706,26 @@ export async function ladeKommentare(ids = []) {
   return Object.fromEntries(paare);
 }
 
+// Kommentare aus Heart, mehrere auf einmal. Genau die vier Felder, die
+// auch die Seite schreibt (firestore.rules laesst keine anderen zu), sofort
+// sichtbar. Die erste Zeile bekommt die juengste Zeit - so stehen sie auf
+// der Seite (neueste oben) in der Reihenfolge, in der sie eingefuegt wurden.
+export async function schreibeKommentare(medium, liste = [], jetzt = Date.now()) {
+  if (!medium || !liste.length) return 0;
+  const stapel = writeBatch(db);
+  const sammlung = collection(db, "lifeskin", TENANT, "medien", medium, "kommentare");
+  liste.forEach((k, i) => {
+    stapel.set(doc(sammlung), {
+      name: String(k.name).slice(0, 40),
+      text: String(k.text).slice(0, 500),
+      createdAt: new Date(jetzt - i).toISOString(),
+      verborgen: false
+    });
+  });
+  await stapel.commit();
+  return liste.length;
+}
+
 export async function setzeKommentarVerborgen(medium, kommentar, verborgen) {
   await setDoc(doc(db, "lifeskin", TENANT, "medien", medium, "kommentare", kommentar),
     { verborgen: verborgen === true }, { merge: true });

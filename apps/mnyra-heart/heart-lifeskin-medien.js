@@ -13,7 +13,7 @@
 import { escapeHtml } from "./heart-ui-utils.js";
 import { renderHeartIcon } from "./heart-icons.js";
 import { klappAttr } from "./heart-lifeskin-klapp.js";
-import { medienListe, medienAuswahl } from "../../shared/lifeskin-medien.js";
+import { medienListe, medienAuswahl, kommentareAusText, KOMMENTARE_JE_MAL } from "../../shared/lifeskin-medien.js";
 
 const zahl = (n) => new Intl.NumberFormat("de-DE").format(Math.max(0, Number(n) || 0));
 
@@ -199,10 +199,67 @@ export function renderMedienReaktionen(zustand = {}) {
       <h4 class="heart-reaktionen__titel">Kommentare</h4>
       ${laedt && !kommentare ? `<p class="heart-lifeskin-leer">Kommentare werden geladen …</p>` : ""}
       ${kommentare && !alle.length ? `<p class="heart-lifeskin-leer">Noch kein Kommentar.</p>` : ""}
+      ${renderKommentarSchreiben(liste)}
       ${alle.length ? `<ul class="heart-kommentare">${kommentarZeilen}</ul>` : ""}
       <p class="heart-lifeskin-block__fuss">Kommentare stehen sofort auf der Seite. „Verbergen“ nimmt sie dort weg, ohne sie zu löschen.</p>`
       : `<p class="heart-lifeskin-leer">Noch kein Foto oder Video gespeichert – unter „Mehr anzeigen → Fotos &amp; Videos“.</p>`}
     </details>`;
+}
+
+// ── Kommentare schreiben: eine Zeile = ein Kommentar ─────────────────
+// Das Formular lebt nur im DOM (data-bewahren, heart-morph.js): Was
+// eingefuegt ist, bleibt stehen, auch wenn Heart wegen Live-Zahlen neu
+// zeichnet. Neu aufgebaut wird es nur, wenn sich die Medien aendern.
+// Die Vorschau darunter und das Speichern: heart.js.
+export function renderKommentarSchreiben(liste = []) {
+  if (!liste.length) return "";
+  const optionen = liste.map((m, i) => `
+        <option value="${escapeHtml(m.id)}">${escapeHtml(m.produkt || "Ohne Produkt")} · ${m.art === "video" ? "Video" : "Foto"} ${i + 1}${m.aktiv ? "" : " (aus)"}</option>`).join("");
+  return `
+      <h4 class="heart-reaktionen__titel">Kommentare schreiben</h4>
+      <div class="heart-kommentar-import" data-kommentar-import data-bewahren="kommentar-import:${escapeHtml(liste.map((m) => m.id).join(","))}">
+        <label class="heart-lifeskin-feld">
+          <span>Unter welchem Foto oder Video</span>
+          <select class="heart-lifeskin-eingabe" data-kommentar-medium>${optionen}
+          </select>
+        </label>
+        <label class="heart-lifeskin-feld">
+          <span>Eine Zeile = ein Kommentar · Name, Komma, Text</span>
+          <textarea class="heart-lifeskin-eingabe" data-kommentar-text rows="6" placeholder="Lind, mrrekulli ❤️&#10;Name, Text"></textarea>
+        </label>
+        <p class="heart-kommentar-import__vorschau" data-kommentar-vorschau>Einfügen oder tippen – jede Zeile wird ein eigener Kommentar.</p>
+        <button type="button" class="heart-lifeskin-resetknopf heart-lifeskin-resetknopf--speichern"
+                data-action="lifeskin-kommentare-speichern" disabled>Speichern</button>
+      </div>`;
+}
+
+// Vorschau und Knopf direkt im Formular setzen (es lebt nur im DOM).
+// Gibt zurueck, was gespeichert wuerde - oder null, wenn etwas nicht geht.
+export function kommentarVorschauSetzen(form) {
+  const feld = form?.querySelector("[data-kommentar-text]");
+  if (!feld) return null;
+  const vorschau = form.querySelector("[data-kommentar-vorschau]");
+  const knopf = form.querySelector('[data-action="lifeskin-kommentare-speichern"]');
+  const { kommentare, fehler } = kommentareAusText(feld.value);
+  const n = kommentare.length;
+  const zuviel = n > KOMMENTARE_JE_MAL;
+  let satz = n ? `${n} ${n === 1 ? "Kommentar" : "Kommentare"} erkannt.` : "Einfügen oder tippen – jede Zeile wird ein eigener Kommentar.";
+  if (fehler.length) {
+    satz += ` ${fehler.length === 1 ? "1 Zeile geht nicht" : `${fehler.length} Zeilen gehen nicht`}: `
+      + fehler.slice(0, 3).map((x) => `Zeile ${x.zeile} – ${x.grund}`).join(" · ")
+      + (fehler.length > 3 ? " …" : "");
+  }
+  if (zuviel) satz += ` Höchstens ${KOMMENTARE_JE_MAL} auf einmal.`;
+  if (vorschau) {
+    vorschau.textContent = satz;
+    vorschau.classList.toggle("heart-kommentar-import__vorschau--fehler", fehler.length > 0 || zuviel);
+  }
+  const gut = n > 0 && !fehler.length && !zuviel;
+  if (knopf && !knopf.dataset.laeuft) {
+    knopf.disabled = !gut;
+    knopf.textContent = n ? `${n} ${n === 1 ? "Kommentar" : "Kommentare"} speichern` : "Speichern";
+  }
+  return gut ? kommentare : null;
 }
 
 // ── Die Auswahl im Befund eines Falls ─────────────────────────────────

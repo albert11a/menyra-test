@@ -419,6 +419,10 @@ export function bindHeartEvents({
       await operations.lifeskinMediumSchieben?.(target.getAttribute("data-id"), target.getAttribute("data-richtung"));
       return;
     }
+    if (action === "lifeskin-kommentare-speichern") {
+      await operations.lifeskinKommentareSpeichern?.();
+      return;
+    }
     if (action === "lifeskin-kommentar") {
       await operations.lifeskinKommentar?.(target.getAttribute("data-was"), target.getAttribute("data-medium"), target.getAttribute("data-id"));
       return;
@@ -817,6 +821,11 @@ export function bindHeartEvents({
     // Die Vorschau unter den Texten der Therapieseite folgt jedem Tastendruck.
     if (event.target?.matches?.("[data-shitja], [data-shitja-problem], [data-shitja-punkt]")) {
       operations.lifeskinVorschau?.();
+      return;
+    }
+    // Kommentare schreiben: Vorschau "n Kommentare erkannt" bei jedem Zeichen.
+    if (event.target?.matches?.("[data-kommentar-text]")) {
+      operations.lifeskinKommentarVorschau?.();
       return;
     }
     // Wofuer und Preis: sofort auf dem Geraet merken (Entwurf).

@@ -135,6 +135,33 @@ export function kommentarPruefen({ name, text } = {}) {
   return { ok: Boolean(n && t), name: n, text: t };
 }
 
+// VIELE KOMMENTARE AUF EINMAL (Heart): Eine Zeile ist ein Kommentar,
+// "Name, Text". Aufzaehlungszeichen vorne (-, •, *, 1.) fallen weg. Der
+// Name endet am ersten Komma (oder Doppelpunkt) - alles danach ist der
+// Text, auch weitere Kommas. Leere Zeilen zaehlen nicht.
+// Grenzen wie in firestore.rules: Name 1-40, Text 1-500 Zeichen.
+// Zurueck: die guten Kommentare und je Zeile, warum sie nicht geht.
+export const KOMMENTARE_JE_MAL = 100;
+export function kommentareAusText(roh) {
+  const kommentare = [];
+  const fehler = [];
+  String(roh || "").split(/\r?\n/).forEach((zeile, i) => {
+    const sauber = zeile.replace(/^\s*(?:[-–—•*·]+|\d{1,3}[.)])\s*/, "").trim();
+    if (!sauber) return;
+    const nr = i + 1;
+    const trenner = sauber.search(/[,:]/);
+    if (trenner < 0) { fehler.push({ zeile: nr, grund: "kein Komma zwischen Name und Text" }); return; }
+    const name = sauber.slice(0, trenner).trim();
+    const text = sauber.slice(trenner + 1).trim();
+    if (!name) fehler.push({ zeile: nr, grund: "der Name fehlt" });
+    else if (!text) fehler.push({ zeile: nr, grund: "der Text fehlt" });
+    else if (name.length > 40) fehler.push({ zeile: nr, grund: "Name länger als 40 Zeichen" });
+    else if (text.length > 500) fehler.push({ zeile: nr, grund: "Text länger als 500 Zeichen" });
+    else kommentare.push({ zeile: nr, name, text });
+  });
+  return { kommentare, fehler };
+}
+
 // Einen Kommentar schreiben - sofort sichtbar (Heart kann verbergen).
 export async function kommentarSchreiben(id, eingabe, { basis, tenant = "lifeskin", fetchFn = globalThis.fetch, jetzt = new Date().toISOString() } = {}) {
   const k = kommentarPruefen(eingabe);

@@ -58,8 +58,9 @@ import { ladeLifeskin, ladeLifeskinSeit, horcheLive, ladeFotos, ladeErstesFoto, 
   ladeBericht, setzeVersand, speichereAnbieter,
   ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX,
   speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder,
-  ladeMedien, speichereMedien, speichereMedium, loescheMedium, ladeKommentare, setzeKommentarVerborgen, loescheKommentar } from "./heart-lifeskin-adapter.js";
+  ladeMedien, speichereMedien, speichereMedium, loescheMedium, ladeKommentare, setzeKommentarVerborgen, loescheKommentar, schreibeKommentare } from "./heart-lifeskin-adapter.js";
 import { medienListe, mediumNormalisieren, neueMediumId } from "../../shared/lifeskin-medien.js";
+import { kommentarVorschauSetzen } from "./heart-lifeskin-medien.js";
 import { rasteListe, klappSetzen, klappOffen, rastiDom } from "./heart-lifeskin-raste.js";
 import { entwurfSchreiben, entwurfLoeschen, entwurfAusBogen, promptMerken } from "./heart-lifeskin-entwurf.js";
 import { befundStandAuffrischen, befundFelderAnpassen } from "./heart-lifeskin-befundstand.js";
@@ -2531,6 +2532,38 @@ async function medienKommentareLaden() {
   }
 }
 
+// KOMMENTARE SCHREIBEN (Reaktionen): Das Formular lebt nur im DOM
+// (data-bewahren), Vorschau und Knopf setzt kommentarVorschauSetzen
+// (heart-lifeskin-medien.js) direkt dort - ein Neuzeichnen von Heart nimmt
+// nichts davon weg.
+function lifeskinKommentarVorschau() {
+  kommentarVorschauSetzen(document.querySelector("[data-kommentar-import]"));
+}
+
+async function lifeskinKommentareSpeichern() {
+  const form = document.querySelector("[data-kommentar-import]");
+  const feld = form?.querySelector("[data-kommentar-text]");
+  const wahl = form?.querySelector("[data-kommentar-medium]");
+  const knopf = form?.querySelector('[data-action="lifeskin-kommentare-speichern"]');
+  if (!feld || !wahl || !knopf || knopf.dataset.laeuft) return;
+  const kommentare = kommentarVorschauSetzen(form);
+  if (!kommentare) return;
+  knopf.dataset.laeuft = "1";
+  knopf.disabled = true;
+  knopf.textContent = "Wird gespeichert …";
+  try {
+    const n = await schreibeKommentare(wahl.value, kommentare);
+    feld.value = "";
+    setToast("Kommentare", `${n} ${n === 1 ? "Kommentar" : "Kommentare"} gespeichert – stehen sofort auf der Seite.`, "success");
+    medienKommentareLaden();
+  } catch (fehler) {
+    setToast("Kommentare", fehler?.message || "Speichern fehlgeschlagen.", "danger");
+  } finally {
+    delete knopf.dataset.laeuft;
+    kommentarVorschauSetzen(form);
+  }
+}
+
 async function lifeskinKommentar(was, medium, id) {
   const stand = store.getState().lifeskin || {};
   if (!medium || !id || !["verbergen", "zeigen", "loeschen"].includes(was)) return;
@@ -3694,6 +3727,8 @@ const operations = {
   loescheLifeskinMedium() { return loescheLifeskinMedium(); },
   lifeskinMediumSchieben(id, richtung) { return lifeskinMediumSchieben(id, richtung); },
   lifeskinKommentar(was, medium, id) { return lifeskinKommentar(was, medium, id); },
+  lifeskinKommentarVorschau() { lifeskinKommentarVorschau(); },
+  lifeskinKommentareSpeichern() { return lifeskinKommentareSpeichern(); },
   speichereLifeskinRasti() { return speichereLifeskinRasti(); },
   loescheLifeskinRasti() { return loescheLifeskinRasti(); },
   lifeskinRastiOrt(id, ort) { return lifeskinRastiOrt(id, ort); },
