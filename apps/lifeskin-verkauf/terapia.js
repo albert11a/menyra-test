@@ -32,7 +32,7 @@ import {
   RASTE_STANDARD, rasteLaden, rasteNormalisieren, rasteFuerBericht, rasteMitBildern, rastiProdukteText
 } from "../../shared/lifeskin-raste.js";
 import { KundenMedien } from "./terapia-medien.js";
-import { untenNachziehenStarten, festUntenHalten } from "../../shared/lifeskin-unten.js";
+import { untenNachziehenStarten } from "../../shared/lifeskin-unten.js";
 import { NDJEKJA, NDJEKJA_TEXTE, KAUFWEG_VERSION, ndjekjaSichtbar } from "../../shared/lifeskin-ndjekja.js";
 import { garancia } from "../../shared/lifeskin-garancia.js";
 import { telefonPruefen } from "../../shared/lifeskin-telefon.js";
@@ -1650,11 +1650,19 @@ export class Terapia {
     }
     window.addEventListener("resize", pruefen, { passive: true });
     globalThis.visualViewport?.addEventListener("resize", pruefen, { passive: true });
-    // iOS: nach Tastatur oder Vollbild die Unterkante neu rechnen lassen.
-    this.untenNachziehen = untenNachziehenStarten({ nachher: pruefen });
-    // Und laufend: Steht "unten" fuer iOS woanders als der Bildschirm
-    // endet, wird die Leiste um genau diese Differenz nachgesetzt.
-    festUntenHalten(leiste);
+    // iOS: nach Tastatur, Vollbild (Kasse, Kundenvideos) und nach der
+    // Rueckkehr aus einer anderen App die Unterkante neu rechnen lassen -
+    // und die Leiste dabei neu aufbauen, damit iOS ihre Grafikebene nicht
+    // an der alten Stelle stehen laesst.
+    this.untenNachziehen = untenNachziehenStarten({
+      beimZurueckkommen: true,
+      nachher: () => {
+        leiste.style.display = "none";
+        void leiste.offsetHeight;
+        leiste.style.display = "";
+        pruefen();
+      }
+    });
     pruefen();
   }
 
