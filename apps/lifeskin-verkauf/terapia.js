@@ -822,9 +822,9 @@ export class Terapia {
       img.decoding = "async";
       return img;
     }));
-    const pfeil = element("i", null, "→");
-    $("#t-fototzahl")?.replaceChildren(`${n} foto`, pfeil);
-    knopf.setAttribute("aria-label", `Shikoni fotot e analizës (${n})`);
+    // Im Kreis: "1" bei einem Foto, sonst "+" und die Anzahl.
+    schreibe($("#t-fototzahl"), n === 1 ? "1" : `+${n}`);
+    knopf.setAttribute("aria-label", n === 1 ? "1 foto nga analiza juaj" : `${n} foto nga analiza juaj`);
     zeigen(knopf, true);
     this.#stapelEinpassen();
     if (!this.stapelGebunden) {
@@ -858,30 +858,6 @@ export class Terapia {
       zeile.style.setProperty("--s", String(s));
       if (zeile.scrollWidth <= zeile.clientWidth + 1) return;
     }
-  }
-
-  #fototOeffnen() {
-    const bilder = this.analyseBilder || [];
-    if (!bilder.length) return;
-    schreibe($("#mjetiblatt-titull"), "Fotot e analizës");
-    const pamjet = element("div", "mjetiblatt__pamjet");
-    const bahn = element("div", "mjetiblatt__bahn");
-    bahn.dataset.bahn = "";
-    bahn.append(...bilder.map((src, i) => {
-      const fig = element("figure", "mjetiblatt__foto");
-      const img = element("img");
-      img.src = src;
-      img.alt = `Foto ${i + 1} nga analiza juaj`;
-      img.decoding = "async";
-      fig.append(img);
-      return fig;
-    }));
-    pamjet.append(bahn);
-    const pika = Terapia.#punkteVon(bilder.length);
-    if (pika) pamjet.append(pika);
-    const text = element("p", "mjetiblatt__kurz", "Fotot nga skanimi juaj.");
-    this.#blattZeigen([pamjet, text]);
-    this.klickpfad?.melde("fotot", String(bilder.length));
   }
 
   #blattSchliessen() {
@@ -1269,7 +1245,6 @@ export class Terapia {
     document.addEventListener("click", (ereignis) => {
       const ziel = ereignis.target;
       if (!(ziel instanceof Element)) return;
-      if (ziel.closest("#t-fotot")) { this.#fototOeffnen(); return; }
       const mjeti = ziel.closest("[data-mjeti-hap]");
       if (mjeti) { this.#blattOeffnen(mjeti.dataset.mjetiHap); return; }
       if (ziel.closest("[data-mjeti-mbyll]")) { this.#blattSchliessen(); return; }

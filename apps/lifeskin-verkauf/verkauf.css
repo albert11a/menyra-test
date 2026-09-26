@@ -65,24 +65,28 @@ a { color: var(--green); }
 /* Der Name bricht nie um. */
 .mjeku strong, .mjeku span { white-space: nowrap; }
 .hero__karte .hero__pse { font-size: .95rem; }
+/* Rechts Platz fuer die halbe Breite des Kreises - er ragt ueber den
+   Stapel hinaus und soll trotzdem mitgemessen werden. */
 .mjeku__fotot {
-  flex: none; margin-left: auto; display: flex; align-items: center; gap: calc(8px * var(--s, 1));
-  padding: 0; border: 0; background: none; color: var(--green); -webkit-tap-highlight-color: transparent;
+  flex: none; margin-left: auto; margin-right: calc(12px * var(--s, 1));
+  display: flex; align-items: center; position: relative;
 }
 .mjeku__stapel { display: flex; }
 .mjeku .mjeku__stapel img {
-  width: calc(32px * var(--s, 1)); height: calc(42px * var(--s, 1)); border-radius: calc(8px * var(--s, 1));
+  width: calc(34px * var(--s, 1)); height: calc(44px * var(--s, 1)); border-radius: calc(8px * var(--s, 1));
   object-fit: cover; margin-left: calc(-13px * var(--s, 1));
   border: 2px solid #fff; box-shadow: 0 1px 4px #0003; background: #eee;
 }
 .mjeku .mjeku__stapel img:first-child { margin-left: 0; }
-/* "3 foto" und darunter der Pfeil, rechts neben den Bildern. */
-.mjeku__zahl {
-  display: flex; flex-direction: column; align-items: center;
-  font-size: calc(13px * var(--s, 1)); font-weight: 700; line-height: 1.15; white-space: nowrap;
+/* DER KREIS: mittig am rechten Rand des obersten Fotos, halb darin,
+   halb daneben. "1" oder "+Anzahl". */
+.mjeku .mjeku__zahl {
+  position: absolute; top: 50%; right: 0; transform: translate(50%, -50%);
+  min-width: calc(24px * var(--s, 1)); height: calc(24px * var(--s, 1)); padding: 0 calc(5px * var(--s, 1));
+  border-radius: 999px; display: flex; align-items: center; justify-content: center;
+  background: var(--green); color: #fff; border: 2px solid #fff; box-shadow: 0 1px 4px #0003;
+  font-size: calc(11px * var(--s, 1)); font-weight: 700; line-height: 1; white-space: nowrap;
 }
-.mjeku__zahl i { font-style: normal; font-weight: 700; font-size: 1.15em; line-height: 1; }
-.mjeku__fotot:active { transform: scale(.97); }
 .mjeku__stapel[data-zeige="1"] img:nth-child(n+2), .mjeku__stapel[data-zeige="2"] img:nth-child(n+3) { display: none; }
 .mjeku img { border-radius: 50%; object-fit: cover; border: 2px solid #fff; box-shadow: 0 1px 4px #0002; }
 .mjeku p { display: flex; flex-direction: column; font-size: .875rem; line-height: 1.4; }
@@ -209,9 +213,6 @@ a { color: var(--green); }
 .mjetiblatt__perdorimi > div { display: grid; grid-template-columns: 44px 1fr; gap: 10px; padding: 10px 12px; background: var(--white); }
 .mjetiblatt__perdorimi dt { font-size: .8rem; font-weight: 700; color: var(--green); }
 .mjetiblatt__perdorimi dd { margin: 0; font-size: .9rem; line-height: 1.4; }
-.mjetiblatt__foto { flex: 0 0 100%; margin: 0; scroll-snap-align: center; border-radius: 16px; overflow: hidden; background: #f0eee6; }
-.mjetiblatt__foto img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; display: block; }
-.mjetiblatt__bahn:has(> :nth-child(2)) .mjetiblatt__foto { flex-basis: 86%; }
 .mjetiblatt__kujdes { margin-top: 10px; font-size: .85rem; line-height: 1.45; color: var(--muted); }
 @keyframes mjetiblatt-rein { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes mjetiblatt-prapa { from { opacity: 0; } to { opacity: 1; } }
