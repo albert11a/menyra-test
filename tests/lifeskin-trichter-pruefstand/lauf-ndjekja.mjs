@@ -553,6 +553,9 @@ export async function heartAntwortet(seite, zugang) {
     `Termin Tag 7 erledigt - mit Name und Datum, nur durch das Team (${JSON.stringify(nachTermin?.kontrollet)})`);
   pruefe(!nachTermin?.kontrollet?.["14"], "Die übrigen Termine bleiben geplant");
   await seite.evaluate(() => scrollTo(0, 0));
+  // Die Meldung unten ("erledigt") verschwindet nach ein paar Sekunden -
+  // fuer die Bilder abwarten.
+  await seite.waitForTimeout(4500);
   await bild(seite, "34_heart_fall_oben");
   await seite.evaluate(() => document.querySelector(".heart-ndj-kasten--kunde")?.scrollIntoView({ block: "start" }));
   await bild(seite, "35_heart_fall_kunde_und_intern");
