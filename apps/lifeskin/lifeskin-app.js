@@ -36,7 +36,7 @@ import { STANDARD_KONFIG, ALTERSGRUPPEN } from "./lifeskin-catalog.js";
 import { OBERFLAECHE, EINSTIEG_HINWEIS, EINSTIEG_KARTEN, ARZT_BILD, ARZT_NAME,
   FRAGEN, FRAGEN_NACH_SCAN, FRAGEN_PA_SKANIM, FRAGEN_PA_SKANIM_NUMRI,
   FRAGEN_TEXTE, t, fuelle } from "./lifeskin-content.js";
-import { besteGuete, Flaechenkamera, ausDatei as fotoAusDatei } from "./lifeskin-foto.js";
+import { besteGuete, Flaechenkamera, beiFreigabe, KAMERA_HAENGT_MS, BILD_GRENZE_MS, ausDatei as fotoAusDatei } from "./lifeskin-foto.js";
 import { Sitzung } from "./lifeskin-session.js";
 import { starteKlickpfad } from "../../shared/lifeskin-klickpfad.js";
 import { Pixel } from "./lifeskin-pixel.js";
@@ -297,6 +297,14 @@ const NETZ_AUSFALL_BILDER = 30;
 // dort "Me foto" oder "Per trupin" waehlt, bestellt es damit sofort
 // wieder ab (#wegWaehlen), bevor ein einziges Byte laeuft.
 const NETZ_VORMERKEN_MS = 1500;
+
+// WIE LANGE DER SCAN AUF DIE GESICHTSERKENNUNG WARTET, bevor er ohne sie
+// aufnimmt. Hier standen neun Sekunden - neun Sekunden, in denen jemand
+// mit dem Gesicht im Kreis sass und nichts zuging. Das Laden beginnt
+// schon beim ersten Tipp auf der Landingpage; wer sie nach sechs
+// Sekunden an der Kamera noch nicht hat, hat eine Leitung, auf der auch
+// drei weitere nicht reichen. Dann nimmt der Weg ohne Netz sofort auf.
+const NETZ_WARTEN_MS = 6000;
 
 // Wie lange die Uebergabe OHNE JEDE ANTWORT des Servers wartet, bevor sie
 // den Hinweis zeigt. Gezaehlt ab der letzten Antwort, nicht ab dem Tipp -
@@ -2476,7 +2484,7 @@ export class Trichter {
 
   // ---------- Kamera ----------
 
-  async #kameraStarten() {
+  async #kameraStarten({ zweiterAnlauf = false } = {}) {
     // Wer die Vorbereitung zweimal durchlaeuft, soll keinen zweiten Strom
     // aufmachen.
     this.#kameraStoppen();
@@ -2513,8 +2521,12 @@ export class Trichter {
     // ersten Bild liegen die Systemfrage und das Aufwachen der Kamera. Ohne
     // ein Wort ist das ein leerer Kreis auf einer leeren Seite.
     schreibe($("#ls-kamerahinweis"), this.text("kameraOeffnet"));
-    this.sitzung.schritt("camera");
-    this.kamera.startAb = Date.now();
+    // Der stille zweite Anlauf ist KEIN neuer Tipp: Er zaehlt nicht noch
+    // einmal im Trichter, und seine Zeit laeuft ab dem ersten Tippen.
+    if (!zweiterAnlauf) {
+      this.sitzung.schritt("camera");
+      this.kamera.startAb = Date.now();
+    }
 
     try {
       // Nur nach einer Berührung - iOS erlaubt es nicht anders.
@@ -2558,9 +2570,21 @@ export class Trichter {
       // die Bildgroesse pollt.
       this.#abspielen(video);
       this.#abspielWaechter(video);
-      const bereit = await this.#videoBereit(video, { lauf });
+      const bereit = await this.#videoBereit(video, { lauf, grenzeMs: BILD_GRENZE_MS });
       if (lauf !== this.kamera.lauf) return;
-      if (!bereit) { this.#kameraFehler("fehlerKameraBild"); return; }
+      if (!bereit) {
+        // EIN STROM OHNE BILD WIRD EINMAL NEU GEHOLT, still und ohne
+        // Fehlerkasten. Die Kamera ist freigegeben, der zweite Anlauf
+        // braucht keine Frage und steht meist nach einer Sekunde. Erst wenn
+        // auch er schwarz bleibt, kommt der Fehler.
+        if (!zweiterAnlauf && this.kamera.laeuft) {
+          this.#technik(`Scan-Kamera ohne Bild nach ${Date.now() - this.kamera.startAb} ms – neuer Anlauf`);
+          this.#kameraStarten({ zweiterAnlauf: true });
+          return;
+        }
+        this.#kameraFehler("fehlerKameraBild");
+        return;
+      }
       this.#technik(`Scan-Kamera bereit nach ${Date.now() - this.kamera.startAb} ms · ${video.videoWidth}×${video.videoHeight}`);
     } catch (fehler) {
       // Ein abgeloester Lauf zeigt keinen Fehler an: Der neue ist gerade
@@ -2600,7 +2624,7 @@ export class Trichter {
     this.kamera.netzWartet = true;
     this.#rueckfallschleife(Date.now(), lauf);
 
-    netzHolen({ zeitgrenzeMs: 9000 }).then((netz) => {
+    netzHolen({ zeitgrenzeMs: NETZ_WARTEN_MS }).then((netz) => {
       if (lauf !== this.kamera.lauf) return;
       this.kamera.netzWartet = false;
       if (!this.kamera.laeuft) return;
@@ -2657,12 +2681,25 @@ export class Trichter {
     let vorbei = false;
     let frist;
     let abbrechen;
+    let fristEnde = Date.now() + 30000;
+    let freigabeAus = () => {};
     const abbruch = new Promise((_, ablehnen) => {
       abbrechen = () => { vorbei = true; ablehnen(fehlerMitName("AbortError")); };
-      frist = setTimeout(() => {
+      const ablaufen = () => {
         vorbei = true;
         ablehnen(fehlerMitName("TimeoutError"));
-      }, 30000);
+      };
+      frist = setTimeout(ablaufen, 30000);
+      // 30 Sekunden gelten nur, solange die Systemfrage offen sein kann.
+      // Ist die Kamera freigegeben, haengt ein getUserMedia, das nach
+      // KAMERA_HAENGT_MS noch nicht geantwortet hat (lifeskin-foto.js).
+      freigabeAus = beiFreigabe(() => {
+        const bis = Date.now() + KAMERA_HAENGT_MS;
+        if (vorbei || bis >= fristEnde) return;
+        fristEnde = bis;
+        clearTimeout(frist);
+        frist = setTimeout(ablaufen, KAMERA_HAENGT_MS);
+      });
     });
     this.kamera.anfrageAbbrechen = abbrechen;
     const holen = async () => {
@@ -2701,6 +2738,7 @@ export class Trichter {
       return await Promise.race([holen(), abbruch]);
     } finally {
       clearTimeout(frist);
+      freigabeAus();
       if (this.kamera.anfrageAbbrechen === abbrechen) this.kamera.anfrageAbbrechen = null;
     }
   }
@@ -2848,7 +2886,7 @@ export class Trichter {
   // hier bis zu anderthalb Sekunden nichts. Wechselt sie danach noch
   // einmal, rechnet `object-fit: cover` neu - verzerrt wird nichts.
   // Dieselben Zahlen stehen in #bildBereit() in lifeskin-foto.js.
-  async #videoBereit(video, { fristMs = 700, ruheMs = 200, lauf = this.kamera.lauf } = {}) {
+  async #videoBereit(video, { fristMs = 700, ruheMs = 200, grenzeMs = 10000, lauf = this.kamera.lauf } = {}) {
     const kasten = $(".ls-kamera");
     if (kasten) kasten.dataset.bereit = "nein";
     return new Promise((aufloesen) => {
@@ -2899,7 +2937,7 @@ export class Trichter {
           groesse = "";
           erstesBild = null;
         }
-        if (sichtbarMs >= 10000) fertig(false);
+        if (sichtbarMs >= grenzeMs) fertig(false);
       };
       this.kamera.bereitAbbrechen = abbrechen;
       for (const name of ereignisse) video.addEventListener(name, pruefen);

@@ -119,6 +119,7 @@ function probe({ gum, breite = 390, hoehe = 844 } = {}) {
     // ganze Datei beim Einlesen um.
     besteGuete: (kodiere) => ({ jpeg: kodiere(0.9), guete: 0.9 }),
     Flaechenkamera: class { starte() { return Promise.resolve(false); } stoppe() {} },
+    beiFreigabe: () => () => {}, KAMERA_HAENGT_MS: 8000, BILD_GRENZE_MS: 5000,
     fotoAusDatei: async () => null,
     navigator: { mediaDevices: { getUserMedia: (...args) => { anfragen++; return gum ? gum(...args) : Promise.resolve(stream); } } },
     netzHolen: async () => null, netzStand: () => "aus", console,
@@ -205,8 +206,9 @@ test("iOS: offenes play()-Promise blockiert ein wirklich vorhandenes Bild nicht"
   p.app._kameraStoppen();
 });
 
-test("Metadaten ohne dekodiertes Bild starten keine Aufnahme und werden begrenzt", async () => {
-  const p = probe();
+test("Metadaten ohne dekodiertes Bild: einmal still neu geholt, dann Hilfe nach 10 statt 30 s", async () => {
+  const stroeme = [];
+  const p = probe({ gum: async () => { const s = strom(); s.spur.enabled = true; stroeme.push(s); return s; } });
   const start = p.app._kameraStarten();
   await p.clock.pumpen();
   Object.assign(p.video, { videoWidth: 1280, videoHeight: 720, readyState: 1 });
@@ -214,9 +216,14 @@ test("Metadaten ohne dekodiertes Bild starten keine Aufnahme und werden begrenzt
   await p.clock.weiter(3000);
   assert.equal(p.buehne.dataset.bereit, "nein");
   assert.equal(p.aufrufe.fallback, 0);
-  await p.clock.weiter(7600); await start;
+  await p.clock.weiter(2100); await start;
+  assert.equal(p.anfragen(), 2, "Ein Strom ohne Bild wird nicht neu geholt");
+  assert.equal(stroeme[0].spur.stops, 1, "Der schwarze erste Strom bleibt offen");
+  assert.equal(p.fehlerSichtbar(), false, "Der zweite Anlauf zeigt schon einen Fehler");
+  await p.clock.weiter(5100);
   assert.equal(p.fehlertext.textContent, texte.OBERFLAECHE.fehlerKameraBild.sq);
-  assert.equal(p.stream.spur.stops, 1);
+  assert.equal(p.anfragen(), 2, "Mehr als ein stiller zweiter Anlauf");
+  assert.equal(stroeme[1].spur.stops, 1);
   assert.equal(p.video.anzahl(), 0);
   assert.equal(p.document.anzahl(), 0);
   assert.equal(p.clock.timer.size, 0);
@@ -519,6 +526,18 @@ test("Das Bild erscheint spaetestens 700 ms nach dem ersten Bild, auch wenn die 
   await p.clock.weiter(120); await start;
   assert.equal(p.buehne.dataset.bereit, "ja");
   assert.equal(p.aufrufe.fallback, 1);
+  p.app._kameraStoppen();
+});
+
+test("Kein Bild beim ersten Strom, aber beim zweiten: der Scan laeuft ohne Fehlerkasten", async () => {
+  let n = 0;
+  const p = probe({ gum: async () => { n++; const s = strom(); s.spur.enabled = true; return s; } });
+  const start = p.app._kameraStarten();
+  await p.clock.weiter(5100); await start;
+  assert.equal(n, 2);
+  await p.clock.pumpen(); p.bild(); await p.clock.weiter(480);
+  assert.equal(p.aufrufe.fallback, 1, "Der zweite Anlauf fuehrt nicht in den Scan");
+  assert.equal(p.fehlerSichtbar(), false);
   p.app._kameraStoppen();
 });
 

@@ -136,7 +136,7 @@ test("Videoereignisse beschleunigen die Bereitschaft und werden wieder entfernt"
   assert.match(bereit, /"loadedmetadata", "loadeddata", "playing", "resize"/);
   assert.match(bereit, /video\.addEventListener\(name, pruefen\)/);
   assert.match(bereit, /video\.removeEventListener\(name, pruefen\)/);
-  assert.match(bereit, /sichtbarMs >= 10000/,
+  assert.match(bereit, /sichtbarMs >= grenzeMs/,
     "Ohne Bild gibt es keine Grenze");
 
   // Und die Frist bis zur ruhigen Breite steht nicht mehr zwischen dem
@@ -266,7 +266,10 @@ test("das Bild erscheint erst nach der kurzen Stabilisierung", () => {
   const bereit = methode(APP, "#videoBereit");
   const schleife = bereit.slice(bereit.indexOf("const pruefen ="));
   assert.ok(schleife.indexOf("zeigen()") > schleife.indexOf("ruhigSeit"));
-  assert.match(START, /if \(!bereit\) \{ this\.#kameraFehler\("fehlerKameraBild"\); return; \}/);
+  // Ohne Bild: einmal still neu holen, erst dann der Fehler.
+  const ohneBild = START.slice(START.indexOf("if (!bereit) {"));
+  assert.match(ohneBild, /if \(!zweiterAnlauf && this\.kamera\.laeuft\) \{[\s\S]*?this\.#kameraStarten\(\{ zweiterAnlauf: true \}\);\s*return;\s*\}\s*this\.#kameraFehler\("fehlerKameraBild"\);/,
+    "Ein Strom ohne Bild wird nicht mehr neu geholt - oder der Fehler kommt nie");
 });
 
 // ---------------------------------------------------------------------------
@@ -339,4 +342,14 @@ test("der Weg ohne Netz wartet auf ein Bild, statt ins Leere auszuloesen", () =>
     "Ein fehlendes Bild wird wieder uebersprungen");
   assert.match(aufnehmen, /for \(let versuch = 0; versuch < \d+ && !leinwand; versuch \+= 1\)/,
     "Auf ein brauchbares Bild wird nicht gewartet");
+});
+
+test("freigegebene Kamera ohne Antwort: der Scan wartet 8 statt 30 Sekunden", () => {
+  // Dieselbe Regel wie bei "Me foto" (tests/lifeskin-foto-lifecycle.test.mjs
+  // prueft sie dort mit laufender Uhr): Ist keine Systemfrage mehr offen,
+  // haengt ein getUserMedia, das nicht antwortet.
+  const holen = methode(APP, "#stromHolen");
+  assert.match(holen, /beiFreigabe\(/, "Der Scan fragt nicht, ob die Kamera schon freigegeben ist");
+  assert.match(holen, /setTimeout\(ablaufen, KAMERA_HAENGT_MS\)/);
+  assert.match(holen, /freigabeAus\(\);/, "Der Horcher auf die Freigabe wird nicht entfernt");
 });

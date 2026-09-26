@@ -179,7 +179,7 @@ test("wer den Knopf antippt, hinterlaesst eine Spur - mit einem Schritt, den die
   const tippen = app.slice(ab, app.indexOf("#frueherTippNachholen()", ab));
   assert.match(tippen, /this\.#kameraStarten\(\); return;/,
     "Der Tipp fuehrt nicht an die Kamera");
-  const kamera = app.slice(app.indexOf("async #kameraStarten()"));
+  const kamera = app.slice(app.indexOf("async #kameraStarten("));
   assert.match(kamera.slice(0, 2000), /schritt\("camera"\)/,
     "Die Kamera schreibt ihren Schritt nicht - dann faengt der Trichter bei der Seite an und hoert dort auf");
 

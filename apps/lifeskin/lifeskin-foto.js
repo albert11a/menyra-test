@@ -201,6 +201,51 @@ async function bildAusDatei(datei) {
 }
 
 // ---------------------------------------------------------------------------
+// Wann eine Kamera, die nicht antwortet, wirklich haengt
+// ---------------------------------------------------------------------------
+
+// DREISSIG SEKUNDEN SPINNER, OBWOHL LAENGST FEST STAND, DASS NICHTS KOMMT.
+//
+// getUserMedia() hat eine Frist von 30 Sekunden, und die ist richtig,
+// solange die Systemfrage offen sein KANN: So lange darf jemand lesen und
+// ueberlegen. Ist die Kamera aber schon freigegeben - beim zweiten Besuch,
+// beim zweiten Anlauf, beim Wechsel von Scan zu Foto oder gleich nach dem
+// "Zulassen" -, erscheint keine Frage mehr. Antwortet getUserMedia dann
+// nicht binnen weniger Sekunden, haengt es, und jede weitere Sekunde ist
+// Wartezeit fuer nichts. Gesehen wird das in den Webansichten von Apps und
+// auf alten Androids, deren Kameradienst sich verschluckt.
+//
+// Diese Funktion fragt den Browser, ob die Kamera schon freigegeben ist,
+// und meldet es - sofort, oder in dem Moment, in dem jemand "Zulassen"
+// tippt. Der Aufrufer zieht damit seine Frist auf KAMERA_HAENGT_MS an.
+// Kennt der Browser die Abfrage nicht (Firefox, aelteres Safari), meldet
+// sie nie etwas, und es bleibt bei den 30 Sekunden.
+export const KAMERA_HAENGT_MS = 8000;
+
+// Wie lange ein offener Strom ohne ein einziges Bild bleiben darf, bevor
+// er neu geholt wird. Ein langsames Android liefert sein erstes Bild in
+// drei, vier Sekunden; was nach fuenf noch schwarz ist, kommt so nicht mehr.
+export const BILD_GRENZE_MS = 5000;
+
+export function beiFreigabe(melde, { rechte = globalThis.navigator?.permissions } = {}) {
+  let aus = false;
+  let status = null;
+  const pruefen = () => { if (!aus && status?.state === "granted") melde(); };
+  try {
+    Promise.resolve(rechte?.query?.({ name: "camera" })).then((antwort) => {
+      if (aus || !antwort) return;
+      status = antwort;
+      status.addEventListener?.("change", pruefen);
+      pruefen();
+    }).catch(() => { /* unbekannte Abfrage: bei der langen Frist bleiben */ });
+  } catch { /* dito */ }
+  return () => {
+    aus = true;
+    status?.removeEventListener?.("change", pruefen);
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Die Kamera selbst
 // ---------------------------------------------------------------------------
 
@@ -208,7 +253,7 @@ async function bildAusDatei(datei) {
 // Klasse macht den Strom auf, haelt ihn am Video und gibt auf Zuruf ein
 // Bild heraus. Alles andere entscheidet der Mensch davor.
 export class Flaechenkamera {
-  constructor({ video, dokument = globalThis.document, medien = null, beiFehler = null, beiBereit = null } = {}) {
+  constructor({ video, dokument = globalThis.document, medien = null, rechte = null, beiFehler = null, beiBereit = null } = {}) {
     this.video = video || null;
     this.dokument = dokument;
     // Woher der Strom kommt. Im Betrieb steht hier nichts und es gilt
@@ -219,6 +264,7 @@ export class Flaechenkamera {
     // will, faellt um. Eine Klasse, die ihre Aussenwelt nur global
     // findet, laesst sich nicht pruefen.
     this.medienQuelle = medien;
+    this.rechte = rechte;
     this.beiFehler = typeof beiFehler === "function" ? beiFehler : null;
     this.beiBereit = typeof beiBereit === "function" ? beiBereit : null;
     this.strom = null;
@@ -242,7 +288,7 @@ export class Flaechenkamera {
     return Boolean(this.strom);
   }
 
-  async starte(richtung = this.richtung) {
+  async starte(richtung = this.richtung, { zweiterAnlauf = false } = {}) {
     // DIE ALTE RICHTUNG BLEIBT STEHEN, BIS DIE NEUE WIRKLICH LAEUFT.
     //
     // Sie wurde hier gesetzt, bevor getUserMedia geantwortet hatte. Ein
@@ -260,15 +306,27 @@ export class Flaechenkamera {
     }
     let frist;
     let vorbei = false;
+    let fristEnde = Date.now() + 30000;
+    let freigabeAus = () => {};
     const abbruch = new Promise((_, nein) => {
       this.abbrechen = () => {
         vorbei = true;
         nein(Object.assign(new Error(), { name: "AbortError" }));
       };
-      frist = setTimeout(() => {
+      const ablaufen = () => {
         vorbei = true;
         nein(Object.assign(new Error(), { name: "TimeoutError" }));
-      }, 30000);
+      };
+      frist = setTimeout(ablaufen, 30000);
+      // Freigegeben heisst: keine Frage mehr offen. Dann wird nicht mehr
+      // 30 Sekunden gewartet, sondern KAMERA_HAENGT_MS (siehe oben).
+      freigabeAus = beiFreigabe(() => {
+        const bis = Date.now() + KAMERA_HAENGT_MS;
+        if (vorbei || bis >= fristEnde) return;
+        fristEnde = bis;
+        clearTimeout(frist);
+        frist = setTimeout(ablaufen, KAMERA_HAENGT_MS);
+      }, { rechte: this.rechte || globalThis.navigator?.permissions });
     });
     try {
       const holen = async () => {
@@ -293,6 +351,7 @@ export class Flaechenkamera {
       };
       const strom = await Promise.race([holen(), abbruch]);
       clearTimeout(frist);
+      freigabeAus();
       // In der Zwischenzeit wurde neu gestartet oder abgebrochen: Diesen
       // Strom sofort wieder zumachen, sonst bleibt die Leuchte an.
       if (lauf !== this.lauf) {
@@ -317,11 +376,17 @@ export class Flaechenkamera {
         this.video.autoplay = true;
         this.video.playsInline = true;
         this.video.srcObject = strom;
-        const bereit = await this.#bildBereit(lauf);
+        const bereit = await this.#bildBereit(lauf, { grenzeMs: BILD_GRENZE_MS });
         if (lauf !== this.lauf) return false;
         if (!bereit) {
           this.richtung = vorher;
           this.stoppe();
+          // EIN STROM OHNE BILD WIRD EINMAL NEU GEHOLT, still. Die Kamera
+          // ist freigegeben, der zweite Anlauf braucht keine Frage und ist
+          // meist in einer Sekunde da. Erst wenn auch er nichts liefert,
+          // kommt der Fehler - nach hoechstens zweimal BILD_GRENZE_MS statt
+          // zehn Sekunden Spinner vor einem ersten Fehlerkasten.
+          if (!zweiterAnlauf) return await this.starte(gewuenscht, { zweiterAnlauf: true });
           this.beiFehler?.("fehlerKameraBild");
           return false;
         }
@@ -351,6 +416,7 @@ export class Flaechenkamera {
       return false;
     } finally {
       clearTimeout(frist);
+      freigabeAus();
       if (lauf === this.lauf) this.abbrechen = null;
     }
   }
@@ -359,7 +425,7 @@ export class Flaechenkamera {
   // ein dekodiertes Bild mit kurz stabiler Aufloesung, nicht das Promise.
   // 200 ms ruhig oder 700 ms ab dem ersten Bild - dieselben Zahlen wie
   // #videoBereit() beim Scan (dort steht, warum nicht mehr 450 / 1400).
-  #bildBereit(lauf) {
+  #bildBereit(lauf, { grenzeMs = BILD_GRENZE_MS } = {}) {
     const video = this.video;
     return new Promise((ja) => {
       let takt, masse = "", ruhigSeit = 0, erstesBild = 0;
@@ -386,7 +452,7 @@ export class Flaechenkamera {
             fertig(true); return;
           }
         } else { masse = ""; erstesBild = 0; }
-        if (sichtbarMs >= 10000) fertig(false);
+        if (sichtbarMs >= grenzeMs) fertig(false);
       };
       takt = setInterval(pruefen, 60);
       // Vor der ersten Pruefung anstossen, auch bei noch alten Metadaten.

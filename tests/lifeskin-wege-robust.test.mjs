@@ -185,6 +185,7 @@ function probe({ ua = UA.chromeAndroid, gum, mitFoto = true, suche = "" } = {}) 
     Sitzung: class {},
     besteGuete: (kodiere) => ({ jpeg: kodiere(0.9), guete: 0.9 }),
     Flaechenkamera: class { starte() { return Promise.resolve(false); } stoppe() {} },
+    beiFreigabe: () => () => {}, KAMERA_HAENGT_MS: 8000, BILD_GRENZE_MS: 5000,
     fotoAusDatei: async () => dateiAufnahme,
     navigator: { userAgent: ua, mediaDevices: { getUserMedia: (...args) => (gum ? gum(...args) : Promise.resolve(stream)) } },
     location: { href: `https://www.mnyra.com/lifeskin${suche}`, search: suche, pathname: "/lifeskin", assign() {}, replace() {} },

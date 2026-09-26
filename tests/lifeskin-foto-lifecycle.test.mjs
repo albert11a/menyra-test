@@ -67,7 +67,7 @@ function aufgeschoben() {
 }
 
 
-function probe({ gum } = {}) {
+function probe({ gum, rechte } = {}) {
   const clock = uhr();
   const stream = strom();
   stream.spur.enabled = true;
@@ -80,7 +80,7 @@ function probe({ gum } = {}) {
   const context = vm.createContext({ ...clock, console });
   vm.runInContext(quelle, context);
   const kamera = new context.FotoTest({ video, dokument: document,
-    medien: { getUserMedia: gum || (async () => stream) },
+    medien: { getUserMedia: gum || (async () => stream) }, rechte,
     beiFehler: (key) => fehler.push(key), beiBereit: (ok) => bereit.push(ok) });
   const frames = clock.setInterval(() => { if (!video.paused) video.currentTime += 0.05; }, 50);
   return { kamera, clock, stream, video, document, fehler, bereit, context,
@@ -271,5 +271,61 @@ test("Foto: ein ruhiges Bild ist nach 200 ms bereit, nicht erst nach 450", async
   assert.equal(fertig, null, "Bereit, bevor das Bild ruhig stand");
   await p.clock.weiter(180);
   assert.equal(fertig, true, "Das Bild steht, aber der Spinner laeuft weiter");
+  p.stop();
+});
+
+// Die Kamera ist freigegeben (keine Systemfrage mehr offen), aber
+// getUserMedia antwortet nicht: Das ist ein Haenger, und dafuer gibt es
+// keine 30 Sekunden Spinner.
+function freigabe(anfang) {
+  const horcher = new Set();
+  const status = { state: anfang,
+    addEventListener: (_n, fn) => horcher.add(fn), removeEventListener: (_n, fn) => horcher.delete(fn) };
+  return { status, horcher, rechte: { query: async () => status },
+    setze(neu) { status.state = neu; for (const fn of [...horcher]) fn(); } };
+}
+
+test("Foto: freigegeben und keine Antwort - Hilfe nach 8 statt 30 Sekunden", async () => {
+  const f = freigabe("granted");
+  const pending = aufgeschoben();
+  const p = probe({ gum: () => pending.promise, rechte: f.rechte });
+  const start = p.kamera.starte();
+  await p.clock.weiter(7900);
+  assert.deepEqual(p.fehler, []);
+  await p.clock.weiter(200);
+  assert.equal(await start, false);
+  assert.deepEqual(p.fehler, ["fehlerKameraWartet"]);
+  assert.equal(f.horcher.size, 0, "Der Horcher auf die Freigabe bleibt haengen");
+  p.stop(); assert.equal(p.clock.timer.size, 0);
+});
+
+test("Foto: offene Systemfrage behaelt ihre Zeit, nach dem Zulassen zaehlen 8 Sekunden", async () => {
+  const f = freigabe("prompt");
+  const pending = aufgeschoben();
+  const p = probe({ gum: () => pending.promise, rechte: f.rechte });
+  const start = p.kamera.starte();
+  await p.clock.weiter(15000);
+  assert.deepEqual(p.fehler, [], "Wer die Frage liest, bekommt schon einen Fehler");
+  f.setze("granted");
+  await p.clock.weiter(7900);
+  assert.deepEqual(p.fehler, []);
+  await p.clock.weiter(200);
+  assert.equal(await start, false);
+  assert.deepEqual(p.fehler, ["fehlerKameraWartet"]);
+  p.stop();
+});
+
+test("Foto: schwarzer erster Strom wird still neu geholt", async () => {
+  let n = 0;
+  const p = probe({ gum: async () => {
+    n++;
+    p.video.readyState = n === 1 ? 1 : 2;
+    const s = strom(); s.spur.enabled = true; return s;
+  } });
+  const start = p.kamera.starte();
+  await p.clock.weiter(5600);
+  assert.equal(await start, true);
+  assert.equal(n, 2);
+  assert.deepEqual(p.fehler, []);
   p.stop();
 });
