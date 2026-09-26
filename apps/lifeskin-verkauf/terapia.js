@@ -32,7 +32,7 @@ import {
   RASTE_STANDARD, rasteLaden, rasteNormalisieren, rasteFuerBericht, rasteMitBildern, rastiProdukteText
 } from "../../shared/lifeskin-raste.js";
 import { KundenMedien } from "./terapia-medien.js";
-import { untenNachziehenStarten } from "../../shared/lifeskin-unten.js";
+import { ansichtOeffnen, ansichtSchliessen } from "./ansicht.js";
 import { NDJEKJA, NDJEKJA_TEXTE, KAUFWEG_VERSION, ndjekjaSichtbar } from "../../shared/lifeskin-ndjekja.js";
 import { garancia } from "../../shared/lifeskin-garancia.js";
 import { telefonPruefen } from "../../shared/lifeskin-telefon.js";
@@ -366,7 +366,7 @@ export class Terapia {
       zaehlen: !this.nurVorschau && globalThis.__mnyraStill !== true,
       name: this.daten?.name,
       melde: (m) => this.klickpfad?.melde("kommentar", `${m.art === "video" ? "Video" : "Foto"} · ${m.produkt || m.id}`),
-      nachSchliessen: () => this.untenNachziehen?.(),
+      nachSchliessen: () => this.leistePruefen?.(),
       kaufen: this.mitAngebot ? { text: `Fillo terapinë — ${euro(this.preis)}`, tun: () => this.#porosia(true), gilt: () => this.mitAngebot } : null
     });
     this.kundenMedien.zeige(this.daten?.klientet);
@@ -1201,10 +1201,8 @@ export class Terapia {
         globalThis.history?.back();
         return;
       }
-      blatt.hidden = true;
-      document.body.classList.remove("pa-rreshqitje");
       document.activeElement?.blur?.();
-      this.untenNachziehen?.();
+      ansichtSchliessen(blatt);
       this.leistePruefen?.();
       return;
     }
@@ -1216,8 +1214,9 @@ export class Terapia {
     zeigen($("#t-faleminderit"), false);
     for (const teil of ["#t-porosititulli", "#t-shporta", "#forma", "#t-porosifund"]) zeigen($(teil), true);
     if (this.neu) this.#kasseNeu();
-    blatt.hidden = false;
-    document.body.classList.add("pa-rreshqitje");
+    // Die Kasse tritt an die Stelle der Seite (ansicht.js) - kein festes
+    // Fenster ueber ihr, in dem iOS beim Tippen die Seite verschiebt.
+    ansichtOeffnen(blatt, "kasse");
     this.leistePruefen?.();
     this.#kauf("kasse");
 
@@ -1650,19 +1649,6 @@ export class Terapia {
     }
     window.addEventListener("resize", pruefen, { passive: true });
     globalThis.visualViewport?.addEventListener("resize", pruefen, { passive: true });
-    // iOS: nach Tastatur, Vollbild (Kasse, Kundenvideos) und nach der
-    // Rueckkehr aus einer anderen App die Unterkante neu rechnen lassen -
-    // und die Leiste dabei neu aufbauen, damit iOS ihre Grafikebene nicht
-    // an der alten Stelle stehen laesst.
-    this.untenNachziehen = untenNachziehenStarten({
-      beimZurueckkommen: true,
-      nachher: () => {
-        leiste.style.display = "none";
-        void leiste.offsetHeight;
-        leiste.style.display = "";
-        pruefen();
-      }
-    });
     pruefen();
   }
 

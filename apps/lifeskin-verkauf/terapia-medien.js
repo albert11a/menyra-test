@@ -15,6 +15,7 @@
 // - Kommentare holt die Seite erst beim Antippen (schon beim Beruehren
 //   angestossen) und nur einmal je Medium.
 // Jeder Fehler endet leise: Die Seite verkauft auch ohne diese Reihe.
+import { ansichtOeffnen, ansichtSchliessen } from "./ansicht.js";
 import {
   MEDIEN_STANDARD, medienAuswahl, medienLaden, kommentareLaden, kommentarPruefen, kommentarSchreiben, viewZaehlen
 } from "../../shared/lifeskin-medien.js";
@@ -233,11 +234,14 @@ export class KundenMedien {
     if (b.kauf) b.kauf.hidden = this.kaufen?.gilt?.() === false;
     this.#kommentareZeigen(m.id);
     if (neu) {
-      b.hinten.hidden = false;
-      b.hinten.scrollTop = 0;
-      document.body.classList.add("pa-rreshqitje");
-      // Die Zurueck-Taste des Telefons schliesst den Betrachter, nicht die Seite.
+      // Die Zurueck-Taste des Telefons schliesst den Betrachter, nicht die
+      // Seite. ZUERST der Eintrag im Verlauf, DANN die Ansicht: So merkt
+      // sich der Browser die Stelle der Seite (und stellt beim Zurueck
+      // genau die wieder her) - nicht den Anfang des Betrachters.
       try { history.pushState({ lifeskinMedium: true }, ""); this.imVerlauf = true; } catch { this.imVerlauf = false; }
+      // An die Stelle der Seite, kein festes Fenster darueber: Mit dem
+      // Kommentarfeld verschob iOS sonst die Seite (ansicht.js).
+      ansichtOeffnen(b.hinten, "betrachter");
       b.schliessen.focus({ preventScroll: true });
     }
     if (this.zaehlen && !this.gezaehlt.has(m.id)) {
@@ -246,15 +250,28 @@ export class KundenMedien {
     }
   }
 
+  // AUS DEM VIDEO IN DIE KASSE. Liegt der Betrachter im Verlauf, geht es
+  // erst zurueck - und die Kasse oeffnet erst, wenn das Zurueck ganz
+  // angekommen ist: Der Browser setzt nach dem popstate noch die gemerkte
+  // Stelle der Seite. Oeffnete die Kasse vorher, stuende sie mittendrin.
+  #kaufen() {
+    if (!this.imVerlauf) {
+      this.schliesse();
+      this.kaufen?.tun();
+      return;
+    }
+    globalThis.addEventListener("popstate", () => setTimeout(() => this.kaufen?.tun(), 0), { once: true });
+    this.schliesse();
+  }
+
   schliesse({ ausVerlauf = false } = {}) {
     if (this.offen < 0) return;
     this.offen = -1;
     const b = this.teile;
     b.buehne.querySelector("video")?.pause();
     b.buehne.replaceChildren();
-    b.hinten.hidden = true;
-    document.body.classList.remove("pa-rreshqitje");
     document.activeElement?.blur?.();
+    ansichtSchliessen(b.hinten);
     this.nachSchliessen?.();
     if (this.imVerlauf && !ausVerlauf) {
       this.imVerlauf = false;
@@ -368,7 +385,7 @@ export class KundenMedien {
     schliessen.addEventListener("click", () => this.schliesse());
     zurueck.addEventListener("click", () => this.oeffne(this.offen - 1));
     weiter.addEventListener("click", () => this.oeffne(this.offen + 1));
-    kauf?.addEventListener("click", () => { this.schliesse(); this.kaufen.tun(); });
+    kauf?.addEventListener("click", () => this.#kaufen());
     form.addEventListener("submit", (e) => { e.preventDefault(); this.#senden(); });
     globalThis.addEventListener("popstate", () => {
       if (this.offen >= 0 && this.imVerlauf) { this.imVerlauf = false; this.schliesse({ ausVerlauf: true }); }

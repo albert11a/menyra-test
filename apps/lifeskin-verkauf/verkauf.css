@@ -401,12 +401,11 @@ svg.rutina__foto { padding: 4px; }
   .medium:active { transform: none; }
 }
 
-/* Der Betrachter - ganz ueber der Seite, oben das Medium, darunter
-   Text, Kaufknopf und Kommentare. Er scrollt als Ganzes. */
-.betrachter {
-  position: fixed; inset: 0; z-index: 60; overflow-y: auto; overscroll-behavior: contain;
-  background: #0d1412; color: #fff; -webkit-overflow-scrolling: touch;
-}
+/* Der Betrachter - eine eigene Ansicht an der Stelle der Seite: oben das
+   Medium, darunter Text, Kaufknopf und Kommentare. Kein festes Fenster
+   ueber der Seite (warum: apps/lifeskin-verkauf/ansicht.js). */
+.betrachter { min-height: 100vh; min-height: 100svh; background: #0d1412; color: #fff; }
+html[data-ansicht="betrachter"], html[data-ansicht="betrachter"] body { background: #0d1412; }
 .betrachter__kopf {
   position: sticky; top: 0; z-index: 3; display: flex; justify-content: space-between; align-items: center;
   max-width: 560px; margin: 0 auto; padding: max(10px, env(safe-area-inset-top)) 14px 8px;
@@ -530,11 +529,16 @@ details > p, details > dl, details > ul { padding: 0 0 16px; color: var(--muted)
    shkruani në WhatsApp") dauerhaft UNTER der Leiste - man konnte ihn nicht
    darueber scrollen und am Telefon nicht antippen. */
 body:has(#leiste:not([hidden])) { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+/* EINE ANSICHT OFFEN (Kasse, Kundenvideos): Sie steht an der Stelle der
+   Seite - Kopf, Seite und Leiste sind so lange weg (ansicht.js). */
+html[data-ansicht] .kopf, html[data-ansicht] .faqe, html[data-ansicht] .leiste { display: none !important; }
+html[data-ansicht] body:has(#leiste) { padding-bottom: 0; }
 
-/* Der Bestellschirm */
+/* Der Bestellschirm - eine eigene Ansicht an der Stelle der Seite, kein
+   festes Fenster darueber (warum: apps/lifeskin-verkauf/ansicht.js). */
 .porosia {
-  position: fixed; inset: 0; z-index: 40; background: var(--paper);
-  display: flex; flex-direction: column; overflow-y: auto;
+  min-height: 100vh; min-height: 100svh; background: var(--paper);
+  display: flex; flex-direction: column;
 }
 .porosia[hidden] { display: none; }
 .porosia > * { width: 100%; max-width: 560px; margin-left: auto; margin-right: auto; padding-left: 20px; padding-right: 20px; }
