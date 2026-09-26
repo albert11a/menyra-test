@@ -4611,7 +4611,19 @@ export class Trichter {
         new Promise((_, nein) => {
           const pruefen = () => {
             this.#uebergabeFortschritt();
-            const zuletzt = Math.max(ab, Number(this.sitzung.letzteAntwort) || 0);
+            // SOLANGE EIN FOTO UNTERWEGS IST, IST NICHTS "STILL".
+            //
+            // Hier zaehlte nur die letzte Antwort des Servers. Ein Foto
+            // auf einer schwachen Leitung antwortet aber erst, wenn es
+            // ganz oben ist - und nach 20 Sekunden stand der rote Kasten
+            // "nicht bestaetigt" auf dem Schirm, waehrend die Bilder
+            // sauber hochgingen. Wer das sah, schloss die Seite. Jede
+            // Anfrage hat ihre eigene Zeitgrenze (lifeskin-session.js),
+            // haengen bleibt also keine; bis dahin steht der Fortschritt
+            // "x nga y foto" da, kein Fehler.
+            const unterwegs = Number(this.sitzung.fotosLaufen) > 0;
+            const zuletzt = unterwegs ? Date.now()
+              : Math.max(ab, Number(this.sitzung.letzteAntwort) || 0);
             if (Date.now() - zuletzt >= UEBERGABE_STILL_MS) { nein(new Error("pending")); return; }
             frist = setTimeout(pruefen, 1000);
           };

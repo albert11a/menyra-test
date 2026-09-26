@@ -386,6 +386,20 @@ export class Sitzung {
     this.kette = Promise.resolve();
     this.sammel = null;
     this.offeneFotos = new Map();
+    // DIE FOTOS HABEN IHRE EIGENE SPUR (siehe #fotoReihen).
+    //
+    // Sie standen in derselben Kette wie alles andere - und alles, was
+    // nach dem Scan kam, wartete dahinter: der Schritt "captured", Name,
+    // Nummer, Klickpfad, "aufbereitung". Auf einer schwachen Leitung
+    // dauerte der Upload eine Minute und laenger; wer in dieser Zeit ging,
+    // stand in Heart als "Kamera akzeptiert", ohne Nummer, ohne Spur -
+    // obwohl er gescannt und seine Nummer getippt hatte.
+    this.fotoKette = Promise.resolve();
+    // Wie viele Fotos gerade unterwegs sind und welche oben angekommen
+    // sind. Die Ladeseite zeigt keinen Fehler, solange etwas unterwegs ist,
+    // und der Bericht zaehlt nur, was wirklich da ist.
+    this.fotosLaufen = 0;
+    this.fotosOben = new Set();
     // Zeit je Schritt. Ohne sie laesst sich spaeter nicht sagen, wo es hakt.
     this.zeiten = {};
     this.letzterSchrittAb = Date.now();
@@ -695,7 +709,7 @@ export class Sitzung {
     // Das Ergebnis geht an den Aufrufer (Klickpfad "Technik"): wie viele
     // angekommen sind, wie viele nicht, wie gross, wie lange.
     const ergebnis = { ok: 0, fehler: 0, kb: 0, ms: 0, grund: "" };
-    return this.#reihen(async () => {
+    return this.#fotoReihen(async () => {
       const ab = Date.now();
       for (let i = 0; i < liste.length; i += GLEICHZEITIG) {
         await Promise.all(liste.slice(i, i + GLEICHZEITIG)
@@ -714,7 +728,29 @@ export class Sitzung {
     });
   }
 
+  // Die Spur der Fotos: hintereinander untereinander, aber neben der
+  // Kette der kleinen Schreibvorgaenge. Sie wartet nur darauf, dass
+  // alles VOR ihr in der Kette durch ist - dazu gehoert das Anlegen der
+  // Sitzung -, und haelt danach nichts mehr auf.
+  #fotoReihen(aufgabe) {
+    const davor = this.kette;
+    this.fotoKette = this.fotoKette.then(() => davor).then(aufgabe).catch((fehler) => {
+      if (globalThis.console) console.warn("[lifeskin] Foto-Spur:", fehler?.message);
+    });
+    return this.fotoKette;
+  }
+
   async #fotoSchreiben(blick, foto) {
+    this.fotosLaufen += 1;
+    try {
+      await this.#fotoSenden(blick, foto);
+      this.fotosOben.add(blick);
+    } finally {
+      this.fotosLaufen -= 1;
+    }
+  }
+
+  async #fotoSenden(blick, foto) {
     const daten = {
       createdAt: jetzt(),
       blick,
@@ -752,9 +788,11 @@ export class Sitzung {
   // und steht trotzdem.
   miniaturenSpeichern(minis = {}) {
     const liste = Object.entries(minis).filter(([, mini]) => mini?.jpeg);
-    if (!liste.length) return this.kette;
+    if (!liste.length) return this.fotoKette;
     const GLEICHZEITIG = 3;
-    return this.#reihen(async () => {
+    // Dieselbe Spur wie die Fotos und HINTER ihnen: Die Kacheln sind
+    // schoen, die Fotos sind der Fall.
+    return this.#fotoReihen(async () => {
       for (let i = 0; i < liste.length; i += GLEICHZEITIG) {
         await Promise.all(liste.slice(i, i + GLEICHZEITIG)
           .map(([blick, mini]) => this.#miniaturSchreiben(blick, mini).catch((fehler) => {
@@ -875,19 +913,40 @@ export class Sitzung {
     // Solange die Regel sie nicht kennt, weist hasOnly() das ganze
     // Dokument ab - und dann gibt es keine Warteseite.
     delete ohneTyp.numri;
-    this.sammel = null;
-    this.kette = this.kette.then(async () => {
-      // Fehlgeschlagene Fotos bleiben fuer einen erneuten Versuch erhalten.
-      // Eine fertige Abgabe darf keine nur behaupteten Aufnahmen enthalten.
+    // ERST DIE FOTOS, DANN DER BERICHT - aber das Warten auf die Fotos
+    // steht NICHT in der Kette der kleinen Schreibvorgaenge. Was der
+    // Besucher auf der Ladeseite noch tut (Klickpfad, "result"), geht
+    // sofort hinaus.
+    const fotosFertig = this.fotoKette.then(async () => {
+      // Was nicht durchkam, bekommt EINEN weiteren Versuch.
       const offen = [...this.offeneFotos];
-      try {
-        for (let i = 0; i < offen.length; i += 3) {
-          await Promise.all(offen.slice(i, i + 3).map(async ([blick, foto]) => {
+      for (let i = 0; i < offen.length; i += 3) {
+        await Promise.all(offen.slice(i, i + 3).map(async ([blick, foto]) => {
+          try {
             await this.#fotoSchreiben(blick, foto);
             if (this.offeneFotos.get(blick) === foto) this.offeneFotos.delete(blick);
-          }));
-        }
-      } catch { return false; }
+          } catch (fehler) {
+            if (globalThis.console) console.warn("[lifeskin] Foto auch im zweiten Versuch nicht:", fehler?.message);
+          }
+        }));
+      }
+    });
+    const vorgang = fotosFertig.then(() => this.#reihen(async () => {
+      // KEINE SACKGASSE MEHR, WENN EIN EINZELNES FOTO NICHT DURCHKOMMT.
+      //
+      // Hier stand: Scheitert eines, gibt es keinen Bericht - und der
+      // Besucher stand vor "nicht bestaetigt", mit sechs von sieben
+      // Bildern oben. Jetzt zaehlt der Bericht, was wirklich angekommen
+      // ist, und es geht weiter; die Aerztin sieht sechs Bilder statt
+      // gar keinen Fall. Nur OHNE EIN EINZIGES Bild gibt es keinen
+      // Bericht - daraus liesse sich nichts befunden, und "Provo sërish"
+      // versucht es dann noch einmal.
+      if (this.offeneFotos.size && daten.photos > 0) {
+        const oben = this.fotosOben.size;
+        if (!oben) return false;
+        daten.photos = Math.min(daten.photos, oben);
+        ohneTyp.photos = daten.photos;
+      }
       // Die Kontaktangabe ist keine optionale Zaehlung. Ein zuvor
       // fehlgeschlagener PATCH wird vor der erfolgreichen Abgabe nachgeholt.
       if (numri && this.stand.phone) {
@@ -906,8 +965,8 @@ export class Sitzung {
         if (globalThis.console) console.warn("[lifeskin] Bericht nicht angelegt:", fehler?.message);
         return false;
       }
-    });
-    return this.kette;
+    }));
+    return vorgang;
   }
 
   // Wohin der Patient nach dem Scan geht.

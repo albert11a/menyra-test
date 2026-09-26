@@ -44,7 +44,10 @@ test("wartende Schreibvorgaenge gehen als ein PATCH, nichts fehlt", async () => 
   assert.equal(gesammelt.body.fields.name.stringValue, "Ana");
 });
 
-test("Fotos und Bericht werden nicht ueberholt, der Bericht wartet nicht auf einzelne Zaehlungen", async () => {
+test("kleine Schreibvorgaenge warten nicht auf die Fotos, der Bericht schon", async () => {
+  // Die Fotos haben ihre eigene Spur: Klickpfad, Schritte und Nummer gehen
+  // hinaus, waehrend die Bilder noch hochladen. Nur der Bericht wartet auf
+  // die Bilder - er ist der Fall, und ohne Bilder ist er leer.
   const n = netz();
   const s = new Sitzung({ speicher: null, fetchFn: n.fetchFn });
   s.starte({ dokument: null });
@@ -59,8 +62,9 @@ test("Fotos und Bericht werden nicht ueberholt, der Bericht wartet nicht auf ein
   await s.kette;
   const reihe = n.anfragen.map((a) => a.url.includes("/photos/") ? "foto" : a.url.includes("/reports") ? "bericht"
     : `${a.maske.includes("createdAt") ? "start+" : ""}${a.maske.filter((m) => m.startsWith("timings.pfad.")).map((m) => m.slice(13)).join(",")}`);
-  // Das Anlegen wartete noch - "a" reist mit ihm, vor den Fotos.
-  assert.deepEqual(reihe, ["start+a", "foto", ["b", ...Array.from({ length: 20 }, (_, i) => `c${i}`)].join(","), "bericht", "z"]);
+  // Das Anlegen wartete noch - alles Kleine reist mit ihm, auch was NACH
+  // den Fotos und nach dem Bericht kam. Die Fotos folgen, der Bericht zuletzt.
+  assert.deepEqual(reihe, [["start+a", "b", ...Array.from({ length: 20 }, (_, i) => `c${i}`), "z"].join(","), "foto", "bericht"]);
 });
 
 test("weist Firestore das Gesammelte ab, geht jedes Teil einzeln", async () => {
