@@ -1,4 +1,4 @@
-/* global Navigator, DOMException, innerHeight, innerWidth */
+/* global Navigator, DOMException, innerHeight, innerWidth, scrollTo */
 // ALLE WEGE VON A BIS Z - im Browser, nicht nur im Code.
 //
 // Gefragt am 25.09.: "jeden Weg nochmal pruefen, von A bis Z, und echt
