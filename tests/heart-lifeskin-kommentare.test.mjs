@@ -98,3 +98,15 @@ test("Befund-Abschnitte haben unten mittig einen Pfeil zum Zuklappen", () => {
   assert.match(ereignisse, /befund-gruppe-zu[\s\S]{0,200}gruppe\.open = false/);
   assert.match(lies("apps/mnyra-heart/heart.css"), /\.heart-befund__zuklappen \{[\s\S]*?align-self: center/);
 });
+
+test("Zahlen: ohne Titel und Pfeil, Doppeltipp klappt zu", () => {
+  const render = lies("apps/mnyra-heart/heart-lifeskin-render.js");
+  const block = render.slice(render.indexOf('<details class="heart-lifeskin-block heart-klapp heart-kachelklapp"'), render.indexOf('<div class="heart-lifeskin-kacheln">'));
+  assert.doesNotMatch(block, /<h3/, "der Titel ist wieder da");
+  const css = lies("apps/mnyra-heart/heart.css");
+  assert.match(css, /\.heart-kachelklapp\[open\] > \.heart-klapp__kopf \{ display: none; \}/);
+  assert.match(css, /\.heart-kachelklapp > \.heart-klapp__kopf::before \{ content: none; \}/);
+  const ereignisse = lies("apps/mnyra-heart/heart-events.js");
+  assert.match(ereignisse, /if \(zahlenDoppeltipp\(event\)\) return;/);
+  assert.match(ereignisse, /jetzt - letzterTipp\.zeit < 350/);
+});

@@ -6491,7 +6491,14 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 /* Kacheln zum Zuklappen: eine Karte wie Live und Trichter, der Titel in
    der Karte. Zugeklappt verschwinden die Zeitraum-Chips darueber mit ihr
    (Wunsch 27.09.) - wie bei jeder anderen Karte (.heart-klapp oben). */
-.heart-kachelklapp { margin: 0; }
+.heart-kachelklapp { margin: 0; touch-action: manipulation; }
+/* Ohne Titel und Pfeil: offen nur die Zahlen (Doppeltipp klappt zu), zu
+   nur die schmale Zeile mit den drei Zahlen (Tipp klappt auf). */
+.heart-kachelklapp[open] > .heart-klapp__kopf { display: none; }
+.heart-kachelklapp[open] > .heart-lifeskin-kacheln { margin-top: -12px; }
+.heart-kachelklapp > .heart-klapp__kopf::before { content: none; }
+.heart-kachelklapp > .heart-klapp__kopf .heart-klapp__zahl { font-size: 13px; }
+.heart-kachelklapp[open] { cursor: default; user-select: none; -webkit-user-select: none; }
 /* KEINE KARTE IN DER KARTE (27.09.): In der Karte "Zahlen" stehen die
    Kacheln ohne eigenen Rahmen und ohne eigene Flaeche - nur feine Linien
    zwischen ihnen, wie eine Tabelle. */

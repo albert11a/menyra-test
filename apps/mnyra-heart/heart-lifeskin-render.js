@@ -192,11 +192,12 @@ function renderKacheln(kennzahlen, zeitraum = "") {
       ${ohneDatum} ${ohneDatum === 1 ? "Analyse hat" : "Analysen haben"} kein Datum und
       ${ohneDatum === 1 ? "zaehlt" : "zaehlen"} in den Tageszahlen nicht mit.
     </p>` : ""}
-    <!-- ZUKLAPPBAR (25.09.), wie die anderen Karten, mit Gedaechtnis.
-         Zugeklappt stehen die drei wichtigsten Zahlen im Kopf. -->
-    <details class="heart-lifeskin-block heart-klapp heart-kachelklapp" ${klappAttr("kacheln", true)}>
-      <summary class="heart-klapp__kopf">
-        <h3 class="heart-lifeskin-block__titel">Zahlen · ${escapeHtml(name)}</h3>
+    <!-- ZUKLAPPBAR, mit Gedaechtnis - OHNE TITEL UND PFEIL (27.09.):
+         Offen ist es nur die Karte mit den Zahlen; ein Doppeltipp darauf
+         klappt sie zu (heart-events.js). Zu steht nur eine schmale Karte
+         mit den drei wichtigsten Zahlen; ein Tipp klappt sie wieder auf. -->
+    <details class="heart-lifeskin-block heart-klapp heart-kachelklapp" ${klappAttr("kacheln", true)} data-zeitraum="${escapeHtml(name)}">
+      <summary class="heart-klapp__kopf" aria-label="Zahlen · ${escapeHtml(name)}">
         <span class="heart-klapp__zahl heart-klapp__zahl--zu">${escapeHtml(`${kennzahlen.landing ?? 0} Landing · ${kennzahlen.analysen ?? 0} Analysen · ${euro(kennzahlen.umsatzHeute)}`)}</span>
       </summary>
     <div class="heart-lifeskin-kacheln">

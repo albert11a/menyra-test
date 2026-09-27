@@ -31,7 +31,26 @@ export function bindHeartEvents({
     return () => {};
   }
 
+  // "Zahlen" hat keinen Kopf mehr: Ein Doppeltipp auf die offene Karte
+  // klappt sie zu. Selbst gezaehlt (zwei Tipps binnen 350 ms), weil
+  // Telefone "dblclick" nicht verlaesslich melden. Das "toggle" merkt es
+  // wie jedes andere Zuklappen.
+  let letzterTipp = { karte: null, zeit: 0 };
+  function zahlenDoppeltipp(event) {
+    const karte = event.target?.closest?.(".heart-kachelklapp[open]");
+    if (!karte || event.target.closest("a, button, input, select, textarea")) return false;
+    const jetzt = event.timeStamp || Date.now();
+    if (letzterTipp.karte === karte && jetzt - letzterTipp.zeit < 350) {
+      letzterTipp = { karte: null, zeit: 0 };
+      karte.open = false;
+      return true;
+    }
+    letzterTipp = { karte, zeit: jetzt };
+    return false;
+  }
+
   async function handleClick(event) {
+    if (zahlenDoppeltipp(event)) return;
     const target = findActionTarget(event.target);
     if (!target) return;
 
