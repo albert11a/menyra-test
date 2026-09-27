@@ -6482,11 +6482,10 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 .heart-befund__patient .heart-befund__wareihe--drei .heart-befund__wataste { white-space: normal; }
 
 /* Kacheln zum Zuklappen: eine Karte wie Live und Trichter, der Titel in
-   der Karte. Die Zeitraum-Chips darueber bleiben stehen - sie gelten fuer
-   alles darunter. */
+   der Karte. Zugeklappt verschwinden die Zeitraum-Chips darueber mit ihr
+   (Wunsch 27.09.) - wie bei jeder anderen Karte (.heart-klapp oben). */
 .heart-kachelklapp { margin: 0; }
 .heart-kachelklapp .heart-lifeskin-kacheln { border-radius: 10px; }
-.heart-lifeskin-chips:has(+ .heart-kachelklapp:not([open])) { display: flex; }
 
 /* ============================================================
    DIE SCHUBLADE MIT DREI EINTRAEGEN (25.09.)
