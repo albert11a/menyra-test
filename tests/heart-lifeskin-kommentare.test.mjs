@@ -117,3 +117,9 @@ test("die Zeitraum-Chips stehen in der Zahlen-Karte - sonst huepft sie beim Zukl
   const block = render.slice(render.indexOf("function renderKacheln"), render.indexOf('<div class="heart-lifeskin-kacheln">', render.indexOf("function renderKacheln")));
   assert.match(block, /<\/summary>[\s\S]*\$\{chips\}/);
 });
+
+test("Live-Karten: ohne jemanden unterwegs kein Satz darunter", () => {
+  const render = lies("apps/mnyra-heart/heart-lifeskin-render.js");
+  assert.doesNotMatch(render, /Gerade ist niemand unterwegs/);
+  assert.match(render, /\$\{still \? "" : `<p class="heart-lifeskin-block__fuss">\$\{reihe\.gesamt\}/);
+});

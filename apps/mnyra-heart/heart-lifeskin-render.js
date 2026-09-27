@@ -368,9 +368,7 @@ function renderLiveKarte(reihe, art, titel) {
     <section class="heart-lifeskin-block heart-live" id="heart-live-${escapeHtml(art)}">
       <h3 class="heart-lifeskin-block__titel">${escapeHtml(titel)}</h3>
       ${renderLiveReihe(reihe, art)}
-      <p class="heart-lifeskin-block__fuss">${still
-        ? "Gerade ist niemand unterwegs."
-        : `${reihe.gesamt} ${reihe.gesamt === 1 ? "Person ist" : "Personen sind"} gerade dabei.`}</p>
+      ${still ? "" : `<p class="heart-lifeskin-block__fuss">${reihe.gesamt} ${reihe.gesamt === 1 ? "Person ist" : "Personen sind"} gerade dabei.</p>`}
       ${renderLiveLeute(reihe)}
     </section>`, `live-${art}`, {
     zahl, ton: still ? "" : "offen", blink: art === "bestellungen" && !still
