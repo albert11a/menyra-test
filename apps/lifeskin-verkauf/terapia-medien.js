@@ -449,7 +449,9 @@ export class KundenMedien {
       zeile.append(element("span", "koment__shkronja", (k.name.trim()[0] || "?").toUpperCase()));
       const inhalt = element("div");
       const kopf = element("p", "koment__kok");
-      kopf.append(element("b", null, k.name), element("span", null, kommentarZeit(k.createdAt)));
+      // Nur der Name - ohne Datum (Wunsch 27.09.). Sortiert wird weiter
+      // nach createdAt, neueste oben.
+      kopf.append(element("b", null, k.name));
       inhalt.append(kopf, element("p", "koment__text", k.text));
       zeile.append(inhalt);
       return zeile;
