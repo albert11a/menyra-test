@@ -31,18 +31,70 @@ export function bindHeartEvents({
     return () => {};
   }
 
-  // "Zahlen" hat keinen Kopf mehr: Ein Doppeltipp auf die offene Karte
-  // klappt sie zu. Selbst gezaehlt (zwei Tipps binnen 350 ms), weil
-  // Telefone "dblclick" nicht verlaesslich melden. Das "toggle" merkt es
-  // wie jedes andere Zuklappen.
+  // "ZAHLEN" ZU- UND AUFKLAPPEN, OHNE DASS DIE SEITE HUEPFT.
+  //
+  // Klappt eine Karte zu, wird die Seite kuerzer - und der Browser haelt
+  // dabei einen Inhalt weiter unten fest (Scroll-Anker). Die Karte selbst
+  // rutschte dann nach oben unter den Kopf von Heart. Deshalb klappt Heart
+  // sie selbst und stellt danach ihre Oberkante genau dorthin zurueck, wo
+  // sie war - sofort und noch einmal im naechsten Bild (Neuzeichnen).
+  // Wege: der Pfeil (offen), ein Tipp auf die Zeile (zu), Doppeltipp auf
+  // die Zahlen (offen). Das "toggle" merkt es wie jedes andere Klappen.
+  function scrollHalter(knoten) {
+    for (let e = knoten?.parentElement; e && e !== document.body; e = e.parentElement) {
+      const s = getComputedStyle(e);
+      if (/(auto|scroll)/.test(s.overflowY) && e.scrollHeight > e.clientHeight) return e;
+    }
+    return null;
+  }
+  function zahlenKlappen(karte, offen) {
+    let vorher = karte.getBoundingClientRect().top;
+    const halter = scrollHalter(karte);
+    const zurueck = () => {
+      const versatz = karte.getBoundingClientRect().top - vorher;
+      if (Math.abs(versatz) < 1) return;
+      if (halter) halter.scrollTop += versatz;
+      else globalThis.scrollBy?.(0, versatz);
+    };
+    // Steckt die Karte danach (teils) unter dem festen Kopf von Heart, so
+    // weit zurueck, dass sie ganz darunter steht.
+    const sichtbar = () => {
+      const kopf = document.querySelector(".heart-topbar")?.getBoundingClientRect().bottom || 0;
+      const zuWenig = kopf + 8 - karte.getBoundingClientRect().top;
+      if (zuWenig <= 0) return;
+      vorher += zuWenig;
+      if (halter) halter.scrollTop -= zuWenig;
+      else globalThis.scrollBy?.(0, -zuWenig);
+    };
+    karte.open = offen;
+    zurueck();
+    sichtbar();
+    globalThis.requestAnimationFrame?.(() => {
+      zurueck(); sichtbar();
+      globalThis.requestAnimationFrame?.(() => { zurueck(); sichtbar(); });
+    });
+  }
   let letzterTipp = { karte: null, zeit: 0 };
-  function zahlenDoppeltipp(event) {
-    const karte = event.target?.closest?.(".heart-kachelklapp[open]");
-    if (!karte || event.target.closest("a, button, input, select, textarea")) return false;
+  function zahlenTipp(event) {
+    const el = event.target;
+    const aktion = el?.closest?.("[data-action]")?.getAttribute?.("data-action");
+    const pfeilKarte = aktion === "zahlen-zuklappen" ? el.closest(".heart-kachelklapp") : null;
+    if (pfeilKarte?.classList?.contains("heart-kachelklapp")) {
+      zahlenKlappen(pfeilKarte, false);
+      return true;
+    }
+    const kopf = el?.closest?.(".heart-kachelklapp:not([open]) > summary");
+    if (kopf?.tagName === "SUMMARY") {
+      event.preventDefault?.();
+      zahlenKlappen(kopf.parentElement, true);
+      return true;
+    }
+    const karte = el?.closest?.(".heart-kachelklapp[open]");
+    if (!karte?.classList?.contains("heart-kachelklapp") || el.closest("a, button, input, select, textarea")) return false;
     const jetzt = event.timeStamp || Date.now();
     if (letzterTipp.karte === karte && jetzt - letzterTipp.zeit < 350) {
       letzterTipp = { karte: null, zeit: 0 };
-      karte.open = false;
+      zahlenKlappen(karte, false);
       return true;
     }
     letzterTipp = { karte, zeit: jetzt };
@@ -50,11 +102,14 @@ export function bindHeartEvents({
   }
 
   async function handleClick(event) {
-    if (zahlenDoppeltipp(event)) return;
+    if (zahlenTipp(event)) return;
     const target = findActionTarget(event.target);
     if (!target) return;
 
     const action = String(target.getAttribute("data-action") || "").trim();
+    // Schon in zahlenTipp behandelt (oben) - hier nur, damit er als
+    // behandelt gilt, falls er je ohne Karte dasteht.
+    if (action === "zahlen-zuklappen") return;
 
     // Befund-Abschnitt von unten zuklappen: Kopf wieder ins Bild holen, dann
     // zu. Das "toggle" merkt es wie ein Tipp auf den Kopf.

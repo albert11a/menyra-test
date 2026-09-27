@@ -107,7 +107,7 @@ test("Zahlen: ohne Titel und Pfeil, Doppeltipp klappt zu", () => {
   assert.match(css, /\.heart-kachelklapp\[open\] > \.heart-klapp__kopf \{ display: none; \}/);
   assert.match(css, /\.heart-kachelklapp > \.heart-klapp__kopf::before \{ content: none; \}/);
   const ereignisse = lies("apps/mnyra-heart/heart-events.js");
-  assert.match(ereignisse, /if \(zahlenDoppeltipp\(event\)\) return;/);
+  assert.match(ereignisse, /if \(zahlenTipp\(event\)\) return;/);
   assert.match(ereignisse, /jetzt - letzterTipp\.zeit < 350/);
 });
 
@@ -122,4 +122,13 @@ test("Live-Karten: ohne jemanden unterwegs kein Satz darunter", () => {
   const render = lies("apps/mnyra-heart/heart-lifeskin-render.js");
   assert.doesNotMatch(render, /Gerade ist niemand unterwegs/);
   assert.match(render, /\$\{still \? "" : `<p class="heart-lifeskin-block__fuss">\$\{reihe\.gesamt\}/);
+});
+
+test("Zahlen: Pfeil rechts neben den Chips, Klappen haelt die Karte an ihrer Stelle", () => {
+  const render = lies("apps/mnyra-heart/heart-lifeskin-render.js");
+  assert.match(render, /heart-kachelklapp__leiste">\s*\$\{chips\}\s*<button type="button" class="heart-kachelklapp__pfeil" data-action="zahlen-zuklappen"/);
+  const ereignisse = lies("apps/mnyra-heart/heart-events.js");
+  const block = ereignisse.slice(ereignisse.indexOf("function zahlenKlappen"), ereignisse.indexOf("let letzterTipp"));
+  assert.match(block, /getBoundingClientRect\(\)\.top - vorher/, "die Oberkante wird nicht zurueckgesetzt");
+  assert.match(block, /heart-topbar/, "die Karte kann unter dem Kopf verschwinden");
 });

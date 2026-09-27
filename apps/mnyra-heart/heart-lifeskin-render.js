@@ -199,11 +199,15 @@ function renderKacheln(kennzahlen, zeitraum = "", chips = "") {
     <details class="heart-lifeskin-block heart-klapp heart-kachelklapp" ${klappAttr("kacheln", true)} data-zeitraum="${escapeHtml(name)}">
       <summary class="heart-klapp__kopf" aria-label="Zahlen · ${escapeHtml(name)}">
         <span class="heart-klapp__zahl heart-klapp__zahl--zu">${escapeHtml(`${kennzahlen.landing ?? 0} Landing · ${kennzahlen.analysen ?? 0} Analysen · ${euro(kennzahlen.umsatzHeute)}`)}</span>
+        <span class="heart-kachelklapp__pfeil" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span>
       </summary>
       <!-- DIE ZEITRAUM-CHIPS STEHEN IN DER KARTE, nicht darueber: Stuenden
            sie darueber und verschwaenden beim Zuklappen, rutschte die Karte
            unter dem Finger nach oben - die Seite "huepfte". -->
-      ${chips}
+      <div class="heart-kachelklapp__leiste">
+        ${chips}
+        <button type="button" class="heart-kachelklapp__pfeil" data-action="zahlen-zuklappen" aria-label="Zahlen zuklappen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
+      </div>
     <div class="heart-lifeskin-kacheln">
       ${renderKachel({
         marke: "Landing",
