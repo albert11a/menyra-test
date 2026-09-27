@@ -466,6 +466,13 @@ export const ZWEIGE = Object.freeze([
       { id: "named", label: "Anleitung", ab: "named" },
       { id: "kameraOk", label: "Kamera akzeptiert", feld: "kameraOk", abSchritt: "captured" },
       { id: "captured", label: "Scan", ab: "captured" },
+      // Die vier Fragen nach der Aufnahme (27.09.): wo springen die Leute
+      // ab? Faelle von vorher haben diese Stufen nie gesehen - sie zaehlen
+      // als durchgegangen (Schrittfolge), also verfaelschen sie nichts.
+      { id: "pyetja1", label: "Pyetja 1 · Shqetësimi", ab: "pyetja1" },
+      { id: "pyetja2", label: "Pyetja 2 · Që kur", ab: "pyetja2" },
+      { id: "pyetja3", label: "Pyetja 3 · Provuar", ab: "pyetja3" },
+      { id: "pyetja4", label: "Pyetja 4 · Terapia?", ab: "pyetja4" },
       { id: "emri", label: "Emri & Mosha", ab: "emri" },
       { id: "numri", label: "Nummri", ab: "numri" },
       { id: "nummerEingegeben", label: "Nummer eingegeben", feld: "hatTelefon", abSchritt: "aufbereitung" },
@@ -479,6 +486,10 @@ export const ZWEIGE = Object.freeze([
       { id: "fotopara", label: "Anleitung", ab: "fotopara" },
       { id: "kameraOk", label: "Kamera akzeptiert", feld: "kameraOk", abSchritt: "fotogati" },
       { id: "fotogati", label: "Foto", ab: "fotogati" },
+      { id: "pyetja1", label: "Pyetja 1 · Shqetësimi", ab: "pyetja1" },
+      { id: "pyetja2", label: "Pyetja 2 · Që kur", ab: "pyetja2" },
+      { id: "pyetja3", label: "Pyetja 3 · Provuar", ab: "pyetja3" },
+      { id: "pyetja4", label: "Pyetja 4 · Terapia?", ab: "pyetja4" },
       { id: "emri", label: "Emri & Mosha", ab: "emri" },
       { id: "numri", label: "Nummri", ab: "numri" },
       { id: "nummerEingegeben", label: "Nummer eingegeben", feld: "hatTelefon", abSchritt: "aufbereitung" },
@@ -504,6 +515,41 @@ export const ZWEIGE = Object.freeze([
     ]
   }
 ]);
+
+// DIE BEREITSCHAFT - die Antwort auf Frage 4, und was daraus wurde.
+//
+// "A doni që Dr. Gashi t'ju përgatisë edhe terapinë 4-javore?" Je Antwort:
+// wie viele, wie viele davon Patient wurden, wie viele bestellt haben.
+// Die Frage, die hier beantwortet wird: Kaufen die, die "Po, sa më
+// shpejt" sagen, wirklich - und wem muss man auf WhatsApp nachgehen?
+//
+// NICHT kumulativ: Jede Antwort ist eine eigene Gruppe. Gezaehlt nur
+// Faelle, die die Frage beantwortet haben (ab 27.09.).
+export const BEREITSCHAFT = Object.freeze([
+  { id: "tani", label: "Po, sa më shpejt" },
+  { id: "pasi", label: "Po, kur ta shoh" },
+  { id: "analiza", label: "Vetëm analizën" }
+]);
+
+export function baueBereitschaft(sitzungen) {
+  const alle = Array.isArray(sitzungen) ? sitzungen : [];
+  const mit = alle.filter((s) => BEREITSCHAFT.some((b) => b.id === s?.anamnese?.gatishmeria));
+  const basis = mit.length;
+  const gruppen = BEREITSCHAFT.map((b) => {
+    const seine = mit.filter((s) => s.anamnese.gatishmeria === b.id);
+    const bestellt = seine.filter((s) => s?.hatBestellt === true).length;
+    return {
+      ...b,
+      anzahl: seine.length,
+      anteil: basis ? seine.length / basis : 0,
+      verlust: 0,
+      patient: seine.filter(istPatient).length,
+      bestellt,
+      bestelltAnteil: seine.length ? bestellt / seine.length : 0
+    };
+  });
+  return { basis, gruppen };
+}
 
 // Hat diese Sitzung diese Stufe erreicht?
 //

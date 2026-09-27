@@ -4672,12 +4672,14 @@ der Balken zeigt es. */
    rechnen deshalb gegen die eigene Breite (Mitte davor: -1/6 bzw. -150 %). */
 .heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(1),
 .heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(3) { flex: 1 1 0; }
-.heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(2) { flex: 3 1 0; }
+/* Seit dem Punkt "Pyetjet" (27.09.) sind es SECHS Spalten darueber: aussen
+   je ein Sechstel, in der Mitte vier. Mitte davor: -1/8 bzw. -200 %. */
+.heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(2) { flex: 4 1 0; }
 .heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(2)::before {
-  left: calc(-100% / 6 + 21px);
+  left: calc(-100% / 8 + 21px);
 }
 .heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(3)::before {
-  left: calc(-150% + 21px);
+  left: calc(-200% + 21px);
 }
 .heart-live__punkt {
   position: relative; z-index: 1;
@@ -6260,6 +6262,9 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 .heart-faelle .heart-lifeskin-pill--an { opacity: 1; border-color: transparent; }
 .heart-faelle .heart-lifeskin-pill--auf.heart-lifeskin-pill--an { background: #5b8def2e; color: #a9c4ff; }
 .heart-faelle .heart-lifeskin-pill--kasse.heart-lifeskin-pill--an { background: #f4b9422e; color: #f6cd7a; }
+/* "Will starten" (Frage 4: sa më shpejt) - der heisseste Fall der Liste. */
+.heart-faelle .heart-lifeskin-pill--gati.heart-lifeskin-pill--an { background: #22c55e2e; color: #86efac; }
+html[data-heart-theme="tag"] .heart-faelle .heart-lifeskin-pill--gati.heart-lifeskin-pill--an { background: #dcfce7; color: #166534; }
 .heart-faelle .heart-lifeskin-fall__zeit { margin-left: auto; padding-left: 6px; }
 .heart-faelle .heart-lifeskin-fall__text { -webkit-line-clamp: 1; }
 
@@ -6515,6 +6520,7 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 .heart-lifeskin-pill--lpscroll.heart-lifeskin-pill--an { background: #1f3a2f; color: #7fd6a8; border-color: transparent; }
 .heart-lifeskin-pill--lpdirekt.heart-lifeskin-pill--an { background: #3a2c1a; color: #f0b56a; border-color: transparent; }
 .heart-lp-vergleich { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+.heart-lp-vergleich--drei { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .heart-lp-vergleich__spalte {
   display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border-radius: 10px;
   border: 1px solid var(--heart-border, #2a2c2e); font-size: 12.5px; color: var(--heart-muted, #8f918d);

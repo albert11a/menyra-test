@@ -38,7 +38,7 @@ test("jeder steht in genau einem Punkt - dort, wo er gerade ist", () => {
   ], JETZT);
 
   const zahlen = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.anzahl]));
-  assert.deepEqual(zahlen, { landing: 1, menyra: 0, fotot: 1, numri: 1, pritja: 1 });
+  assert.deepEqual(zahlen, { landing: 1, menyra: 0, fotot: 1, pyetje: 0, numri: 1, pritja: 1 });
   assert.equal(live.analysen.gesamt, 4);
 });
 
@@ -51,7 +51,7 @@ test("jeder steht in genau einem Punkt - dort, wo er gerade ist", () => {
 test("wer gerade waehlt, steht bei Mënyra und nirgends sonst", () => {
   const live = baueLive([sitzung("wahl")], JETZT);
   const zahlen = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.anzahl]));
-  assert.deepEqual(zahlen, { landing: 0, menyra: 1, fotot: 0, numri: 0, pritja: 0 });
+  assert.deepEqual(zahlen, { landing: 0, menyra: 1, fotot: 0, pyetje: 0, numri: 0, pritja: 0 });
 });
 
 test("wer die Nummer tippt, leuchtet NICHT auch bei der Kamera", () => {
@@ -59,7 +59,7 @@ test("wer die Nummer tippt, leuchtet NICHT auch bei der Kamera", () => {
   // gerechnet - und dann sagte sie nichts ueber "wo steckt er gerade".
   const live = baueLive([sitzung("numri")], JETZT);
   const zahlen = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.anzahl]));
-  assert.deepEqual(zahlen, { landing: 0, menyra: 0, fotot: 0, numri: 1, pritja: 0 });
+  assert.deepEqual(zahlen, { landing: 0, menyra: 0, fotot: 0, pyetje: 0, numri: 1, pritja: 0 });
 });
 
 // NAME UND NUMMER SIND EIN ABSCHNITT, NICHT ZWEI.
@@ -333,10 +333,12 @@ test("die fuenf Punkte sind die fuenf Abschnitte des Wegs", () => {
   // den, der zusieht, dasselbe - steht gerade vor der Kamera. WELCHEN
   // Weg jemand genommen hat, steht im Trichter darunter, je Weg und mit
   // jedem Bildschirm einzeln.
+  // SEIT 27.09. SECHS: die vier Fragen nach Scan und Foto sind wieder im
+  // Weg und bekommen ihren eigenen Punkt ("Pyetjet").
   assert.deepEqual(LIVE_ANALYSE_PUNKTE.map((p) => p.id),
-    ["landing", "menyra", "fotot", "numri", "pritja"]);
+    ["landing", "menyra", "fotot", "pyetje", "numri", "pritja"]);
   assert.deepEqual(LIVE_ANALYSE_PUNKTE.map((p) => p.label),
-    ["Landing", "Mënyra", "Fotot", "Nummri", "Patient"]);
+    ["Landing", "Mënyra", "Fotot", "Pyetjet", "Nummri", "Patient"]);
   // Jeder Schritt des Trichters liegt in genau einem Punkt - sonst faellt
   // jemand aus der Reihe, ohne dass es auffaellt.
   const alle = LIVE_ANALYSE_PUNKTE.flatMap((p) => p.schritte);
@@ -354,7 +356,7 @@ test("beide Wege mit Aufnahme leuchten am selben Punkt", () => {
   for (const schritt of ["fotokamera", "camera"]) {
     const live = baueLive([sitzung(schritt)], JETZT);
     const zahlen = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.anzahl]));
-    assert.deepEqual(zahlen, { landing: 0, menyra: 0, fotot: 1, numri: 0, pritja: 0 },
+    assert.deepEqual(zahlen, { landing: 0, menyra: 0, fotot: 1, pyetje: 0, numri: 0, pritja: 0 },
       `Der Schritt ${schritt} leuchtet am falschen Punkt`);
   }
 });
@@ -392,4 +394,14 @@ test("derselbe Patient beim erneuten Oeffnen erhoeht die Analysezahl nicht erneu
   zustand = aktualisiereLifeskinSitzungen(zustand, [{ ...s, updatedAt: vor(0) }]);
   assert.equal(baueKennzahlen(zustand.sitzungen, { zeitraum: 'max' }).analysen, 1);
   assert.equal(baueLive(zustand.sitzungen, JETZT).analysen.punkte.find(p => p.id === 'pritja').anzahl, 1);
+});
+
+// DIE VIER FRAGEN NACH SCAN UND FOTO (27.09.) haben ihren eigenen Punkt.
+test("wer die Fragen beantwortet, steht bei Pyetjet - nicht bei Nummri", () => {
+  for (const schritt of ["pyetja1", "pyetja2", "pyetja3", "pyetja4"]) {
+    const live = baueLive([sitzung(schritt)], JETZT);
+    const an = live.analysen.punkte.filter((p) => p.aktiv).map((p) => p.id);
+    assert.deepEqual(an, ["pyetje"], schritt);
+    assert.equal(live.analysen.gesamt, 1);
+  }
 });

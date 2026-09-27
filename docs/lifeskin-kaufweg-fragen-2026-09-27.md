@@ -148,6 +148,23 @@ Grenzen: Engine Chromium (kein echtes WebKit), kein echtes Telefon, keine
 echte Instagram-App. Ob Menschen am Ende kaufen, misst nur der echte
 Verkehr - siehe Abschnitt 7.
 
+### Heart und Statistik (27.09., nachgereicht)
+
+- **Trichter Skanim und Foto:** vier neue Stufen zwischen Aufnahme und
+  Name - "Pyetja 1 · Shqetësimi", "Pyetja 2 · Që kur", "Pyetja 3 ·
+  Provuar", "Pyetja 4 · Terapia?". So ist zu sehen, bei welcher Frage
+  jemand aussteigt. Faelle von vorher zaehlen als durchgegangen.
+- **Live · Analyse:** eigener Punkt "Pyetjet" (vorher unter "Nummri"
+  mitgezaehlt). Die Reihe hat jetzt sechs Punkte, die Kaufreihe darunter
+  ist auf sechs Spalten ausgerichtet.
+- **Neuer Chip "Gati"** ueber den Trichtern: je Antwort auf Frage 4, wie
+  viele, wie viele Patient, wie viele bestellt (mit Anteil).
+- **Marke "Will starten"** an jedem Fall mit "Po, dua ta filloj sa më
+  shpejt", solange nicht bestellt - zuerst auf WhatsApp anschreiben.
+- "Seine Antworten" in der Akte und der kopierte Prompt zeigen die neuen
+  Fragen von selbst. Die Tagesstatistik (functions) kannte pyetja1-4
+  schon - kein Functions-Deploy noetig.
+
 ## 5. Vorschau
 
 `vercel.json` erlaubt Vorschau-Builds fuer diesen Branch

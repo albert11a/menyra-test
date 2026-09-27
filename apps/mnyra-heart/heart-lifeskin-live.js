@@ -84,9 +84,14 @@ export const LIVE_ANALYSE_PUNKTE = Object.freeze([
   // zwei Bildschirme hintereinander, ohne etwas dazwischen. Ein eigener
   // Punkt je Weg waere eine Reihe mit acht Punkten, und acht Punkte sind
   // keine Reihe mehr, sondern eine Liste.
+  // DIE VIER FRAGEN NACH SCAN UND FOTO (seit 27.09. wieder im Weg):
+  // Anliegen, seit wann, was probiert, ob er anfangen will. Ein eigener
+  // Punkt, weil es ein eigener Abschnitt ist - wer dort steht, tippt
+  // Antworten, nicht seine Nummer.
+  { id: "pyetje", label: "Pyetjet", schritte: ["pyetja1", "pyetja2", "pyetja3", "pyetja4"] },
   {
     id: "numri", label: "Nummri",
-    schritte: ["pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "problemi", "numri", "aufbereitung"]
+    schritte: ["emri", "problemi", "numri", "aufbereitung"]
   },
   // DER LETZTE PUNKT IN EINER ANDEREN FARBE.
   //
