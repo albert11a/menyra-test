@@ -179,8 +179,12 @@ test("die Punkte haengen an Strichen und leuchten nur, wenn jemand da ist", () =
     "Die Striche liegen wieder als eigene Stuecke zwischen den Punkten");
 
   const css = lies("apps/mnyra-heart/heart.css");
-  assert.match(css, /\.heart-live__halt--an \.heart-live__punkt \{[\s\S]{0,240}animation: heart-live-puls/,
+  assert.match(css, /\.heart-live__halt--an \.heart-live__punkt::after \{[\s\S]{0,240}animation: heart-live-puls/,
     "Ein aktiver Punkt pulsiert nicht");
+  // Der Puls ist ein Ring aus transform/opacity - kein Schatten, der auf
+  // iOS nach dem Gehen des Besuchers als Rest stehen blieb.
+  assert.doesNotMatch(css.slice(css.indexOf("@keyframes heart-live-puls"), css.indexOf("}", css.indexOf("@keyframes heart-live-puls") + 40) + 60), /box-shadow/,
+    "Der Puls laeuft wieder ueber box-shadow");
   assert.match(css, /@keyframes heart-live-puls/);
   // Vor dem ersten Halt gibt es keinen Strich.
   assert.match(css, /\.heart-live__halt:first-child::before \{ content: none; \}/,
@@ -189,7 +193,7 @@ test("die Punkte haengen an Strichen und leuchten nur, wenn jemand da ist", () =
   assert.match(css, /\.heart-live__halt \{[\s\S]{0,200}flex: 1 1 0/,
     "Die Halte sind wieder so breit wie ihre Beschriftung");
   // Wer Bewegung abbestellt hat, sieht den Punkt trotzdem - nur ohne Puls.
-  assert.match(css, /prefers-reduced-motion[\s\S]{0,400}\.heart-live__halt--an \.heart-live__punkt \{\s*animation: none/);
+  assert.match(css, /prefers-reduced-motion[\s\S]{0,400}\.heart-live__halt--an \.heart-live__punkt::after \{\s*animation: none/);
 });
 
 test("die Reihe ist auch fuer Vorleseprogramme lesbar", () => {
@@ -257,7 +261,7 @@ test("Pritja leuchtet in einer eigenen Farbe - und nur Pritja", () => {
   const css = lies("apps/mnyra-heart/heart.css");
   assert.match(css, /\.heart-live__halt--warten \.heart-live__punkt \{/,
     "Fuer den wartenden Punkt gibt es keine Regel");
-  assert.match(css, /@keyframes heart-live-puls-warten/,
+  assert.match(css, /\.heart-live__halt--warten \.heart-live__punkt::after \{ border-color: #f0b429; \}/,
     "Der wartende Punkt pulsiert weiter in Gruen");
   // Auch der Strich davor faerbt sich mit - ein bernsteinfarbener Punkt am
   // Ende eines gruenen Strichs sieht aus wie ein Fehler.

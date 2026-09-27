@@ -4713,20 +4713,40 @@ der Balken zeigt es. */
 /* WAS LEUCHTET, LEUCHTET NUR, SOLANGE DORT WIRKLICH JEMAND STEHT.
    Ein Punkt, der immer pulsiert, sagt nichts. Der Ring darum ist der
    Teil, der sich bewegt - der Punkt selbst bleibt ruhig, sonst springt
-   die Zahl darin. */
+   die Zahl darin.
+
+   DER RING IST EIN EIGENES STUECK (::after), KEIN box-shadow.
+   Gemeldet vom iPhone: Ein Punkt ohne Zahl, um den es weiter gruen
+   schimmerte. Der Puls lief als box-shadow, und ein Schatten liegt
+   AUSSERHALB des Punktes. Geht der Besucher, faellt die Klasse weg -
+   Rand, Flaeche und Zahl zeichnet Safari neu, den Schein ausserhalb
+   nicht immer: Er blieb als Rest stehen, auf einem Punkt, auf dem
+   niemand mehr ist.
+   Jetzt waechst ein Ring mit transform und opacity. Das rechnet die
+   Grafikkarte, und faellt die Klasse weg, gibt es den Ring gar nicht
+   mehr - es bleibt nichts, was stehen bleiben koennte. Billiger ist es
+   auch: kein Neuzeichnen je Bild. */
 .heart-live__halt--an .heart-live__punkt {
   border-color: #17c46a;
   background: #10331f;
   color: #7df0ae;
-  animation: heart-live-puls 1.8s ease-in-out infinite;
+}
+.heart-live__halt--an .heart-live__punkt::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid #17c46a;
+  pointer-events: none;
+  animation: heart-live-puls 1.8s ease-out infinite;
 }
 .heart-live__halt--an::before { background: #17c46a55; }
 .heart-live__halt--an .heart-live__name {
   color: var(--heart-text, #fafafa); font-weight: 600;
 }
 @keyframes heart-live-puls {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(23, 196, 106, 0.55); }
-  60%      { box-shadow: 0 0 0 10px rgba(23, 196, 106, 0); }
+  0%        { transform: scale(1);   opacity: 0.7; }
+  70%, 100% { transform: scale(1.7); opacity: 0; }
 }
 
 /* DER LETZTE PUNKT IST NICHT GRUEN, WEIL ER ETWAS ANDERES HEISST.
@@ -4735,25 +4755,19 @@ der Balken zeigt es. */
    einzige Punkt der Reihe, bei dem jemand etwas tun muss, und Bernstein
    sagt das, ohne dass ein Wort danebenstehen muss.
 
-   Die Regeln stehen NACH den gruenen: gleiche Staerke, spaetere gewinnt. */
+   Die Regeln stehen NACH den gruenen: gleiche Staerke, spaetere gewinnt.
+   Der Ring nimmt dieselbe Bewegung und nur eine andere Farbe. */
 .heart-live__halt--warten .heart-live__punkt {
   border-color: #f0b429;
   background: #3a2a06;
   color: #ffd979;
-  animation-name: heart-live-puls-warten;
 }
+.heart-live__halt--warten .heart-live__punkt::after { border-color: #f0b429; }
 .heart-live__halt--warten::before { background: #f0b42955; }
-@keyframes heart-live-puls-warten {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(240, 180, 41, 0.55); }
-  60%      { box-shadow: 0 0 0 10px rgba(240, 180, 41, 0); }
-}
 
 @media (prefers-reduced-motion: reduce) {
-  .heart-live__halt--an .heart-live__punkt {
-    animation: none; box-shadow: 0 0 0 3px rgba(23, 196, 106, 0.3);
-  }
-  .heart-live__halt--warten .heart-live__punkt {
-    animation: none; box-shadow: 0 0 0 3px rgba(240, 180, 41, 0.3);
+  .heart-live__halt--an .heart-live__punkt::after {
+    animation: none; transform: scale(1.25); opacity: 0.35;
   }
 }
 
@@ -8529,16 +8543,6 @@ html:where([data-heart-theme="tag"]),
 
 :where(html[data-heart-theme="tag"]) .heart-live__halt--warten::before {
   background: #f0b42955;
-}
-
-@media (prefers-reduced-motion: reduce) {
-:where(html[data-heart-theme="tag"]) .heart-live__halt--an .heart-live__punkt {
-  box-shadow: 0 0 0 3px rgba(23, 196, 106, 0.3);
-}
-
-:where(html[data-heart-theme="tag"]) .heart-live__halt--warten .heart-live__punkt {
-  box-shadow: 0 0 0 3px rgba(240, 180, 41, 0.3);
-}
 }
 
 :where(html[data-heart-theme="tag"]) .heart-lifeskin-akte__tel span {
