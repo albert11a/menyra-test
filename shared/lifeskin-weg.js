@@ -6,7 +6,7 @@
 // Therapie passt (docs/lifeskin-2.md).
 //
 // Wo der Weg steht:
-//   - Landingpage:  <html data-ls-weg="lifeskin2">
+//   - Landingpage:  <html data-ls-landing="lifeskin2">
 //   - Sitzung:      source.weg (source ist in den Regeln eine freie Karte)
 //   - Warteseite:   ?weg=lifeskin2 (der Trichter haengt es an, die Seite
 //                   liest die Sitzung nicht)

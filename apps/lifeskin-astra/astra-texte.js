@@ -580,6 +580,15 @@ export const TEXTE_WEGE = Object.freeze({
       sq: "Dr. Gashi po kontrollon nëse terapia ju përshtatet.",
       de: "Dr. Gashi prüft, ob die Therapie zu Ihnen passt."
     },
+    // Trup und Pytje: Die Antwort kommt auf WhatsApp - und sie sagt, ob es passt.
+    pritTitelWa: {
+      sq: "Dr. Gashi ju shkruan në WhatsApp nëse terapia ju përshtatet, {name}.",
+      de: "Dr. Gashi schreibt Ihnen auf WhatsApp, ob die Therapie passt, {name}."
+    },
+    pritTitelWaOhne: {
+      sq: "Dr. Gashi ju shkruan në WhatsApp nëse terapia ju përshtatet.",
+      de: "Dr. Gashi schreibt Ihnen auf WhatsApp, ob die Therapie passt."
+    },
     pritWarum: {
       sq: "Nuk ju dërgojmë asgjë pa e parë lëkurën tuaj. Çdo rast e shikon vetë ajo.",
       de: "Wir schicken Ihnen nichts, ohne Ihre Haut gesehen zu haben. Jeden Fall sieht sie sich selbst an."

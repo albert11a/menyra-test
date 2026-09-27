@@ -493,12 +493,16 @@ export function varianteLesen(wurzel) {
 
 // UEBER WELCHE LANDINGPAGE ER KAM - "lifeskin2" (apps/lifeskin-2) oder "".
 //
-// Wie die Fassung am Aufbau entschieden (<html data-ls-weg="lifeskin2">),
+// Wie die Fassung am Aufbau entschieden (<html data-ls-landing="lifeskin2">),
 // und aus demselben Grund hier und ohne Import: ohne Browser nachrechenbar.
+// NICHT data-ls-weg: So heissen die Karten der Wahl, und #kartenBauen()
+// bindet JEDES [data-ls-weg] im Dokument an #wegWaehlen() - am <html>
+// machte das aus jedem Tipp auf der Seite einen gewaehlten Weg (Start
+// sprang ueber die Wahl in die Scan-Anleitung, gefunden am 27.09.).
 // Dieselbe Liste wie shared/lifeskin-weg.js - tests/lifeskin-2.test.mjs
 // haelt beide gleich.
 export function wegLesen(wurzel) {
-  return wurzel?.dataset?.lsWeg === "lifeskin2" ? "lifeskin2" : "";
+  return wurzel?.dataset?.lsLanding === "lifeskin2" ? "lifeskin2" : "";
 }
 
 // DER BROWSER IN EINER APP AUF ANDROID - dort gibt es womoeglich keine

@@ -194,7 +194,7 @@ export function klickKennung({ suche, keks = "", speicher = null, jetzt = Date.n
 
 // UEBER WELCHE LANDINGPAGE JEMAND KAM - "lifeskin2" oder "".
 //
-// Die Seite traegt es am Wurzelelement (<html data-ls-weg="lifeskin2">,
+// Die Seite traegt es am Wurzelelement (<html data-ls-landing="lifeskin2">,
 // apps/lifeskin-2/index.html), nicht in der Adresse: Ein utm-Zusatz geht
 // beim Teilen verloren oder wird von Hand falsch getippt, das Merkmal der
 // Seite nicht. Es steht in der Herkunft (source ist in den Regeln eine
@@ -202,7 +202,7 @@ export function klickKennung({ suche, keks = "", speicher = null, jetzt = Date.n
 // "Lifeskin" und "Lifeskin 2". Nur bekannte Wege, sonst "".
 export { LIFESKIN_WEGE };
 export function wegAuslesen(wurzel = globalThis.document?.documentElement) {
-  return wegGueltig(wurzel?.dataset?.lsWeg);
+  return wegGueltig(wurzel?.dataset?.lsLanding);
 }
 
 export function herkunftAuslesen(ort = globalThis.location, verweis = globalThis.document?.referrer,
