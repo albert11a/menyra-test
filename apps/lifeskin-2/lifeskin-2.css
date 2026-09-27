@@ -1,0 +1,37 @@
+/* LifeSkin 2 - was die Landingpage unter /lifeskin2 zusaetzlich traegt.
+ *
+ * Alles andere kommt unveraendert aus apps/lifeskin-landing/landing.css;
+ * die Farben und Masse (--basis, --text-2, --rund-voll ...) setzt es
+ * dort an #ls-einstieg.
+ *
+ * DIE DREI FAKTEN UNTER DEM KNOPF: Preis, Bezahlung an der Tuer,
+ * Garantie. Sie stehen im ersten Bildschirm, damit das Urteil
+ * "Po, ju përshtatet" spaeter keine Preisueberraschung ist. Drei kurze
+ * Marken nebeneinander und keine Liste - auf 320 px brechen sie in zwei
+ * Zeilen um, nie in drei. */
+#ls-einstieg .ls2-fakte {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+#ls-einstieg .ls2-fakte li {
+  padding: 6px 11px;
+  border-radius: var(--rund-voll, 999px);
+  background: var(--basis-hell, #E6EFED);
+  color: var(--basis-tief, #093A35);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+#ls-einstieg .ls2-fakte b { font-weight: 800; }
+
+#ls-einstieg .ls2-klein {
+  margin: 10px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2, #647174);
+}

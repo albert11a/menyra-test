@@ -164,6 +164,9 @@ function rewritePath(pathname = "/") {
   // Fehler im Trichter.
   if (path === "/120992" || path === "/120992/") return VERKAUF_INDEX;
   if (path === "/lifeskin") return LANDING_INDEX;
+  // LifeSkin 2 (vercel.json: /lifeskin2) - derselbe Trichter mit anderem
+  // Versprechen, siehe docs/lifeskin-2.md.
+  if (path === "/lifeskin2" || path === "/lifeskin2/") return "/apps/lifeskin-2/index.html";
   // Dieselbe Datei: Die Probeadresse bleibt, damit die Links aus dem
   // Prueflauf nicht ins Leere gehen.
   if (path === "/lifeskintrichter") return TRICHTER_INDEX;

@@ -38,6 +38,7 @@ import { garancia } from "../../shared/lifeskin-garancia.js";
 import { telefonPruefen } from "../../shared/lifeskin-telefon.js";
 import { beispielKarte, ikone } from "./ndjekja-teile.js";
 import { antwortenSpiegel } from "../../shared/lifeskin-antworten.js";
+import { wegAusSuche, wegGueltig } from "../../shared/lifeskin-weg.js";
 
 const $ = (wahl) => document.querySelector(wahl);
 const $$ = (wahl) => Array.from(document.querySelectorAll(wahl));
@@ -203,6 +204,18 @@ export class Terapia {
   }
 
   get kennung() { return this.quelle.kennung; }
+  // UEBER WELCHE LANDINGPAGE ER KAM (shared/lifeskin-weg.js). Der Bericht
+  // zuerst - Heart schreibt es beim Freigeben hinein, und der Link auf
+  // WhatsApp traegt keinen Zusatz; die Adresse als Rueckfall.
+  get weg() { return wegGueltig(this.daten?.weg) || wegAusSuche(this.ort?.search); }
+  // LIFESKIN 2 MIT URTEIL: Es gibt freigegebene Mittel - also hat Dr.
+  // Gashi "passt" gesagt. Die Seite beginnt dann mit dieser Antwort, und
+  // der Knopf reserviert das Set, statt eine Therapie "anzufangen".
+  get mitUrteil() { return this.weg === "lifeskin2" && this.produkte.length > 0; }
+  // Das Wort auf jedem Kaufknopf.
+  kaufWort(betrag = this.preis) {
+    return this.mitUrteil ? `Rezervo setin tim — ${euro(betrag)}` : `Fillo terapinë — ${euro(betrag)}`;
+  }
   // Die neue Fassung (Begleitung, Angebot, Kasse) - siehe oben.
   get neu() { return this.variante === KAUFWEG_VERSION.ndjekja; }
   get raport() { return this.daten?.raport || {}; }
@@ -368,7 +381,7 @@ export class Terapia {
       name: this.daten?.name,
       melde: (m) => this.klickpfad?.melde("kommentar", `${m.art === "video" ? "Video" : "Foto"} · ${m.produkt || m.id}`),
       nachSchliessen: () => this.leistePruefen?.(),
-      kaufen: this.mitAngebot ? { text: `Fillo terapinë — ${euro(this.preis)}`, tun: () => this.#porosia(true), gilt: () => this.mitAngebot } : null
+      kaufen: this.mitAngebot ? { text: this.kaufWort(), tun: () => this.#porosia(true), gilt: () => this.mitAngebot } : null
     });
     this.kundenMedien.zeige(this.daten?.klientet);
   }
@@ -396,10 +409,20 @@ export class Terapia {
     // bleibt der alte Satz.
     const syri = $("#t-syri");
     syri?.classList.toggle("syri--status", Boolean(d.code));
-    schreibe(syri, d.code ? `Analiza ${d.code}` : (mitProdukten ? "Terapia juaj është gati" : "Analiza juaj është gati"));
-    schreibe($("#t-titulli"), mitProdukten
-      ? (name ? `${name}, kjo është terapia juaj për ${WOCHEN} javë.` : `Terapia juaj për ${WOCHEN} javë është gati.`)
-      : (name ? `${name}, analiza juaj është gati.` : "Analiza juaj është gati."));
+    schreibe(syri, d.code ? `${this.weg === "lifeskin2" ? "Kontrolli" : "Analiza"} ${d.code}`
+      : (mitProdukten ? "Terapia juaj është gati" : "Analiza juaj është gati"));
+    // LifeSkin 2: zuerst die Antwort auf die Frage, mit der er gekommen ist.
+    zeigen($("#t-urteil"), this.mitUrteil);
+    if (this.mitUrteil) {
+      schreibe($("#t-urteiltext"), name
+        ? `Po, ${name}, lëkura juaj i përshtatet terapisë.`
+        : "Po, lëkura juaj i përshtatet terapisë.");
+    }
+    schreibe($("#t-titulli"), this.mitUrteil
+      ? `Seti që Dr. Gashi zgjodhi për ju — ${WOCHEN} javë.`
+      : mitProdukten
+        ? (name ? `${name}, kjo është terapia juaj për ${WOCHEN} javë.` : `Terapia juaj për ${WOCHEN} javë është gati.`)
+        : (name ? `${name}, analiza juaj është gati.` : "Analiza juaj është gati."));
     this.#mjeku();
     // Fielen Karten weg, weil ihr Produkt nicht im Set ist, nennt der Satz
     // der Analyse Probleme, die diese Therapie nicht behandelt. Dann wird
@@ -427,7 +450,7 @@ export class Terapia {
     // Neue Fassung: oben steht ausdruecklich, dass der Preis der Endpreis
     // ist - mit Lieferung (Auftrag, Punkt 9). Der Preis selbst bleibt.
     if (this.neu) schreibe($("#t-cmimi1 [data-dita]"), `gjithsej me dërgesë · ${jeTag} € në ditë`);
-    for (const el of $$("[data-porosi]")) schreibe(el, `Fillo terapinë — ${euro(this.preis)}`);
+    for (const el of $$("[data-porosi]")) schreibe(el, this.kaufWort());
     schreibe($("#t-dergo"), `Konfirmo porosinë — ${euro(this.preis)}`);
 
     this.#seti();

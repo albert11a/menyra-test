@@ -457,6 +457,14 @@
       "destination": "/apps/lifeskin-verkauf/index.html"
     },
     {
+      "source": "/lifeskin2",
+      "destination": "/apps/lifeskin-2/index.html"
+    },
+    {
+      "source": "/lifeskin2/",
+      "destination": "/apps/lifeskin-2/index.html"
+    },
+    {
       "source": "/lifeskin",
       "destination": "/apps/lifeskin-landing/index.html"
     },

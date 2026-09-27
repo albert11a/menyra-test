@@ -63,6 +63,7 @@ const NAV_HINTS = Object.freeze({
   destinations: "Orte & Destination-Templates",
   mnyraGo: "Mnyra GO: Provision, Trichter und Lokale",
   lifeskin: "Hautanalyse: Trichter, Bestellungen, Abdeckung",
+  lifeskin2: "Neuer Weg: passt es? → Therapie",
   analytics: "Business-Analytics und Reichweite",
   connections: "Einrichtung, Konten und Links"
 });
@@ -77,6 +78,7 @@ const NAV_ICONS = Object.freeze({
   destinations: "mapPin",
   mnyraGo: "pointer",
   lifeskin: "sparkle",
+  lifeskin2: "sparkle",
   analytics: "activity",
   connections: "settings"
 });
@@ -110,7 +112,8 @@ const VIEWS_WITHOUT_PAGE_TITLE = new Set([
 const MARKEN = Object.freeze({
   heart: { eyebrow: "heart", wordmark: "mnyra" },
   leads: { eyebrow: "leads", wordmark: "mnyra" },
-  lifeskin: { eyebrow: "lifeskin", wordmark: "cash" }
+  lifeskin: { eyebrow: "lifeskin", wordmark: "cash" },
+  lifeskin2: { eyebrow: "lifeskin 2", wordmark: "cash" }
 });
 
 function renderHeaderBrand(extraClass = "", marke = "heart") {
@@ -333,9 +336,27 @@ export const NAV_MNYRA = Object.freeze([
   "destinations", "mnyraGo", "analytics"
 ]);
 
+// "LIFESKIN 2" IST KEINE EIGENE ANSICHT, sondern die Lifeskin-Ansicht mit
+// den Faellen von /lifeskin2 (state.lifeskin.weg, heart.js openView). Im
+// Menue sind es zwei Eintraege - und angehakt ist der, dessen Weg gilt.
+export const LIFESKIN2_NAV = Object.freeze({ key: "lifeskin2", label: "Lifeskin 2" });
+
+// Abgesichert: Das Menue ist der Weg hinaus, auch wenn der Lifeskin-Bereich
+// kaputt ist (tests/heart-view-error-boundary.test.mjs).
+function lifeskinWeg(state) {
+  try { return String(state?.lifeskin?.weg || ""); } catch { return ""; }
+}
+
+function navAktiv(key, state) {
+  const weg = lifeskinWeg(state);
+  if (key === "lifeskin") return state.shell.activeView === "lifeskin" && weg !== "lifeskin2";
+  if (key === "lifeskin2") return state.shell.activeView === "lifeskin" && weg === "lifeskin2";
+  return state.shell.activeView === key;
+}
+
 function renderNavLink(item, state, { unter = false } = {}) {
   if (!item) return "";
-  const isActive = state.shell.activeView === item.key;
+  const isActive = navAktiv(item.key, state);
   return `
       <button class="heart-nav-link${unter ? " heart-nav-link--unter" : ""}${isActive ? " heart-nav-link--active" : ""}" data-nav-key="${escapeHtml(item.key)}">
         <span class="heart-nav-link__icon">${renderHeartIcon(NAV_ICONS[item.key] || "home")}</span>
@@ -357,6 +378,7 @@ function renderDrawerNav(state) {
   const unter = NAV_MNYRA.map((key) => renderNavLink(eintrag.get(key), state, { unter: true })).join("");
   return `
     ${renderNavLink(eintrag.get("lifeskin"), state)}
+    ${renderNavLink(LIFESKIN2_NAV, state)}
     <div class="heart-nav-gruppe${offen ? " heart-nav-gruppe--offen" : ""}">
       <button class="heart-nav-link heart-nav-gruppe__kopf${inMnyra ? " heart-nav-link--hier" : ""}" data-action="nav-gruppe"
               data-offen="${offen ? "1" : "0"}" aria-expanded="${offen}">
@@ -463,7 +485,7 @@ function renderShell(state, runtime = {}) {
               <button class="heart-icon-button heart-icon-button--menu" data-action="toggle-nav" aria-label="Menue oeffnen">${renderHeartIcon("menu")}</button>
             </div>
             ${renderHeaderBrand("", isLeadsView ? "leads"
-              : activeView === "lifeskin" ? "lifeskin" : "heart")}
+              : activeView === "lifeskin" ? (lifeskinWeg(state) === "lifeskin2" ? "lifeskin2" : "lifeskin") : "heart")}
           </div>
           <div class="heart-topbar__right">
             ${isLeadsView ? `

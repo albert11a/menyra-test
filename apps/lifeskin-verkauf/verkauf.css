@@ -599,6 +599,15 @@ html[data-ansicht] body:has(#leiste) { padding-bottom: 0; }
   margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line);
   font-size: .92rem; color: var(--ink);
 }
+/* LIFESKIN 2: das Urteil ueber dem Titel ("Po, ju përshtatet"). */
+.urteil {
+  display: flex; align-items: center; gap: 9px;
+  margin: 2px 0 12px; padding: 11px 14px; border-radius: 12px;
+  background: var(--green-soft); color: var(--green);
+  font-size: 1rem; font-weight: 700; line-height: 1.35;
+}
+.urteil svg { flex: none; }
+.urteil[hidden] { display: none; }
 /* Sein eigenes Wort ueber dem Kaufknopf. */
 .gati {
   margin: 4px 0 10px; padding: 9px 12px; border-radius: 10px;

@@ -1,3 +1,4 @@
+import { wegDerSitzung } from "../../shared/lifeskin-weg.js";
 import { pruefeRaportV3, reportToWire } from "../../shared/lifeskin-raport-v3.js";
 import { shitjaLesen } from "../../shared/lifeskin-shitja.js";
 // Was in die Promptvorlage eingesetzt wird - Name, Altersgruppe und die
@@ -125,6 +126,8 @@ const initialRouteView = resolveHeartRouteView();
 // Ohne ausdrueckliche Ansicht in der Adresse oeffnet Heart mit Lifeskin -
 // das ist der Bereich, der jeden Tag gebraucht wird.
 actions.setActiveView(initialRouteView || "lifeskin");
+// #lifeskin2 in der Adresse: der Tab Lifeskin 2 (Faelle von /lifeskin2).
+if (/^#lifeskin2$/i.test(String(globalThis.location?.hash || ""))) actions.patchLifeskin({ weg: "lifeskin2" });
 const authController = createHeartAuthController({ store });
 const runtimeConfig = globalThis.__MNYRA_HEART_CONFIG__ || {};
 const apiClient = createHeartApiClient({
@@ -948,7 +951,10 @@ let liveSitzungen = [];
 
 function liveRechnen() {
   const jetzt = Date.now();
-  const stand = baueLive(liveSitzungen, jetzt, undefined, store.getState().lifeskin?.berichte || {});
+  // Nur die Besucher des Wegs, dessen Tab offen ist (Lifeskin / Lifeskin 2).
+  const weg = String(store.getState().lifeskin?.weg || "");
+  const stand = baueLive(liveSitzungen.filter((s) => wegDerSitzung(s) === weg), jetzt, undefined,
+    store.getState().lifeskin?.berichte || {});
   const vorher = store.getState().lifeskin?.live;
   // Nur schreiben, wenn sich etwas geaendert hat: Ein Zustandswechsel je
   // Sekunde zeichnet den ganzen Bereich neu, auch wenn dieselben Zahlen
@@ -2738,6 +2744,8 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff: nurStaffGewaehlt = 
     // Seine Antworten aus dem Trichter - die Seite spiegelt sie zurueck.
     // Gefiltert wird im Adapter (shared/lifeskin-antworten.js).
     antworten: findeSitzung(store.getState().lifeskin || {}, id)?.anamnese || null,
+    // Ueber welche Landingpage er kam - LifeSkin 2 zeigt oben das Urteil.
+    weg: wegDerSitzung(findeSitzung(store.getState().lifeskin || {}, id)),
     // Die Vorher/Nachher-Faelle dieser Seite, in der gewaehlten Reihenfolge.
     raste: [...new Set([...document.querySelectorAll("[data-befund-rasti]")]
       .filter((w) => w.type !== "checkbox" || w.checked).map((w) => String(w.value || "")).filter(Boolean))],
@@ -3772,7 +3780,21 @@ const operations = {
   setzeLifeskinVersand(id, stand) { return setzeLifeskinVersand(id, stand); },
   ndjekja(was, knopf) { return ndjekjaOps.aktion(was, knopf); },
   openView(viewKey) {
-    const safeViewKey = String(viewKey || "").trim() || "dashboard";
+    let safeViewKey = String(viewKey || "").trim() || "dashboard";
+    // LIFESKIN UND LIFESKIN 2: dieselbe Ansicht, ein anderer Weg
+    // (shared/lifeskin-weg.js). Der Wechsel zwischen beiden schliesst einen
+    // offenen Fall und rechnet Live neu - sonst stuende oben noch der Fall
+    // oder die Live-Reihe des anderen Wegs.
+    if (safeViewKey === "lifeskin" || safeViewKey === "lifeskin2") {
+      const weg = safeViewKey === "lifeskin2" ? "lifeskin2" : "";
+      safeViewKey = "lifeskin";
+      if (String(store.getState().lifeskin?.weg || "") !== weg) {
+        actions.patchLifeskin({ weg, offen: "" });
+        try { liveRechnen(); } catch { /* Live ist Beiwerk */ }
+        syncViewInAddress(store.getState());
+        if (store.getState().shell.activeView === "lifeskin") { actions.setNavOpen(false); return; }
+      }
+    }
     if (store.getState().shell.activeView === safeViewKey) {
       actions.setNavOpen(false);
       return;
@@ -4530,7 +4552,8 @@ function deployKarteAuffrischen(wurzel) {
 function syncViewInAddress(state) {
   const view = state?.shell?.activeView || "";
   if (!canRestoreHeartView(view)) return;
-  const gewuenscht = `#${view}`;
+  // Lifeskin 2 behaelt seine Adresse, damit ein Neuladen dort bleibt.
+  const gewuenscht = view === "lifeskin" && state?.lifeskin?.weg === "lifeskin2" ? "#lifeskin2" : `#${view}`;
   if (window.location.hash === gewuenscht) return;
   try {
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${gewuenscht}`);

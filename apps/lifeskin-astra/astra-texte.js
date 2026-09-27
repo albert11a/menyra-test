@@ -562,6 +562,38 @@ export const TEXTE = Object.freeze({
   kontakt: { sq: "Kontakt & informacion", de: "Kontakt & Information" }
 });
 
+// DIE WARTESEITE IN DEN WORTEN VON LIFESKIN 2 (/lifeskin2).
+//
+// Dort wurde keine Analyse versprochen, sondern eine Antwort: ob die
+// Therapie passt und welches Set. Die Warteseite sagt genau das weiter -
+// eine Seite, die ploetzlich von "Analyse" spricht, liest sich wie ein
+// anderes Angebot. Nur diese Schluessel; alles andere gilt wie in TEXTE.
+// Ein Text aus Heart fuer diesen einen Fall (bericht.texte) gewinnt
+// weiterhin vor beidem.
+export const TEXTE_WEGE = Object.freeze({
+  lifeskin2: Object.freeze({
+    pritTitel: {
+      sq: "Dr. Gashi po kontrollon nëse terapia ju përshtatet, {name}.",
+      de: "Dr. Gashi prüft, ob die Therapie zu Ihnen passt, {name}."
+    },
+    pritTitelOhne: {
+      sq: "Dr. Gashi po kontrollon nëse terapia ju përshtatet.",
+      de: "Dr. Gashi prüft, ob die Therapie zu Ihnen passt."
+    },
+    pritWarum: {
+      sq: "Nuk ju dërgojmë asgjë pa e parë lëkurën tuaj. Çdo rast e shikon vetë ajo.",
+      de: "Wir schicken Ihnen nichts, ohne Ihre Haut gesehen zu haben. Jeden Fall sieht sie sich selbst an."
+    },
+    pritNumri: { sq: "Numri i kontrollit", de: "Nummer der Prüfung" },
+    pritFrei: {
+      sq: "Përgjigja vjen në WhatsApp: nëse ju përshtatet, cilin set ju duhet dhe sa kushton.",
+      de: "Die Antwort kommt per WhatsApp: ob es passt, welches Set Sie brauchen und was es kostet."
+    },
+    pritHapi3: { sq: "Tani: Dr. Gashi kontrollon", de: "Jetzt: Dr. Gashi prüft" },
+    pritHapi4: { sq: "Përgjigja: a ju përshtatet", de: "Die Antwort: passt es?" }
+  })
+});
+
 export function t(eintrag, sprache = "sq") {
   if (!eintrag) return "";
   return eintrag[sprache] || eintrag.sq || "";

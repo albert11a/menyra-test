@@ -35,6 +35,8 @@ import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 // Aufklappen, das ein Neuzeichnen ueberlebt.
 import { renderRaste, renderRastiEditor, renderBefundRasteAuswahl, rasteListe } from "./heart-lifeskin-raste.js";
 import { klappAttr, alsKlapp } from "./heart-lifeskin-klapp.js";
+import { nachWeg, baueLs2Weg, dauerText as ls2Dauer } from "./heart-lifeskin-weg.js";
+import { wegGueltig } from "../../shared/lifeskin-weg.js";
 import { entwurfLesen, promptGemacht } from "./heart-lifeskin-entwurf.js";
 import { mitFingerabdruck } from "./heart-morph.js";
 import { renderMedien, renderMediumEditor, renderMedienReaktionen, renderBefundMedienAuswahl } from "./heart-lifeskin-medien.js";
@@ -572,6 +574,25 @@ function renderTrichter(liste, gewaehlt = "main") {
         ? `<p class="heart-lifeskin-block__fuss">Groesster Verlust bei „${escapeHtml(schlimmster.label)}" — ${escapeHtml(verloreneLeute(offen.stufen, schlimmster))}.</p>`
         : ""}
     </section>`, "trichter");
+}
+
+// LIFESKIN 2: DER WEG VOM ANZEIGENKLICK BIS ZUM KAUF, in einer Reihe -
+// mit dem, was nach dem Trichter passiert: die Antwort von Dr. Gashi, das
+// Urteil, die Kasse. Darunter die zwei Zahlen, an denen der neue Weg
+// gemessen wird: Kaeufe je Lead und die Zeit bis zur Antwort.
+function renderLs2Weg(weg, zeitraum = "") {
+  const wort = ZEITRAEUME.find((z) => z.id === (zeitraum || "heute"))?.label || "";
+  const unterStunde = weg.beantwortet
+    ? `${weg.antwortUnterStunde} von ${weg.beantwortet} in unter 1 h`
+    : "noch keine Antwort";
+  return alsKlapp(`
+    <section class="heart-lifeskin-block">
+      <h3 class="heart-lifeskin-block__titel">Lifeskin 2 · vom Klick bis zum Kauf${wort ? ` · ${escapeHtml(wort)}` : ""}</h3>
+      <div class="heart-lifeskin-trichter">${renderStufen(weg.stufen)}</div>
+      <p class="heart-lifeskin-block__fuss">Kauf je Lead: <b>${prozent(weg.kaufProLead)}</b></p>
+      <p class="heart-lifeskin-block__fuss">Antwort von Dr. Gashi: Median <b>${escapeHtml(ls2Dauer(weg.antwortMedian))}</b> · ${escapeHtml(unterStunde)}${
+        weg.wartend ? ` · <b>${weg.wartend}</b> warten gerade` : ""}</p>
+    </section>`, "ls2weg", { zahl: `${weg.stufen.at(-1)?.anzahl || 0} Käufe` });
 }
 
 // Die Bestellungen haben einen eigenen Zeitraum.
@@ -1587,6 +1608,17 @@ export function whatsappNachricht(sitzung, bericht) {
   if (!text) return "";
   const name = vorname(sitzung);
   const link = `https://www.mnyra.com/analiza/${sitzung?.id || ""}`;
+  // LIFESKIN 2: Er hat gefragt, OB es passt - also beginnt die Nachricht
+  // mit der Antwort. Mit Produkten ist das "Po"; ohne Produkte gibt es kein
+  // Urteil, und die Nachricht bleibt die gewohnte.
+  if (wegGueltig(sitzung?.source?.weg) === "lifeskin2" && (bericht?.produkte || []).length) {
+    return [
+      `Përshëndetje${name ? ` ${name}` : ""}, e kontrollova lëkurën tuaj: terapia LifeSkin ju përshtatet ✓`,
+      text,
+      `Këtu e shihni setin që zgjodha për ju dhe çmimin: ${link}`,
+      "Nëse doni ta filloni, e rezervoni direkt në faqe (paguani te dera), ose më shkruani këtu dhe e rregullojmë bashkë."
+    ].join("\n\n");
+  }
   // Anrede, der Text der Analyse, der Link - und dass man direkt
   // bestellen kann, ohne zu draengen.
   return [
@@ -3124,7 +3156,13 @@ export function renderLifeskin(zustand) {
     return `<p class="heart-lifeskin-leer">Wird geladen …</p>`;
   }
 
-  const { sitzungen, produkte } = zustand;
+  // ZWEI TABS, EINE ANSICHT: "Lifeskin" zeigt die Faelle von /lifeskin,
+  // "Lifeskin 2" die von /lifeskin2 (shared/lifeskin-weg.js). Alles
+  // darunter - Kacheln, Trichter, Faelle, Bestellungen - rechnet nur mit
+  // den Faellen dieses Wegs, damit die beiden Wege sich vergleichen lassen.
+  const weg = wegGueltig(zustand.weg);
+  const sitzungen = nachWeg(zustand.sitzungen, weg);
+  const { produkte } = zustand;
 
   // Noch kein einziger Besucher. Ein Block aus lauter Nullen sieht aus wie
   // ein Fehler; ein Satz sagt, dass es keiner ist. Die Kacheln bleiben
@@ -3189,8 +3227,9 @@ export function renderLifeskin(zustand) {
       ${nochNichts ? `
         <p class="heart-lifeskin-leer">
           Noch keine Analyse. Die Zahlen fuellen sich mit dem ersten Besucher
-          auf <b>mnyra.com/lifeskin</b>.
+          auf <b>mnyra.com/${weg ? escapeHtml(weg) : "lifeskin"}</b>.
         </p>` : ""}
+      ${weg === "lifeskin2" ? renderLs2Weg(baueLs2Weg(imBlick, zustand.berichte || {}), zeitraum) : ""}
       ${renderKacheln(zahlen, zeitraum)}
       ${zustand.liveFehler
         ? leererBlock("Live", "Verbindung unterbrochen — Live-Zahlen nicht verfuegbar.")

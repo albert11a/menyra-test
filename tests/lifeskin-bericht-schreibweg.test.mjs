@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { raportLesen } from "../shared/lifeskin-analyse.js";
 import { antwortenFuerBericht } from "../shared/lifeskin-antworten.js";
+import { wegGueltig } from "../shared/lifeskin-weg.js";
 
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
 const adapter = readFileSync(join(wurzel, "apps/mnyra-heart/heart-lifeskin-adapter.js"), "utf8");
@@ -48,12 +49,14 @@ function dokumentBauen(werte) {
   // bereit: "Bereit" speichert wie eine Vorschau mit Marke - hier false.
   // antworten: seine Antworten aus dem Trichter, gefiltert durch
   // antwortenFuerBericht (shared/lifeskin-antworten.js).
+  // weg: ueber welche Landingpage er kam, gefiltert durch wegGueltig
+  // (shared/lifeskin-weg.js) - "lifeskin2" oder "".
   const bauen = new Function("befund", "produkte", "preis", "schwere", "analyse", "raport", "texte", "nurStaff", "ohneBild", "raste", "klientet", "bereit",
-    "antworten", "antwortenFuerBericht",
+    "antworten", "antwortenFuerBericht", "weg", "wegGueltig",
     `return (${literal});`);
   return bauen(werte.befund, werte.produkte, werte.preis, werte.schwere, werte.analyse, werte.raport,
     werte.texte || {}, false, false, werte.raste || [], werte.klientet || [], false,
-    werte.antworten || null, antwortenFuerBericht);
+    werte.antworten || null, antwortenFuerBericht, werte.weg || "", wegGueltig);
 }
 
 const raport = raportLesen(

@@ -48,6 +48,10 @@ const NON_SOCIAL_NAVIGATION_PREFIXES = [
   // Schraegstrich, und '/apps/lifeskin-landing' ist gegenueber
   // '/apps/lifeskin' keines von beidem.
   '/apps/lifeskin-landing',
+  // LifeSkin 2 unter /lifeskin2 - dieselbe Begruendung. '/lifeskin2' ist
+  // gegenueber '/lifeskin' weder gleich noch ein Unterpfad.
+  '/lifeskin2',
+  '/apps/lifeskin-2',
   // Die kurze Fassung des Trichters, zum Ausprobieren unter einer eigenen
   // Adresse. Sie braucht ihren eigenen Eintrag: Geprueft wird auf genaue
   // Gleichheit oder auf den Pfad mit Schraegstrich, und
