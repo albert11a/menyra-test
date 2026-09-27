@@ -5,7 +5,8 @@
     "deploymentEnabled": {
       "claude/**": false,
       "codex/**": false,
-      "claude/mnyra-go-page-navigation-gc0b4r": true
+      "claude/mnyra-go-page-navigation-gc0b4r": true,
+      "claude/routine-therapy-sales-funnel-p69dc0": true
     }
   },
   "outputDirectory": "dist",

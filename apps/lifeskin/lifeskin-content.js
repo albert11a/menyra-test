@@ -180,6 +180,12 @@ export const OBERFLAECHE = Object.freeze({
     sq: "Fotoja u ruajt. Edhe dy gjëra dhe keni mbaruar.",
     de: "Das Foto ist gespeichert. Noch zwei Angaben, dann sind Sie durch."
   },
+  // Nach den vier Fragen: Scan oder Foto hat der Satz davor schon
+  // gemeldet - hier nur noch der Dank und das Ende in Sicht.
+  nameVorsatzNachFragen: {
+    sq: "Faleminderit! Edhe dy gjëra dhe keni mbaruar.",
+    de: "Danke! Noch zwei Angaben, dann sind Sie durch."
+  },
   nameVorsatzTrup: {
     sq: "Fillojmë me dy gjëra të shkurtra.",
     de: "Wir fangen mit zwei kurzen Angaben an."
@@ -1039,6 +1045,71 @@ export const FRAGEN = Object.freeze([
     ]
   },
   {
+    // WAS SCHON PROBIERT WURDE - die Frage, die den Kauf vorbereitet.
+    //
+    // Fast jeder, der aus einer Anzeige kommt, hat schon etwas probiert,
+    // und genau das ist sein stiller Einwand: "Hab ich alles schon, hilft
+    // nicht." Hier spricht er ihn selbst aus, bevor ihm jemand etwas
+    // anbietet. Die Therapieseite antwortet dann darauf (Abschnitt
+    // "Çfarë na thatë", shared/lifeskin-antworten.js), und der Prompt
+    // schreibt den Satz dazu (shqetesimi).
+    //
+    // Der Satz darunter sagt, wofuer die Antwort gut ist - fuer ihn, nicht
+    // fuer uns: nichts zu bekommen, was schon nicht geholfen hat.
+    //
+    // "mjek" (Arzt/Roaccutane) ist zugleich die Sicherheitsangabe, die der
+    // Prompt fuer die Produktwahl braucht. Sie bleibt in der Sitzung und
+    // geht NIE auf die oeffentliche Seite (siehe lifeskin-antworten.js).
+    id: "perdorimi",
+    hoechstens: 2,
+    titel: {
+      sq: "Çka keni provuar deri tash për lëkurën?",
+      de: "Was haben Sie bisher für Ihre Haut probiert?"
+    },
+    unter: {
+      sq: "Deri në dy — që të mos merrni diçka që s'ju ka ndihmuar.",
+      de: "Bis zu zwei — damit Sie nichts bekommen, was schon nicht geholfen hat."
+    },
+    antworten: [
+      { id: "farmaci", text: { sq: "Kremë nga barnatorja", de: "Cremes aus der Apotheke" } },
+      { id: "rrjete", text: { sq: "Produkte nga Instagrami ose TikToku", de: "Produkte von Instagram oder TikTok" } },
+      { id: "larje", text: { sq: "Vetëm sapun ose xhel larës", de: "Nur Seife oder Waschgel" } },
+      { id: "shume", text: { sq: "Shumë produkte, pa rezultat", de: "Viele Produkte, ohne Ergebnis" } },
+      { id: "mjek", text: { sq: "Terapi te mjeku ose Roaccutane", de: "Behandlung beim Arzt oder Roaccutane" } },
+      // Zuletzt, wie "Nuk e di": Was oben steht, wird zum schnellsten Weg
+      // durch die Frage.
+      { id: "asgje", alleine: true, text: { sq: "Asgjë deri tash", de: "Bisher nichts" } }
+    ]
+  },
+  {
+    // DIE BEREITSCHAFT - und zwar ohne ein "Nein".
+    //
+    // Gefragt wird nicht OB, sondern ob Dr. Gashi auch die Therapie
+    // vorbereiten soll. Wer hier "Po" tippt, hat es selbst gesagt, bevor er
+    // den Preis sieht - und die Therapieseite erinnert ihn genau daran
+    // ("Ju na thatë se doni të filloni sa më shpejt"). Wer zuerst nur die
+    // Analyse will, darf das sagen: Die Antwort ist ehrlich, und Heart sieht
+    // daran, wem es auf WhatsApp nachgehen muss.
+    //
+    // Der Satz darunter nimmt die Angst vor der Falle ("jetzt wollen sie mir
+    // etwas verkaufen"): Die Analyse bleibt kostenlos - wie die Landingpage
+    // es verspricht. Wer sich nicht bedraengt fuehlt, sagt eher Ja.
+    id: "gatishmeria",
+    titel: {
+      sq: "A doni që Dr. Gashi t'ju përgatisë edhe terapinë 4-javore?",
+      de: "Soll Dr. Gashi Ihnen auch die 4-Wochen-Therapie zusammenstellen?"
+    },
+    unter: {
+      sq: "Analiza mbetet falas, pa detyrim.",
+      de: "Die Analyse bleibt kostenlos und unverbindlich."
+    },
+    antworten: [
+      { id: "tani", text: { sq: "Po, dua ta filloj sa më shpejt", de: "Ja, ich möchte so bald wie möglich anfangen" } },
+      { id: "pasi", text: { sq: "Po, kur ta shoh çka më duhet", de: "Ja, wenn ich sehe, was ich brauche" } },
+      { id: "analiza", text: { sq: "Së pari dua vetëm analizën", de: "Zuerst möchte ich nur die Analyse" } }
+    ]
+  },
+  {
     // DER NAME STEHT ZULETZT, und das ist kein Zufall.
     //
     // Er ist das Einzige, was getippt werden muss - alles davor ist
@@ -1099,6 +1170,32 @@ const ausVorrat = (id) => FRAGEN.find((frage) => frage.id === id);
 // lange Fassung (apps/lifeskin/) stellt sie nach der Aufnahme.
 export const FRAGEN_NACH_SCAN = Object.freeze(
   ["anliegen", "mosha", "lekura", "kujdesi", "emri", "numri"].map(ausVorrat));
+
+// NACH SCAN UND FOTO - DIESELBEN VIER FRAGEN FUER ALLE.
+//
+// Die kurze Fassung (Landingpage /lifeskin) fragte nach der Aufnahme nur
+// Name, Alter und Nummer. Die Analyse kam an, gekauft wurde fast nichts:
+// Wer nur wegen der kostenlosen Analyse kam, hatte bis zur Therapieseite
+// kein einziges Mal an eine Therapie gedacht - und dort stand sie ihm
+// ploetzlich mit Preis gegenueber.
+//
+// Diese vier Fragen bereiten den Kauf vor, ohne zu verkaufen:
+//
+//   anliegen     was ihn stoert - in SEINEN Worten, die Seite nennt es zuerst
+//   kohezgjatja  seit wann - "mbi një vit" ist ein Grund, heute anzufangen
+//   perdorimi    was schon nicht geholfen hat - sein Einwand, bevor er ihn hat
+//   gatishmeria  ob Dr. Gashi auch die Therapie vorbereiten soll - sein "Po"
+//
+// Nur Antippen, keine Tastatur; vier Stufen (pyetja1-4), mehr kennen die
+// Regeln nicht. Die Fotos gehen waehrenddessen hinaus - die Fragen fuellen
+// die Wartezeit, statt sie zu verlaengern. Danach Name und Alter, dann die
+// Nummer, wie bisher.
+//
+// Die Schwangerschaftsfrage (kujdesi) steht hier bewusst NICHT: eine
+// fuenfte Frage kostet Abschluesse (die kurze Fassung fragte sie schon
+// bisher nicht). Roaccutane steckt in perdorimi ("mjek").
+export const FRAGEN_NACH_AUFNAHME = Object.freeze(
+  ["anliegen", "kohezgjatja", "perdorimi", "gatishmeria"].map(ausVorrat));
 
 // DER WEG OHNE SCAN - und er ist der Grund, warum es diese Liste gibt.
 //
@@ -1163,6 +1260,17 @@ export const FRAGEN_TEXTE = Object.freeze({
   einleitungPaSkanim: {
     sq: "Katër pyetje të shkurtra — pa to Dr. Gashi nuk ka çka të shikojë.",
     de: "Vier kurze Fragen — ohne sie hat Dr. Gashi nichts, was sie ansehen kann."
+  },
+  // NACH SCAN UND FOTO: was vorbei ist, was jetzt kommt, und dass es
+  // schnell geht. "Vetëm me prekje" - keine Tastatur, das ist der Satz, der
+  // nach einer halben Minute Kopfdrehen noch jemanden weitermachen laesst.
+  einleitungNachScan: {
+    sq: "Skanimi mbaroi ✓ Ndërsa fotot po i shkojnë Dr. Gashit: 4 pyetje të shkurtra, vetëm me prekje.",
+    de: "Der Scan ist fertig ✓ Während die Fotos zu Dr. Gashi gehen: 4 kurze Fragen, nur antippen."
+  },
+  einleitungNachFoto: {
+    sq: "Fotoja u ruajt ✓ Ndërsa po i shkon Dr. Gashit: 4 pyetje të shkurtra, vetëm me prekje.",
+    de: "Das Foto ist gespeichert ✓ Während es zu Dr. Gashi geht: 4 kurze Fragen, nur antippen."
   },
   // Und der Satz ueber der Nummer auf demselben Weg.
   //

@@ -37,6 +37,7 @@ import { NDJEKJA, NDJEKJA_TEXTE, KAUFWEG_VERSION, ndjekjaSichtbar } from "../../
 import { garancia } from "../../shared/lifeskin-garancia.js";
 import { telefonPruefen } from "../../shared/lifeskin-telefon.js";
 import { beispielKarte, ikone } from "./ndjekja-teile.js";
+import { antwortenSpiegel } from "../../shared/lifeskin-antworten.js";
 
 const $ = (wahl) => document.querySelector(wahl);
 const $$ = (wahl) => Array.from(document.querySelectorAll(wahl));
@@ -418,6 +419,7 @@ export class Terapia {
     schreibe($("#t-shqetesimi"), s.shqetesimi || "");
     zeigen($("#t-shqetesimi"), Boolean(s.shqetesimi));
     zeigen($("#t-kontroll"), brauchtAbklaerung(r));
+    this.#thate();
 
     for (const el of $$("[data-cmimi]")) schreibe(el, euro(this.preis));
     const jeTag = zahl(Math.round((this.preis / TAGE) * 100) / 100);
@@ -476,6 +478,32 @@ export class Terapia {
     // 8. Die ganze Analyse.
     this.#analiza();
     if (this.neu) this.#neueWorte();
+  }
+
+  // "ÇFARË NA THATË" - SEINE ANTWORTEN AUS DEM TRICHTER.
+  //
+  // Was ihn stoert, seit wann, was er schon probiert hat - in seinen
+  // Worten -, darunter der Satz, warum diese Therapie anders ist. Und beim
+  // Kaufknopf sein eigenes Wort ("Ju na thatë se doni të filloni …").
+  // Heart legt die Antworten beim Freigeben in den Bericht (nur gepruefte
+  // Kennungen, keine Gesundheitsangaben - shared/lifeskin-antworten.js).
+  // Aeltere Befunde haben keine: dann bleibt beides weg.
+  #thate() {
+    const spiegel = this.mitAngebot ? antwortenSpiegel(this.daten?.antworten, { ohneFoto: this.ohneFoto }) : null;
+    const karte = $("#t-thate");
+    const liste = $("#t-thatelista");
+    zeigen(karte, Boolean(spiegel?.zeilen.length));
+    if (spiegel?.zeilen.length && liste) {
+      liste.replaceChildren(...spiegel.zeilen.map(({ marke, text }) => {
+        const li = element("li");
+        li.append(element("span", null, marke), element("b", null, text));
+        return li;
+      }));
+    }
+    schreibe($("#t-thatesatz"), spiegel?.satz || "");
+    zeigen($("#t-thatesatz"), Boolean(spiegel?.satz));
+    schreibe($("#t-gati"), spiegel?.bereit || "");
+    zeigen($("#t-gati"), Boolean(spiegel?.bereit));
   }
 
   // DIE UEBRIGEN SAETZE UEBER DIE BEGLEITUNG - nur in der neuen Fassung,

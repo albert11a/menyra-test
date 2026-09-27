@@ -34,7 +34,7 @@ import { LIFESKIN_TELEFON_VORWAHL } from "./lifeskin-config.js";
 import { netzVorladen, netzHolen, netzStand, netzArt, netzFehlerFolge, messeNetz, MARKE } from "./lifeskin-netz.js";
 import { STANDARD_KONFIG, ALTERSGRUPPEN } from "./lifeskin-catalog.js";
 import { OBERFLAECHE, EINSTIEG_HINWEIS, EINSTIEG_KARTEN, ARZT_BILD, ARZT_NAME,
-  FRAGEN, FRAGEN_NACH_SCAN, FRAGEN_PA_SKANIM, FRAGEN_PA_SKANIM_NUMRI,
+  FRAGEN, FRAGEN_NACH_SCAN, FRAGEN_NACH_AUFNAHME, FRAGEN_PA_SKANIM, FRAGEN_PA_SKANIM_NUMRI,
   FRAGEN_TEXTE, t, fuelle } from "./lifeskin-content.js";
 import { besteGuete, Flaechenkamera, beiFreigabe, KAMERA_HAENGT_MS, BILD_GRENZE_MS, ausDatei as fotoAusDatei } from "./lifeskin-foto.js";
 import { Sitzung } from "./lifeskin-session.js";
@@ -1104,7 +1104,10 @@ export class Trichter {
       // mit Foto die Aufnahme - die laesst sich wiederholen, der Scan
       // nicht. Dorthin zurueckzuspringen hiesse beim Scan, ihn noch
       // einmal zu machen; deshalb steht dort null.
-      name: this.zustand.typ === "foto"
+      // Nach den vier Fragen fuehrt er zur letzten Frage - dort, wo er
+      // gerade war, mit seinen Antworten.
+      name: this.zustand.nachFragen && !this.#trupWeg() && gibtEs("fragen") ? "fragen"
+        : this.zustand.typ === "foto"
         ? ersterVon("fotopara", "wahl", "einstieg")
         : (this.#trupWeg() ? ersterVon("wahl", "einstieg")
           : (this.zustand.altWeg ? ersterVon("fragen", "wahl", "einstieg") : null)),
@@ -1147,6 +1150,9 @@ export class Trichter {
     if (this.#trupWeg() && FORTSCHRITT_TRUP[schirm] !== undefined) {
       return FORTSCHRITT_TRUP[schirm];
     }
+    // Fragen VOR dem Namen (nach der Aufnahme, alte Vorlage): zwischen
+    // Aufnahme und Name - sonst spraenge der Balken danach zurueck.
+    if (schirm === "fragen" && this.fragen?.danach === "name") return 70;
     return FORTSCHRITT[schirm] ?? 20;
   }
 
@@ -2084,7 +2090,7 @@ export class Trichter {
     this.#uploadMelden(this.sitzung.fotosSpeichern({ zona: aufnahme.foto }));
     if (aufnahme.mini) this.sitzung.miniaturenSpeichern({ zona: aufnahme.mini });
     this.sitzung.ergaenze({ photos: ["zona"] });
-    this.#nameZeigen();
+    this.#aufnahmeFragen("foto");
   }
 
   // ---------- Sqaroni problemet: ein Text statt eines Bildes ----------
@@ -2413,8 +2419,9 @@ export class Trichter {
     // Weg etwas anderes. "Der Scan ist fertig" ueber einem Weg ohne
     // Scan liest sich als Fehler.
     schreibe($("#ls-namevorsatz"), this.text(
-      this.zustand.typ === "foto" ? "nameVorsatzFoto"
-        : this.#trupWeg() ? "nameVorsatzTrup" : "nameVorsatz"));
+      this.zustand.nachFragen && !this.#trupWeg() ? "nameVorsatzNachFragen"
+        : this.zustand.typ === "foto" ? "nameVorsatzFoto"
+          : this.#trupWeg() ? "nameVorsatzTrup" : "nameVorsatz"));
     this.#nameFehler(null);
     this.zeige("name");
     $("#ls-namefeld")?.focus?.({ preventScroll: true });
@@ -4126,10 +4133,31 @@ export class Trichter {
   // hier nichts verloren.
   #fragenZeigen() {
     if (this.variante === "kurz" && $("#ls-name")) {
-      this.#nameZeigen();
+      this.#aufnahmeFragen("scan");
       return;
     }
     this.#fragenStarten(this.fragenListe, { danach: "analyse" });
+  }
+
+  // NACH SCAN UND FOTO: DIE VIER FRAGEN, DIE DEN KAUF VORBEREITEN.
+  //
+  // Dieselben fuer beide Wege (FRAGEN_NACH_AUFNAHME), danach Name und
+  // Alter, dann die Nummer - wie bisher. Die Begruendung steht an der
+  // Liste in lifeskin-content.js.
+  //
+  // Kein Pfeil zurueck vor der ersten Frage: Hinter dem Scan liegt die
+  // Kamera, und dorthin zurueck hiesse, ihn noch einmal zu machen.
+  //
+  // Traegt die Seite keinen Fragenbildschirm, geht es wie bisher direkt
+  // zum Namen - ein Schalter auf einen Bildschirm, den es nicht gibt, waere
+  // eine weisse Seite.
+  #aufnahmeFragen(weg) {
+    if (!$("#ls-fragen")) { this.#nameZeigen(); return; }
+    this.zustand.nachFragen = true;
+    this.#fragenStarten(FRAGEN_NACH_AUFNAHME, {
+      danach: "name",
+      einleitung: weg === "foto" ? "einleitungNachFoto" : "einleitungNachScan"
+    });
   }
 
   // EINE STRECKE FRAGEN ANFANGEN.

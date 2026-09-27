@@ -2735,6 +2735,9 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff: nurStaffGewaehlt = 
   try {
     await gibBerichtFrei(id, { befund, produkte, preis: produkte.length ? preis : 0, schwere, raport,
     texte, ohneBild: art === "pa-foto",
+    // Seine Antworten aus dem Trichter - die Seite spiegelt sie zurueck.
+    // Gefiltert wird im Adapter (shared/lifeskin-antworten.js).
+    antworten: findeSitzung(store.getState().lifeskin || {}, id)?.anamnese || null,
     // Die Vorher/Nachher-Faelle dieser Seite, in der gewaehlten Reihenfolge.
     raste: [...new Set([...document.querySelectorAll("[data-befund-rasti]")]
       .filter((w) => w.type !== "checkbox" || w.checked).map((w) => String(w.value || "")).filter(Boolean))],

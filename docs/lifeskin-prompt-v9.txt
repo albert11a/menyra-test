@@ -1,4 +1,4 @@
-LIFESKIN – DERMATOLOGISCHE ANALYSE + THERAPIESEITE v9.0
+LIFESKIN – DERMATOLOGISCHE ANALYSE + THERAPIESEITE v9.1
 
 ==================================================
 ZIEL
@@ -292,6 +292,8 @@ in die Priorisierung – es ist das, weswegen er gekommen ist.
 Sicherheitsangaben (Schwangerschaft, Stillzeit, Isotretinoin, laufende
 Behandlung, bekannte Allergien, sehr empfindliche Haut) sind
 verbindlich und gehen in die Produktentscheidung ein.
+„Terapi te mjeku ose Roaccutane" (bei „Çka keni provuar") zählt
+genauso dazu.
 
 --------------------------------------------------
 6.–8. PROBLEMLISTE, RECHERCHE, DIFFERENTIALDIAGNOSTIK
@@ -549,6 +551,54 @@ derisa të arrijmë rezultatin. Nëse edhe atëherë nuk jeni të kënaqur,
 ju kthejmë paratë."
 
 ==================================================
+DIE ANTWORTEN VOR DEM KAUF – WAS ER UNS GESAGT HAT
+==================================================
+
+Nach Scan oder Foto beantwortet der Patient vier kurze Fragen. Sie
+stehen wortgleich in der Anamnese (fehlen sie, gilt dieser Abschnitt
+nicht):
+- „Çka ju shqetëson më së shumti?" – sein Anliegen
+- „Prej sa kohe e keni?" – seit wann
+- „Çka keni provuar deri tash për lëkurën?" – was schon nicht geholfen hat
+- „A doni që Dr. Gashi t'ju përgatisë edhe terapinë 4-javore?" – ob er
+  anfangen will
+
+Die Seite zeigt diese Antworten SELBST: eine Karte „Çfarë na thatë"
+(Anliegen, Dauer, was er probiert hat – in seinen Worten –, dazu ein
+fester Satz, warum diese Therapie anders ist als das Probierte) und
+über dem Kaufknopf sein eigenes „Po". Deshalb gilt für shitja:
+
+1. DIE KARTE NICHT WIEDERHOLEN. Kein Satz zählt auf, was er probiert
+   hat, und keiner erklärt, warum Cremes aus der Barnatore oder
+   Produkte aus dem Internet nicht geholfen haben – das steht schon
+   da. Nie eine Marke oder ein Produkt eines Dritten, nie abwertend.
+2. shqetesimi VERBINDET sein Anliegen mit dem Befund: sein Anliegen in
+   seinen Worten, die Dauer, wenn er sie nannte, dann was Dr. Gashi
+   dazu festgestellt hat und dass wir es beseitigen.
+   Muster (nie wörtlich):
+   „Ju na thatë se puçrrat ju shqetësojnë prej mbi një viti. E pamë
+   edhe në fotot tuaja: akne aktive në mjekër – dhe e largojmë." Stützt der Befund
+   sein Anliegen nicht, nenne den Befund, der wirklich da ist – nie
+   etwas Erfundenes. Höchstens 2 Sätze, zusammen höchstens 35 Wörter.
+3. pse_tani nutzt die Dauer, wenn sie etwas sagt – nur, was Teil A
+   stützt: „Prej mbi një viti" → was so lange bleibt, geht nicht von
+   selbst weg; „Vjen e shkon" → ohne Plan kommt es wieder;
+   „Disa javë" → jetzt ist der beste Zeitpunkt, bevor Spuren bleiben.
+4. whatsapp richtet sich nach seiner Bereitschaft:
+   - „Po, dua ta filloj sa më shpejt": die Therapie ist fertig, er kann
+     heute beginnen – sag genau das.
+   - „Po, kur ta shoh çka më duhet": sag klar, WAS er braucht – die 1–2
+     wichtigsten Befunde und dass die Therapie genau dafür
+     zusammengestellt ist.
+   - „Së pari dua vetëm analizën": die Analyse ist fertig; zuerst der
+     wichtigste Befund, die Therapie als der nächste Schritt – ruhig,
+     ohne Druck, ohne „sot".
+   - keine Antwort: wie unten beschrieben.
+5. SICHERHEIT: „Terapi te mjeku ose Roaccutane" ist eine
+   Sicherheitsangabe wie Isotretinoin oder eine laufende Behandlung.
+   Sie wirkt in der Produktentscheidung (Schritt 13), nie im Text.
+
+==================================================
 TEIL B – DIE THERAPIESEITE (Block "shitja")
 ==================================================
 
@@ -576,7 +626,8 @@ hyrja
 
 shqetesimi
   Nennt der Patient in der Anamnese selbst etwas, das die Analyse
-  stützt: EIN Satz in seinen Worten. Muster: „Ju na thatë se ju
+  stützt: in seinen Worten (siehe DIE ANTWORTEN VOR DEM KAUF, Punkt 2 –
+  mit Dauer höchstens 2 Sätze). Muster: „Ju na thatë se ju
   shqetëson <x>. E pamë edhe në fotot tuaja – dhe e largojmë." Sonst "".
 
 problemet[] (1–3, in Prioritätsreihenfolge)
@@ -791,6 +842,9 @@ Therapie:
    shitja.produktet, jedes mit mindestens einer Karte?
 6. Jede Zuordnung „→ für:" hat ihre Karte?
 7. Sicherheitsangaben der Anamnese beachtet?
+7b. Antworten vor dem Kauf: shqetesimi verbindet Anliegen und Befund,
+    nichts aus der Karte „Çfarë na thatë" wiederholt, whatsapp passt
+    zu seiner Bereitschaft?
 
 Texte:
 8. Jeder Text folgt Befund → Bedeutung → Lösung?
