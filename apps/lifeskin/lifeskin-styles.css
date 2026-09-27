@@ -722,8 +722,12 @@ p { margin: 0; }
   .ls-wahl[data-viele] { gap: 5px; }
   .ls-wahl[data-viele] .ls-wahl__knopf { min-height: 40px; padding: 7px 14px; font-size: 15px; }
 }
-@media (max-height: 600px) {
-  .ls-wahl[data-viele] .ls-wahl__knopf { min-height: 36px; padding: 6px 12px; }
+/* Noch niedriger (360 x 640, iPhone SE 1. Generation): zwei Spalten -
+ * sonst liegen bei acht Antworten die letzten ganz unter dem Knopf, und
+ * wer sie nicht sieht, waehlt eine falsche. */
+@media (max-height: 660px) {
+  .ls-wahl[data-viele] { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .ls-wahl[data-viele] .ls-wahl__knopf { min-height: 44px; padding: 8px 10px; font-size: 14px; line-height: 1.25; }
 }
 
 /* Vorbereitung */
