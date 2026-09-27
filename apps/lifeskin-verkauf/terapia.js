@@ -386,11 +386,16 @@ export class Terapia {
     const name = String(d.name || "").trim();
     const mitProdukten = this.produkte.length > 0;
 
-    schreibe($("#t-kodi"), d.code ? `Analiza ${d.code}` : "");
+
     document.documentElement.lang = d.sprache === "de" ? "de" : "sq";
 
     // 1. Oben: was die Anzeige versprochen hat.
-    schreibe($("#t-syri"), mitProdukten ? "Terapia juaj është gati" : "Analiza juaj është gati");
+    // Ueber dem Titel die Analysenummer mit gruenem Punkt (statt "Terapia
+    // juaj është gati" - das sagt der Titel darunter schon). Ohne Nummer
+    // bleibt der alte Satz.
+    const syri = $("#t-syri");
+    syri?.classList.toggle("syri--status", Boolean(d.code));
+    schreibe(syri, d.code ? `Analiza ${d.code}` : (mitProdukten ? "Terapia juaj është gati" : "Analiza juaj është gati"));
     schreibe($("#t-titulli"), mitProdukten
       ? (name ? `${name}, kjo është terapia juaj për ${WOCHEN} javë.` : `Terapia juaj për ${WOCHEN} javë është gati.`)
       : (name ? `${name}, analiza juaj është gati.` : "Analiza juaj është gati."));
