@@ -430,6 +430,18 @@
     window.addEventListener("resize", punkteSetzen, { passive: true });
     document.addEventListener("lifeskin:raste", punkteAufbauen);
     punkteAufbauen();
+
+    /* Ein Fall im ersten Blick (.blick) fuehrt hierher - der Link
+       springt zum Abschnitt, und die Bahn stellt denselben Fall vorn
+       hin. Ohne Animation in der Bahn: Die Seite gleitet schon. */
+    document.addEventListener("click", function (ereignis) {
+      var fall = ereignis.target && ereignis.target.closest
+        ? ereignis.target.closest("[data-blick]")
+        : null;
+      if (!fall) return;
+      var ziel = karten[Number(fall.getAttribute("data-blick")) || 0];
+      if (ziel) bahn.scrollLeft = ziel.offsetLeft - karten[0].offsetLeft;
+    });
   }
 
   /* ── 7. Alle Knoepfe fuehren an dieselbe Stelle ──────────────────

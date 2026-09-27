@@ -52,6 +52,19 @@ export function rastiKarte(r) {
           </article>`;
 }
 
+// Dieselben Faelle als Reihe im ersten Blick (index.html, .blick):
+// nur die zwei Aufnahmen, der Link nennt den Fall.
+export function blickFall(r, i) {
+  const bild = (src) => rastiBild(src, "");
+  const name = [r.emri, r.gjetja].filter(Boolean).join(": ") || `Rasti ${i + 1}`;
+  return `
+            <a class="blick__fall" href="#rezultatet" data-blick="${i}" aria-label="${e(name)}, para dhe pas 28 ditësh">
+              ${bild(r.para)}
+              ${bild(r.pas)}
+              <span class="blick__marke" aria-hidden="true">PARA · PAS</span>
+            </a>`;
+}
+
 async function start() {
   const bahn = document.getElementById("rastet");
   if (!bahn) return;
@@ -64,12 +77,19 @@ async function start() {
   if (!liste) return;
   const faelle = await rasteMitBildern(rasteFuer(liste, "landing"), BASIS);
   const abschnitt = document.getElementById("rezultatet");
+  const blick = document.getElementById("blick");
   if (!faelle.length) {
     if (abschnitt) abschnitt.hidden = true;
+    const reihe = blick?.closest(".blick");
+    if (reihe) reihe.hidden = true;
     return;
   }
   bahn.innerHTML = faelle.map(rastiKarte).join("");
   bahn.scrollLeft = 0;
+  if (blick) {
+    blick.innerHTML = faelle.map(blickFall).join("");
+    blick.scrollLeft = 0;
+  }
   // Die Punkte darunter zaehlen die Karten neu (landing.js).
   document.dispatchEvent(new CustomEvent("lifeskin:raste"));
 }
