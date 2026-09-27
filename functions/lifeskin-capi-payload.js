@@ -38,10 +38,17 @@ function sekundenAus(iso) {
 // beide leer (Pixel blockiert), wird trotzdem gemeldet: Meta entscheidet
 // dann selbst, was es damit anfaengt, und ein Kauf ohne Zuordnung ist
 // immer noch besser als kein Kauf.
-function besucherDaten(order) {
+//
+// DIE KLICK-KENNUNG AUS DEM ERSTEN BESUCH. Gekauft wird meist Tage spaeter
+// in Safari/Chrome (WhatsApp-Link) - dort gibt es kein _fbc, und ohne es
+// ordnet Meta den Kauf keiner Anzeige zu. Der Trichter hat es beim ersten
+// Besuch in der Herkunft gespeichert (source.fbc, lifeskin-session.js);
+// liegt am Kauf keines, wird dieses genommen. Das des Kauf-Browsers geht
+// vor: Es ist das frischere, wenn der Kauf selbst aus einer Anzeige kam.
+function besucherDaten(order, herkunft = null) {
   const daten = {};
   const fbp = text(order?.fbp);
-  const fbc = text(order?.fbc);
+  const fbc = text(order?.fbc) || text(herkunft?.fbc);
   if (fbp) daten.fbp = fbp;
   if (fbc) daten.fbc = fbc;
   return daten;
@@ -64,7 +71,7 @@ function baueKauf(sitzung, { quelleUrl = "https://mnyra.com/lifeskin" } = {}) {
     event_id: text(order.orderId),
     action_source: "website",
     event_source_url: quelleUrl,
-    user_data: besucherDaten(order),
+    user_data: besucherDaten(order, sitzung?.source),
     custom_data: {
       currency: "EUR",
       value: Number.isFinite(betrag) && betrag > 0 ? betrag : 0,

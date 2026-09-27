@@ -156,7 +156,43 @@ function kennung() {
 // Ohne diese vier Felder laesst sich spaeter nicht sagen, welche Anzeige
 // verkauft hat und welche nur Klicks gebracht hat - und genau das ist die
 // Frage, die ueber das Werbebudget entscheidet.
-export function herkunftAuslesen(ort = globalThis.location, verweis = globalThis.document?.referrer) {
+// DIE KLICK-KENNUNG DER ANZEIGE (_fbc) - fuer die Zuordnung des Kaufs.
+//
+// Gekauft wird Tage spaeter, nach dem WhatsApp-Link, in Safari oder Chrome -
+// nicht im Instagram-Fenster, in dem die Anzeige geklickt wurde. Dort gibt
+// es die Klick-Kennung nicht mehr, und Meta kann den Kauf keiner Anzeige
+// zuordnen. Deshalb wird sie HIER, beim ersten Besuch, mit der Herkunft
+// gespeichert; die Conversions API nimmt sie beim Kauf
+// (functions/lifeskin-capi-payload.js).
+//
+// Woher sie kommt, in dieser Reihenfolge: der Parameter fbclid in der
+// Adresse (Meta haengt ihn an jeden Anzeigenklick), sonst der Keks _fbc,
+// den Metas Skript selbst setzt, sonst der Tab-Speicher (ein Neuladen ohne
+// fbclid soll sie nicht verlieren - die Herkunft wird dann neu geschrieben).
+// Format nach Meta: fb.1.<Millisekunden>.<fbclid>.
+//
+// Keine Person, keine Nummer: eine Kennung, die Meta vergeben hat und die
+// an Meta zurueckgeht - derselbe Grundsatz wie beim Pixel.
+const FBC_SCHLUESSEL = "lifeskin:fbc";
+
+export function klickKennung({ suche, keks = "", speicher = null, jetzt = Date.now() } = {}) {
+  const sauber = (wert) => String(wert || "").trim().slice(0, 500);
+  const fbclid = sauber(suche?.get?.("fbclid"));
+  let fbc = fbclid && /^[\w.-]+$/.test(fbclid) ? `fb.1.${jetzt}.${fbclid}` : "";
+  if (!fbc) {
+    const treffer = String(keks || "").split(/;\s*/).find((teil) => teil.startsWith("_fbc="));
+    fbc = sauber(treffer ? decodeURIComponent(treffer.slice(5)) : "");
+  }
+  if (!fbc) {
+    try { fbc = sauber(speicher?.getItem?.(FBC_SCHLUESSEL)); } catch { fbc = ""; }
+  }
+  if (!/^fb\.\d\.\d+\./.test(fbc)) return "";
+  try { speicher?.setItem?.(FBC_SCHLUESSEL, fbc); } catch { /* ohne Speicher geht es auch */ }
+  return fbc;
+}
+
+export function herkunftAuslesen(ort = globalThis.location, verweis = globalThis.document?.referrer,
+  keks = globalThis.document?.cookie, speicher = (() => { try { return globalThis.sessionStorage; } catch { return null; } })()) {
   let suche;
   try {
     suche = new URLSearchParams(ort?.search || "");
@@ -176,11 +212,17 @@ export function herkunftAuslesen(ort = globalThis.location, verweis = globalThis
   // eine neue Regel gebraucht - und bis die eingespielt ist, waere jeder
   // Testlauf still abgewiesen worden.
   const test = suche.get("test") === "1" || suche.get("test") === "true";
+  // In der Herkunft und nicht als eigenes Feld: source ist in den Regeln
+  // eine freie Karte (is map) - ein neues Feld auf oberster Ebene haette
+  // eine Regel gebraucht, und bis die ausgerollt ist, wiese hasOnly() die
+  // GANZE Sitzung ab.
+  const fbc = klickKennung({ suche, keks, speicher });
   return {
     utmSource: suche.get("utm_source") || (test ? "test" : ""),
     utmCampaign: suche.get("utm_campaign") || (test ? "test" : ""),
     utmContent: suche.get("utm_content") || "",
-    referrer: String(verweis || "").slice(0, 240)
+    referrer: String(verweis || "").slice(0, 240),
+    ...(fbc ? { fbc } : {})
   };
 }
 

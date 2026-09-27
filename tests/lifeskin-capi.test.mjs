@@ -248,3 +248,40 @@ test("Browser und Server meinen denselben Datensatz", async () => {
   assert.equal(capi.PIXEL_ID, LIFESKIN_PIXEL_ID,
     "Der Server meldet an einen anderen Datensatz als der Browser");
 });
+
+// ══ DIE KLICK-KENNUNG AUS DEM ERSTEN BESUCH (27.09.) ═════════════════
+//
+// Gekauft wird Tage spaeter in Safari/Chrome (WhatsApp-Link). Dort gibt es
+// kein _fbc - der Trichter hat es beim ersten Besuch in source.fbc
+// gespeichert, und die Conversions API nimmt es von dort.
+test("fehlt _fbc am Kauf, kommt es aus der Herkunft des ersten Besuchs", () => {
+  const sitzung = {
+    step: "ordered",
+    source: { utmCampaign: "x", fbc: "fb.1.170.IwAR0abc", referrer: "https://l.instagram.com/" },
+    order: { orderId: "o1", total: 39, fbp: "fb.1.2.3" }
+  };
+  assert.deepEqual(capi.baueKauf(sitzung).user_data, { fbp: "fb.1.2.3", fbc: "fb.1.170.IwAR0abc" });
+  // Das des Kauf-Browsers geht vor.
+  const frisch = { ...sitzung, order: { ...sitzung.order, fbc: "fb.1.999.neu" } };
+  assert.equal(capi.baueKauf(frisch).user_data.fbc, "fb.1.999.neu");
+  // Aus der Herkunft geht NUR fbc mit - kein utm, kein Verweis.
+  assert.deepEqual(Object.keys(capi.baueKauf(sitzung).user_data).sort(), ["fbc", "fbp"]);
+  // Und die eventID bleibt die des Browsers (keine Doppelzaehlung).
+  assert.equal(capi.baueKauf(sitzung).event_id, "o1");
+});
+
+test("der Trichter merkt sich die Klick-Kennung in der Herkunft", async () => {
+  const { herkunftAuslesen, klickKennung } = await import("../apps/lifeskin/lifeskin-session.js");
+  const speicher = { d: {}, getItem(k) { return this.d[k]; }, setItem(k, v) { this.d[k] = v; } };
+  const erst = herkunftAuslesen({ search: "?utm_campaign=k1&fbclid=IwAR0abc_D-1" }, "", "", speicher);
+  assert.match(erst.fbc, /^fb\.1\.\d+\.IwAR0abc_D-1$/);
+  assert.equal(erst.utmCampaign, "k1");
+  // Neuladen ohne fbclid: aus dem Tab-Speicher, nicht verloren.
+  assert.equal(herkunftAuslesen({ search: "" }, "", "", speicher).fbc, erst.fbc);
+  // Metas eigener Keks, wenn es keinen Parameter gibt.
+  assert.equal(klickKennung({ suche: new URLSearchParams(""), keks: "_fbp=fb.1.1.2; _fbc=fb.1.99.zzz" }), "fb.1.99.zzz");
+  // Kein Anzeigenklick: kein Feld (nicht leer - gar keins).
+  assert.ok(!("fbc" in herkunftAuslesen({ search: "?utm_source=ig" }, "", "", null)));
+  // Unsinn im Parameter wird nicht gespeichert.
+  assert.equal(klickKennung({ suche: new URLSearchParams("fbclid=<script>") }), "");
+});
