@@ -1159,7 +1159,17 @@ function fallMarken(sitzung, fach = "", bericht = null) {
   // zuerst nachgeht. Nach der Bestellung verschwindet die Marke.
   const gati = sitzung.anamnese?.gatishmeria === "tani" && !sitzung.hatBestellt
     ? `<span class="heart-lifeskin-pill heart-lifeskin-pill--gati heart-lifeskin-pill--an" title="Frage 4: Po, dua ta filloj sa më shpejt">Will starten</span>` : "";
-  const reihe = gati + artMarke(sitzung) + landingMarke(sitzung)
+  // AUTO: Der Server hat den Fall analysiert und freigegeben - oder ihn an
+  // euch zurueckgegeben (vorbereitung, lifeskin-auto.js).
+  const vorbereitung = bericht?.vorbereitung?.stand;
+  const auto = vorbereitung === "fertig"
+    ? `<span class="heart-lifeskin-pill heart-lifeskin-pill--frei heart-lifeskin-pill--an" title="Automatisch analysiert und freigegeben - bitte kurz ansehen">Auto</span>`
+    : vorbereitung === "laeuft"
+      ? `<span class="heart-lifeskin-pill heart-lifeskin-pill--bereit heart-lifeskin-pill--an" title="Die automatische Analyse läuft gerade">Auto läuft</span>`
+      : vorbereitung === "manuell"
+        ? `<span class="heart-lifeskin-pill heart-lifeskin-pill--gati heart-lifeskin-pill--an" title="${escapeHtml(AUTO_GRUND[bericht?.vorbereitung?.code] || "Automatik hat an euch übergeben")}">Auto → von Hand</span>`
+        : "";
+  const reihe = auto + gati + artMarke(sitzung) + landingMarke(sitzung)
     + (sitzung.nurBericht ? `<span class="heart-lifeskin-pill heart-lifeskin-pill--paskanim heart-lifeskin-pill--an" title="Die Sitzung kam nicht an, der Bericht schon - Kontaktdaten fehlen">nur Bericht</span>` : "")
     + marken.map((m) => `<span class="heart-lifeskin-pill heart-lifeskin-pill--${m.id}${m.an ? " heart-lifeskin-pill--an" : ""}">${escapeHtml(m.label)}</span>`).join("");
 
@@ -3160,6 +3170,36 @@ function renderAnbieter(anbieter, status) {
     </section>`;
 }
 
+// WARUM DIE AUTOMATIK EINEN FALL ZURUECKGEGEBEN HAT (vorbereitung.code).
+const AUTO_GRUND = Object.freeze({
+  limit: "Tageslimit erreicht",
+  pruefung: "Antwort bestand die Prüfung nicht (kein Befund, keine Messwerte, Abklärung nötig oder kein Produkt)",
+  fotos: "Keine Fotos angekommen",
+  fehler: "Fehler bei der Anfrage - siehe Protokoll"
+});
+
+// DER SCHALTER "AUTO" - oben in beiden Tabs, denn er gilt fuer jeden neuen
+// Fall, egal ueber welche Landingpage er kam.
+export function renderAutoSchalter(konfig = {}, status = "") {
+  const an = konfig?.autoAn === true;
+  return `
+    <section class="heart-lifeskin-block heart-auto${an ? " heart-auto--an" : ""}">
+      <div class="heart-auto__zeile">
+        <div>
+          <h3 class="heart-lifeskin-block__titel">Auto-Analyse</h3>
+          <p class="heart-lifeskin-block__fuss">${an
+            ? "An: Neue Fälle werden automatisch analysiert und freigegeben (2–5 Min.)."
+            : "Aus: Neue Fälle warten auf euch, wie bisher."}</p>
+        </div>
+        <button type="button" class="heart-auto__schalter" role="switch" aria-checked="${an}"
+                data-action="lifeskin-auto-schalten" ${status === "laeuft" ? "disabled" : ""}>
+          <span class="heart-auto__knopf" aria-hidden="true"></span>
+          <span class="heart-auto__wort">${an ? "Auto" : "Aus"}</span>
+        </button>
+      </div>
+    </section>`;
+}
+
 // Der Zustand eines Tabs: Faelle, eigene Tests und Begleitfaelle nur aus
 // diesem Weg. Begleitfaelle haengen ueber ihre Kennung an der Sitzung; im
 // alten Tab bleibt alles, was nicht ausdruecklich Lifeskin 2 ist.
@@ -3277,6 +3317,7 @@ export function renderLifeskin(zustand) {
           Noch keine Analyse. Die Zahlen fuellen sich mit dem ersten Besucher
           auf <b>mnyra.com/${weg ? escapeHtml(weg) : "lifeskin"}</b>.
         </p>` : ""}
+      ${renderAutoSchalter(zustand.konfig, zustand.autoStatus)}
       ${weg === "lifeskin2" ? renderLs2Weg(baueLs2Weg(imBlick, zustand.berichte || {}), zeitraum) : ""}
       ${renderKacheln(zahlen, zeitraum)}
       ${zustand.liveFehler

@@ -406,6 +406,17 @@ export async function speichereAnbieter(anbieter = {}) {
   return sauber;
 }
 
+// DER SCHALTER "AUTO" (docs/lifeskin-auto.md).
+//
+// Er steht in config/ablauf und wird von der Function lifeskinAutoAnalyse
+// bei jedem neuen Fall gelesen. An: neue Faelle werden automatisch
+// analysiert und freigegeben. Aus: alles wie von Hand.
+export async function speichereAblauf({ autoAn = false } = {}) {
+  const daten = { autoAn: autoAn === true, autoGeaendertAt: new Date().toISOString() };
+  await setDoc(doc(db, "lifeskin", TENANT, "config", "ablauf"), daten, { merge: true });
+  return daten;
+}
+
 // ══ DIE BILDER DER LANDINGPAGE ══════════════════════════════════════
 //
 // Je Produkt ein Dokument, und es liegt in "config" - nicht in einer

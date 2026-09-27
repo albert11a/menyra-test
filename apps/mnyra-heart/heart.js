@@ -56,7 +56,7 @@ import {
 import { landingOpenedSince } from "./heart-landing-render.js";
 import { createNdjekjaOperationen } from "./heart-lifeskin-ndjekja.js";
 import { ladeLifeskin, ladeLifeskinSeit, horcheLive, ladeFotos, ladeErstesFoto, loescheAlleSitzungen, loescheSitzung, setzeBerichtMarke, speichereProdukt, loescheProdukt, gibBerichtFrei,
-  ladeBericht, setzeVersand, speichereAnbieter,
+  ladeBericht, setzeVersand, speichereAnbieter, speichereAblauf,
   ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX,
   speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder,
   ladeMedien, speichereMedien, speichereMedium, loescheMedium, ladeKommentare, setzeKommentarVerborgen, loescheKommentar, schreibeKommentare } from "./heart-lifeskin-adapter.js";
@@ -1933,6 +1933,24 @@ async function lifeskinProdukteBizele() {
 // LEER IST ERLAUBT und kein Fehler: Wer alle drei Felder leert, nimmt den
 // Block auf der Befundseite wieder weg. Das muss gehen - sonst waere ein
 // einmal eingetragener Anbieter nicht mehr zu entfernen.
+// DER SCHALTER "AUTO": sofort sichtbar umgelegt, dann gespeichert; geht
+// das Speichern schief, springt er zurueck.
+async function lifeskinAutoSchalten() {
+  const vorher = store.getState().lifeskin?.konfig || {};
+  const an = vorher.autoAn !== true;
+  actions.patchLifeskin({ konfig: { ...vorher, autoAn: an }, autoStatus: "laeuft" });
+  try {
+    await speichereAblauf({ autoAn: an });
+    actions.patchLifeskin({ autoStatus: "" });
+    setToast("Auto", an
+      ? "An. Neue Fälle werden automatisch analysiert und freigegeben."
+      : "Aus. Neue Fälle warten wieder auf euch.", "success");
+  } catch (fehler) {
+    actions.patchLifeskin({ konfig: vorher, autoStatus: "" });
+    setToast("Auto", fehler?.message || "Speichern fehlgeschlagen.", "danger");
+  }
+}
+
 async function speichereLifeskinAnbieter() {
   const lies = (name) =>
     document.querySelector(`[data-anbieterfeld="${name}"]`)?.value ?? "";
@@ -3757,6 +3775,7 @@ const operations = {
   closeLifeskinProdukt() { actions.patchLifeskin({ produktOffen: "", produktEntwurf: null }); },
   speichereLifeskinProdukt() { return speichereLifeskinProdukt(); },
   speichereLifeskinAnbieter() { return speichereLifeskinAnbieter(); },
+  lifeskinAutoSchalten() { return lifeskinAutoSchalten(); },
   lifeskinProdukteBizele() { return lifeskinProdukteBizele(); },
   lifeskinProduktfoto(datei) { return lifeskinProduktfoto(datei); },
   lifeskinProduktfotoWeg() { lifeskinProduktfotoWeg(); },

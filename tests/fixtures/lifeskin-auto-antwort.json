@@ -1,0 +1,122 @@
+{
+  "schema_version": 3,
+  "vleresimi": {
+    "statusi": "i_vleresueshem"
+  },
+  "raporti": {
+    "fotot": 1,
+    "parametrat_e_vleresuar": 9,
+    "parametrat_me_gjetje": 3,
+    "zonat_e_kontrolluara": 5,
+    "zonat_me_ndryshime": 2
+  },
+  "ekzaminimi": "Një foto e ballit dhe faqeve në dritë të mirë.",
+  "gjetjet": {
+    "permbledhja": "Puçrra aktive të lehta në ballë dhe faqe, me pore të bllokuara.",
+    "gjetja_kryesore": "puçrrat aktive",
+    "gjetja_dyta": "poret e bllokuara",
+    "sipas_zonave": [
+      {
+        "zona": "Balli",
+        "teksti": "Disa puçrra të vogla."
+      }
+    ]
+  },
+  "parametrat": [
+    {
+      "id": "lezionet",
+      "emri": "Puçrrat aktive",
+      "thjeshte": "Disa puçrra të vogla",
+      "vlera": "8–10",
+      "shkalla": 2,
+      "grada": "e lehtë",
+      "termi": "papula",
+      "nga_vjen": "pore të bllokuara"
+    },
+    {
+      "id": "poret",
+      "emri": "Poret e bllokuara",
+      "thjeshte": "Pika të zeza në hundë",
+      "vlera": "të dukshme",
+      "shkalla": 2,
+      "grada": "e lehtë",
+      "termi": "komedone",
+      "nga_vjen": "yndyrë"
+    },
+    {
+      "id": "skuqja",
+      "emri": "Skuqja",
+      "thjeshte": "Pak skuqje",
+      "vlera": "lokale",
+      "shkalla": 1,
+      "grada": "shumë e lehtë",
+      "termi": "eritemë",
+      "nga_vjen": "acarim"
+    }
+  ],
+  "diagnoza": {
+    "id": "acne_vulgaris",
+    "emri": "Akne",
+    "latinisht": "Acne vulgaris",
+    "niveli": 1,
+    "niveli_emri": "e lehtë"
+  },
+  "shpjegimi": [
+    "Poret bllokohen nga yndyra.",
+    "Bakteret shkaktojnë acarim."
+  ],
+  "pa_kujdes": {
+    "zbehet": "Skuqja mund të zbehet.",
+    "nuk_zbehet": "Puçrrat e reja vazhdojnë.",
+    "pas_6_muajsh": "Mund të mbeten njolla."
+  },
+  "synimi_28": "Më pak puçrra dhe pore më të pastra.",
+  "keshilla": "Mos i shtypni puçrrat.",
+  "termat": [],
+  "nevojat": [
+    {
+      "roli": "kryesor",
+      "produkt_id": "lf-acne",
+      "gjetja": "puçrrat aktive",
+      "kerkon": "qetësim",
+      "teksti": "LF ACNE qetëson puçrrat aktive në ballë."
+    },
+    {
+      "roli": "mbeshtetes",
+      "produkt_id": "lf-moistur",
+      "gjetja": "lëkura e thatë nga trajtimi",
+      "kerkon": "lagështi",
+      "teksti": "LF MOISTUR e mban lëkurën të qetë gjatë trajtimit."
+    }
+  ],
+  "shitja": {
+    "hyrja": "Për **puçrrat aktive** — dy produkte dhe një plan i qartë.",
+    "shqetesimi": "Na thatë se ju shqetësojnë puçrrat.",
+    "problemet": [
+      {
+        "gjetja": "Puçrrat aktive",
+        "ku": "në ballë",
+        "produkt_id": "lf-acne",
+        "zgjidhja": "LF ACNE qetëson puçrrat."
+      }
+    ],
+    "produktet": [
+      {
+        "produkt_id": "lf-acne",
+        "per_ju": [
+          "Qetëson puçrrat",
+          "Pastron poret"
+        ]
+      },
+      {
+        "produkt_id": "lf-moistur",
+        "per_ju": [
+          "Mban lagështinë"
+        ]
+      }
+    ],
+    "dita_28": "Pas 4 javësh krahasojmë foton.",
+    "pse_tani": "Sa më herët, aq më pak njolla.",
+    "whatsapp": "Analiza juaj tregon puçrra të lehta."
+  }
+}

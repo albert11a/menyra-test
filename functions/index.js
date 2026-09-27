@@ -4004,6 +4004,8 @@ exports.notifyCeoOnLifeskinSessionWrite = functions
 // ausgefallene Messung darf die Meldung an Dr. Gashi nicht mitreissen -
 // und andersherum genauso.
 Object.assign(exports, require("./lifeskin-capi"));
+// Der Auto-Modus der Analyse (docs/lifeskin-auto.md) - nur mit Schalter in Heart.
+Object.assign(exports, require("./lifeskin-auto"));
 
 const { migrateEmailsToMnyra } = require("./email-domain-migration");
 exports.migrateEmailsToMnyra = migrateEmailsToMnyra;

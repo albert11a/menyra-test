@@ -1,0 +1,303 @@
+[
+  {
+    "id": "anliegen",
+    "titel": {
+      "sq": "Çka ju shqetëson më së shumti?",
+      "de": "Was stört Sie am meisten?"
+    },
+    "antworten": [
+      {
+        "id": "pucrrat",
+        "text": {
+          "sq": "Puçrrat",
+          "de": "Pickel"
+        }
+      },
+      {
+        "id": "poret",
+        "text": {
+          "sq": "Poret e mëdha",
+          "de": "Große Poren"
+        }
+      },
+      {
+        "id": "shkelqimi",
+        "text": {
+          "sq": "Shkëlqimi",
+          "de": "Glanz"
+        }
+      },
+      {
+        "id": "njollat",
+        "text": {
+          "sq": "Njollat e errëta",
+          "de": "Dunkle Flecken"
+        }
+      },
+      {
+        "id": "skuqja",
+        "text": {
+          "sq": "Skuqja edhe ndjeshmëria",
+          "de": "Rötung und Empfindlichkeit"
+        }
+      },
+      {
+        "id": "thate",
+        "text": {
+          "sq": "Lëkura e thatë",
+          "de": "Trockene Haut"
+        }
+      },
+      {
+        "id": "rrudhat",
+        "text": {
+          "sq": "Rrudhat edhe elasticiteti",
+          "de": "Falten und Elastizität"
+        }
+      },
+      {
+        "id": "nukEdi",
+        "text": {
+          "sq": "Nuk e di",
+          "de": "Weiß ich nicht"
+        }
+      }
+    ]
+  },
+  {
+    "id": "mosha",
+    "titel": {
+      "sq": "Sa vjeç jeni?",
+      "de": "Wie alt sind Sie?"
+    },
+    "antworten": [
+      {
+        "id": "18-24",
+        "text": {
+          "sq": "18-24",
+          "de": "18-24"
+        }
+      },
+      {
+        "id": "25-34",
+        "text": {
+          "sq": "25-34",
+          "de": "25-34"
+        }
+      },
+      {
+        "id": "35-44",
+        "text": {
+          "sq": "35-44",
+          "de": "35-44"
+        }
+      },
+      {
+        "id": "45-54",
+        "text": {
+          "sq": "45-54",
+          "de": "45-54"
+        }
+      },
+      {
+        "id": "55+",
+        "text": {
+          "sq": "55+",
+          "de": "55+"
+        }
+      }
+    ]
+  },
+  {
+    "id": "lekura",
+    "titel": {
+      "sq": "Qysh e ndjeni lëkurën?",
+      "de": "Wie fühlt sich Ihre Haut an?"
+    },
+    "antworten": [
+      {
+        "id": "thate",
+        "text": {
+          "sq": "E thatë",
+          "de": "Trocken"
+        }
+      },
+      {
+        "id": "normale",
+        "text": {
+          "sq": "Normale",
+          "de": "Normal"
+        }
+      },
+      {
+        "id": "yndyrshme",
+        "text": {
+          "sq": "E yndyrshme, shkëlqen",
+          "de": "Fettig, glänzt"
+        }
+      },
+      {
+        "id": "perzier",
+        "text": {
+          "sq": "E përzier",
+          "de": "Mischhaut"
+        }
+      }
+    ]
+  },
+  {
+    "id": "kohezgjatja",
+    "titel": {
+      "sq": "Prej sa kohe e keni?",
+      "de": "Seit wann haben Sie das?"
+    },
+    "antworten": [
+      {
+        "id": "jave",
+        "text": {
+          "sq": "Disa javë",
+          "de": "Einige Wochen"
+        }
+      },
+      {
+        "id": "muaj",
+        "text": {
+          "sq": "Disa muaj",
+          "de": "Einige Monate"
+        }
+      },
+      {
+        "id": "vit",
+        "text": {
+          "sq": "Mbi një vit",
+          "de": "Über ein Jahr"
+        }
+      },
+      {
+        "id": "vjenShkon",
+        "text": {
+          "sq": "Vjen e shkon",
+          "de": "Kommt und geht"
+        }
+      }
+    ]
+  },
+  {
+    "id": "kujdesi",
+    "titel": {
+      "sq": "A ju përket ndonjëra prej këtyre?",
+      "de": "Trifft etwas davon zu?"
+    },
+    "antworten": [
+      {
+        "id": "asnjera",
+        "text": {
+          "sq": "Asnjëra",
+          "de": "Nichts davon"
+        }
+      },
+      {
+        "id": "shtatzeni",
+        "text": {
+          "sq": "Jam shtatzënë ose jap gji",
+          "de": "Schwanger oder stillend"
+        }
+      },
+      {
+        "id": "izotretinoin",
+        "text": {
+          "sq": "Marr Roaccutane (izotretinoin), tash ose 6 muajt e fundit",
+          "de": "Roaccutane (Isotretinoin), jetzt oder in den letzten 6 Monaten"
+        }
+      },
+      {
+        "id": "trajtim",
+        "text": {
+          "sq": "Jam në trajtim te mjeku për lëkurën",
+          "de": "In ärztlicher Behandlung wegen der Haut"
+        }
+      }
+    ]
+  },
+  {
+    "id": "perdorimi",
+    "titel": {
+      "sq": "Çka keni provuar deri tash për lëkurën?",
+      "de": "Was haben Sie bisher für Ihre Haut probiert?"
+    },
+    "antworten": [
+      {
+        "id": "farmaci",
+        "text": {
+          "sq": "Kremë nga barnatorja",
+          "de": "Cremes aus der Apotheke"
+        }
+      },
+      {
+        "id": "rrjete",
+        "text": {
+          "sq": "Produkte nga Instagrami ose TikToku",
+          "de": "Produkte von Instagram oder TikTok"
+        }
+      },
+      {
+        "id": "larje",
+        "text": {
+          "sq": "Vetëm sapun ose xhel larës",
+          "de": "Nur Seife oder Waschgel"
+        }
+      },
+      {
+        "id": "shume",
+        "text": {
+          "sq": "Shumë produkte, pa rezultat",
+          "de": "Viele Produkte, ohne Ergebnis"
+        }
+      },
+      {
+        "id": "mjek",
+        "text": {
+          "sq": "Terapi te mjeku ose Roaccutane",
+          "de": "Behandlung beim Arzt oder Roaccutane"
+        }
+      },
+      {
+        "id": "asgje",
+        "text": {
+          "sq": "Asgjë deri tash",
+          "de": "Bisher nichts"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gatishmeria",
+    "titel": {
+      "sq": "A doni që Dr. Gashi t'ju përgatisë edhe terapinë 4-javore?",
+      "de": "Soll Dr. Gashi Ihnen auch die 4-Wochen-Therapie zusammenstellen?"
+    },
+    "antworten": [
+      {
+        "id": "tani",
+        "text": {
+          "sq": "Po, dua ta filloj sa më shpejt",
+          "de": "Ja, ich möchte so bald wie möglich anfangen"
+        }
+      },
+      {
+        "id": "pasi",
+        "text": {
+          "sq": "Po, kur ta shoh çka më duhet",
+          "de": "Ja, wenn ich sehe, was ich brauche"
+        }
+      },
+      {
+        "id": "analiza",
+        "text": {
+          "sq": "Së pari dua vetëm analizën",
+          "de": "Zuerst möchte ich nur die Analyse"
+        }
+      }
+    ]
+  }
+]

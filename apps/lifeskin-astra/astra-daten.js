@@ -122,6 +122,18 @@ export class AnalyseDaten {
     }
   }
 
+  // Der Schalter "Auto" aus Heart (config/ablauf, oeffentlich lesbar wie
+  // jede Konfiguration). Nur ob er an ist - sonst nichts.
+  async ablauf() {
+    try {
+      const antwort = await this.fetchFn(this.#adresse("config", "ablauf"));
+      if (!antwort.ok) return { autoAn: false };
+      return { autoAn: dokument(await antwort.json())?.autoAn === true };
+    } catch {
+      return { autoAn: false };
+    }
+  }
+
   // Die Miniaturen der Aufnahmen - das, was auf der Warteseite zu sehen ist.
   //
   // SIE LIEGEN NEBEN DEM BERICHT, nicht in der Sitzung. Die Fotos in

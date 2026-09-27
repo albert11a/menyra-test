@@ -25,12 +25,14 @@ import { Pixel, pixelKennungen } from "../lifeskin/lifeskin-pixel.js";
 import { AnalyseDaten, kennungAusPfad } from "./astra-daten.js";
 import { starteKlickpfad } from "../../shared/lifeskin-klickpfad.js";
 import { ikona, ikonenSetzen } from "./astra-ikona.js";
-import { TEXTE, TEXTE_WEGE, NDJEKJA, PYETJET, t, fuelle } from "./astra-texte.js";
+import { TEXTE, TEXTE_WEGE, TEXTE_AUTO, NDJEKJA, PYETJET, t, fuelle } from "./astra-texte.js";
 import { wegAusSuche, wegGueltig } from "../../shared/lifeskin-weg.js";
 import { standardText } from "./astra-texte-plan.js";
 import { meldungAnstossen } from "../../shared/lifeskin-melden.js";
 
 const $ = (auswahl) => document.querySelector(auswahl);
+// Wie lange die Warteseite im Auto-Modus auf das Ergebnis wartet.
+const AUTO_HOECHSTENS_MS = 10 * 60 * 1000;
 // Die Bestellung ist einer davon und kein Blatt ueber der Seite:
 // Vier Felder und die Tastatur des Telefons passen in kein Blatt am
 // unteren Rand.
@@ -240,6 +242,15 @@ export class Analiza {
   // Adresse (?weg=, haengt der Trichter an) oder aus dem Bericht (weg,
   // schreibt Heart beim Freigeben).
   get weg() { return wegAusSuche(this.ort?.search) || wegGueltig(this.daten?.weg); }
+  // AUTO-MODUS (docs/lifeskin-auto.md): Der Schalter in Heart ist an, der
+  // Fall wartet, und die Automatik hat ihn nicht an Heart zurueckgegeben.
+  // Nach 10 Minuten ohne Ergebnis gilt wieder die gewohnte Fassung - eine
+  // Seite, die ewig "2-5 minuta" sagt, waere schlimmer als keine Angabe.
+  get imAuto() {
+    const alter = Date.now() - (Date.parse(this.daten?.createdAt || "") || Date.now());
+    return this.autoAn === true && this.daten?.status === "wartet"
+      && this.daten?.vorbereitung?.stand !== "manuell" && alter < AUTO_HOECHSTENS_MS;
+  }
   get raport() { return this.daten?.raport || {}; }
   get preis() { return Number(this.daten?.preis) || STANDARD_KONFIG.setPreis; }
 
@@ -255,6 +266,7 @@ export class Analiza {
     const eigen = this.daten?.texte?.[schluessel];
     const roh = typeof eigen === "string" && eigen.trim()
       ? eigen.trim()
+      : this.imAuto && TEXTE_AUTO[this.weg]?.[schluessel] ? t(TEXTE_AUTO[this.weg][schluessel], this.sprache)
       : TEXTE_WEGE[this.weg]?.[schluessel] ? t(TEXTE_WEGE[this.weg][schluessel], this.sprache)
       : (TEXTE[schluessel] ? t(TEXTE[schluessel], this.sprache) : standardText(schluessel, this.sprache));
     return werte ? fuelle(roh, werte) : roh;
@@ -297,6 +309,8 @@ export class Analiza {
     // kam oft nicht mehr hinaus. Doppelt schadet nicht: Die Funktion
     // meldet jeden Fall genau einmal und nur, solange er frisch ist.
     if (this.daten.status === "wartet") meldungAnstossen(this.kennung);
+    // Der Schalter "Auto" - nur fuer einen wartenden Fall von Belang.
+    if (this.daten.status === "wartet") this.autoAn = (await this.quelle.ablauf()).autoAn === true;
     // DIE THERAPIESEITE IST DIE HAUPTSEITE (apps/lifeskin-verkauf).
     // Ein freigegebener Befund geht dorthin, bevor hier etwas gezaehlt
     // wird - sonst stuende jeder Besuch zweimal in Heart. Die alte
@@ -448,12 +462,14 @@ export class Analiza {
     const nachsehen = async () => {
       if (document.visibilityState !== "visible" || this.bestellt) return;
       const vorher = this.daten?.status;
+      const standVorher = this.daten?.vorbereitung?.stand;
       const frisch = await this.quelle.bericht();
-      if (!frisch || frisch.status === vorher) return;
+      if (!frisch || (frisch.status === vorher && frisch.vorbereitung?.stand === standVorher)) return;
       this.daten = frisch;
       await this.#zeichnen();
     };
-    this.takt = setInterval(nachsehen, 12000);
+    // Im Auto-Modus ist das Ergebnis in Minuten da - dann alle 5 Sekunden.
+    this.takt = setInterval(nachsehen, this.imAuto ? 5000 : 12000);
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") nachsehen();
     });
@@ -548,7 +564,8 @@ export class Analiza {
     schreibe($("#an-prittitel"), name
       ? this.text(wa ? "pritTitelWa" : "pritTitel", { name })
       : this.text(wa ? "pritTitelWaOhne" : "pritTitelOhne"));
-    schreibe($("#an-pritdauer"), t(wartetext(new Date().getHours()), this.sprache));
+    schreibe($("#an-pritdauer"), this.imAuto ? this.text("pritDauerAuto")
+      : t(wartetext(new Date().getHours()), this.sprache));
 
     schreibe($("#an-pritnumrimarke"), this.text("pritNumri"));
     schreibe($("#an-pritnumri"), this.daten.code || "—");

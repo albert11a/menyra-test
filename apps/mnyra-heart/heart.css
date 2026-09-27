@@ -10227,3 +10227,19 @@ html:where([data-heart-theme="tag"]),
 :where(html[data-heart-theme="tag"]) .heart-ndj-kw__leer {
   color: var(--heart-text-muted);
 }
+
+/* DER SCHALTER "AUTO" (docs/lifeskin-auto.md) - oben im Lifeskin-Tab. */
+.heart-auto__zeile { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.heart-auto__zeile .heart-lifeskin-block__fuss { margin: 2px 0 0; }
+.heart-auto__schalter {
+  flex: none; display: inline-flex; align-items: center; gap: 8px;
+  min-height: 44px; padding: 4px 14px 4px 4px; border-radius: 999px;
+  border: 1px solid var(--heart-border); background: var(--heart-surface-soft);
+  color: var(--heart-text-muted); font: inherit; font-weight: 700; cursor: pointer;
+}
+.heart-auto__knopf {
+  width: 36px; height: 36px; border-radius: 999px;
+  background: var(--heart-surface); box-shadow: var(--heart-shadow); border: 1px solid var(--heart-border);
+}
+.heart-auto--an .heart-auto__schalter { flex-direction: row-reverse; padding: 4px 4px 4px 14px; background: #17683f; border-color: #17683f; color: #fff; }
+.heart-auto__schalter[disabled] { opacity: .6; cursor: default; }

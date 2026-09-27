@@ -685,6 +685,10 @@ export function bindHeartEvents({
       await operations.speichereLifeskinProdukt?.();
       return;
     }
+    if (action === "lifeskin-auto-schalten") {
+      await operations.lifeskinAutoSchalten?.();
+      return;
+    }
     if (action === "lifeskin-anbieter-speichern") {
       await operations.speichereLifeskinAnbieter?.();
       return;

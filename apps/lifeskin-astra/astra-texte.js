@@ -731,3 +731,38 @@ export const PYETJET = Object.freeze([
     }
   }
 ]);
+
+// DIE WARTESEITE IM AUTO-MODUS (docs/lifeskin-auto.md).
+//
+// Der Schalter "Auto" in Heart ist an, und die Analyse entsteht in den
+// naechsten Minuten auf dieser Seite. Also sagt sie, was jetzt passiert:
+// dass die Analyse sich vorbereitet, wie lange es dauert, und dass die
+// Seite offen bleiben soll - sie springt von selbst auf das Ergebnis.
+// Gibt die Automatik den Fall an Heart zurueck (vorbereitung.stand
+// "manuell"), gilt wieder die gewohnte Fassung. Nach Weg wie TEXTE_WEGE.
+const AUTO_GEMEINSAM = Object.freeze({
+  pritDauerAuto: { sq: "Gati për 2–5 minuta", de: "Fertig in 2–5 Minuten" },
+  pritFrei: {
+    sq: "Ju lutem mos e mbyllni këtë faqe — rezultati hapet këtu vetë, zakonisht për 2–5 minuta.",
+    de: "Bitte lassen Sie diese Seite offen — das Ergebnis öffnet sich hier von selbst, meist in 2–5 Minuten."
+  },
+  pritWarum: { sq: "", de: "" }
+});
+export const TEXTE_AUTO = Object.freeze({
+  "": Object.freeze({
+    ...AUTO_GEMEINSAM,
+    pritTitel: { sq: "Analiza juaj po përgatitet sipas metodës së Dr. Gashit, {name}.", de: "Ihre Analyse wird nach der Methode von Dr. Gashi erstellt, {name}." },
+    pritTitelOhne: { sq: "Analiza juaj po përgatitet sipas metodës së Dr. Gashit.", de: "Ihre Analyse wird nach der Methode von Dr. Gashi erstellt." },
+    pritTitelWa: { sq: "Analiza juaj po përgatitet sipas metodës së Dr. Gashit, {name}.", de: "Ihre Analyse wird nach der Methode von Dr. Gashi erstellt, {name}." },
+    pritTitelWaOhne: { sq: "Analiza juaj po përgatitet sipas metodës së Dr. Gashit.", de: "Ihre Analyse wird nach der Methode von Dr. Gashi erstellt." },
+    pritHapi3: { sq: "Tani: analiza po përgatitet", de: "Jetzt: die Analyse entsteht" }
+  }),
+  lifeskin2: Object.freeze({
+    ...AUTO_GEMEINSAM,
+    pritTitel: { sq: "Po kontrollojmë sipas metodës së Dr. Gashit nëse terapia ju përshtatet, {name}.", de: "Wir prüfen nach der Methode von Dr. Gashi, ob die Therapie passt, {name}." },
+    pritTitelOhne: { sq: "Po kontrollojmë sipas metodës së Dr. Gashit nëse terapia ju përshtatet.", de: "Wir prüfen nach der Methode von Dr. Gashi, ob die Therapie passt." },
+    pritTitelWa: { sq: "Po kontrollojmë sipas metodës së Dr. Gashit nëse terapia ju përshtatet, {name}.", de: "Wir prüfen nach der Methode von Dr. Gashi, ob die Therapie passt, {name}." },
+    pritTitelWaOhne: { sq: "Po kontrollojmë sipas metodës së Dr. Gashit nëse terapia ju përshtatet.", de: "Wir prüfen nach der Methode von Dr. Gashi, ob die Therapie passt." },
+    pritHapi3: { sq: "Tani: kontrolli po bëhet", de: "Jetzt: die Prüfung läuft" }
+  })
+});

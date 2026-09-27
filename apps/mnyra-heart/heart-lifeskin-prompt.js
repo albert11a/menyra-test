@@ -16,7 +16,8 @@
 //   anamneza  Die Fragen nach der Aufnahme und die Antworten darauf,
 //             wortgleich so, wie der Patient sie gelesen hat.
 
-import { FRAGEN, t } from "../lifeskin/lifeskin-content.js";
+import { FRAGEN } from "../lifeskin/lifeskin-content.js";
+import { anamneseFuerPrompt as anamneseGemeinsam, promptV8Fuellen as promptGemeinsam } from "../../shared/lifeskin-prompt.js";
 
 // Die Fragen und Antworten, wie sie auf dem Bildschirm standen.
 //
@@ -30,41 +31,7 @@ import { FRAGEN, t } from "../lifeskin/lifeskin-content.js";
 // ohne sie muesste das Modell die Antwort erst uebersetzen, um sie
 // anzuwenden.
 export function anamneseFuerPrompt(anamnese) {
-  const antworten = anamnese || {};
-  const zeilen = [];
-  for (const frage of FRAGEN) {
-    // Getipptes ist keine Anamnese: Der Name steht in pacienti, die Nummer
-    // in ihrem eigenen Feld der Sitzung. Beide sagen nichts ueber die Haut,
-    // und die Nummer hat in einem Text, der an die Analyse geht, ohnehin
-    // nichts verloren.
-    //
-    // GEPRUEFT WIRD DIE ANTWORTLISTE, NICHT DER TYP. Hier stand
-    // `frage.typ === "text"`, und das war genau so lange richtig, bis die
-    // Nummer als `typ: "tel"` dazukam: Sie lief in frage.antworten.find()
-    // hinein, wo es keine Liste gibt, und riss das ganze Kopieren mit -
-    // "undefined is not an object". Ein Fall ohne Nummer ging weiter durch,
-    // ein Fall mit Nummer gar nicht mehr, und der Arzt sah nur eine
-    // Meldung. Wer die naechste getippte Frage dazunimmt, faellt nicht
-    // noch einmal darauf herein: Was keine Antworten zur Wahl hat, hat auch
-    // nichts zu uebersetzen.
-    if (!Array.isArray(frage.antworten)) continue;
-    const gegeben = antworten[frage.id];
-    const ids = (Array.isArray(gegeben) ? gegeben : [gegeben]).filter(Boolean);
-    if (!ids.length) continue;
-    const treffer = ids
-      .map((id) => frage.antworten.find((antwort) => antwort.id === id))
-      .filter(Boolean);
-    // Eine unbeantwortete Frage bleibt weg: Eine leere Antwort liest sich
-    // wie eine verneinte.
-    if (!treffer.length) continue;
-    zeilen.push({
-      pyetja: t(frage.titel, "sq"),
-      pyetja_de: t(frage.titel, "de"),
-      pergjigja: treffer.map((antwort) => t(antwort.text, "sq")).join("; "),
-      pergjigja_de: treffer.map((antwort) => t(antwort.text, "de")).join("; ")
-    });
-  }
-  return zeilen;
+  return anamneseGemeinsam(anamnese, FRAGEN);
 }
 
 // Die Vorlage fuellen.
@@ -119,51 +86,9 @@ export function promptFuellen(vorlage, sitzung) {
 // DIE PRODUKTE SIND DER GANZE KATALOG, nicht die angehakten. In v8 waehlt
 // die Analyse die Therapie selbst (Teil A, Schritt 13) - wer nur die
 // schon angehakten mitschickt, hat die Entscheidung vorweggenommen.
-const sq = (wert) => {
-  if (typeof wert === "string") return wert.trim();
-  if (wert && typeof wert === "object") return String(wert.sq || "").trim();
-  return "";
-};
-
-function produktFuerPrompt(p) {
-  const roh = p?.veprimi;
-  const liste = Array.isArray(roh) ? roh : (Array.isArray(roh?.sq) ? roh.sq : []);
-  return {
-    id: String(p?.id || ""),
-    emri: String(p?.name || p?.id || ""),
-    lloji: sq(p?.nenName) || String(p?.lloji || ""),
-    detyra: sq(p?.beschreibung) || sq(p?.kurztext),
-    veprimi: liste.map(sq).filter(Boolean),
-    koha: sq(p?.perdorimi?.koha),
-    kujdes: sq(p?.perdorimi?.kujdes)
-  };
-}
-
-// gewaehlt: die in Heart angehakten Produkte. Stehen welche da, ist die
-// Therapie entschieden, und der Prompt sagt das der Analyse - sonst
-// schreibt sie Texte fuer eine Auswahl, die die Seite nicht zeigt.
+// PROMPT v8/v9 - das Einsetzen steht in shared/lifeskin-prompt.js, damit
+// der Server (Auto-Modus) denselben Prompt baut. Hier mit den Fragen des
+// Trichters als Voreinstellung, unter dem alten Namen.
 export function promptV8Fuellen(vorlage, sitzung, produkte = [], gewaehlt = []) {
-  const fall = sitzung || {};
-  const anamnese = { pyetjet: anamneseFuerPrompt(fall.anamnese) };
-  const geschrieben = String(fall.pyetja || fall.problemi || "").trim();
-  if (geschrieben) {
-    anamnese.teksti_i_pacientit = geschrieben;
-    anamnese.lloji = fall.pyetja ? "pytje" : "trup";
-  }
-  const katalog = (Array.isArray(produkte) ? produkte : [])
-    .filter((p) => p && p.id && p.aktiv !== false)
-    .map(produktFuerPrompt);
-  const werte = {
-    PATIENT_NAME: String(fall.name || ""),
-    GENDER: String(fall.gender || ""),
-    AGE: String(fall.ageBand || ""),
-    ANAMNESIS: JSON.stringify(anamnese, null, 2),
-    VERIFIED_PRODUCTS: JSON.stringify(katalog, null, 2),
-    FIXED_PRODUCTS: (Array.isArray(gewaehlt) ? gewaehlt : []).length
-      ? gewaehlt.map((p, i) => `${i + 1}. ${String(p?.id || "")} (${String(p?.name || p?.id || "")})${
-        String(p?.zweck || "").trim() ? ` → für: ${String(p.zweck).trim()}` : ""}`).join("\n")
-      : "keine"
-  };
-  return String(vorlage || "").replace(/\{\{(PATIENT_NAME|GENDER|AGE|ANAMNESIS|VERIFIED_PRODUCTS|FIXED_PRODUCTS)\}\}/g,
-    (_, name) => werte[name]);
+  return promptGemeinsam(vorlage, sitzung, produkte, gewaehlt, FRAGEN);
 }
