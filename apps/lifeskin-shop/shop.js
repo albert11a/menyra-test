@@ -1,0 +1,95 @@
+/* UI-only storefront template. No analytics, patient data, or order writes. */
+(() => {
+  'use strict';
+  const root = '/apps/lifeskin-shop/assets/';
+  const products = {
+    acne: { id: 'lf-acne', name: 'LF ACNE', subtitle: 'Kujdes për aknet', image: 'lf-acne-3.jpg' },
+    moistur: { id: 'lf-moistur', name: 'LF MOISTUR', subtitle: 'Hidratim i përditshëm', image: 'lf-moistur.jpg' },
+    pigment: { id: 'lf-pigment', name: 'LF PIGMENT', subtitle: 'Kujdes për njollat', image: 'lf-pigment.jpg' },
+    pore: { id: 'lf-pore', name: 'LF PORE', subtitle: 'Kujdes për poret', image: 'lf-pore.jpg' }
+  };
+  const sets = {
+    acne: { title: 'Seti kundër akneve', text: 'LF ACNE për kujdesin e lëkurës me akne. LF MOISTUR për hidratimin që plotëson rutinën.', keys: ['acne', 'moistur'] },
+    pigment: { title: 'Seti për njollat', text: 'LF PIGMENT për kujdesin e tonit të pabarabartë. LF MOISTUR për hidratimin e përditshëm.', keys: ['pigment', 'moistur'] },
+    pore: { title: 'Seti për poret', text: 'LF PORE për kujdesin e pamjes së poreve. LF MOISTUR për hidratimin dhe barrierën e lëkurës.', keys: ['pore', 'moistur'] }
+  };
+  const $ = (s) => document.querySelector(s);
+  const icon = (name) => `<svg class="icon" aria-hidden="true"><use href="/apps/lifeskin-shop/icons.svg#${name}"></use></svg>`;
+  const sheet = $('#sheet');
+  let opener;
+  let cart = [];
+  const key = 'lifeskinshop.template.cart.v1';
+  try { const value = JSON.parse(sessionStorage.getItem(key) || '[]'); if (Array.isArray(value)) cart = [...new Set(value.filter(k => Object.hasOwn(products, k)))]; } catch {}
+  const amount = () => cart.length ? 29 + (cart.length - 1) * 10 : 0;
+  function refresh() {
+    try { sessionStorage.setItem(key, JSON.stringify(cart)); } catch {}
+    $('#bag-count').textContent = String(cart.length);
+    $('#bag-count').hidden = !cart.length;
+  }
+  function open(content) {
+    if (!sheet.open) opener = document.activeElement;
+    $('#sheet-content').innerHTML = content;
+    if (!sheet.open) sheet.showModal();
+    sheet.scrollTop = 0;
+    $('#close-sheet').focus({ preventScroll: true });
+  }
+  function close() { sheet.close(); }
+  sheet.addEventListener('close', () => opener?.focus({ preventScroll: true }));
+  $('#close-sheet').addEventListener('click', close);
+  sheet.addEventListener('click', e => {
+    if (e.target !== sheet) return;
+    const r = sheet.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) close();
+  });
+  function basket() {
+    const rows = cart.map(k => {
+      const p = products[k];
+      return `<div class="basket-row"><img src="${root + p.image}" alt="${p.name}" width="62" height="78"><div><h3>${p.name}</h3><p>${p.subtitle} · 30 ml</p></div><button class="remove" data-remove="${k}" aria-label="Hiqni ${p.name}">${icon('Trash2')}</button></div>`;
+    }).join('');
+    open(`<h2 id="sheet-title">${cart.length ? 'Rutina që zgjodhët.' : 'Shporta juaj.'}</h2><p>${cart.length ? 'Produktet tuaja, në një vend.' : 'Zgjidhni një set ose produkt për të filluar.'}</p>${rows}${cart.length ? `<div class="total"><span>Gjithsej · dërgesa e përfshirë</span><strong>${amount()} €</strong></div><p class="template-note">Kjo është një pamje paraprake e dyqanit. Nga kjo faqe nuk dërgohet porosi dhe nuk kryhet pagesë.</p>` : ''}<div class="sheet-actions"><button class="primary" data-continue>Zgjidhni ${cart.length ? 'produkte të tjera' : 'setin tuaj'} ${icon('ArrowRight')}</button><a class="secondary" href="/lifeskin2?still=1#produktet">Hapni dyqanin aktual ${icon('ArrowUpRight')}</a></div>`);
+  }
+  function addSet(k) {
+    if (!Object.hasOwn(sets, k)) return;
+    // Selecting a routine replaces the preview selection explicitly; this is not an order.
+    cart = [...sets[k].keys]; refresh(); basket();
+    $('#status').textContent = `${sets[k].title} u shtua në shportë.`;
+  }
+  $('#single-grid').innerHTML = Object.entries(products).map(([k,p]) => `<article class="single-card"><img src="${root + p.image}" alt="${p.name}" width="300" height="375" loading="lazy"><h3>${p.name}</h3><p>${p.subtitle} · 30 ml</p><button data-single="${k}" aria-label="Shtoni ${p.name}, 29 euro">29 € ${icon('Plus')}</button></article>`).join('');
+  document.addEventListener('click', e => {
+    const button = e.target.closest('button');
+    if (!button) return;
+    if (button.hasAttribute('data-set')) addSet(button.dataset.set);
+    if (button.hasAttribute('data-cart')) basket();
+    if (button.hasAttribute('data-single')) {
+      const k = button.dataset.single;
+      if (!cart.includes(k)) cart.push(k);
+      refresh(); basket();
+    }
+    if (button.hasAttribute('data-remove')) {
+      cart = cart.filter(k => k !== button.dataset.remove); refresh(); basket();
+    }
+    if (button.hasAttribute('data-continue')) { close(); $('#setet').scrollIntoView({ behavior: 'smooth' }); }
+    if (button.hasAttribute('data-detail')) {
+      const k = button.dataset.detail; const s = sets[k];
+      open(`<img class="detail-image" src="${root + products[k].image}" alt="${products[k].name}"><h2 id="sheet-title">${s.title}</h2><p>${s.text}</p><div class="included"><span>${products[k].name}</span><span>LF MOISTUR</span><small>2 × 30 ml</small></div><div class="total"><span>Seti me dy produkte</span><strong>39 €</strong></div><button class="primary" data-set="${k}">Zgjidh këtë set ${icon('ArrowUpRight')}</button>`);
+    }
+    if (button.hasAttribute('data-filter')) {
+      const filter = button.dataset.filter;
+      document.querySelectorAll('[data-filter]').forEach(b => b.setAttribute('aria-pressed', String(b === button)));
+      document.querySelectorAll('[data-concern]').forEach(c => c.hidden = filter !== 'all' && c.dataset.concern !== filter);
+      const selected = filter === 'all' ? 'acne' : filter;
+      $('#sticky-label').textContent = sets[selected].title;
+      $('#sticky-buy').dataset.set = selected;
+      $('#status').textContent = filter === 'all' ? 'Shfaqen të gjitha setet.' : `Shfaqet ${sets[selected].title.toLowerCase()}.`;
+    }
+  });
+  // Retain test/still mode when opening the existing, independently owned flow.
+  const params = new URLSearchParams(location.search);
+  if (params.get('still') === '1' || params.get('test') === '1') {
+    document.querySelectorAll('.check-link').forEach(a => a.href = '/lifeskin2?still=1');
+  }
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(entries => { $('#sticky').hidden = entries[0].isIntersecting; }, { threshold: 0 }).observe($('.hero'));
+  }
+  refresh();
+})();
