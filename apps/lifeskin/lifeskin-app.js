@@ -742,7 +742,11 @@ export class Trichter {
    * Die Aufnahmen selbst liegen laengst in Firestore (fotosSpeichern),
    * nicht im Speicher der Seite. Mitzunehmen ist nur ihre Anzahl. */
   #standMerken() {
-    if (!WIEDER_AUFNEHMBAR.includes(this.aktiv)) {
+    // DIE VIER FRAGEN NACH DER AUFNAHME GEHOEREN DAZU: Wer dort neu
+    // laedt (Instagram tut das beim App-Wechsel), faende sich sonst auf
+    // dem Einstieg wieder - und der Scan von eben waere fuer ihn verloren.
+    const inFragen = this.aktiv === "fragen" && this.zustand.nachFragen === true;
+    if (!WIEDER_AUFNEHMBAR.includes(this.aktiv) && !inFragen) {
       // Kein Bildschirm zum Wiederaufnehmen - dann soll auch kein alter
       // Stand herumliegen, der beim naechsten Laden zurueckspringt.
       this.#standVergessen();
@@ -765,7 +769,14 @@ export class Trichter {
         anliegen: $("#ls-anliegenfeld")?.value || "",
         tel: $("#ls-telfeld")?.value || "",
         viber: $("#ls-viberfeld")?.value || "",
-        viberOffen: $("#ls-viberbox")?.hidden === false
+        viberOffen: $("#ls-viberbox")?.hidden === false,
+        // Nur in den vier Fragen: welche gerade stand, was schon getippt
+        // war und welcher Satz darueber gehoert.
+        ...(inFragen ? {
+          fragenI: Number(this.fragen.i) || 0,
+          antworten: { ...(this.fragen.antworten || {}) },
+          einleitung: this.fragen.einleitung || ""
+        } : {})
       }));
     } catch {
       // Ohne Speicher laeuft der Trichter wie bisher. Kein Grund,
@@ -778,7 +789,9 @@ export class Trichter {
       const roh = this.speicher?.getItem?.(STAND_SCHLUESSEL);
       if (typeof roh !== "string" || !roh) return null;
       const stand = JSON.parse(roh);
-      if (!stand || !WIEDER_AUFNEHMBAR.includes(stand.schirm)) return null;
+      if (!stand) return null;
+      if (stand.schirm === "fragen") return stand.antworten && typeof stand.antworten === "object" ? stand : null;
+      if (!WIEDER_AUFNEHMBAR.includes(stand.schirm)) return null;
       return stand;
     } catch { return null; }
   }
@@ -846,6 +859,21 @@ export class Trichter {
        steht laengst in der Sitzung (sie liegt im selben Speicher), und
        ihn erneut zu melden hiesse, denselben Besuch zweimal zu zaehlen,
        sobald ein Fenster den Tab neu laedt - und das tut es oft. */
+    if (stand.schirm === "fragen") {
+      if (!$("#ls-fragen")) return false;
+      // Die Antworten zurueck, dann dieselbe Strecke an derselben Frage.
+      // Die Stufe (pyetjaN) ist laengst geschrieben; schritt() geht nie
+      // zurueck und zaehlt nichts doppelt.
+      this.fragen.antworten = { ...stand.antworten };
+      this.zustand.nachFragen = true;
+      this.#fragenStarten(FRAGEN_NACH_AUFNAHME, {
+        danach: "name",
+        einleitung: stand.einleitung === "einleitungNachFoto" ? "einleitungNachFoto" : "einleitungNachScan"
+      });
+      const i = Math.max(0, Math.min(FRAGEN_NACH_AUFNAHME.length - 1, Number(stand.fragenI) || 0));
+      if (i) { this.fragen.i = i; this.#frageZeichnen(); }
+      return true;
+    }
     if (stand.schirm === "name") this.#nameZeigen(false);
     else if (stand.schirm === "anliegen") this.#anliegenZeigen(false);
     else if (stand.schirm === "tel") { if (!this.#telZeigen(false)) return false; }
@@ -4224,6 +4252,9 @@ export class Trichter {
     // schritt() geht nie zurueck, also kostet ein Blick zurueck nichts.
     const schritt = this.#schrittZurFrage(this.fragen.i);
     if (schritt) this.sitzung.schritt(schritt);
+    // Welche Frage gerade steht, sofort merken - eine App, die hart
+    // weggeraeumt wird, meldet kein pagehide mehr.
+    this.#standMerken();
     if (!frage) return;
     const wahl = $("#ls-fragewahl");
     const weiter = $("#ls-frageweiter");
@@ -4347,7 +4378,17 @@ export class Trichter {
       this.#frageMarkieren(frage);
       // Ein Augenblick, damit die Wahl zu sehen ist, bevor der Bildschirm
       // wechselt. Ohne ihn wirkt der Wechsel wie ein Fehlgriff.
-      setTimeout(() => this.#frageWeiter(), 220);
+      //
+      // EIN WECHSEL JE FRAGE, AUCH BEI ZWEI TIPPS. Wer ungeduldig zweimal
+      // tippt, plante hier zweimal "weiter" ein - und die zweite Uhr
+      // uebersprang die naechste Frage, ohne dass er sie je sah. Jetzt
+      // gilt nur die letzte Uhr, und sie geht nur weiter, wenn noch
+      // dieselbe Frage dasteht.
+      clearTimeout(this.fragen.weiterUhr);
+      const bei = this.fragen.i;
+      this.fragen.weiterUhr = setTimeout(() => {
+        if (this.fragen.i === bei && this.aktiv === "fragen") this.#frageWeiter();
+      }, 220);
       return;
     }
 
@@ -4449,6 +4490,7 @@ export class Trichter {
     }
     if (Object.keys(einzeln).length) this.sitzung.ergaenze(einzeln);
     this.sitzung.ergaenze({ anamnese: { ...this.fragen.antworten } });
+    this.#standMerken();
   }
 
   // Taugt die Antwort, um weiterzugehen?

@@ -38,6 +38,7 @@
 import { chromium } from "playwright-core";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { gesichtsVideo } from "./kamera-attrappe.mjs";
+import { antwortenFuerBericht } from "../../shared/lifeskin-antworten.js";
 
 const BASIS = process.env.BASIS || "http://127.0.0.1:5173";
 const FILTER = process.argv[2] || "";
@@ -413,7 +414,111 @@ async function zurWahl(t) {
   for (const weg of ["skanim", "foto", "trup"]) await t.knopfPruefen(`[data-ls-weg="${weg}"]`, `Karte ${weg}`);
 }
 
+// DIE VIER FRAGEN NACH SCAN UND FOTO (27.09.). Jeder Weg mit Aufnahme
+// laeuft hier durch; wer (t.antworten) was antippt und wie er sich dabei
+// benimmt (t.verhalten), setzt das Szenario.
+const STANDARD_ANTWORTEN = Object.freeze({ anliegen: ["pucrrat"], kohezgjatja: "vit", perdorimi: ["farmaci"], gatishmeria: "tani" });
+const FRAGE_REIHE = ["anliegen", "kohezgjatja", "perdorimi", "gatishmeria"];
+const FRAGE_MARKE = { anliegen: "pucrrat", kohezgjatja: "jave", perdorimi: "farmaci", gatishmeria: "tani" };
+
+async function frageSteht(t, id, frist = 6000) {
+  return t.warte((m) => Boolean(document.querySelector(`#ls-fragewahl [data-antwort="${m}"]`))
+    && document.getElementById("ls-fragen")?.dataset.aktiv === "ja", FRAGE_MARKE[id], frist);
+}
+
+async function frageBeantworten(t, id, antwort, { doppelt = false } = {}) {
+  const liste = Array.isArray(antwort) ? antwort : [antwort];
+  for (const a of liste) {
+    await t.tippe(`#ls-fragewahl [data-antwort="${a}"]`);
+    if (doppelt) await t.tippe(`#ls-fragewahl [data-antwort="${a}"]`).catch(() => {});
+  }
+  if (Array.isArray(antwort)) {
+    await t.knopfPruefen("#ls-frageweiter", `Knopf 'Vazhdo' (${id})`);
+    await t.tippe("#ls-frageweiter");
+  }
+}
+
+async function vierFragen(t) {
+  const antworten = t.antworten || STANDARD_ANTWORTEN;
+  const verhalten = t.verhalten || {};
+  const ab = Date.now();
+  for (const [nr, id] of FRAGE_REIHE.entries()) {
+    const steht = await frageSteht(t, id);
+    t.pruefe(steht != null, `Frage ${nr + 1} (${id}) steht da`, `aktiv: ${await t.aktiv()}`);
+    if (steht == null) return false;
+    const kopf = await t.seite.evaluate(() => ({
+      zaehler: document.getElementById("ls-fragenzaehler")?.textContent || "",
+      einleitung: document.getElementById("ls-frageneinleitung")?.hidden ? "" : (document.getElementById("ls-frageneinleitung")?.textContent || ""),
+      titel: document.getElementById("ls-fragetitel")?.textContent || "",
+      balken: document.querySelector(".ls-fortschritt__balken, #ls-fortschritt span, [data-fortschritt]")?.style?.width || ""
+    }));
+    t.pruefe(kopf.zaehler.includes(`${nr + 1}`) && kopf.zaehler.includes("4"), `Zaehler "Pyetja ${nr + 1} nga 4"`, kopf.zaehler);
+    if (nr === 0) t.pruefe(/4 pyetje/.test(kopf.einleitung) && /(Skanimi mbaroi|Fotoja u ruajt)/.test(kopf.einleitung), "Einleitung sagt: fertig, 4 kurze Fragen", kopf.einleitung);
+    // Jede Antwort ohne Scrollen erreichbar - die letzte ist die tiefste.
+    const letzte = await t.seite.evaluate(() => {
+      const k = [...document.querySelectorAll("#ls-fragewahl .ls-wahl__knopf")].at(-1);
+      return k ? `#ls-fragewahl [data-antwort="${k.dataset.antwort}"]` : "";
+    });
+    await t.knopfPruefen(letzte, `Letzte Antwort bei Frage ${nr + 1} (${kopf.titel.slice(0, 40)})`);
+    await t.bild(`frage${nr + 1}_${id}`);
+    t.pruefe((await t.querScroll()) <= 1, `Frage ${nr + 1} ohne seitliches Scrollen`);
+    // Der Ungeduldige tippt die Antwort zweimal schnell hintereinander.
+    await frageBeantworten(t, id, antworten[id], { doppelt: verhalten.doppelt && !Array.isArray(antworten[id]) });
+    // Der Unsichere geht nach Frage 3 zurueck und aendert Frage 2.
+    if (verhalten.zurueckNach3 && id === "perdorimi" && !t.warZurueck) {
+      t.warZurueck = true;
+      await frageSteht(t, "gatishmeria");
+      await t.tippe("#ls-fragenzurueck");
+      await frageSteht(t, "perdorimi");
+      await t.tippe("#ls-fragenzurueck");
+      const zwei = await frageSteht(t, "kohezgjatja");
+      const markiert = await t.seite.evaluate(() => document.querySelector('#ls-fragewahl [aria-pressed="true"]')?.dataset.antwort || "");
+      t.pruefe(zwei != null && markiert === antworten.kohezgjatja, "Zurueck zu Frage 2: die alte Antwort ist noch markiert", markiert);
+      antworten.kohezgjatja = "vjenShkon";
+      await frageBeantworten(t, "kohezgjatja", "vjenShkon");
+      await frageSteht(t, "perdorimi");
+      const noch = await t.seite.evaluate(() => [...document.querySelectorAll('#ls-fragewahl [aria-pressed="true"]')].map((k) => k.dataset.antwort));
+      t.pruefe(JSON.stringify(noch) === JSON.stringify(antworten.perdorimi), "Frage 3 behaelt ihre Antworten", noch.join(","));
+      await t.tippe("#ls-frageweiter");
+    }
+    // Instagram laedt beim App-Wechsel neu - mitten in den Fragen.
+    if (verhalten.neuladenBei === id) {
+      await frageSteht(t, FRAGE_REIHE[nr + 1]);
+      await t.seite.waitForTimeout(300);
+      await t.seite.reload({ waitUntil: "commit" });
+      const wieder = await frageSteht(t, FRAGE_REIHE[nr + 1], 15000);
+      t.pruefe(wieder != null, `Nach dem Neuladen steht wieder Frage ${nr + 2} da (Scan nicht verloren)`, `aktiv: ${await t.aktiv()}`);
+      await t.bild("nach_neuladen");
+      if (wieder == null) return false;
+    }
+  }
+  t.mass("Vier Fragen beantwortet", Date.now() - ab);
+  // Im Doppeltipp-Fall darf keine Frage uebersprungen worden sein.
+  // Der letzte Schreibvorgang ist womoeglich noch unterwegs.
+  for (let i = 0; i < 30 && !t.sitzung()?.daten?.anamnese?.gatishmeria; i += 1) await t.seite.waitForTimeout(100);
+  const s = t.sitzung();
+  const a = s?.daten?.anamnese || {};
+  for (const id of FRAGE_REIHE) {
+    t.pruefe(JSON.stringify(a[id]) === JSON.stringify(antworten[id]), `Antwort ${id} in der Sitzung`, JSON.stringify(a[id]));
+  }
+  t.pruefe(["pyetja4", "emri", "numri", "aufbereitung", "result"].includes(s?.daten?.step), "Stufe pyetja4 erreicht", s?.daten?.step);
+  return true;
+}
+
 async function nameUndAlter(t, name = "Arta") {
+  // Nach Scan und Foto kommen zuerst die vier Fragen.
+  await t.warte(() => ["ls-fragen", "ls-name"].includes(document.querySelector('.ls-schirm[data-aktiv="ja"]')?.id), null, 15000);
+  if ((await t.aktiv()) === "ls-fragen") {
+    if (!(await vierFragen(t))) return false;
+    if (t.verhalten?.zurueckVomNamen) {
+      await t.schirm("ls-name", 8000);
+      await t.tippe("#ls-name [data-zurueck]");
+      const vier = await frageSteht(t, "gatishmeria");
+      const markiert = await t.seite.evaluate(() => document.querySelector('#ls-fragewahl [aria-pressed="true"]')?.dataset.antwort || "");
+      t.pruefe(vier != null && markiert === (t.antworten || STANDARD_ANTWORTEN).gatishmeria, "Zurueck vom Namen: Frage 4 mit Antwort", `${await t.aktiv()} · ${markiert}`);
+      await frageBeantworten(t, "gatishmeria", (t.antworten || STANDARD_ANTWORTEN).gatishmeria);
+    }
+  }
   const ms = await t.schirm("ls-name", 15000);
   t.pruefe(ms != null, "Name und Alter erscheinen", `aktiv: ${await t.aktiv()}`);
   if (ms == null) return false;
@@ -488,9 +593,12 @@ async function freigabeUndTherapie(t, id) {
     name: "Pore Control", einzelpreis: 29, lloji: "serum",
     kurztext: { sq: "Pastron poret dhe ul yndyrën." }, veprimi: { sq: ["Pastron poret"] }
   });
+  // Wie Heart beim Freigeben: seine Antworten, gefiltert, in den Bericht.
+  const antworten = antwortenFuerBericht(t.sitzung()?.daten?.anamnese);
   t.db.setze(`lifeskin/lifeskin/reports/${id}`, {
-    status: "fertig", freigabeAt: new Date().toISOString(),
-    produkte: [{ id: "pore-control", satz: "Për poret në ballë." }]
+    status: "fertig", freigabeAt: new Date().toISOString(), preis: 49,
+    produkte: [{ id: "pore-control", satz: "Për poret në ballë." }],
+    ...(antworten ? { antworten } : {})
   });
   const ms = await t.warte(() => /^\/terapia\//.test(location.pathname), null, 20000);
   t.mass("Freigabe → Therapieseite (ohne Neuladen)", ms);
@@ -500,6 +608,31 @@ async function freigabeUndTherapie(t, id) {
   await t.bild("therapie");
   t.pruefe(inhalt != null, "Therapieseite zeigt das freigegebene Mittel");
   t.pruefe((await t.querScroll()) <= 1, "Therapieseite ohne seitliches Scrollen");
+  // "Çfarë na thatë" und sein Wort am Knopf - nur mit Antworten.
+  const seite = await t.seite.evaluate(() => {
+    const sichtbar = (el) => Boolean(el && !el.hidden && el.getClientRects().length);
+    const karte = document.getElementById("t-thate");
+    const gati = document.getElementById("t-gati");
+    const knopf = document.getElementById("hero-knopf");
+    return {
+      karte: sichtbar(karte), kartenText: (karte?.innerText || "").replace(/\s+/g, " ").trim(),
+      gati: sichtbar(gati), gatiText: (gati?.textContent || "").trim(),
+      gatiVorKnopf: Boolean(gati && knopf && gati.getBoundingClientRect().bottom <= knopf.getBoundingClientRect().top + 1),
+      ganzeSeite: document.body.innerText
+    };
+  });
+  if (antworten) {
+    t.pruefe(seite.karte, "Karte 'Çfarë na thatë' sichtbar", seite.kartenText.slice(0, 160));
+    t.pruefe(seite.gati && seite.gatiVorKnopf, "Sein Wort steht ueber dem Kaufknopf", seite.gatiText);
+    await t.seite.evaluate(() => document.getElementById("t-thate")?.scrollIntoView({ block: "center", behavior: "instant" }));
+    await t.bild("therapie_antworten");
+    await t.seite.evaluate(() => document.getElementById("hero-knopf")?.scrollIntoView({ block: "center", behavior: "instant" }));
+    await t.bild("therapie_knopf");
+  } else {
+    t.pruefe(!seite.karte && !seite.gati, "Ohne Antworten: keine Karte, kein Satz (alte Befunde wie bisher)");
+  }
+  t.pruefe(!/Roaccutane|izotretinoin|shtatzënë|044 ?123/i.test(seite.ganzeSeite), "Keine Gesundheitsangabe und keine Nummer auf der oeffentlichen Seite");
+  return seite;
 }
 
 async function fehlerkasten(t) {
@@ -1012,6 +1145,85 @@ szenario("A13 Warteseite im normalen Browser (Link aus WhatsApp) → Therapie", 
   t.pruefe(!/numrin|numër/i.test(await t.seite.evaluate(() => [...document.querySelectorAll("input")].filter((i) => i.offsetParent).map((i) => i.placeholder).join(" "))), "Fragt nicht noch einmal nach der Nummer");
   await freigabeUndTherapie(t, id);
   t.pruefe((await t.querScroll()) <= 1, "Kein seitliches Scrollen");
+});
+
+// ---------------------------------------------------------------------------
+// KUNDEN - verschiedene Menschen, verschiedene Telefone, verschiedenes
+// Verhalten. Jeder geht bis zur Therapieseite mit seinen Antworten.
+// ---------------------------------------------------------------------------
+
+async function fotoWeg(t) {
+  await landing(t);
+  await zurWahl(t);
+  await t.tippe('[data-ls-weg="foto"]');
+  await t.schirm("ls-fotopara");
+  await t.tippe("#ls-fotoweiter");
+  const bereit = await t.warte(() => document.getElementById("ls-fotobuehne")?.dataset.bereit === "ja", null, 15000);
+  t.pruefe(bereit != null, "Foto-Kamera bereit");
+  await t.tippe("#ls-fotoausloeser");
+  await t.warte(() => document.getElementById("ls-fotobuehne")?.dataset.stand === "vorschau", null, 5000);
+  await t.tippe("#ls-fotonehmen");
+  if (!(await nameUndAlter(t, t.kundenName || "Arta"))) return;
+  if (!(await nummer(t))) return;
+  const { id } = await bisZurWarteseite(t, { erwartetFotos: 1 });
+  if (id) await freigabeUndTherapie(t, id);
+}
+
+szenario("K1 Arta, 19 · iPhone Instagram · will eigentlich nur schauen", async (t) => {
+  t.kundenName = "Arta";
+  t.antworten = { anliegen: ["pucrrat", "njollat"], kohezgjatja: "vit", perdorimi: ["rrjete"], gatishmeria: "pasi" };
+  await t.oeffnen({ kamera: "gesicht", ua: UA.iosIG, breite: 390, hoehe: 716, dpr: 3 });
+  const seite = await fotoWeg(t);
+  void seite;
+});
+
+szenario("K2 Besa, 27 · Android Chrome klein · Apotheke, skeptisch, geht zurueck", async (t) => {
+  t.kundenName = "Besa";
+  t.antworten = { anliegen: ["njollat"], kohezgjatja: "muaj", perdorimi: ["farmaci", "shume"], gatishmeria: "pasi" };
+  t.verhalten = { zurueckNach3: true };
+  await t.oeffnen({ kamera: "gesicht", ua: UA.androidChrome, breite: 360, hoehe: 640, dpr: 2 });
+  await fotoWeg(t);
+});
+
+szenario("K3 Driton, 23 · Android Instagram · entschlossen, tippt doppelt", async (t) => {
+  t.kundenName = "Driton";
+  t.antworten = { anliegen: ["pucrrat"], kohezgjatja: "jave", perdorimi: ["asgje"], gatishmeria: "tani" };
+  t.verhalten = { doppelt: true };
+  await t.oeffnen({ kamera: "gesicht", ua: UA.androidIG, breite: 412, hoehe: 780, dpr: 2.625 });
+  await fotoWeg(t);
+});
+
+szenario("K4 Neugierig · iPhone SE (320 px) Safari · 'zuerst nur die Analyse'", async (t) => {
+  t.kundenName = "Dua";
+  t.antworten = { anliegen: ["nukEdi"], kohezgjatja: "vjenShkon", perdorimi: ["larje"], gatishmeria: "analiza" };
+  await t.oeffnen({ kamera: "gesicht", ua: UA.iosSafari, breite: 320, hoehe: 568, dpr: 2 });
+  await fotoWeg(t);
+});
+
+szenario("K5 Facebook laedt die Seite mitten in den Fragen neu", async (t) => {
+  t.kundenName = "Liridona";
+  t.antworten = { anliegen: ["poret", "shkelqimi"], kohezgjatja: "vit", perdorimi: ["shume"], gatishmeria: "tani" };
+  t.verhalten = { neuladenBei: "kohezgjatja" };
+  await t.oeffnen({ kamera: "gesicht", ua: UA.androidFB, breite: 360, hoehe: 740, dpr: 2 });
+  await fotoWeg(t);
+});
+
+szenario("K6 Roaccutane-Patientin · Gesundheitsangabe bleibt privat", async (t) => {
+  t.kundenName = "Vjosa";
+  t.antworten = { anliegen: ["pucrrat"], kohezgjatja: "vit", perdorimi: ["mjek", "farmaci"], gatishmeria: "tani" };
+  await t.oeffnen({ kamera: "gesicht", ua: UA.iosFB, breite: 390, hoehe: 716, dpr: 3 });
+  await fotoWeg(t);
+  const s = t.sitzung();
+  const bericht = t.db.doc(`lifeskin/lifeskin/reports/${s?.id}`);
+  t.pruefe(JSON.stringify(bericht?.antworten?.perdorimi) === JSON.stringify(["farmaci"]), "Im Bericht nur 'Barnatore', nicht 'Arzt/Roaccutane'", JSON.stringify(bericht?.antworten));
+  t.pruefe(JSON.stringify(s?.daten?.anamnese?.perdorimi) === JSON.stringify(["mjek", "farmaci"]), "In der privaten Sitzung steht beides (fuer Dr. Gashi und den Prompt)");
+});
+
+szenario("K7 Skanim · Android Chrome · geht vom Namen zurueck zu den Fragen", async (t) => {
+  t.antworten = { anliegen: ["skuqja"], kohezgjatja: "muaj", perdorimi: ["farmaci"], gatishmeria: "tani" };
+  t.verhalten = { zurueckVomNamen: true };
+  await t.oeffnen({ kamera: "gesicht", ua: UA.androidChrome, breite: 412, hoehe: 915, dpr: 2.625 });
+  await scanWeg(t, { lesenMs: 4000, netzAbwarten: true });
 });
 
 // ---------------------------------------------------------------------------

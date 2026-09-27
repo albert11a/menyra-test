@@ -139,3 +139,23 @@ test("Heart legt die Antworten in den Bericht, die Seite zeigt sie beim Angebot"
   assert.match(thate, /this\.mitAngebot \? antwortenSpiegel\(this\.daten\?\.antworten/);
   assert.match(methode(TERAPIA_JS, "#zeichnen"), /this\.#thate\(\);/);
 });
+
+test("Neuladen mitten in den Fragen: zurueck an dieselbe Frage, mit den Antworten", () => {
+  const merken = methode(APP, "#standMerken");
+  assert.match(merken, /const inFragen = this\.aktiv === "fragen" && this\.zustand\.nachFragen === true;/);
+  assert.match(merken, /fragenI: Number\(this\.fragen\.i\) \|\| 0/);
+  assert.match(merken, /antworten: \{ \.\.\.\(this\.fragen\.antworten \|\| \{\}\) \}/);
+  const aufnehmen = methode(APP, "#standAufnehmen");
+  assert.match(aufnehmen, /if \(stand\.schirm === "fragen"\) \{/);
+  assert.match(aufnehmen, /this\.#fragenStarten\(FRAGEN_NACH_AUFNAHME/);
+  // Jede neue Frage wird sofort gemerkt - ein hart beendetes App-Fenster
+  // meldet kein pagehide mehr.
+  assert.match(methode(APP, "#frageZeichnen"), /this\.#standMerken\(\);/);
+});
+
+test("zwei schnelle Tipps ueberspringen keine Frage", () => {
+  const getippt = methode(APP, "#frageGetippt");
+  assert.match(getippt, /clearTimeout\(this\.fragen\.weiterUhr\);/);
+  assert.match(getippt, /if \(this\.fragen\.i === bei && this\.aktiv === "fragen"\) this\.#frageWeiter\(\);/);
+  assert.doesNotMatch(getippt, /setTimeout\(\(\) => this\.#frageWeiter\(\), 220\)/);
+});
