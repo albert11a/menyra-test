@@ -11,7 +11,7 @@
  * einer kaputten Seite aus. */
 import { LIFESKIN_FIRESTORE_BASE, LIFESKIN_TENANT } from "../lifeskin/lifeskin-config.js";
 import {
-  rasteLaden, rasteFuer, rasteMitBildern, rastiProdukteText, escapeRasti as e
+  rasteLaden, rasteFuer, rasteMitBildern, rastiProdukteText, escapeRasti as e, RASTE_STANDARD
 } from "../../shared/lifeskin-raste.js";
 
 const BASIS = `${LIFESKIN_FIRESTORE_BASE}/lifeskin/${LIFESKIN_TENANT}/config`;
@@ -53,45 +53,86 @@ export function rastiKarte(r) {
 }
 
 // Dieselben Faelle als Reihe im ersten Blick (index.html, .blick):
-// nur die zwei Aufnahmen, der Link nennt den Fall.
+// nur die zwei Aufnahmen mit je ihrem Schild, der Link nennt den Fall.
 export function blickFall(r, i) {
-  const bild = (src) => rastiBild(src, "");
+  const halb = (src, wort, pas) =>
+    `<span class="blick__halb">${rastiBild(src, "").replace(i < 2 ? ' loading="lazy"' : "", "")}<span class="blick__etiket${pas ? " blick__etiket--pas" : ""}" aria-hidden="true">${wort}</span></span>`;
   const name = [r.emri, r.gjetja].filter(Boolean).join(": ") || `Rasti ${i + 1}`;
   return `
             <a class="blick__fall" href="#rezultatet" data-blick="${i}" aria-label="${e(name)}, para dhe pas 28 ditësh">
-              ${bild(r.para)}
-              ${bild(r.pas)}
-              <span class="blick__marke" aria-hidden="true">PARA · PAS</span>
+              ${halb(r.para, "PARA", false)}
+              ${halb(r.pas, "PAS", true)}
             </a>`;
+}
+
+// Stehen im HTML schon genau diese Faelle? Dann bleibt die Reihe, wie
+// sie ist - und ihre Bilder laden nicht ein zweites Mal.
+export function wieImHtml(faelle) {
+  return faelle.length === RASTE_STANDARD.length &&
+    faelle.every((r, i) => r.para === RASTE_STANDARD[i].para && r.pas === RASTE_STANDARD[i].pas);
+}
+
+const warten = (ms) => new Promise((fertig) => setTimeout(fertig, ms));
+
+// Eine Aufnahme laden und dekodieren, ohne sie zu zeigen. Eigene Dateien
+// als WebP - dieselbe Adresse, die <picture> gleich waehlt.
+function vorladen(src) {
+  const bild = new Image();
+  bild.src = /^\/apps\/lifeskin-landing\/fotot\/rasti-[a-z0-9-]+\.jpg$/.test(src) ? src.replace(/\.jpg$/, ".webp") : src;
+  return bild.decode().catch(() => {});
+}
+
+// Die zwei vorderen Faelle der Reihe sind fertig - oder es ist genug
+// gewartet. Ein Bild, das nicht kommt, haelt die anderen nicht auf.
+function bilderFertig(blick) {
+  const bilder = [...blick.querySelectorAll(".blick__fall")].slice(0, 2).flatMap((f) => [...f.querySelectorAll("img")]);
+  return Promise.race([Promise.all(bilder.map((b) => b.decode().catch(() => {}))), warten(1500)]);
 }
 
 async function start() {
   const bahn = document.getElementById("rastet");
   if (!bahn) return;
-  let liste;
+  const blick = document.getElementById("blick");
+  const reihe = blick?.closest(".blick");
+  const zeigen = async () => {
+    if (!reihe?.hasAttribute("data-wartet")) return;
+    await bilderFertig(blick);
+    reihe.removeAttribute("data-wartet");
+  };
+  // Antwortet Firestore langsam, stehen die Faelle aus dem HTML nicht
+  // ewig leer da.
+  const notfall = setTimeout(zeigen, 1800);
+  let faelle = null;
   try {
-    liste = await rasteLaden(BASIS);
+    const liste = await rasteLaden(BASIS);
+    if (liste) faelle = await rasteMitBildern(rasteFuer(liste, "landing"), BASIS);
   } catch {
+    faelle = null;
+  }
+  clearTimeout(notfall);
+  if (!faelle) {
+    zeigen();
     return;
   }
-  if (!liste) return;
-  const faelle = await rasteMitBildern(rasteFuer(liste, "landing"), BASIS);
   const abschnitt = document.getElementById("rezultatet");
-  const blick = document.getElementById("blick");
   if (!faelle.length) {
     if (abschnitt) abschnitt.hidden = true;
-    const reihe = blick?.closest(".blick");
     if (reihe) reihe.hidden = true;
     return;
   }
   bahn.innerHTML = faelle.map(rastiKarte).join("");
   bahn.scrollLeft = 0;
-  if (blick) {
+  // Die Punkte darunter zaehlen die Karten neu (landing.js).
+  document.dispatchEvent(new CustomEvent("lifeskin:raste"));
+  // Andere Faelle als im HTML: erst fertig laden, dann in einem Zug
+  // tauschen - auch wenn die Reihe schon sichtbar ist, erscheint so nie
+  // ein leeres oder ein halbes Bild.
+  if (blick && !wieImHtml(faelle)) {
+    await Promise.race([Promise.all(faelle.slice(0, 2).flatMap((r) => [vorladen(r.para), vorladen(r.pas)])), warten(2500)]);
     blick.innerHTML = faelle.map(blickFall).join("");
     blick.scrollLeft = 0;
   }
-  // Die Punkte darunter zaehlen die Karten neu (landing.js).
-  document.dispatchEvent(new CustomEvent("lifeskin:raste"));
+  zeigen();
 }
 
 if (typeof document !== "undefined") start();

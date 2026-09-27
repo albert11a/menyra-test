@@ -383,41 +383,40 @@
         </div>
         <!-- DIE FAELLE SCHAUEN SCHON IM ERSTEN BILD HEREIN.
              Der erste Blick ging genau in einem Bildschirm auf - er sah
-             aus wie die ganze Seite, und kaum jemand scrollte. Eine Reihe
-             echter Vorher/Nachher-Aufnahmen, rechts und unten
-             angeschnitten, sagt ohne Wort, dass es weitergeht, und zeigt
-             den Beweis dort, wo entschieden wird.
+             aus wie die ganze Seite, und kaum jemand scrollte. Jetzt
+             fuellt eine Reihe echter Vorher/Nachher-Aufnahmen den Rest
+             des Bildes und ist rechts und unten angeschnitten: Das sagt
+             ohne Wort, dass es weitergeht.
 
-             DIESELBEN FAELLE WIE UNTEN (#rastet), dieselben Dateien -
-             also nichts doppelt geladen. raste.js baut diese Reihe mit
-             den in Heart gepflegten Faellen neu auf, sonst bleiben diese
-             vier stehen. Ein Tipp fuehrt zum Fall mit Produkten und
-             Preis (landing.js, Abschnitt 6).
+             DIESELBEN FAELLE WIE UNTEN (#rastet), dieselben Dateien.
+             Pflegt Heart andere, setzt raste.js sie ein, BEVOR die Bilder
+             sichtbar werden (data-wartet) - so tauscht sich nie ein
+             sichtbares Bild gegen ein anderes aus. Ohne Skript stehen
+             diese vier einfach da. Ein Tipp fuehrt zum Fall mit Produkten
+             und Preis (landing.js, Abschnitt 6).
 
              Die Bilder tragen alt="": Der Link nennt den Fall, die
-             Aufnahmen stehen unten noch einmal mit Beschreibung. -->
-        <div class="blick" data-anim data-anim-schritt="4">
+             Aufnahmen stehen unten noch einmal mit Beschreibung. Sie
+             laden sofort (kein loading="lazy"), denn sie stehen im
+             ersten Bild. -->
+        <div class="blick" data-wartet data-anim data-anim-schritt="4">
           <p class="blick__kopf">RASTE REALE · PARA DHE PAS</p>
           <div class="blick__bahn" id="blick" role="group" aria-label="Raste reale: para dhe pas">
             <a class="blick__fall" href="#rezultatet" data-blick="0" aria-label="Rasti 1: Akne inflamatore, para dhe pas 28 ditësh">
-              <picture><source srcset="/apps/lifeskin-landing/fotot/rasti-1-dita1.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-1-dita1.jpg" alt="" width="720" height="810" loading="lazy" decoding="async" /></picture>
-              <picture><source srcset="/apps/lifeskin-landing/fotot/rasti-1-dita28.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-1-dita28.jpg" alt="" width="720" height="810" loading="lazy" decoding="async" /></picture>
-              <span class="blick__marke" aria-hidden="true">PARA · PAS</span>
+              <span class="blick__halb"><picture><source srcset="/apps/lifeskin-landing/fotot/rasti-1-dita1.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-1-dita1.jpg" alt="" width="720" height="810" decoding="async" /></picture><span class="blick__etiket" aria-hidden="true">PARA</span></span>
+              <span class="blick__halb"><picture><source srcset="/apps/lifeskin-landing/fotot/rasti-1-dita28.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-1-dita28.jpg" alt="" width="720" height="810" decoding="async" /></picture><span class="blick__etiket blick__etiket--pas" aria-hidden="true">PAS</span></span>
             </a>
             <a class="blick__fall" href="#rezultatet" data-blick="1" aria-label="Rasti 2: Akne hormonale, para dhe pas 28 ditësh">
-              <picture><source srcset="/apps/lifeskin-landing/fotot/rasti-2-dita1.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-2-dita1.jpg" alt="" width="720" height="810" loading="lazy" decoding="async" /></picture>
-              <picture><source srcset="/apps/lifeskin-landing/fotot/rasti-2-dita28.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-2-dita28.jpg" alt="" width="720" height="810" loading="lazy" decoding="async" /></picture>
-              <span class="blick__marke" aria-hidden="true">PARA · PAS</span>
+              <span class="blick__halb"><picture><source srcset="/apps/lifeskin-landing/fotot/rasti-2-dita1.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-2-dita1.jpg" alt="" width="720" height="810" decoding="async" /></picture><span class="blick__etiket" aria-hidden="true">PARA</span></span>
+              <span class="blick__halb"><picture><source srcset="/apps/lifeskin-landing/fotot/rasti-2-dita28.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-2-dita28.jpg" alt="" width="720" height="810" decoding="async" /></picture><span class="blick__etiket blick__etiket--pas" aria-hidden="true">PAS</span></span>
             </a>
             <a class="blick__fall" href="#rezultatet" data-blick="2" aria-label="Rasti 3: Akne &amp; pore të mëdha, para dhe pas 28 ditësh">
-              <picture><source srcset="/apps/lifeskin-landing/fotot/rasti-3-dita1.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-3-dita1.jpg" alt="" width="720" height="810" loading="lazy" decoding="async" /></picture>
-              <picture><source srcset="/apps/lifeskin-landing/fotot/rasti-3-dita28.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-3-dita28.jpg" alt="" width="720" height="810" loading="lazy" decoding="async" /></picture>
-              <span class="blick__marke" aria-hidden="true">PARA · PAS</span>
+              <span class="blick__halb"><picture><source srcset="/apps/lifeskin-landing/fotot/rasti-3-dita1.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-3-dita1.jpg" alt="" width="720" height="810" loading="lazy" decoding="async" /></picture><span class="blick__etiket" aria-hidden="true">PARA</span></span>
+              <span class="blick__halb"><picture><source srcset="/apps/lifeskin-landing/fotot/rasti-3-dita28.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-3-dita28.jpg" alt="" width="720" height="810" loading="lazy" decoding="async" /></picture><span class="blick__etiket blick__etiket--pas" aria-hidden="true">PAS</span></span>
             </a>
             <a class="blick__fall" href="#rezultatet" data-blick="3" aria-label="Rasti 4: Njolla &amp; hiperpigmentim, para dhe pas 28 ditësh">
-              <picture><source srcset="/apps/lifeskin-landing/fotot/rasti-4-dita1.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-4-dita1.jpg" alt="" width="720" height="810" loading="lazy" decoding="async" /></picture>
-              <picture><source srcset="/apps/lifeskin-landing/fotot/rasti-4-dita28.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-4-dita28.jpg" alt="" width="720" height="810" loading="lazy" decoding="async" /></picture>
-              <span class="blick__marke" aria-hidden="true">PARA · PAS</span>
+              <span class="blick__halb"><picture><source srcset="/apps/lifeskin-landing/fotot/rasti-4-dita1.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-4-dita1.jpg" alt="" width="720" height="810" loading="lazy" decoding="async" /></picture><span class="blick__etiket" aria-hidden="true">PARA</span></span>
+              <span class="blick__halb"><picture><source srcset="/apps/lifeskin-landing/fotot/rasti-4-dita28.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-4-dita28.jpg" alt="" width="720" height="810" loading="lazy" decoding="async" /></picture><span class="blick__etiket blick__etiket--pas" aria-hidden="true">PAS</span></span>
             </a>
           </div>
         </div>

@@ -434,6 +434,14 @@
     /* Ein Fall im ersten Blick (.blick) fuehrt hierher - der Link
        springt zum Abschnitt, und die Bahn stellt denselben Fall vorn
        hin. Ohne Animation in der Bahn: Die Seite gleitet schon. */
+    /* Die Reihe wartet auf raste.js (data-wartet), bevor ihre Bilder
+       einblenden. Kommt das Modul nie an, zeigt sie nach vier Sekunden
+       die Faelle aus dem HTML - leer bleibt sie nie. */
+    setTimeout(function () {
+      var reihe = document.querySelector(".blick[data-wartet]");
+      if (reihe) reihe.removeAttribute("data-wartet");
+    }, 4000);
+
     document.addEventListener("click", function (ereignis) {
       var fall = ereignis.target && ereignis.target.closest
         ? ereignis.target.closest("[data-blick]")
