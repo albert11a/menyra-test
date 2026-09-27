@@ -6497,11 +6497,6 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 .heart-kachelklapp[open] > .heart-klapp__kopf { display: none; }
 /* Oben in der Karte: kleinere Chips zum Wischen, ganz rechts der Pfeil
    zum Zuklappen. Zu: die Zahlenzeile, rechts der Pfeil zum Aufklappen. */
-.heart-kachelklapp__leiste { display: flex; align-items: center; gap: 8px; margin-top: -4px; }
-.heart-kachelklapp__zeitraum {
-  flex: 1 1 auto; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--heart-muted, #8f918d);
-}
 /* DER DATUM-KNOPF IM KOPF und die Chipreihe, die an seine Stelle tritt. */
 .heart-topbar--zeitwahl { gap: 8px; }
 /* Die fuenf fuellen die Zeile; ist der Bildschirm zu schmal (320 px),
@@ -6525,21 +6520,14 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 }
 .heart-kachelklapp > .heart-klapp__kopf { justify-content: space-between; }
 .heart-kachelklapp > .heart-klapp__kopf .heart-kachelklapp__pfeil { width: 30px; height: 30px; }
-.heart-kachelklapp > .heart-kachelklapp__leiste + .heart-lifeskin-kacheln { margin-top: 4px; }
 .heart-kachelklapp > .heart-klapp__kopf::before { content: none; }
 .heart-kachelklapp > .heart-klapp__kopf .heart-klapp__zahl { font-size: 13px; }
 .heart-kachelklapp[open] { cursor: default; user-select: none; -webkit-user-select: none; }
-/* KEINE KARTE IN DER KARTE (27.09.): In der Karte "Zahlen" stehen die
-   Kacheln ohne eigenen Rahmen und ohne eigene Flaeche - nur feine Linien
-   zwischen ihnen, wie eine Tabelle. */
-.heart-kachelklapp .heart-lifeskin-kacheln {
-  background: none; border: 0; border-radius: 0; gap: 0; overflow: visible;
-}
-/* Nur waagrechte Linien zwischen den Reihen, ueber die ganze Breite -
-   keine senkrechte, die oben und unten offen endet ("halbe Linien"). */
-.heart-kachelklapp .heart-lifeskin-kachel { background: none; padding: 12px 12px 13px 0; }
-.heart-kachelklapp .heart-lifeskin-kachel:nth-child(even) { padding-left: 14px; padding-right: 0; }
-.heart-kachelklapp .heart-lifeskin-kachel:nth-child(n+3) { border-top: 1px solid var(--heart-border, #2a2c2e); }
+/* OFFEN IST DAS RASTER SELBST DIE KARTE (27.09.): keine Huelle darum,
+   kein Kopf, kein Pfeil - die Kacheln mit ihren durchgehenden Linien bis
+   an den Rand. Zuklappen per Doppeltipp auf die Zahlen (heart-events.js). */
+.heart-kachelklapp[open] { padding: 0; border: 0; background: none; box-shadow: none; }
+.heart-kachelklapp[open] > .heart-lifeskin-kacheln { margin-top: 0; }
 /* Fälle zugeklappt: kein Zahnrad im Kopf - es waehlt nur in der offenen Liste aus. */
 .heart-klapp:not([open]) > .heart-klapp__kopf > .heart-faelle-zahnrad { display: none; }
 

@@ -211,12 +211,6 @@ function renderKacheln(kennzahlen, zeitraum = "") {
         <span class="heart-klapp__zahl heart-klapp__zahl--zu">${escapeHtml(`${kennzahlen.landing ?? 0} Landing · ${kennzahlen.analysen ?? 0} Analysen · ${euro(kennzahlen.umsatzHeute)}`)}</span>
         <span class="heart-kachelklapp__pfeil" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span>
       </summary>
-      <!-- Oben der gewaehlte Zeitraum (gewaehlt wird im Kopf von Heart,
-           Datum-Knopf), rechts der Pfeil zum Zuklappen. -->
-      <div class="heart-kachelklapp__leiste">
-        <span class="heart-kachelklapp__zeitraum">${escapeHtml(name)}</span>
-        <button type="button" class="heart-kachelklapp__pfeil" data-action="zahlen-zuklappen" aria-label="Zahlen zuklappen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
-      </div>
     <div class="heart-lifeskin-kacheln">
       ${renderKachel({
         marke: "Landing",

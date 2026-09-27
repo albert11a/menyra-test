@@ -111,9 +111,10 @@ test("Zahlen: ohne Titel und Pfeil, Doppeltipp klappt zu", () => {
   assert.match(ereignisse, /jetzt - letzterTipp\.zeit < 350/);
 });
 
-test("Zahlen: Zeitraum links, Pfeil rechts; Klappen haelt die Karte an ihrer Stelle", () => {
+test("Zahlen: offen nur das Raster, Klappen haelt die Karte an ihrer Stelle", () => {
   const render = lies("apps/mnyra-heart/heart-lifeskin-render.js");
-  assert.match(render, /heart-kachelklapp__leiste">\s*<span class="heart-kachelklapp__zeitraum">\$\{escapeHtml\(name\)\}<\/span>\s*<button type="button" class="heart-kachelklapp__pfeil" data-action="zahlen-zuklappen"/);
+  assert.doesNotMatch(render, /heart-kachelklapp__leiste/, "ueber den Zahlen steht wieder eine Leiste");
+  assert.match(lies("apps/mnyra-heart/heart.css"), /\.heart-kachelklapp\[open\] \{ padding: 0; border: 0; background: none;/);
   const kopf = lies("apps/mnyra-heart/heart-render.js");
   assert.match(kopf, /data-action="lifeskin-zeitwahl"/, "kein Datum-Knopf im Kopf");
   assert.match(kopf, /\$\{renderZeitwahl\(zeitraum\)\}/);
