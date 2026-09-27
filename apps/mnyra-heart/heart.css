@@ -6492,7 +6492,17 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
    der Karte. Zugeklappt verschwinden die Zeitraum-Chips darueber mit ihr
    (Wunsch 27.09.) - wie bei jeder anderen Karte (.heart-klapp oben). */
 .heart-kachelklapp { margin: 0; }
-.heart-kachelklapp .heart-lifeskin-kacheln { border-radius: 10px; }
+/* KEINE KARTE IN DER KARTE (27.09.): In der Karte "Zahlen" stehen die
+   Kacheln ohne eigenen Rahmen und ohne eigene Flaeche - nur feine Linien
+   zwischen ihnen, wie eine Tabelle. */
+.heart-kachelklapp .heart-lifeskin-kacheln {
+  background: none; border: 0; border-radius: 0; gap: 0; overflow: visible;
+}
+.heart-kachelklapp .heart-lifeskin-kachel { background: none; padding: 12px 12px 13px 0; }
+.heart-kachelklapp .heart-lifeskin-kachel:nth-child(even) {
+  padding-left: 14px; padding-right: 0; border-left: 1px solid var(--heart-border, #2a2c2e);
+}
+.heart-kachelklapp .heart-lifeskin-kachel:nth-child(n+3) { border-top: 1px solid var(--heart-border, #2a2c2e); }
 
 /* ============================================================
    DIE SCHUBLADE MIT DREI EINTRAEGEN (25.09.)
@@ -9982,9 +9992,6 @@ html:where([data-heart-theme="tag"]),
   color: #ff8c7a;
 }
 
-:where(html[data-heart-theme="tag"]) .heart-kachelklapp .heart-lifeskin-kacheln {
-  border-radius: 10px;
-}
 
 :where(html[data-heart-theme="tag"]) .heart-nav-gruppe__pfeil {
   color: var(--heart-text-muted);
