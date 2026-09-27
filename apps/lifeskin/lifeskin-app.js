@@ -1038,6 +1038,11 @@ export class Trichter {
     // dass sich etwas bewegt - und auf dem Weg mit Scan waere der Weg
     // zurueck die Aufnahme selbst, die niemand zweimal macht.
     if (vorher && !this.vorherigerSchirm(name)) return;
+    // Die vier Fragen stehen nicht im Verlauf (hinter ihnen liegt die
+    // Aufnahme). Ein Eintrag fuer den Namen fuehrte per history.back()
+    // deshalb an ihnen vorbei in die Kamera-Anleitung - der Pfeil springt
+    // stattdessen direkt zu den Fragen (siehe #ereignisse).
+    if (vorher && this.vorherigerSchirm(name) === "fragen") return;
     try {
       if (!vorher) {
         history.replaceState({ ls: name }, "");
@@ -1596,6 +1601,9 @@ export class Trichter {
         }
         const ziel = this.vorherigerSchirm();
         if (!ziel) return;
+        // Vom Namen zurueck zu den vier Fragen: direkt, nicht ueber den
+        // Verlauf - die Fragen haben keinen Eintrag darin.
+        if (ziel === "fragen") { this.zurueckZu("fragen"); return; }
         // ueber den Verlauf zurueck, damit beide Wege dieselbe Kette teilen
         // und der Vorwaerts-Knopf danach noch stimmt.
         if (history.state?.ls && history.length > 1) history.back();
