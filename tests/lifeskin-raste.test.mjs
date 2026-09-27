@@ -132,7 +132,8 @@ test("Heart: Karte mit Schaltern je Ort, zugeklappt", () => {
   const html = renderRaste({ raste: null });
   assert.ok(html.includes("Ergebnisse (Vorher / Nachher)"));
   assert.ok(html.includes("Mit der ersten Änderung werden sie hier gespeichert"));
-  assert.equal((html.match(/data-action="lifeskin-rasti-ort"/g) || []).length, 8);
+  // Drei Orte je Fall: Landing, Oben, Analyseseite - vier Faelle.
+  assert.equal((html.match(/data-action="lifeskin-rasti-ort"/g) || []).length, 12);
   assert.ok(!/data-klapp="raste" open/.test(html));
   klappSetzen("raste", true);
   assert.ok(renderRaste({ raste: [] }).includes('data-klapp="raste" open'));

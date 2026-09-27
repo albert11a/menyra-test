@@ -59,7 +59,7 @@ export function blickFall(r, i) {
     `<span class="blick__halb">${rastiBild(src, "").replace(i < 2 ? ' loading="lazy"' : "", "")}<span class="blick__etiket${pas ? " blick__etiket--pas" : ""}" aria-hidden="true">${wort}</span></span>`;
   const name = [r.emri, r.gjetja].filter(Boolean).join(": ") || `Rasti ${i + 1}`;
   return `
-            <a class="blick__fall" href="#rezultatet" data-blick="${i}" aria-label="${e(name)}, para dhe pas 28 ditësh">
+            <a class="blick__fall" href="#rezultatet" data-blick="${e(r.id)}" aria-label="${e(name)}, para dhe pas 28 ditësh">
               ${halb(r.para, "PARA", false)}
               ${halb(r.pas, "PAS", true)}
             </a>`;
@@ -103,9 +103,16 @@ async function start() {
   // ewig leer da.
   const notfall = setTimeout(zeigen, 1800);
   let faelle = null;
+  let oben = [];
   try {
     const liste = await rasteLaden(BASIS);
-    if (liste) faelle = await rasteMitBildern(rasteFuer(liste, "landing"), BASIS);
+    if (liste) {
+      faelle = await rasteMitBildern(rasteFuer(liste, "landing"), BASIS);
+      // Oben stehen die Faelle, die in Heart "Oben" tragen - in derselben
+      // Reihenfolge, mit denselben (schon geladenen) Bildern.
+      const obenIds = new Set(rasteFuer(liste, "oben").map((r) => r.id));
+      oben = faelle.filter((r) => obenIds.has(r.id));
+    }
   } catch {
     faelle = null;
   }
@@ -115,9 +122,9 @@ async function start() {
     return;
   }
   const abschnitt = document.getElementById("rezultatet");
+  if (reihe && !oben.length) reihe.hidden = true;
   if (!faelle.length) {
     if (abschnitt) abschnitt.hidden = true;
-    if (reihe) reihe.hidden = true;
     return;
   }
   bahn.innerHTML = faelle.map(rastiKarte).join("");
@@ -127,9 +134,9 @@ async function start() {
   // Andere Faelle als im HTML: erst fertig laden, dann in einem Zug
   // tauschen - auch wenn die Reihe schon sichtbar ist, erscheint so nie
   // ein leeres oder ein halbes Bild.
-  if (blick && !wieImHtml(faelle)) {
-    await Promise.race([Promise.all(faelle.slice(0, 2).flatMap((r) => [vorladen(r.para), vorladen(r.pas)])), warten(2500)]);
-    blick.innerHTML = faelle.map(blickFall).join("");
+  if (blick && oben.length && !wieImHtml(oben)) {
+    await Promise.race([Promise.all(oben.slice(0, 2).flatMap((r) => [vorladen(r.para), vorladen(r.pas)])), warten(2500)]);
+    blick.innerHTML = oben.map(blickFall).join("");
     blick.scrollLeft = 0;
   }
   zeigen();

@@ -2278,6 +2278,7 @@ async function speichereLifeskinRasti() {
     emrat: produkte.map((p) => namen.get(p) || (alt?.emrat?.[alt.produkte.indexOf(p)]) || p),
     cmimi: cmimiRoh ? Number(cmimiRoh) : rastiPreisVorschlag(produkte.length),
     landing: e.landing ?? alt?.landing ?? true,
+    oben: e.oben ?? alt?.oben ?? true,
     analiza: e.analiza ?? alt?.analiza ?? true,
     // Eine Datei der Seite bleibt im Index; ein neues Bild geht in sein
     // eigenes Dokument.
@@ -2330,16 +2331,17 @@ async function loescheLifeskinRasti() {
 }
 
 async function lifeskinRastiOrt(id, ort) {
-  if (!["landing", "analiza"].includes(ort)) return;
+  if (!["landing", "oben", "analiza"].includes(ort)) return;
   const stand = store.getState().lifeskin || {};
   if (stand.rasteStatus) return;
   const liste = rasteListe(stand);
   const fall = liste.find((r) => r.id === id);
   if (!fall) return;
-  const an = !fall[ort];
-  const wo = ort === "landing" ? "Landingpage" : "Analyseseite";
+  if (ort === "oben" && !fall.landing) return;
+  const an = ort === "oben" ? fall.oben === false : !fall[ort];
+  const wo = { landing: "der Landingpage", oben: "oben auf der Landingpage", analiza: "der Analyseseite" }[ort];
   await rasteSchreiben(liste.map((r) => (r.id === id ? { ...r, [ort]: an } : r)),
-    `${fall.emri || "Ergebnis"}: ${an ? "erscheint jetzt auf der" : "nicht mehr auf der"} ${wo}.`);
+    `${fall.emri || "Ergebnis"}: ${an ? "erscheint jetzt auf" : "nicht mehr auf"} ${wo}.`);
 }
 
 async function lifeskinRastiSchieben(id, richtung) {

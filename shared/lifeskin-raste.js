@@ -92,6 +92,10 @@ export function rastiNormalisieren(roh = {}) {
     pas: pas.startsWith("data:") ? "" : pas,
     bild: roh.bild === true,
     landing: roh.landing === true,
+    // OBEN = auch im ersten Blick der Landingpage (die flache Karte unter
+    // dem Knopf). Nur wo er auf der Landing steht, und ohne Angabe ja -
+    // Faelle von vorher bleiben damit, wo sie waren.
+    oben: roh.oben !== false,
     analiza: roh.analiza === true
   };
 }
@@ -115,7 +119,9 @@ export function rasteOderStandard(dok) {
 }
 
 export function rasteFuer(liste, ort) {
-  return (liste || []).filter((r) => (ort === "landing" ? r.landing : r.analiza));
+  return (liste || []).filter((r) => (
+    ort === "oben" ? r.landing && r.oben !== false
+      : ort === "landing" ? r.landing : r.analiza));
 }
 
 // Der Standardfall einer Analyse: der Fall mit den meisten gleichen

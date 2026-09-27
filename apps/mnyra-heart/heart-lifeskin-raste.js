@@ -50,11 +50,17 @@ export function renderRaste(zustand) {
   const status = zustand?.rasteStatus || "";
   const zeilen = liste.map((r, i) => {
     const b = bilderVon(r, zustand);
-    const ort = (name, wort) => `
-          <button type="button" class="heart-rasti-ort${r[name] ? " heart-rasti-ort--an" : ""}"
+    // "Oben" gilt nur, solange der Fall auf der Landing steht - ohne
+    // Landing ist der Knopf aus und nicht waehlbar.
+    const ort = (name, wort) => {
+      const an = name === "oben" ? r.landing && r.oben !== false : r[name];
+      const gesperrt = status || (name === "oben" && !r.landing);
+      return `
+          <button type="button" class="heart-rasti-ort${an ? " heart-rasti-ort--an" : ""}"
                   data-action="lifeskin-rasti-ort" data-id="${escapeHtml(r.id)}" data-ort="${name}"
-                  aria-pressed="${r[name] ? "true" : "false"}" ${status ? "disabled" : ""}>
-            ${r[name] ? "✓ " : ""}${wort}</button>`;
+                  aria-pressed="${an ? "true" : "false"}" ${gesperrt ? "disabled" : ""}>
+            ${an ? "✓ " : ""}${wort}</button>`;
+    };
     const aus = !r.landing && !r.analiza;
     return `
       <div class="heart-rasti-zeile${aus ? " heart-rasti-zeile--aus" : ""}">
@@ -64,7 +70,7 @@ export function renderRaste(zustand) {
           <small>${escapeHtml([r.gjetja, r.produkte.length ? rastiProdukteText(r) : "", euro(r.cmimi)].filter(Boolean).join(" · "))}</small>
           ${aus ? `<small class="heart-rasti-aus">Ausgeschaltet – erscheint nirgends</small>` : ""}
         </div>
-        <div class="heart-rasti-orte">${ort("landing", "Landing")}${ort("analiza", "Analyseseite")}</div>
+        <div class="heart-rasti-orte">${ort("landing", "Landing")}${ort("oben", "Oben")}${ort("analiza", "Analyseseite")}</div>
         <div class="heart-rasti-aktionen">
           <button type="button" class="heart-rasti-mini" data-action="lifeskin-rasti-schieben" data-id="${escapeHtml(r.id)}" data-richtung="hoch"
                   aria-label="Nach oben" ${i === 0 || status ? "disabled" : ""}>↑</button>
@@ -76,16 +82,18 @@ export function renderRaste(zustand) {
   }).join("");
 
   const landing = rasteFuer(liste, "landing").length;
+  const oben = rasteFuer(liste, "oben").length;
   const analiza = rasteFuer(liste, "analiza").length;
   return `
     <details class="heart-lifeskin-block heart-klapp" ${klappAttr("raste")}>
       <summary class="heart-klapp__kopf">
         <h3 class="heart-lifeskin-block__titel">Ergebnisse (Vorher / Nachher)</h3>
-        <span class="heart-klapp__zahl">${landing} Landing · ${analiza} Analyse</span>
+        <span class="heart-klapp__zahl">${landing} Landing · ${oben} oben · ${analiza} Analyse</span>
       </summary>
       <p class="heart-lifeskin-block__fuss">
         Die Fälle unter „Rezultate“. Je Fall entscheidest du, wo er erscheint:
         <b>Landing</b>, <b>Analyseseite</b>, beides – oder nichts (ausgeschaltet).
+        <b>Oben</b> heißt: auch ganz oben auf der Landing, unter dem Knopf – in dieser Reihenfolge.
         Welche Fälle eine einzelne Analyseseite zeigt, wählst du im Befund des Falls.
       </p>
       ${gespeichert ? "" : `<p class="heart-rasti-hinweis">Das sind die Fälle, die jetzt auf den Seiten stehen. Mit der ersten Änderung werden sie hier gespeichert.</p>`}
@@ -181,6 +189,7 @@ export function renderRastiEditor(zustand, produkte) {
       <div class="heart-lifeskin-feld">
         <span>Zeigen auf</span>
         <label class="heart-rasti-haken"><input type="checkbox" data-rastifeld-an="landing"${r.landing ? " checked" : ""} /> Landingpage</label>
+        <label class="heart-rasti-haken"><input type="checkbox" data-rastifeld-an="oben"${r.oben !== false ? " checked" : ""} /> Oben auf der Landingpage (unter dem Knopf)</label>
         <label class="heart-rasti-haken"><input type="checkbox" data-rastifeld-an="analiza"${r.analiza ? " checked" : ""} /> Analyseseite (im Befund wählbar)</label>
       </div>
 

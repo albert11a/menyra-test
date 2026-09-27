@@ -40,8 +40,9 @@ test("kein Flackern: Bilder blenden erst ein, wenn feststeht, welche es sind", (
   const css = lies("apps/lifeskin-landing/landing.css");
   assert.match(css, /\.js \.blick\[data-wartet\] \.blick__halb img \{ opacity: 0; \}/);
   const js = lies("apps/lifeskin-landing/raste.js");
-  assert.match(js, /if \(blick && !wieImHtml\(faelle\)\)/, "gleiche Faelle werden neu eingesetzt und laden noch einmal");
-  const tausch = js.indexOf("blick.innerHTML = faelle.map(blickFall)");
+  assert.match(js, /if \(blick && oben\.length && !wieImHtml\(oben\)\)/, "gleiche Faelle werden neu eingesetzt und laden noch einmal");
+  const tausch = js.indexOf("blick.innerHTML = oben.map(blickFall)");
+  assert.ok(tausch > -1);
   assert.ok(js.lastIndexOf("vorladen(r.para)", tausch) > -1, "getauscht wird, bevor die neuen Bilder da sind");
   assert.match(js, /setTimeout\(zeigen, 1800\)/);
   assert.match(lies("apps/lifeskin-landing/landing.js"), /\.blick\[data-wartet\]"\);\s*if \(reihe\) reihe\.removeAttribute\("data-wartet"\)/,
@@ -62,7 +63,7 @@ test("unter dem Knopf laufen die Faelle, zum Fall verlinkt", () => {
   const held = html.slice(html.indexOf('id="held"'), html.indexOf('id="pse"'));
   assert.ok(held.indexOf('id="ls-start"') < held.indexOf('id="blick"'), "die Reihe steht nicht unter dem Knopf");
   const faelle = [...held.matchAll(/<a class="blick__fall" href="#rezultatet" data-blick="(\d+)"/g)].map((m) => m[1]);
-  assert.deepEqual(faelle, ["0", "1", "2", "3"]);
+  assert.deepEqual(faelle, ["1", "2", "3", "4"], "die Kennungen passen nicht zu den Faellen unten (data-rasti)");
   assert.match(lies("apps/lifeskin-landing/landing.js"), /closest\("\[data-blick\]"\)/);
 });
 
@@ -74,4 +75,26 @@ test("aus Heart gepflegte Faelle ersetzen auch die Reihe oben", async () => {
   assert.match(blickFall({ para: "/a.jpg", pas: "/b.jpg" }, 2), /loading="lazy"/);
   const js = lies("apps/lifeskin-landing/raste.js");
   assert.match(js, /reihe\.hidden = true/, "ohne Faelle bliebe eine leere Reihe stehen");
+});
+
+test("Heart bestimmt, welche Faelle oben stehen - der Tipp findet den Fall ueber die Kennung", async () => {
+  const { rastiNormalisieren, rasteFuer } = await import("../shared/lifeskin-raste.js");
+  const liste = [
+    { id: "a", landing: true, oben: false },
+    { id: "b", landing: true },
+    { id: "c", landing: false, oben: true }
+  ].map(rastiNormalisieren);
+  assert.equal(liste[1].oben, true, "Faelle von vorher verschwinden oben");
+  assert.deepEqual(rasteFuer(liste, "oben").map((r) => r.id), ["b"], "oben ohne Landing oder abgeschaltet steht trotzdem da");
+  assert.deepEqual(rasteFuer(liste, "landing").map((r) => r.id), ["a", "b"], "ein Fall nur ohne 'Oben' faellt unten weg");
+  const html = lies("apps/lifeskin-landing/index.html");
+  for (const n of [1, 2, 3, 4]) assert.ok(html.includes(`data-rasti="${n}"`) && html.includes(`data-blick="${n}"`));
+  assert.match(lies("apps/lifeskin-landing/landing.js"), /karten\[k\]\.getAttribute\("data-rasti"\) === kennung/);
+  const js = lies("apps/lifeskin-landing/raste.js");
+  assert.match(js, /data-blick="\$\{e\(r\.id\)\}"/);
+  assert.match(js, /blick\.innerHTML = oben\.map\(blickFall\)/);
+  const heart = lies("apps/mnyra-heart/heart-lifeskin-raste.js");
+  assert.match(heart, /ort\("oben", "Oben"\)/);
+  assert.match(heart, /data-rastifeld-an="oben"/);
+  assert.match(lies("apps/mnyra-heart/heart.js"), /\["landing", "oben", "analiza"\]\.includes\(ort\)/);
 });

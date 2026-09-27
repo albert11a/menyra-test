@@ -459,8 +459,14 @@
       var fall = ereignis.target && ereignis.target.closest
         ? ereignis.target.closest("[data-blick]")
         : null;
-      if (!fall) return;
-      var ziel = karten[Number(fall.getAttribute("data-blick")) || 0];
+      if (!fall || !karten.length) return;
+      // Ueber die Kennung, nicht die Stelle: Oben stehen nicht immer
+      // dieselben Faelle wie unten (Heart, "Oben").
+      var kennung = fall.getAttribute("data-blick");
+      var ziel = null;
+      for (var k = 0; k < karten.length; k++) {
+        if (karten[k].getAttribute("data-rasti") === kennung) { ziel = karten[k]; break; }
+      }
       if (ziel) bahn.scrollLeft = ziel.offsetLeft - karten[0].offsetLeft;
     });
   }
