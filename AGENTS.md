@@ -123,6 +123,28 @@ Older dated notes are archive context unless they are explicitly marked
 - Do not run Playwright/smoke checks unless the user explicitly asks for that
   run; prepared skipped tests are allowed.
 
+## Meta-Pixel-Sperre (LifeSkin)
+
+Die Werbeanzeigen optimieren auf die Pixel-Ereignisse. Deshalb gilt ohne
+Ausnahme:
+
+- Meta-Pixel und Conversions API werden NIE ohne ausdrueckliche Erlaubnis
+  des Inhabers geaendert - auch nicht "nebenbei", nicht als Aufraeumen,
+  nicht als Verbesserung. Vorher immer fragen und die Antwort abwarten.
+- Gesperrt sind: `apps/lifeskin/lifeskin-pixel.js`,
+  `functions/lifeskin-capi-payload.js`, `functions/lifeskin-capi.js`,
+  `LIFESKIN_PIXEL_ID` und `LIFESKIN_PIXEL_EINWILLIGUNG_NOETIG` in
+  `apps/lifeskin/lifeskin-config.js`, und jede Zeile, die den Pixel aufruft
+  (Ereignisnamen, Zeitpunkt, Daten, `fbc`/`fbp`), in Trichter, Landingpages,
+  Warteseite, Therapieseite, Laden und Functions.
+- Ein neues Ereignis, ein neuer Name, ein anderer Zeitpunkt oder eine neue
+  Seite, die andere Ereignisse meldet, ist ebenfalls eine Aenderung.
+- `tests/lifeskin-pixel-sperre.test.mjs` wird rot, sobald sich daran etwas
+  aendert. Diesen Test nie anpassen, ueberspringen oder loeschen, um eine
+  Aenderung durchzubringen. Erst nach ausdruecklicher Erlaubnis werden die
+  Werte darin neu eingetragen, mit dem Vermerk im Commit:
+  "Pixel-Aenderung erlaubt von <Name> am <Datum>: <was>".
+
 ## Definition Of Done
 
 - Scope is documented before implementation.
