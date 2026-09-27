@@ -109,6 +109,45 @@ Verlauf: `docs/lifeskin-prompt-verlauf.md`.
 - **Nicht geprueft:** kein echtes Telefon, kein Playwright/Smoke (AGENTS.md).
   Mobil muss auf der Vercel-Vorschau geprueft werden.
 
+### Browser-Pruefstand (27.09., nachgereicht)
+
+`tests/lifeskin-trichter-pruefstand/lauf-wege.mjs`: Chromium in
+Telefongroesse mit Beruehrung, Kamera mit echtem Gesicht, Firestore nur im
+Speicher. Jeder Scan-/Foto-Weg geht jetzt durch die vier Fragen, dazu
+sieben Kunden bis zur Therapieseite:
+
+| Kunde | Telefon | Verhalten | Ergebnis |
+|---|---|---|---|
+| K1 Arta, 19 | iPhone, Instagram | will nur schauen, "Po, kur ta shoh" | ✓ |
+| K2 Besa, 27 | Android 360×640 | skeptisch, geht nach Frage 3 zurueck, aendert Frage 2 | ✓ (nach Korrektur) |
+| K3 Driton, 23 | Android, Instagram | tippt jede Antwort doppelt | ✓ (nach Korrektur) |
+| K4 Neugierige/r | iPhone SE 320×568 | "Së pari dua vetëm analizën" | ✓ (nach Korrektur) |
+| K5 Liridona | Android, Facebook | Seite laedt mitten in den Fragen neu | ✓ (nach Korrektur) |
+| K6 Vjosa | iPhone, Facebook | Roaccutane - darf nicht oeffentlich werden | ✓ |
+| K7 | Android Chrome, Scan | geht vom Namen zurueck zu den Fragen | ✓ (nach Korrektur) |
+
+Gefunden und behoben:
+
+1. **Neuladen mitten in den Fragen** (Instagram/Facebook beim App-Wechsel):
+   Der Kunde landete auf dem Einstieg, der Scan war fuer ihn verloren.
+   Jetzt steht er wieder an derselben Frage mit seinen Antworten.
+2. **Doppeltipp** uebersprang die naechste Frage. Jetzt gilt nur ein
+   Wechsel je Frage.
+3. **Kleine Telefone**: Bei acht bzw. sechs Antworten lag die letzte unter
+   "Vazhdo". Unter 700 px Hoehe enger, unter 660 px zwei Spalten.
+4. **Pfeil vom Namen** sprang ueber den Verlauf in die Kamera-Anleitung.
+   Jetzt direkt zu den Fragen.
+
+Gesamt: 827 von 833 im ersten Lauf, die Abweichungen oben behoben und
+nachgeprueft (K2 50/50, K4 48/48, K7 58/58). Einzige verbleibende Meldung:
+A1c, eine Konsolenmeldung der Gesichtserkennungs-Bibliothek, wenn ihr
+Download abbricht (wer sofort tippt) - der Trichter faellt wie vorgesehen
+auf die einfache Erkennung zurueck; unabhaengig von den Fragen.
+
+Grenzen: Engine Chromium (kein echtes WebKit), kein echtes Telefon, keine
+echte Instagram-App. Ob Menschen am Ende kaufen, misst nur der echte
+Verkehr - siehe Abschnitt 7.
+
 ## 5. Vorschau
 
 `vercel.json` erlaubt Vorschau-Builds fuer diesen Branch
