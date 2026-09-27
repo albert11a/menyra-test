@@ -4331,6 +4331,10 @@ export class Trichter {
     wahl.innerHTML = "";
     if (frage.spalten) wahl.dataset.spalten = String(frage.spalten);
     else delete wahl.dataset.spalten;
+    // Lange Listen (Anliegen: acht Antworten) werden auf kleinen
+    // Telefonen enger gesetzt - sonst liegt die letzte unter dem Knopf.
+    if ((frage.antworten || []).length > 6) wahl.dataset.viele = "";
+    else delete wahl.dataset.viele;
 
     if (getippt) {
       if (weiter) {
