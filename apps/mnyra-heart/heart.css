@@ -6498,8 +6498,26 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 /* Oben in der Karte: kleinere Chips zum Wischen, ganz rechts der Pfeil
    zum Zuklappen. Zu: die Zahlenzeile, rechts der Pfeil zum Aufklappen. */
 .heart-kachelklapp__leiste { display: flex; align-items: center; gap: 8px; margin-top: -4px; }
-.heart-kachelklapp__leiste .heart-lifeskin-chips { flex: 1 1 auto; min-width: 0; margin: 0; gap: 6px; }
-.heart-kachelklapp__leiste .heart-lifeskin-chip { min-height: 32px; padding: 5px 11px; font-size: 12px; }
+.heart-kachelklapp__zeitraum {
+  flex: 1 1 auto; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--heart-muted, #8f918d);
+}
+/* DER DATUM-KNOPF IM KOPF und die Chipreihe, die an seine Stelle tritt. */
+.heart-topbar--zeitwahl { gap: 8px; }
+/* Die fuenf fuellen die Zeile; ist der Bildschirm zu schmal (320 px),
+   laesst sich die Reihe wischen - abgeschnitten wird nichts. */
+.heart-zeitwahl {
+  flex: 1 1 auto; min-width: 0; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.heart-zeitwahl::-webkit-scrollbar { display: none; }
+.heart-zeitwahl__chip {
+  flex: 1 0 auto; min-height: 40px; padding: 6px 9px; border-radius: 999px; white-space: nowrap;
+  border: 1px solid var(--heart-border, #2a2c2e); background: transparent; color: var(--heart-muted, #8f918d);
+  font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.heart-zeitwahl__chip--an { background: var(--heart-text, #f7f7f2); color: var(--heart-bg, #000); border-color: transparent; }
+.heart-zeitwahl__zu { flex: none; }
 .heart-kachelklapp__pfeil {
   flex: none; display: grid; place-items: center; width: 34px; height: 34px; padding: 0;
   border: 1px solid var(--heart-line, #26292a); border-radius: 50%; background: transparent;

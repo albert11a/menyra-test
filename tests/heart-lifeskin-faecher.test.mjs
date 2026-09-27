@@ -182,8 +182,10 @@ test("findeSitzung schaut in beiden Listen und erfindet nichts", () => {
   assert.equal(findeSitzung({}, "a"), null);
 });
 
-test("die Reihe der Zeitraeume steht ueber den Zahlen", () => {
-  const html = zeichne();
+// Seit 27.09. im Kopf von Heart (Datum-Knopf), nicht mehr ueber den Zahlen.
+test("die Reihe der Zeitraeume steht im Kopf von Heart", async () => {
+  const { renderZeitwahl } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
+  const html = renderZeitwahl("heute");
   for (const z of ZEITRAEUME) {
     assert.ok(html.includes(`data-action="lifeskin-zeitraum" data-wert="${z.id}"`), `${z.id} fehlt`);
   }

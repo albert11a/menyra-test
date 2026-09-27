@@ -163,6 +163,16 @@ function renderChips(eintraege, aktiv, aktion) {
   </div>`;
 }
 
+// DIE ZEITRAEUME IM KOPF VON HEART (heart-render.js): Der Datum-Knopf
+// klappt diese Reihe an die Stelle von Menue, Marke und Aktualisieren.
+export const zeitraumName = (zeitraum) => ZEITRAEUME.find((z) => z.id === zeitraum)?.label || "Heute";
+export function renderZeitwahl(zeitraum = "heute") {
+  return `<div class="heart-zeitwahl" role="group" aria-label="Zeitraum">
+            ${ZEITRAEUME.map((z) => `<button type="button" class="heart-zeitwahl__chip${z.id === zeitraum ? " heart-zeitwahl__chip--an" : ""}"
+                data-action="lifeskin-zeitraum" data-wert="${escapeHtml(z.id)}" aria-pressed="${z.id === zeitraum}">${escapeHtml(z.label)}</button>`).join("")}
+          </div>`;
+}
+
 // DIE ACHT KACHELN, IN VIER REIHEN ZU ZWEIT.
 //
 // Sie folgen dem Weg durch die Seite und nicht der Reihenfolge, in der
@@ -175,7 +185,7 @@ function renderChips(eintraege, aktiv, aktion) {
 //
 // Je zwei in einer Reihe, auf jedem Bildschirm: Zwei Zahlen
 // nebeneinander liest man als Paar, drei als Liste.
-function renderKacheln(kennzahlen, zeitraum = "", chips = "") {
+function renderKacheln(kennzahlen, zeitraum = "") {
   const name = ZEITRAEUME.find((z) => z.id === zeitraum)?.label || "Heute";
   const klein = zeitraum === "max" ? "gesamt" : name.toLowerCase();
   const differenz = (kennzahlen.landing ?? 0) - (kennzahlen.landingDavor ?? 0);
@@ -201,11 +211,10 @@ function renderKacheln(kennzahlen, zeitraum = "", chips = "") {
         <span class="heart-klapp__zahl heart-klapp__zahl--zu">${escapeHtml(`${kennzahlen.landing ?? 0} Landing · ${kennzahlen.analysen ?? 0} Analysen · ${euro(kennzahlen.umsatzHeute)}`)}</span>
         <span class="heart-kachelklapp__pfeil" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span>
       </summary>
-      <!-- DIE ZEITRAUM-CHIPS STEHEN IN DER KARTE, nicht darueber: Stuenden
-           sie darueber und verschwaenden beim Zuklappen, rutschte die Karte
-           unter dem Finger nach oben - die Seite "huepfte". -->
+      <!-- Oben der gewaehlte Zeitraum (gewaehlt wird im Kopf von Heart,
+           Datum-Knopf), rechts der Pfeil zum Zuklappen. -->
       <div class="heart-kachelklapp__leiste">
-        ${chips}
+        <span class="heart-kachelklapp__zeitraum">${escapeHtml(name)}</span>
         <button type="button" class="heart-kachelklapp__pfeil" data-action="zahlen-zuklappen" aria-label="Zahlen zuklappen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
       </div>
     <div class="heart-lifeskin-kacheln">
@@ -3089,7 +3098,7 @@ export function renderLifeskin(zustand) {
           Noch keine Analyse. Die Zahlen fuellen sich mit dem ersten Besucher
           auf <b>mnyra.com/lifeskin</b>.
         </p>` : ""}
-      ${renderKacheln(zahlen, zeitraum, renderChips(ZEITRAEUME, zeitraum || "heute", "lifeskin-zeitraum"))}
+      ${renderKacheln(zahlen, zeitraum)}
       ${zustand.liveFehler
         ? leererBlock("Live", "Verbindung unterbrochen — Live-Zahlen nicht verfuegbar.")
         : renderLive(zustand.live)}

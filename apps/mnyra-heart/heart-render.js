@@ -24,7 +24,7 @@ import {
   renderHeartAnalyticsView
 } from "./heart-analytics-render.js";
 import { renderHeartLandingView } from "./heart-landing-render.js";
-import { renderLifeskin } from "./heart-lifeskin-render.js";
+import { renderLifeskin, renderZeitwahl, zeitraumName } from "./heart-lifeskin-render.js";
 import {
   renderHeartDestinationsView
 } from "./heart-destinations-render.js";
@@ -425,12 +425,21 @@ function renderShell(state, runtime = {}) {
   // genau der Fall, gegen den tests/heart-view-error-boundary.test.mjs
   // steht.
   let isLifeskinDetail = false;
+  let zeitWahlOffen = false;
+  let zeitraum = "heute";
   try {
     isLifeskinDetail = activeView === "lifeskin"
       && String(state.lifeskin?.offen || "").trim() !== "";
+    zeitWahlOffen = state.lifeskin?.zeitWahl === true;
+    zeitraum = String(state.lifeskin?.zeitraum || "heute");
   } catch {
     isLifeskinDetail = false;
   }
+  // DER ZEITRAUM DER ZAHLEN (Lifeskin-Uebersicht): ein Datum-Knopf links
+  // neben "Aktualisieren". Angetippt tritt die Chipreihe an die Stelle von
+  // Menue, Marke und Aktualisieren; eine Wahl (oder ×) bringt den Kopf zurueck.
+  const zeitKnopf = activeView === "lifeskin" && !isLifeskinDetail;
+  const zeitWahl = zeitKnopf && zeitWahlOffen;
   const navItem = HEART_NAV_ITEMS.find((item) => item.key === activeView);
   const shellClasses = [
     "heart-shell",
@@ -443,6 +452,11 @@ function renderShell(state, runtime = {}) {
       ${renderDrawer(state, userName)}
       <div class="heart-shell__overlay" data-action="toggle-nav"></div>
       <div class="heart-main-shell">
+        ${zeitWahl ? `
+        <header class="heart-topbar heart-topbar--zeitwahl">
+          ${renderZeitwahl(zeitraum)}
+          <button class="heart-icon-button heart-zeitwahl__zu" data-action="lifeskin-zeitwahl" aria-label="Zeitraum schliessen">${renderHeartIcon("x")}</button>
+        </header>` : `
         <header class="heart-topbar">
           <div class="heart-topbar__left">
             <div class="heart-topbar__menu-slot">
@@ -468,11 +482,15 @@ function renderShell(state, runtime = {}) {
                   <span>Analysen</span>
                 </button>
               ` : ""}
+              ${zeitKnopf ? `
+                <button class="heart-icon-button heart-icon-button--zeit" data-action="lifeskin-zeitwahl"
+                        aria-label="Zeitraum: ${escapeHtml(zeitraumName(zeitraum))}">${renderHeartIcon("calendar")}</button>
+              ` : ""}
               <button class="heart-icon-button heart-icon-button--refresh${state.shell.aktualisiert ? " heart-icon-button--dreht" : ""}" data-action="refresh-heart"
                       aria-label="Aktualisieren"${state.shell.aktualisiert ? ' aria-busy="true"' : ""}>${renderHeartIcon("refresh")}</button>
             `}
           </div>
-        </header>
+        </header>`}
         <main class="heart-main-content">
           ${VIEWS_WITHOUT_PAGE_TITLE.has(activeView) ? "" : `<section class="heart-page-header">
             <h1 class="heart-page-header__title">${escapeHtml(navItem?.label || "Heart")}</h1>

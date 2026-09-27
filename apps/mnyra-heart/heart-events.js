@@ -575,6 +575,10 @@ export function bindHeartEvents({
       operations.setLifeskinZeitraum?.(target.getAttribute("data-wert"));
       return;
     }
+    if (action === "lifeskin-zeitwahl") {
+      operations.lifeskinZeitwahl?.();
+      return;
+    }
     if (action === "heart-push-einschalten") {
       operations.schalteHeartPushEin?.();
       return;

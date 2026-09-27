@@ -88,6 +88,12 @@ const ICONS = Object.freeze({
     <path d="M12 10v6"></path>
     <path d="M12 7h.01"></path>
   `,
+  calendar: `
+    <rect x="3.5" y="5" width="17" height="15.5" rx="2.5"></rect>
+    <path d="M3.5 10h17"></path>
+    <path d="M8 3v4"></path>
+    <path d="M16 3v4"></path>
+  `,
   clock: `
     <circle cx="12" cy="12" r="9"></circle>
     <path d="M12 7v5l3 3"></path>

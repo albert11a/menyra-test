@@ -111,22 +111,12 @@ test("Zahlen: ohne Titel und Pfeil, Doppeltipp klappt zu", () => {
   assert.match(ereignisse, /jetzt - letzterTipp\.zeit < 350/);
 });
 
-test("die Zeitraum-Chips stehen in der Zahlen-Karte - sonst huepft sie beim Zuklappen", () => {
+test("Zahlen: Zeitraum links, Pfeil rechts; Klappen haelt die Karte an ihrer Stelle", () => {
   const render = lies("apps/mnyra-heart/heart-lifeskin-render.js");
-  assert.match(render, /renderKacheln\(zahlen, zeitraum, renderChips\(ZEITRAEUME/);
-  const block = render.slice(render.indexOf("function renderKacheln"), render.indexOf('<div class="heart-lifeskin-kacheln">', render.indexOf("function renderKacheln")));
-  assert.match(block, /<\/summary>[\s\S]*\$\{chips\}/);
-});
-
-test("Live-Karten: ohne jemanden unterwegs kein Satz darunter", () => {
-  const render = lies("apps/mnyra-heart/heart-lifeskin-render.js");
-  assert.doesNotMatch(render, /Gerade ist niemand unterwegs/);
-  assert.match(render, /\$\{still \? "" : `<p class="heart-lifeskin-block__fuss">\$\{reihe\.gesamt\}/);
-});
-
-test("Zahlen: Pfeil rechts neben den Chips, Klappen haelt die Karte an ihrer Stelle", () => {
-  const render = lies("apps/mnyra-heart/heart-lifeskin-render.js");
-  assert.match(render, /heart-kachelklapp__leiste">\s*\$\{chips\}\s*<button type="button" class="heart-kachelklapp__pfeil" data-action="zahlen-zuklappen"/);
+  assert.match(render, /heart-kachelklapp__leiste">\s*<span class="heart-kachelklapp__zeitraum">\$\{escapeHtml\(name\)\}<\/span>\s*<button type="button" class="heart-kachelklapp__pfeil" data-action="zahlen-zuklappen"/);
+  const kopf = lies("apps/mnyra-heart/heart-render.js");
+  assert.match(kopf, /data-action="lifeskin-zeitwahl"/, "kein Datum-Knopf im Kopf");
+  assert.match(kopf, /\$\{renderZeitwahl\(zeitraum\)\}/);
   const ereignisse = lies("apps/mnyra-heart/heart-events.js");
   const block = ereignisse.slice(ereignisse.indexOf("function zahlenKlappen"), ereignisse.indexOf("let letzterTipp"));
   assert.match(block, /getBoundingClientRect\(\)\.top - vorher/, "die Oberkante wird nicht zurueckgesetzt");

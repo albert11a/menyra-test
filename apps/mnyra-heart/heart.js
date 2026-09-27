@@ -3664,7 +3664,12 @@ const operations = {
   lifeskinZuruecksetzen() { return setzeLifeskinZurueck(); },
   lifeskinResetAbbrechen() { actions.patchLifeskin({ resetGefragt: false }); },
   setLifeskinZeitraum(id) {
-    actions.patchLifeskin({ zeitraum: String(id || "heute").trim() });
+    // Aus dem Kopf gewaehlt: Kopf wieder normal.
+    actions.patchLifeskin({ zeitraum: String(id || "heute").trim(), zeitWahl: false });
+  },
+  lifeskinZeitwahl() {
+    const stand = store.getState().lifeskin || {};
+    actions.patchLifeskin({ zeitWahl: stand.zeitWahl !== true });
   },
   // Welcher der sechs Trichter unter der Chipreihe steht.
   setLifeskinTrichter(id) {
