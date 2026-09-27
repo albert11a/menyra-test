@@ -49,7 +49,7 @@ kixie.com).
 - **Weg-Merkmal** `shared/lifeskin-weg.js`: `LIFESKIN_WEGE = ["lifeskin2"]`,
   nur bekannte Namen gelten, sonst "" (bisheriger Weg).
 - **Landingpage** `apps/lifeskin-2/index.html` (Kopie von
-  `apps/lifeskin-landing/index.html`, nur Texte + `data-ls-weg="lifeskin2"`),
+  `apps/lifeskin-landing/index.html`, nur Texte + `data-ls-landing="lifeskin2"`),
   `lifeskin-2.css` fuer die Preis-Chips. Route in `vercel.json`,
   `scripts/local-dev-server.mjs`, `sw.js`, Build-Liste.
 - **Trichter** (`lifeskin-app.js`): `wegLesen()` lokal (Sandbox-Tests),
@@ -85,6 +85,28 @@ kixie.com).
 - **WhatsApp-Vorlagen**: "Vorab" ("Po e kontrolloj personalisht nëse
   terapia LifeSkin i përshtatet …") und "Nachfassen / nicht gesehen"
   ("… terapia LifeSkin ju përshtatet ✓") sprechen von der Pruefung.
+
+### Nachtrag 27.09. nachts: alle Wege im Browser geprueft
+
+`LANDING=/lifeskin2 BASIS=http://127.0.0.1:5174 node tests/lifeskin-trichter-pruefstand/lauf-wege.mjs`
+(gegen dist/, Firestore nur im Speicher, Kamera mit Gesicht, Telefone von
+320 bis 412 px, Chrome/Safari/Instagram/Facebook).
+
+- **Gefunden und behoben:** Das Merkmal hiess `data-ls-weg` am `<html>`.
+  Der Trichter bindet aber jedes `[data-ls-weg]` an die Wegwahl - jeder Tipp
+  auf der Seite galt als "Skanim gewaehlt", der Startknopf sprang ueber die
+  Wahl direkt in die Scan-Anleitung. Jetzt `data-ls-landing`, mit Test.
+- **Trup/Pytje**: Die Warteseite sagt jetzt auch dort "Dr. Gashi ju shkruan
+  në WhatsApp nëse terapia ju përshtatet".
+- **Ergebnis**: /lifeskin2 1076 von 1077, /lifeskin 877 von 877. Die eine
+  Meldung (Scan faellt auf die einfache Erkennung zurueck, weil das 6,9-MB-
+  Gesichtsnetz aus dem Internet noch nicht da ist) tritt im Wechsel auf
+  beiden Seiten auf - Netzgeschwindigkeit des Pruefrechners, nicht LifeSkin 2.
+- Zusaetzlich geprueft nur auf /lifeskin2: Knopf, Preis-Chips im ersten
+  Bild, kein "Analiza falas", Frage 4, Nummernknopf, `source.weg`,
+  Warteseite mit `?weg=lifeskin2` und ihrem Satz, Ergebnis mit Urteil ueber
+  dem Titel im ersten Bild und "Rezervo setin tim — 49 €". Auf /lifeskin:
+  kein `source.weg`, kein Urteil, "Fillo terapinë".
 
 ## 4. Pruefung
 

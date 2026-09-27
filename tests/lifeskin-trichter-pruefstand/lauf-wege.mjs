@@ -42,6 +42,12 @@ import { antwortenFuerBericht } from "../../shared/lifeskin-antworten.js";
 
 const BASIS = process.env.BASIS || "http://127.0.0.1:5173";
 const FILTER = process.argv[2] || "";
+// WELCHE LANDINGPAGE: /lifeskin (Standard) oder /lifeskin2 (LifeSkin 2,
+// docs/lifeskin-2.md). Mit LANDING=/lifeskin2 laufen dieselben Kunden
+// ueber den neuen Weg, und an jeder Stelle, an der LifeSkin 2 anders ist,
+// wird das zusaetzlich geprueft.
+const LANDING = process.env.LANDING || "/lifeskin";
+const LS2 = LANDING === "/lifeskin2";
 const AUS = new URL("../../test-results/lifeskin-trichter/wege", import.meta.url).pathname;
 const GESICHT = new URL("../../apps/lifeskin-landing/fotot/rasti-1-dita1.jpg", import.meta.url).pathname;
 const CHROMIUM = process.env.MNYRA_E2E_CHROMIUM || "/opt/pw-browsers/chromium";
@@ -391,7 +397,7 @@ class Lauf {
 
 async function landing(t, { suche = "utm_source=ig&utm_campaign=pruefstand" } = {}) {
   const ab = Date.now();
-  await t.seite.goto(`${BASIS}/lifeskin?${suche}`, { waitUntil: "commit" });
+  await t.seite.goto(`${BASIS}${LANDING}?${suche}`, { waitUntil: "commit" });
   const knopf = await t.warte(() => {
     const k = document.getElementById("ls-start");
     const r = k?.getBoundingClientRect();
@@ -403,6 +409,24 @@ async function landing(t, { suche = "utm_source=ig&utm_campaign=pruefstand" } = 
   await t.bild("landing");
   t.pruefe(knopf != null, "Landing zeigt den Startknopf");
   t.pruefe((await t.querScroll()) <= 1, "Landing ohne seitliches Scrollen");
+  if (LS2) {
+    const oben = await t.seite.evaluate(() => {
+      const fakte = document.querySelector(".ls2-fakte");
+      const r = fakte?.getBoundingClientRect();
+      return {
+        weg: document.documentElement.dataset.lsLanding || "",
+        knopf: document.querySelector("#ls-start .knopf__text")?.textContent || "",
+        fakte: (fakte?.innerText || "").replace(/\s+/g, " "),
+        fakteImBild: Boolean(r && r.height && r.bottom <= innerHeight),
+        falasGross: /Analiza falas/.test(document.getElementById("ls-einstieg")?.innerText || "")
+      };
+    });
+    t.pruefe(oben.weg === "lifeskin2", "LS2: Seite traegt data-ls-landing=lifeskin2", oben.weg);
+    t.pruefe(oben.knopf === "Shiko nëse më përshtatet", "LS2: Knopf 'Shiko nëse më përshtatet'", oben.knopf);
+    t.pruefe(/39 €/.test(oben.fakte) && /dera/.test(oben.fakte) && /45/.test(oben.fakte), "LS2: Preis, Tuer, Garantie unter dem Knopf", oben.fakte);
+    t.pruefe(oben.fakteImBild, "LS2: Preis-Chips im ersten Bildschirm (ohne Scrollen)");
+    t.pruefe(!oben.falasGross, "LS2: kein 'Analiza falas' auf der Landingpage");
+  }
 }
 
 async function zurWahl(t) {
@@ -453,6 +477,11 @@ async function vierFragen(t) {
       balken: document.querySelector(".ls-fortschritt__balken, #ls-fortschritt span, [data-fortschritt]")?.style?.width || ""
     }));
     t.pruefe(kopf.zaehler.includes(`${nr + 1}`) && kopf.zaehler.includes("4"), `Zaehler "Pyetja ${nr + 1} nga 4"`, kopf.zaehler);
+    if (LS2 && id === "gatishmeria") {
+      const antwort = await t.seite.evaluate(() => document.querySelector('#ls-fragewahl [data-antwort="analiza"]')?.textContent || "");
+      t.pruefe(kopf.titel === "Nëse ju përshtatet, a doni ta filloni terapinë 4-javore?", "LS2: Frage 4 in den Worten von LifeSkin 2", kopf.titel);
+      t.pruefe(/nëse më përshtatet/.test(antwort), "LS2: Antwort 'Së pari dua të di nëse më përshtatet'", antwort.trim());
+    }
     if (nr === 0) t.pruefe(/4 pyetje/.test(kopf.einleitung) && /(Skanimi mbaroi|Fotoja u ruajt)/.test(kopf.einleitung), "Einleitung sagt: fertig, 4 kurze Fragen", kopf.einleitung);
     // Jede Antwort ohne Scrollen erreichbar - die letzte ist die tiefste.
     const letzte = await t.seite.evaluate(() => {
@@ -539,6 +568,10 @@ async function nummer(t, nummerText = "044 123 456") {
   await t.seite.fill("#ls-telfeld", nummerText);
   await t.seite.evaluate(() => document.activeElement?.blur?.());
   await t.knopfPruefen("#ls-telweiter", "Knopf WhatsApp-Nummer");
+  if (LS2) {
+    const wort = await t.seite.evaluate(() => document.getElementById("ls-telweiter")?.textContent || "");
+    t.pruefe(/përgjigjen/.test(wort), "LS2: Nummernknopf verspricht die Antwort", wort);
+  }
   await t.tippe("#ls-telweiter");
   return true;
 }
@@ -575,6 +608,13 @@ async function bisZurWarteseite(t, { frist = 45000, erwartetFotos = null } = {})
     t.pruefe(Number(bericht.photos) >= erwartetFotos, "Bericht zaehlt die Fotos", String(bericht.photos));
   }
   if (s) t.pruefe(s.daten.phone && s.daten.phoneConsent === true, "Nummer mit Einwilligung in der Sitzung", String(s.daten.phone || "—"));
+  if (LS2) {
+    const suche = await t.seite.evaluate(() => location.search).catch(() => "");
+    t.pruefe(s?.daten?.source?.weg === "lifeskin2", "LS2: Sitzung traegt source.weg=lifeskin2", JSON.stringify(s?.daten?.source || {}));
+    t.pruefe(/weg=lifeskin2/.test(suche), "LS2: Warteseite mit ?weg=lifeskin2", suche);
+  } else if (s) {
+    t.pruefe(!s.daten.source?.weg, "Alter Weg: kein source.weg", JSON.stringify(s.daten.source || {}));
+  }
   // Die Warteseite selbst.
   const geladen = await t.warte(() => {
     const t = document.body?.innerText || "";
@@ -583,6 +623,12 @@ async function bisZurWarteseite(t, { frist = 45000, erwartetFotos = null } = {})
   await t.bild("warteseite");
   const text = await t.seite.evaluate(() => (document.body?.innerText || "").replace(/\s+/g, " ").trim().slice(0, 160)).catch(() => "");
   t.pruefe(geladen != null, "Warteseite zeigt Inhalt (nicht 'nuk u gjet')", text);
+  if (LS2) {
+    // Scan/Foto: "po kontrollon nëse …"; Trup/Pytje: "ju shkruan në WhatsApp nëse …".
+    const titel = await t.warte(() => /nëse terapia ju përshtatet/.test(document.getElementById("an-prittitel")?.textContent || ""), null, 8000);
+    const ganz = await t.seite.evaluate(() => (document.getElementById("an-prit")?.innerText || "").replace(/\s+/g, " ")).catch(() => "");
+    t.pruefe(titel != null, "LS2: Warteseite sagt, dass Dr. Gashi prueft, ob die Therapie passt", ganz.slice(0, 140));
+  }
   return { id: s?.id || "", sahLadeseite };
 }
 
@@ -598,7 +644,12 @@ async function freigabeUndTherapie(t, id) {
   t.db.setze(`lifeskin/lifeskin/reports/${id}`, {
     status: "fertig", freigabeAt: new Date().toISOString(), preis: 49,
     produkte: [{ id: "pore-control", satz: "Për poret në ballë." }],
-    ...(antworten ? { antworten } : {})
+    ...(antworten ? { antworten } : {}),
+    // Wie Heart: der Weg aus der Sitzung (gibBerichtFrei, weg). A13 hat
+    // keine Sitzung (nur der Link aus WhatsApp) - im Lauf ueber /lifeskin2
+    // ist es trotzdem ein Fall von LifeSkin 2.
+    ...((t.sitzung()?.daten?.source?.weg || (LS2 ? "lifeskin2" : ""))
+      ? { weg: t.sitzung()?.daten?.source?.weg || "lifeskin2" } : {})
   });
   const ms = await t.warte(() => /^\/terapia\//.test(location.pathname), null, 20000);
   t.mass("Freigabe → Therapieseite (ohne Neuladen)", ms);
@@ -632,6 +683,27 @@ async function freigabeUndTherapie(t, id) {
     t.pruefe(!seite.karte && !seite.gati, "Ohne Antworten: keine Karte, kein Satz (alte Befunde wie bisher)");
   }
   t.pruefe(!/Roaccutane|izotretinoin|shtatzënë|044 ?123/i.test(seite.ganzeSeite), "Keine Gesundheitsangabe und keine Nummer auf der oeffentlichen Seite");
+  const urteil = await t.seite.evaluate(() => {
+    const u = document.getElementById("t-urteil");
+    const k = document.getElementById("hero-knopf");
+    const t = document.getElementById("t-titulli");
+    return {
+      sichtbar: Boolean(u && !u.hidden && u.getClientRects().length),
+      text: (u?.textContent || "").replace(/\s+/g, " ").trim(),
+      imBild: Boolean(u && u.getBoundingClientRect().bottom <= innerHeight),
+      vorTitel: Boolean(u && t && u.getBoundingClientRect().bottom <= t.getBoundingClientRect().top + 1),
+      knopf: (k?.textContent || "").trim()
+    };
+  });
+  if (LS2) {
+    await t.seite.evaluate(() => scrollTo(0, 0));
+    await t.bild("ergebnis_urteil");
+    t.pruefe(urteil.sichtbar && /^Po, .*lëkura juaj i përshtatet terapisë\.$/.test(urteil.text), "LS2: Urteil '✓ Po, … i përshtatet terapisë' oben", urteil.text);
+    t.pruefe(urteil.imBild && urteil.vorTitel, "LS2: Urteil im ersten Bildschirm, ueber dem Titel");
+    t.pruefe(/^Rezervo setin tim — 49 €$/.test(urteil.knopf), "LS2: Knopf 'Rezervo setin tim — 49 €'", urteil.knopf);
+  } else {
+    t.pruefe(!urteil.sichtbar && /^Fillo terapinë/.test(urteil.knopf), "Alter Weg: kein Urteil, Knopf 'Fillo terapinë'", urteil.knopf);
+  }
   return seite;
 }
 
@@ -883,7 +955,7 @@ szenario("A3 Me foto · Android Instagram · Kamera sofort gesperrt → Foto mit
   t.pruefe(k.foto, "Knopf 'Bëj foto me kamerën e telefonit' sichtbar");
   t.pruefe(k.chrome && /^intent:\/\//.test(k.chromeHref) && /package=com\.android\.chrome/.test(k.chromeHref), "Knopf 'Hape në Chrome' mit Chrome-Adresse", k.chromeHref.slice(0, 90));
   const rueck = decodeURIComponent((k.chromeHref.match(/S\.browser_fallback_url=([^;]+)/) || [])[1] || "");
-  t.pruefe(/ls_weg=foto/.test(k.chromeHref) && /\/lifeskin/.test(rueck), "Chrome oeffnet denselben Weg wieder (ls_weg=foto)", rueck);
+  t.pruefe(/ls_weg=foto/.test(k.chromeHref) && new RegExp(`${LANDING}(\\?|$)`).test(rueck), "Chrome oeffnet denselben Weg wieder (ls_weg=foto)", rueck);
   await t.knopfPruefen("#ls-fehlerfoto", "Knopf Telefonkamera");
   await systemFoto(t);
   const foto = await t.schirm("ls-foto", 8000);
@@ -1117,7 +1189,7 @@ szenario("A11 Zurueck und Weg wechseln (Pfeil und Zurueck-Taste)", async (t) => 
 
 szenario("A12 Direkt aus Chrome zurueck in den Weg (ls_weg=foto)", async (t) => {
   await t.oeffnen({ kamera: "gesicht", ua: UA.androidChrome, breite: 412, hoehe: 915, dpr: 2.625 });
-  await t.seite.goto(`${BASIS}/lifeskin?utm_source=ig&ls_weg=foto`, { waitUntil: "commit" });
+  await t.seite.goto(`${BASIS}${LANDING}?utm_source=ig&ls_weg=foto`, { waitUntil: "commit" });
   const ms = await t.schirm("ls-fotopara", 15000);
   t.pruefe(ms != null, "Chrome oeffnet direkt die Foto-Anleitung (kein zweites Mal Landing + Wahl)", await t.aktiv());
   const url = await t.seite.evaluate(() => location.search);

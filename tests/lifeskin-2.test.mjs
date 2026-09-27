@@ -26,7 +26,7 @@ function sichtbar(html) {
 }
 
 test("die Landingpage traegt den Weg am Wurzelelement und dieselbe Technik wie /lifeskin", () => {
-  assert.match(LP2, /<html lang="sq" data-ls-variante="kurz" data-ls-weg="lifeskin2">/);
+  assert.match(LP2, /<html lang="sq" data-ls-variante="kurz" data-ls-landing="lifeskin2">/);
   // Dieselben Bildschirme des Trichters - nur die Texte sind neu.
   for (const id of ["ls-einstieg", "ls-wahl", "ls-fotopara", "ls-foto", "ls-vorbereitung", "ls-kamera",
     "ls-name", "ls-anliegen", "ls-tel", "ls-fragen", "ls-analyse", "ls-start"]) {
@@ -39,6 +39,14 @@ test("die Landingpage traegt den Weg am Wurzelelement und dieselbe Technik wie /
   }
   assert.match(LP2, /href="\/apps\/lifeskin-2\/lifeskin-2\.css"/);
   assert.match(LP2, /<link rel="canonical" href="https:\/\/www\.mnyra\.com\/lifeskin2" \/>/);
+});
+
+test("das Merkmal heisst data-ls-landing - data-ls-weg am <html> machte jeden Tipp zur Wegwahl", () => {
+  const wurzel = LP2.match(/<html[^>]*>/)[0];
+  assert.doesNotMatch(wurzel, /data-ls-weg/);
+  // Jedes [data-ls-weg] ist eine Karte, die einen Weg waehlt.
+  assert.match(APP, /for \(const karte of \$\$\("\[data-ls-weg\]"\)\)/);
+  assert.match(APP, /this\.#wegWaehlen\(karte\.dataset\.lsWeg\)/);
 });
 
 test("das Versprechen: Therapie mit Preis oben, 'Shiko nëse më përshtatet', 'falas' nur klein", () => {
@@ -83,16 +91,16 @@ test("der Weg: nur bekannte Namen, sonst der bisherige", () => {
   assert.equal(wegDerSitzung({ source: { weg: "lifeskin2" } }), "lifeskin2");
   assert.equal(wegDerSitzung({ source: {} }), "");
   // Der Trichter liest ihn ohne Import (Sandbox-Tests) - dieselbe Liste.
-  assert.match(APP, /export function wegLesen\(wurzel\) \{\n\s+return wurzel\?\.dataset\?\.lsWeg === "lifeskin2" \? "lifeskin2" : "";/);
+  assert.match(APP, /export function wegLesen\(wurzel\) \{\n\s+return wurzel\?\.dataset\?\.lsLanding === "lifeskin2" \? "lifeskin2" : "";/);
 });
 
 test("die Sitzung merkt sich den Weg in source und die Warteseite bekommt ihn in der Adresse", () => {
-  const mit = herkunftAuslesen({ search: "?utm_campaign=ls2" }, "", "", null, { dataset: { lsWeg: "lifeskin2" } });
+  const mit = herkunftAuslesen({ search: "?utm_campaign=ls2" }, "", "", null, { dataset: { lsLanding: "lifeskin2" } });
   assert.equal(mit.weg, "lifeskin2");
   assert.equal(mit.utmCampaign, "ls2");
   const ohne = herkunftAuslesen({ search: "" }, "", "", null, { dataset: {} });
   assert.ok(!("weg" in ohne), "ohne Weg kein Feld - alte Sitzungen bleiben, wie sie sind");
-  assert.equal(wegAuslesen({ dataset: { lsWeg: "anders" } }), "");
+  assert.equal(wegAuslesen({ dataset: { lsLanding: "anders" } }), "");
 
   const pfad = Object.getOwnPropertyDescriptor(Sitzung.prototype, "berichtPfad").get;
   assert.equal(pfad.call({ id: "abc", stand: { source: { weg: "lifeskin2" } } }), "/analiza/abc?weg=lifeskin2");
