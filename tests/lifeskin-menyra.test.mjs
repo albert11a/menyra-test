@@ -211,7 +211,7 @@ test("die Karten haengen an einem Merkmal, nicht an vier Kennungen", () => {
   assert.match(APP, /this\.#wegWaehlen\(karte\.dataset\.lsWeg\)/);
 });
 
-test("Me foto: Anleitung, Aufnahme, Vorschau - und erst dann Name und Alter", () => {
+test("Me foto: Anleitung, Aufnahme, Vorschau - dann die vier Fragen, dann Name und Alter", () => {
   assert.match(methode(APP, "#fotoParaZeigen"), /this\.sitzung\.schritt\("fotopara"\);/);
   const starten = methode(APP, "#fotoStarten");
   assert.match(starten, /this\.sitzung\.schritt\("fotokamera"\);/);
@@ -229,7 +229,9 @@ test("Me foto: Anleitung, Aufnahme, Vorschau - und erst dann Name und Alter", ()
   const nehmen = methode(APP, "#fotoNehmen");
   assert.match(nehmen, /this\.sitzung\.schritt\("fotogati"\);/);
   assert.match(nehmen, /this\.sitzung\.fotosSpeichern\(\{ zona: aufnahme\.foto \}\)/);
-  assert.match(nehmen, /this\.#nameZeigen\(\);/);
+  // Danach dieselben vier Fragen wie nach dem Scan - sie fuehren
+  // anschliessend zu Name und Alter (#aufnahmeFragen).
+  assert.match(nehmen, /this\.#aufnahmeFragen\("foto"\);/);
   // Und "Bëje përsëri" wirft die alte Aufnahme weg - sonst ginge sie
   // mit hinaus, wenn der zweite Versuch scheitert.
   assert.match(methode(APP, "#fotoNochmal"), /this\.zustand\.stelleFoto = null;/);

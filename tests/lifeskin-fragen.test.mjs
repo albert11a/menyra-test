@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { FRAGEN, FRAGEN_NACH_SCAN, FRAGEN_PA_SKANIM, FRAGEN_PA_SKANIM_NUMRI,
+import { FRAGEN, FRAGEN_NACH_SCAN, FRAGEN_NACH_AUFNAHME, FRAGEN_PA_SKANIM, FRAGEN_PA_SKANIM_NUMRI,
   FRAGEN_TEXTE, t } from "../apps/lifeskin/lifeskin-content.js";
 import { ALTERSGRUPPEN } from "../apps/lifeskin/lifeskin-catalog.js";
 import { PARAMETER_IDS } from "../shared/lifeskin-raport-v3.js";
@@ -29,9 +29,11 @@ test("der Vorrat ist der Vorrat - gestellt wird je Weg eine eigene Auswahl", () 
   // andere. Was hier gilt, gilt deshalb fuer den Vorrat, und die Laenge
   // JE STRECKE steht darunter - dort kostet eine Frage zu viel wirklich
   // Abschluesse.
-  assert.equal(FRAGEN.length, 7, "Der Vorrat ist gewachsen, ohne dass eine Strecke ihn braucht");
+  // Neun seit den zwei Fragen, die den Kauf vorbereiten (perdorimi,
+  // gatishmeria) - beide stellt die Strecke nach Scan und Foto.
+  assert.equal(FRAGEN.length, 9, "Der Vorrat ist gewachsen, ohne dass eine Strecke ihn braucht");
   assert.deepEqual(FRAGEN.map((f) => f.id),
-    ["anliegen", "mosha", "lekura", "kohezgjatja", "kujdesi", "emri", "numri"]);
+    ["anliegen", "mosha", "lekura", "kohezgjatja", "kujdesi", "perdorimi", "gatishmeria", "emri", "numri"]);
   // Getippt wird ZULETZT, und in dieser Reihenfolge: erst wer er ist, dann
   // wie man ihn erreicht. Eine Tastatur am Anfang ist eine Huerde, eine
   // Tastatur am Ende ist der letzte Schritt vor dem Ergebnis.
@@ -50,6 +52,7 @@ test("der Vorrat ist der Vorrat - gestellt wird je Weg eine eigene Auswahl", () 
 // verschwunden.
 test("keine Strecke stellt mehr Fragen, als die Schrittfolge zaehlen kann", () => {
   for (const [name, strecke] of [["nach dem Scan", FRAGEN_NACH_SCAN],
+    ["nach Scan und Foto", FRAGEN_NACH_AUFNAHME],
     ["ohne Scan", FRAGEN_PA_SKANIM], ["die Nummer", FRAGEN_PA_SKANIM_NUMRI]]) {
     const zumAntippen = strecke.filter((f) => f.typ !== "text" && f.typ !== "tel");
     assert.ok(zumAntippen.length <= 4,

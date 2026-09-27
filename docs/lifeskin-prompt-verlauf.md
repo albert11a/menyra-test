@@ -24,3 +24,16 @@ zwei Dinge, und beide betreffen die fertige Seite, nicht das Befundverfahren. (a
 ## v5.3 gegenueber v5.2
 
 drei Dinge. (a) DIE ANAMNESE KOMMT MIT. Der Trichter fragt nach der Aufnahme vier kurze Sachen: was den Patienten am meisten stoert (bis zu zwei aus sieben), Altersgruppe, wie sich die Haut anfuehlt, und ob Schwangerschaft, Isotretinoin oder eine laufende Behandlung vorliegen. Diese Antworten stehen jetzt in hyrja.anamneza und sind VERBINDLICH zu beruecksichtigen - siehe anamneza_rregullat. (b) DIE STIMME. Der Befund ist der Text, den Dr. Gashi unterschreibt; er ist in ihrer Stimme geschrieben, in der ersten Person, ohne ein Wort ueber das Werkzeug, das ihn entworfen hat. (c) Der Name kommt jetzt wirklich an: Heart hat bisher session.age gelesen, das Feld heisst ageBand - die Altersgruppe war in jedem Prompt leer.
+
+## v9.1 gegenueber v9.0 (27.09.2026)
+
+DIE ANTWORTEN VOR DEM KAUF. Nach Scan und Foto stellt der Trichter wieder
+vier kurze Fragen (FRAGEN_NACH_AUFNAHME): Anliegen, seit wann, was schon
+probiert wurde (perdorimi) und ob Dr. Gashi auch die Therapie vorbereiten
+soll (gatishmeria). Die Therapieseite zeigt diese Antworten selbst (Karte
+"Çfarë na thatë" und sein "Po" am Kaufknopf, shared/lifeskin-antworten.js).
+Der Prompt bekommt dafuer einen eigenen Abschnitt: shqetesimi verbindet
+Anliegen, Dauer und Befund, statt die Karte zu wiederholen; pse_tani nutzt
+die Dauer; whatsapp richtet sich nach der Bereitschaft; "Terapi te mjeku
+ose Roaccutane" ist eine Sicherheitsangabe. Schema und Platzhalter
+unveraendert - Heart und Seite lesen den Befund wie bisher.

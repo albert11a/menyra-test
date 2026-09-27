@@ -715,6 +715,20 @@ p { margin: 0; }
   color: var(--basis);
 }
 .ls-wahl__knopf:focus-visible { outline: 3px solid var(--basis); outline-offset: 2px; }
+/* Acht Antworten auf einem kleinen Telefon (360 x 640, iPhone SE): enger,
+ * damit die letzte nicht unter "Vazhdo" liegt. Gemessen im Pruefstand
+ * (tests/lifeskin-trichter-pruefstand/lauf-wege.mjs, K2 und K4). */
+@media (max-height: 700px) {
+  .ls-wahl[data-viele] { gap: 5px; }
+  .ls-wahl[data-viele] .ls-wahl__knopf { min-height: 40px; padding: 7px 14px; font-size: 15px; }
+}
+/* Noch niedriger (360 x 640, iPhone SE 1. Generation): zwei Spalten -
+ * sonst liegen bei acht Antworten die letzten ganz unter dem Knopf, und
+ * wer sie nicht sieht, waehlt eine falsche. */
+@media (max-height: 660px) {
+  .ls-wahl[data-viele] { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .ls-wahl[data-viele] .ls-wahl__knopf { min-height: 44px; padding: 8px 10px; font-size: 14px; line-height: 1.25; }
+}
 
 /* Vorbereitung */
 .ls-regeln { display: flex; flex-direction: column; gap: 14px; }

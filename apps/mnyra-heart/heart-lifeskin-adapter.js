@@ -15,6 +15,7 @@
 // sofort anzeigen, danach den echten Stand holen. Wer den Bereich schon
 // einmal offen hatte, sieht ihn beim naechsten Mal ohne Warten.
 
+import { antwortenFuerBericht } from "../../shared/lifeskin-antworten.js";
 import { db } from "/shared/firebase-config.js";
 import {
   TRICHTER_STUFEN,
@@ -534,7 +535,7 @@ export async function ladeBericht(sitzungId) {
   return schnappschuss.exists() ? { id: schnappschuss.id, ...(schnappschuss.data() || {}) } : null;
 }
 
-export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport, texte, ohneBild = false, raste = [], klientet = [], nurStaff = false, bereit = false }) {
+export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport, texte, ohneBild = false, raste = [], klientet = [], nurStaff = false, bereit = false, antworten = null }) {
   if (!sitzungId) throw new Error("Bericht ohne Kennung");
   await setDoc(doc(db, "lifeskin", TENANT, "reports", sitzungId), {
     status: nurStaff || bereit ? "vorschau" : "fertig",
@@ -583,6 +584,11 @@ export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwe
     // Ohne Bild analysiert (nach seiner Beschreibung) - die Therapieseite
     // spricht dann von dem, was er erzaehlt hat.
     ohneBild: ohneBild === true,
+    // Seine Antworten aus dem Trichter (was stoert, seit wann, was er
+    // probiert hat, ob er anfangen will) - nur gepruefte Kennungen, keine
+    // Gesundheitsangabe (shared/lifeskin-antworten.js). Die Therapieseite
+    // spiegelt sie zurueck ("Ju na thatë …"). Keine Antworten: null.
+    antworten: antwortenFuerBericht(antworten),
     // Welche Vorher/Nachher-Faelle die Seite zeigt, in dieser Reihenfolge.
     raste: (Array.isArray(raste) ? raste : []).map((x) => String(x || "").slice(0, 40)).filter(Boolean).slice(0, 12),
     // Die Kundenbilder ("Nga klientët tanë"), die Heart gewaehlt hat.

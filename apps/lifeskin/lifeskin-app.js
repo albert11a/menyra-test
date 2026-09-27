@@ -34,7 +34,7 @@ import { LIFESKIN_TELEFON_VORWAHL } from "./lifeskin-config.js";
 import { netzVorladen, netzHolen, netzStand, netzArt, netzFehlerFolge, messeNetz, MARKE } from "./lifeskin-netz.js";
 import { STANDARD_KONFIG, ALTERSGRUPPEN } from "./lifeskin-catalog.js";
 import { OBERFLAECHE, EINSTIEG_HINWEIS, EINSTIEG_KARTEN, ARZT_BILD, ARZT_NAME,
-  FRAGEN, FRAGEN_NACH_SCAN, FRAGEN_PA_SKANIM, FRAGEN_PA_SKANIM_NUMRI,
+  FRAGEN, FRAGEN_NACH_SCAN, FRAGEN_NACH_AUFNAHME, FRAGEN_PA_SKANIM, FRAGEN_PA_SKANIM_NUMRI,
   FRAGEN_TEXTE, t, fuelle } from "./lifeskin-content.js";
 import { besteGuete, Flaechenkamera, beiFreigabe, KAMERA_HAENGT_MS, BILD_GRENZE_MS, ausDatei as fotoAusDatei } from "./lifeskin-foto.js";
 import { Sitzung } from "./lifeskin-session.js";
@@ -742,7 +742,11 @@ export class Trichter {
    * Die Aufnahmen selbst liegen laengst in Firestore (fotosSpeichern),
    * nicht im Speicher der Seite. Mitzunehmen ist nur ihre Anzahl. */
   #standMerken() {
-    if (!WIEDER_AUFNEHMBAR.includes(this.aktiv)) {
+    // DIE VIER FRAGEN NACH DER AUFNAHME GEHOEREN DAZU: Wer dort neu
+    // laedt (Instagram tut das beim App-Wechsel), faende sich sonst auf
+    // dem Einstieg wieder - und der Scan von eben waere fuer ihn verloren.
+    const inFragen = this.aktiv === "fragen" && this.zustand.nachFragen === true;
+    if (!WIEDER_AUFNEHMBAR.includes(this.aktiv) && !inFragen) {
       // Kein Bildschirm zum Wiederaufnehmen - dann soll auch kein alter
       // Stand herumliegen, der beim naechsten Laden zurueckspringt.
       this.#standVergessen();
@@ -765,7 +769,14 @@ export class Trichter {
         anliegen: $("#ls-anliegenfeld")?.value || "",
         tel: $("#ls-telfeld")?.value || "",
         viber: $("#ls-viberfeld")?.value || "",
-        viberOffen: $("#ls-viberbox")?.hidden === false
+        viberOffen: $("#ls-viberbox")?.hidden === false,
+        // Nur in den vier Fragen: welche gerade stand, was schon getippt
+        // war und welcher Satz darueber gehoert.
+        ...(inFragen ? {
+          fragenI: Number(this.fragen.i) || 0,
+          antworten: { ...(this.fragen.antworten || {}) },
+          einleitung: this.fragen.einleitung || ""
+        } : {})
       }));
     } catch {
       // Ohne Speicher laeuft der Trichter wie bisher. Kein Grund,
@@ -778,7 +789,9 @@ export class Trichter {
       const roh = this.speicher?.getItem?.(STAND_SCHLUESSEL);
       if (typeof roh !== "string" || !roh) return null;
       const stand = JSON.parse(roh);
-      if (!stand || !WIEDER_AUFNEHMBAR.includes(stand.schirm)) return null;
+      if (!stand) return null;
+      if (stand.schirm === "fragen") return stand.antworten && typeof stand.antworten === "object" ? stand : null;
+      if (!WIEDER_AUFNEHMBAR.includes(stand.schirm)) return null;
       return stand;
     } catch { return null; }
   }
@@ -846,6 +859,21 @@ export class Trichter {
        steht laengst in der Sitzung (sie liegt im selben Speicher), und
        ihn erneut zu melden hiesse, denselben Besuch zweimal zu zaehlen,
        sobald ein Fenster den Tab neu laedt - und das tut es oft. */
+    if (stand.schirm === "fragen") {
+      if (!$("#ls-fragen")) return false;
+      // Die Antworten zurueck, dann dieselbe Strecke an derselben Frage.
+      // Die Stufe (pyetjaN) ist laengst geschrieben; schritt() geht nie
+      // zurueck und zaehlt nichts doppelt.
+      this.fragen.antworten = { ...stand.antworten };
+      this.zustand.nachFragen = true;
+      this.#fragenStarten(FRAGEN_NACH_AUFNAHME, {
+        danach: "name",
+        einleitung: stand.einleitung === "einleitungNachFoto" ? "einleitungNachFoto" : "einleitungNachScan"
+      });
+      const i = Math.max(0, Math.min(FRAGEN_NACH_AUFNAHME.length - 1, Number(stand.fragenI) || 0));
+      if (i) { this.fragen.i = i; this.#frageZeichnen(); }
+      return true;
+    }
     if (stand.schirm === "name") this.#nameZeigen(false);
     else if (stand.schirm === "anliegen") this.#anliegenZeigen(false);
     else if (stand.schirm === "tel") { if (!this.#telZeigen(false)) return false; }
@@ -1010,6 +1038,11 @@ export class Trichter {
     // dass sich etwas bewegt - und auf dem Weg mit Scan waere der Weg
     // zurueck die Aufnahme selbst, die niemand zweimal macht.
     if (vorher && !this.vorherigerSchirm(name)) return;
+    // Die vier Fragen stehen nicht im Verlauf (hinter ihnen liegt die
+    // Aufnahme). Ein Eintrag fuer den Namen fuehrte per history.back()
+    // deshalb an ihnen vorbei in die Kamera-Anleitung - der Pfeil springt
+    // stattdessen direkt zu den Fragen (siehe #ereignisse).
+    if (vorher && this.vorherigerSchirm(name) === "fragen") return;
     try {
       if (!vorher) {
         history.replaceState({ ls: name }, "");
@@ -1104,7 +1137,10 @@ export class Trichter {
       // mit Foto die Aufnahme - die laesst sich wiederholen, der Scan
       // nicht. Dorthin zurueckzuspringen hiesse beim Scan, ihn noch
       // einmal zu machen; deshalb steht dort null.
-      name: this.zustand.typ === "foto"
+      // Nach den vier Fragen fuehrt er zur letzten Frage - dort, wo er
+      // gerade war, mit seinen Antworten.
+      name: this.zustand.nachFragen && !this.#trupWeg() && gibtEs("fragen") ? "fragen"
+        : this.zustand.typ === "foto"
         ? ersterVon("fotopara", "wahl", "einstieg")
         : (this.#trupWeg() ? ersterVon("wahl", "einstieg")
           : (this.zustand.altWeg ? ersterVon("fragen", "wahl", "einstieg") : null)),
@@ -1147,6 +1183,9 @@ export class Trichter {
     if (this.#trupWeg() && FORTSCHRITT_TRUP[schirm] !== undefined) {
       return FORTSCHRITT_TRUP[schirm];
     }
+    // Fragen VOR dem Namen (nach der Aufnahme, alte Vorlage): zwischen
+    // Aufnahme und Name - sonst spraenge der Balken danach zurueck.
+    if (schirm === "fragen" && this.fragen?.danach === "name") return 70;
     return FORTSCHRITT[schirm] ?? 20;
   }
 
@@ -1562,6 +1601,9 @@ export class Trichter {
         }
         const ziel = this.vorherigerSchirm();
         if (!ziel) return;
+        // Vom Namen zurueck zu den vier Fragen: direkt, nicht ueber den
+        // Verlauf - die Fragen haben keinen Eintrag darin.
+        if (ziel === "fragen") { this.zurueckZu("fragen"); return; }
         // ueber den Verlauf zurueck, damit beide Wege dieselbe Kette teilen
         // und der Vorwaerts-Knopf danach noch stimmt.
         if (history.state?.ls && history.length > 1) history.back();
@@ -2084,7 +2126,7 @@ export class Trichter {
     this.#uploadMelden(this.sitzung.fotosSpeichern({ zona: aufnahme.foto }));
     if (aufnahme.mini) this.sitzung.miniaturenSpeichern({ zona: aufnahme.mini });
     this.sitzung.ergaenze({ photos: ["zona"] });
-    this.#nameZeigen();
+    this.#aufnahmeFragen("foto");
   }
 
   // ---------- Sqaroni problemet: ein Text statt eines Bildes ----------
@@ -2413,8 +2455,9 @@ export class Trichter {
     // Weg etwas anderes. "Der Scan ist fertig" ueber einem Weg ohne
     // Scan liest sich als Fehler.
     schreibe($("#ls-namevorsatz"), this.text(
-      this.zustand.typ === "foto" ? "nameVorsatzFoto"
-        : this.#trupWeg() ? "nameVorsatzTrup" : "nameVorsatz"));
+      this.zustand.nachFragen && !this.#trupWeg() ? "nameVorsatzNachFragen"
+        : this.zustand.typ === "foto" ? "nameVorsatzFoto"
+          : this.#trupWeg() ? "nameVorsatzTrup" : "nameVorsatz"));
     this.#nameFehler(null);
     this.zeige("name");
     $("#ls-namefeld")?.focus?.({ preventScroll: true });
@@ -4126,10 +4169,31 @@ export class Trichter {
   // hier nichts verloren.
   #fragenZeigen() {
     if (this.variante === "kurz" && $("#ls-name")) {
-      this.#nameZeigen();
+      this.#aufnahmeFragen("scan");
       return;
     }
     this.#fragenStarten(this.fragenListe, { danach: "analyse" });
+  }
+
+  // NACH SCAN UND FOTO: DIE VIER FRAGEN, DIE DEN KAUF VORBEREITEN.
+  //
+  // Dieselben fuer beide Wege (FRAGEN_NACH_AUFNAHME), danach Name und
+  // Alter, dann die Nummer - wie bisher. Die Begruendung steht an der
+  // Liste in lifeskin-content.js.
+  //
+  // Kein Pfeil zurueck vor der ersten Frage: Hinter dem Scan liegt die
+  // Kamera, und dorthin zurueck hiesse, ihn noch einmal zu machen.
+  //
+  // Traegt die Seite keinen Fragenbildschirm, geht es wie bisher direkt
+  // zum Namen - ein Schalter auf einen Bildschirm, den es nicht gibt, waere
+  // eine weisse Seite.
+  #aufnahmeFragen(weg) {
+    if (!$("#ls-fragen")) { this.#nameZeigen(); return; }
+    this.zustand.nachFragen = true;
+    this.#fragenStarten(FRAGEN_NACH_AUFNAHME, {
+      danach: "name",
+      einleitung: weg === "foto" ? "einleitungNachFoto" : "einleitungNachScan"
+    });
   }
 
   // EINE STRECKE FRAGEN ANFANGEN.
@@ -4196,6 +4260,9 @@ export class Trichter {
     // schritt() geht nie zurueck, also kostet ein Blick zurueck nichts.
     const schritt = this.#schrittZurFrage(this.fragen.i);
     if (schritt) this.sitzung.schritt(schritt);
+    // Welche Frage gerade steht, sofort merken - eine App, die hart
+    // weggeraeumt wird, meldet kein pagehide mehr.
+    this.#standMerken();
     if (!frage) return;
     const wahl = $("#ls-fragewahl");
     const weiter = $("#ls-frageweiter");
@@ -4272,6 +4339,10 @@ export class Trichter {
     wahl.innerHTML = "";
     if (frage.spalten) wahl.dataset.spalten = String(frage.spalten);
     else delete wahl.dataset.spalten;
+    // Lange Listen (Anliegen: acht, Probiertes: sechs Antworten) werden auf kleinen
+    // Telefonen enger gesetzt - sonst liegt die letzte unter dem Knopf.
+    if ((frage.antworten || []).length > 5) wahl.dataset.viele = "";
+    else delete wahl.dataset.viele;
 
     if (getippt) {
       if (weiter) {
@@ -4319,7 +4390,17 @@ export class Trichter {
       this.#frageMarkieren(frage);
       // Ein Augenblick, damit die Wahl zu sehen ist, bevor der Bildschirm
       // wechselt. Ohne ihn wirkt der Wechsel wie ein Fehlgriff.
-      setTimeout(() => this.#frageWeiter(), 220);
+      //
+      // EIN WECHSEL JE FRAGE, AUCH BEI ZWEI TIPPS. Wer ungeduldig zweimal
+      // tippt, plante hier zweimal "weiter" ein - und die zweite Uhr
+      // uebersprang die naechste Frage, ohne dass er sie je sah. Jetzt
+      // gilt nur die letzte Uhr, und sie geht nur weiter, wenn noch
+      // dieselbe Frage dasteht.
+      clearTimeout(this.fragen.weiterUhr);
+      const bei = this.fragen.i;
+      this.fragen.weiterUhr = setTimeout(() => {
+        if (this.fragen.i === bei && this.aktiv === "fragen") this.#frageWeiter();
+      }, 220);
       return;
     }
 
@@ -4421,6 +4502,7 @@ export class Trichter {
     }
     if (Object.keys(einzeln).length) this.sitzung.ergaenze(einzeln);
     this.sitzung.ergaenze({ anamnese: { ...this.fragen.antworten } });
+    this.#standMerken();
   }
 
   // Taugt die Antwort, um weiterzugehen?

@@ -582,6 +582,28 @@ html[data-ansicht] body:has(#leiste) { padding-bottom: 0; }
   margin-top: 12px; padding: 10px 14px; border-left: 3px solid var(--green);
   background: var(--green-soft); border-radius: 0 10px 10px 0; font-size: .92rem;
 }
+/* "Çfarë na thatë" - seine Antworten, ruhig, als Akte und nicht als Werbung. */
+.thate {
+  margin-top: 14px; padding: 14px 16px; border: 1px solid var(--line);
+  border-radius: 14px; background: var(--white);
+}
+.thate__titull {
+  font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--green); margin-bottom: 8px;
+}
+.thate__lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.thate__lista li { display: grid; grid-template-columns: 104px 1fr; gap: 10px; font-size: .92rem; line-height: 1.4; }
+.thate__lista span { color: var(--muted); font-size: .84rem; }
+.thate__lista b { font-weight: 600; overflow-wrap: anywhere; }
+.thate__satz {
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line);
+  font-size: .92rem; color: var(--ink);
+}
+/* Sein eigenes Wort ueber dem Kaufknopf. */
+.gati {
+  margin: 4px 0 10px; padding: 9px 12px; border-radius: 10px;
+  background: var(--green-soft); color: var(--green); font-size: .9rem; font-weight: 600; line-height: 1.4;
+}
 .kontroll {
   margin-top: 12px; padding: 10px 14px; border-radius: 10px;
   background: #fbefe4; color: #7a3d12; font-size: .9rem;

@@ -578,7 +578,10 @@ test("nach dem Scan kommen Name und Alter, beide auf einem Bildschirm", () => {
   const zeigen = methode(APP, "#fragenZeigen");
   assert.match(zeigen, /if \(this\.variante === "kurz" && \$\("#ls-name"\)\) \{/,
     "Die kurze Fassung geht nicht auf den Namensschirm");
-  assert.match(zeigen, /this\.#nameZeigen\(\);/);
+  // Dazwischen die vier Fragen, die den Kauf vorbereiten - danach Name
+  // und Alter (siehe tests/lifeskin-kaufbereit.test.mjs).
+  assert.match(zeigen, /this\.#aufnahmeFragen\("scan"\);/);
+  assert.match(methode(APP, "#aufnahmeFragen"), /danach: "name"/);
   // Und die lange behaelt ihre Fragen. Aufgezogen werden sie ueber
   // dieselbe Stelle, die auch der Weg ohne Scan benutzt - der
   // Bildschirm wird dort zweimal gebraucht, und zwei Abschriften
