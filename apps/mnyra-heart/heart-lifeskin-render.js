@@ -718,7 +718,7 @@ export const STILL_BASIS = "https://www.mnyra.com";
 
 const STILL_WEGE = Object.freeze([
   { titel: "Start", seiten: [
-    { label: "Landing", pfad: "/lifeskin" },
+    { label: "Landing", landing: true },
     { label: "Mënyra", schirm: "wahl" }
   ] },
   { titel: "Skanim", weg: "skanim", seiten: [
@@ -758,14 +758,29 @@ function stillFall(zustand, passt) {
   return neueste(zustand?.tests) || neueste(zustand?.sitzungen);
 }
 
+// Die Landingpage des Tabs: /lifeskin oder /lifeskin2 (shared/lifeskin-weg.js).
+export function landingPfad(weg = "") {
+  return wegGueltig(weg) ? `/${wegGueltig(weg)}` : "/lifeskin";
+}
+
 export function baueStillLinks(zustand) {
+  // IM TAB LIFESKIN 2 FUEHRT JEDER LINK AUF LIFESKIN 2: die Landingpage
+  // /lifeskin2, jeder Bildschirm darin (dieselben Bildschirme, andere
+  // Worte), und Warte-/Analyseseite mit ?weg=lifeskin2, damit sie in den
+  // Worten des Wegs sprechen, auch bevor Heart den Weg in den Bericht
+  // geschrieben hat. Die Faelle kommen nur aus diesem Weg.
+  const weg = wegGueltig(zustand?.weg);
+  const start = landingPfad(weg);
+  const mitWeg = weg ? { weg } : {};
   const gruppen = STILL_WEGE.map((gruppe) => ({
     titel: gruppe.titel,
     seiten: gruppe.seiten.map((seite) => ({
       label: seite.label,
-      url: seite.pfad
-        ? stillLink(seite.pfad)
-        : stillLink("/lifeskin", { schirm: seite.schirm, ...(gruppe.weg ? { weg: gruppe.weg } : {}) })
+      url: seite.landing
+        ? stillLink(start)
+        : seite.pfad
+          ? stillLink(seite.pfad)
+          : stillLink(start, { schirm: seite.schirm, ...(gruppe.weg ? { weg: gruppe.weg } : {}) })
     }))
   }));
   const wartend = stillFall(zustand, (b) => b?.status === "wartet");
@@ -775,17 +790,17 @@ export function baueStillLinks(zustand) {
   gruppen.push({
     titel: "Nach dem Weg",
     seiten: [
-      { label: "Warteseite", url: wartend ? stillLink(`/analiza/${wartend.id}`) : "",
+      { label: "Warteseite", url: wartend ? stillLink(`/analiza/${wartend.id}`, mitWeg) : "",
         fehlt: "kein wartender Fall" },
-      { label: "Analyse", url: fertig ? stillLink(`/analiza/${fertig.id}`) : "",
+      { label: "Analyse", url: fertig ? stillLink(`/analiza/${fertig.id}`, mitWeg) : "",
         fehlt: "keine freigegebene Analyse" },
-      { label: "Kauf (N'shport)", url: mitKorb ? stillLink(`/analiza/${mitKorb.id}`, { kasse: "1" }) : "",
+      { label: "Kauf (N'shport)", url: mitKorb ? stillLink(`/analiza/${mitKorb.id}`, { kasse: "1", ...mitWeg }) : "",
         fehlt: "keine Analyse mit Mitteln" },
-      { label: "Therapieseite (neu)", url: fertig ? stillLink(`/terapia/${fertig.id}`) : "",
+      { label: weg ? "Ergebnis (Urteil)" : "Therapieseite (neu)", url: fertig ? stillLink(`/terapia/${fertig.id}`, mitWeg) : "",
         fehlt: "keine freigegebene Analyse" }
     ]
   });
-  return { master: stillLink("/lifeskin"), aus: `${STILL_BASIS}/lifeskin?still=0`, gruppen };
+  return { master: stillLink(start), aus: `${STILL_BASIS}${start}?still=0`, gruppen };
 }
 
 function stillZeile(label, url, fehlt = "") {
@@ -1330,7 +1345,7 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
 }
 
 // Die eigenen Laeufe. Sie stehen ganz unten und in keiner Zahl darueber.
-function renderTests(tests, berichte = {}) {
+function renderTests(tests, berichte = {}, weg = "") {
   if (!(tests || []).length) return "";
   const zeilen = tests.slice(0, 40).map((s) => `
     <button type="button" class="heart-lifeskin-zeile" data-action="lifeskin-sitzung" data-id="${escapeHtml(s.id)}">
@@ -1345,7 +1360,7 @@ function renderTests(tests, berichte = {}) {
       <h3 class="heart-lifeskin-block__titel">Eigene Tests</h3>
       <p class="heart-lifeskin-block__fuss">
         ${tests.length} Laeufe, die in keiner Zahl oben mitzaehlen. Einen Lauf als Test
-        starten: <b>mnyra.com/lifeskin?test=1</b> — oder eine fertige Analyse oeffnen und
+        starten: <b>mnyra.com${escapeHtml(landingPfad(weg))}?test=1</b> — oder eine fertige Analyse oeffnen und
         dort als Test markieren.
       </p>
       <div class="heart-lifeskin-zeilen">${zeilen}</div>
@@ -1696,9 +1711,13 @@ export function nachfassNachricht(sitzung, bericht, art) {
       : probleme.length === 1
         ? `Për ${probleme[0]} kam një plan të qartë për ta larguar plotësisht.`
         : "Kam një plan të qartë për lëkurën tuaj.";
+    // LifeSkin 2 mit Produkten: zuerst die Antwort auf seine Frage.
+    const ls2 = wegGueltig(sitzung?.source?.weg) === "lifeskin2" && (bericht?.produkte || []).length > 0;
     return [
       gruss,
-      `Analiza e lëkurës suaj është gati – e bëra personalisht. ${plan}`,
+      ls2
+        ? `E kontrollova personalisht lëkurën tuaj: terapia LifeSkin ju përshtatet ✓ ${plan}`
+        : `Analiza e lëkurës suaj është gati – e bëra personalisht. ${plan}`,
       `E keni këtu, ju merr vetëm 2 minuta: ${link}`,
       "Më tregoni çfarë mendoni."
     ].join("\n\n");
@@ -2304,6 +2323,15 @@ export const VORAB_ZEITEN = Object.freeze([
 export function vorabNachricht(sitzung, zeit = "1h") {
   const name = vorname(sitzung);
   const wann = (VORAB_ZEITEN.find((z) => z.id === zeit) || VORAB_ZEITEN.find((z) => z.id === "1h")).satz;
+  // LIFESKIN 2: Er wartet nicht auf eine Analyse, sondern auf die Antwort,
+  // ob die Therapie passt - so hat es ihm die Landingpage versprochen.
+  if (wegGueltig(sitzung?.source?.weg) === "lifeskin2") {
+    return [
+      `Përshëndetje${name ? ` ${name}` : ""}, jam Dr. Violeta Gashi nga LifeSkin.`,
+      `Po e kontrolloj personalisht nëse terapia LifeSkin i përshtatet lëkurës suaj. Përgjigjen e keni ${wann}.`,
+      "Kontrolli është falas. A jua dërgoj përgjigjen këtu?"
+    ].join("\n\n");
+  }
   return [
     `Përshëndetje${name ? ` ${name}` : ""}, jam Dr. Violeta Gashi nga LifeSkin.`,
     `Po e bëj analizën e lëkurës suaj personalisht, që t'ju gjejmë terapinë LifeSkin që i përshtatet lëkurës suaj dhe ju sjell rezultate të dukshme. Analiza do të jetë gati ${wann}.`,
@@ -3042,7 +3070,7 @@ function renderLandingFotot(p, entwurf, art = "landing") {
       Reihenfolge. Hoechstens sechs, jedes wird auf 1000 Bildpunkte verkleinert.
       <b>Bilder speichern sich sofort</b>, der Knopf unten ist nur fuer den Text.
     </p>` : `<p class="heart-lifeskin-leer">
-      Sie stehen unter <b>„Rezultate që shihen“</b> auf mnyra.com/lifeskin, zwei Mittel in einer Reihe,
+      Sie stehen unter <b>„Rezultate që shihen“</b> auf mnyra.com/lifeskin und /lifeskin2, zwei Mittel in einer Reihe,
       zum Wischen. Das erste Bild ist das, das jeder sieht. <b>Ohne Bild erscheint das Mittel dort nicht</b> —
       so nehmen Sie es auch wieder weg. Mit <b>‹</b> und <b>›</b> unter einem Bild aendern Sie die
       Reihenfolge. Hoechstens sechs, jedes wird auf 1000 Bildpunkte verkleinert.
@@ -3132,6 +3160,22 @@ function renderAnbieter(anbieter, status) {
     </section>`;
 }
 
+// Der Zustand eines Tabs: Faelle, eigene Tests und Begleitfaelle nur aus
+// diesem Weg. Begleitfaelle haengen ueber ihre Kennung an der Sitzung; im
+// alten Tab bleibt alles, was nicht ausdruecklich Lifeskin 2 ist.
+export function mitWegFaellen(zustand, weg, sitzungen = nachWeg(zustand?.sitzungen, weg)) {
+  const ls2 = new Set(nachWeg(zustand?.sitzungen, "lifeskin2").map((s) => s.id));
+  const gehoert = (id) => (weg === "lifeskin2" ? ls2.has(id) : !ls2.has(id));
+  const n = zustand?.ndjekja;
+  return {
+    ...zustand,
+    weg,
+    sitzungen,
+    tests: nachWeg(zustand?.tests, weg),
+    ...(n && Array.isArray(n.faelle) ? { ndjekja: { ...n, faelle: n.faelle.filter((f) => gehoert(f?.kennung)) } } : {})
+  };
+}
+
 export function renderLifeskin(zustand) {
   if (zustand?.status === "error") {
     return `<p class="heart-lifeskin-leer">Die Zahlen liessen sich nicht laden. ${escapeHtml(zustand.fehler || "")}</p>`;
@@ -3163,6 +3207,10 @@ export function renderLifeskin(zustand) {
   const weg = wegGueltig(zustand.weg);
   const sitzungen = nachWeg(zustand.sitzungen, weg);
   const { produkte } = zustand;
+  // Derselbe Zustand, nur mit den Faellen dieses Wegs - fuer alles, was
+  // selbst in zustand.sitzungen, zustand.tests oder die Begleitung greift
+  // (Links ohne Stats, eigene Tests, Betreuung).
+  const zustandWeg = mitWegFaellen(zustand, weg, sitzungen);
 
   // Noch kein einziger Besucher. Ein Block aus lauter Nullen sieht aus wie
   // ein Fehler; ein Satz sagt, dass es keiner ist. Die Kacheln bleiben
@@ -3237,7 +3285,7 @@ export function renderLifeskin(zustand) {
       ${renderTrichter(trichterListe, zustand.trichterOffen || "main")}
       ${renderAnalysen(sitzungen, zustand.berichte || {}, zustand.fach || "alle", "Fälle", "",
         zustand.vorschau || {}, { auswahl: zustand.auswahl ?? null, auswahlLoeschen: !!zustand.auswahlLoeschen })}
-      ${renderBetreuung(zustand)}
+      ${renderBetreuung(zustandWeg)}
       ${renderBestellungen(sitzungen, zustand.bestellZeitraum || "heute")}
       ${renderNachfassen(zahlen)}
       ${renderMedienReaktionen(zustand)}
@@ -3257,14 +3305,14 @@ export function renderLifeskin(zustand) {
         <summary>Mehr anzeigen</summary>
         <!-- Jede Karte hier ist zugeklappt, bis jemand sie aufmacht. -->
         <div class="heart-lifeskin-mehr__karten">
-          ${renderStillLinks(zustand)}
+          ${renderStillLinks(zustandWeg)}
           ${alsKlapp(renderHerkunft(baueHerkunft(imBlick)), "herkunft", { standard: false })}
           ${alsKlapp(renderProdukte(produkte), "produkte", { standard: false })}
           ${renderRaste(zustand)}
           ${renderMedien(zustand)}
           ${alsKlapp(renderVerteilung(baueVerteilung(imBlick)), "verteilung", { standard: false })}
           ${alsKlapp(renderKaufweg(imBlick, zustand.berichte || {}, { zeitraum: ZEITRAEUME.find((z) => z.id === (zeitraum || "heute"))?.label || "" }), "kaufweg", { standard: false })}
-          ${alsKlapp(renderTests(zustand.tests, zustand.berichte || {}), "tests", { standard: false })}
+          ${alsKlapp(renderTests(zustandWeg.tests, zustand.berichte || {}, weg), "tests", { standard: false })}
           ${alsKlapp(renderAnbieter(zustand.konfig?.anbieter, zustand.anbieterStatus), "anbieter", { standard: false })}
         </div>
       </details>

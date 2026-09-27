@@ -192,3 +192,47 @@ test("der Trichter von LifeSkin 2: vom Klick bis zum Kauf, mit der Zeit bis zur 
   assert.equal(dauerText(125), "2 h 5 min");
   assert.equal(dauerText(1500), "1 T 1 h");
 });
+
+test("Heart Lifeskin 2: 'Seiten ohne Stats' fuehren auf /lifeskin2 und nehmen nur Faelle dieses Wegs", async () => {
+  const { baueStillLinks, mitWegFaellen } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
+  const zustand = {
+    sitzungen: [
+      { id: "alt", createdAt: "2026-09-27T12:00:00Z", source: {} },
+      { id: "neu", createdAt: "2026-09-27T10:00:00Z", source: { weg: "lifeskin2" } }
+    ],
+    tests: [{ id: "t-alt", createdAt: "2026-09-27T13:00:00Z", source: {} }],
+    berichte: { alt: { status: "wartet" }, neu: { status: "wartet" }, "t-alt": { status: "wartet" } },
+    ndjekja: { an: true, faelle: [{ kennung: "alt" }, { kennung: "neu" }, { kennung: "ohne-sitzung" }] }
+  };
+  const ls2 = mitWegFaellen(zustand, "lifeskin2");
+  assert.deepEqual(ls2.sitzungen.map((s) => s.id), ["neu"]);
+  assert.deepEqual(ls2.tests, []);
+  assert.deepEqual(ls2.ndjekja.faelle.map((f) => f.kennung), ["neu"]);
+  const alt = mitWegFaellen(zustand, "");
+  assert.deepEqual(alt.ndjekja.faelle.map((f) => f.kennung), ["alt", "ohne-sitzung"]);
+
+  const links = baueStillLinks(ls2);
+  assert.equal(links.master, "https://www.mnyra.com/lifeskin2?still=1");
+  assert.equal(links.aus, "https://www.mnyra.com/lifeskin2?still=0");
+  const alle = links.gruppen.flatMap((g) => g.seiten.map((x) => x.url)).filter(Boolean);
+  for (const url of alle) assert.doesNotMatch(url, /mnyra\.com\/lifeskin\?/, `${url} fuehrt auf den alten Weg`);
+  const warte = links.gruppen.at(-1).seiten.find((x) => x.label === "Warteseite");
+  assert.equal(warte.url, "https://www.mnyra.com/analiza/neu?still=1&weg=lifeskin2", "der Fall aus Lifeskin 2, nicht der neueste alte");
+  // Der alte Tab bleibt, wie er war.
+  assert.equal(baueStillLinks(alt).master, "https://www.mnyra.com/lifeskin?still=1");
+  assert.equal(baueStillLinks(alt).gruppen.at(-1).seiten[0].url, "https://www.mnyra.com/analiza/t-alt?still=1");
+});
+
+test("Heart Lifeskin 2: WhatsApp-Vorlagen sprechen von der Pruefung, nicht von der Analyse", async () => {
+  const { vorabNachricht, nachfassNachricht, whatsappNachricht } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
+  const ls2 = { id: "x", name: "Arta", source: { weg: "lifeskin2" } };
+  const alt = { id: "x", name: "Arta", source: {} };
+  assert.match(vorabNachricht(ls2), /kontrolloj personalisht nëse terapia LifeSkin i përshtatet/);
+  assert.doesNotMatch(vorabNachricht(ls2), /analiz/i);
+  assert.match(vorabNachricht(alt), /Analiza është falas/);
+  const bericht = { produkte: [{ id: "a" }], raport: { shitja: { whatsapp: "Teksti." } } };
+  assert.match(nachfassNachricht(ls2, bericht, "ungesehen"), /terapia LifeSkin ju përshtatet ✓/);
+  assert.match(nachfassNachricht(alt, bericht, "ungesehen"), /Analiza e lëkurës suaj është gati/);
+  assert.match(whatsappNachricht(ls2, bericht), /terapia LifeSkin ju përshtatet ✓/);
+  assert.match(whatsappNachricht(alt, bericht), /analiza juaj është gati/);
+});

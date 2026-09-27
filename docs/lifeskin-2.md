@@ -75,6 +75,17 @@ kixie.com).
   Knoepfe "Rezervo setin tim — …". Ohne Produkte kein "Po".
 - **Pixel**: unveraendert, dieselben Ereignisse (Lead bei der Nummer).
 
+### Nachtrag 27.09. abends: Tab Lifeskin 2 durchgehend auf dem neuen Weg
+
+- **Seiten ohne Stats**: Masterlink, "Still aus", jeder Bildschirm fuehren
+  auf `/lifeskin2`; Warteseite, Analyse, Kauf und Ergebnis nehmen einen
+  Fall aus Lifeskin 2 und tragen `?weg=lifeskin2`.
+- **Eigene Tests** und **Betreuung** zeigen nur Faelle dieses Wegs
+  (`mitWegFaellen`); der Testhinweis nennt `mnyra.com/lifeskin2?test=1`.
+- **WhatsApp-Vorlagen**: "Vorab" ("Po e kontrolloj personalisht nëse
+  terapia LifeSkin i përshtatet …") und "Nachfassen / nicht gesehen"
+  ("… terapia LifeSkin ju përshtatet ✓") sprechen von der Pruefung.
+
 ## 4. Pruefung
 
 - `npm test`: 2805 bestanden, 0 fehlgeschlagen. Neu:
