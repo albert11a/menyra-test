@@ -159,3 +159,46 @@ test("zwei schnelle Tipps ueberspringen keine Frage", () => {
   assert.match(getippt, /if \(this\.fragen\.i === bei && this\.aktiv === "fragen"\) this\.#frageWeiter\(\);/);
   assert.doesNotMatch(getippt, /setTimeout\(\(\) => this\.#frageWeiter\(\), 220\)/);
 });
+
+// ---------- Heart: Stufen, Bereitschaft, Marke ----------
+import { ZWEIGE, baueBereitschaft, baueZweige } from "../apps/mnyra-heart/heart-lifeskin-berechnung.js";
+
+test("Heart: die vier Fragen stehen als Stufen im Trichter von Scan und Foto", () => {
+  for (const id of ["scan", "foto"]) {
+    const stufen = ZWEIGE.find((z) => z.id === id).stufen.map((s) => s.id);
+    const nach = stufen.indexOf(id === "scan" ? "captured" : "fotogati");
+    assert.deepEqual(stufen.slice(nach + 1, nach + 6), ["pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri"], id);
+  }
+  // Der Weg ohne Kamera fragt sie nicht.
+  assert.ok(!ZWEIGE.find((z) => z.id === "trup").stufen.some((s) => /^pyetja/.test(s.id)));
+  // Wer bei Frage 2 aufhoert, fehlt ab Frage 3; ein Fall von vorher (Name
+  // ohne Fragen) zaehlt als durchgegangen.
+  const zweig = baueZweige([
+    { id: "a", typ: "foto", step: "pyetja2" },
+    { id: "b", typ: "foto", step: "emri" }
+  ]).find((z) => z.id === "foto");
+  const zahl = (id) => zweig.stufen.find((s) => s.id === id).anzahl;
+  assert.equal(zahl("pyetja2"), 2);
+  assert.equal(zahl("pyetja3"), 1);
+});
+
+test("Heart: Bereitschaft je Antwort - und wer davon bestellt hat", () => {
+  const b = baueBereitschaft([
+    { id: "1", anamnese: { gatishmeria: "tani" }, hatBestellt: true, step: "ordered" },
+    { id: "2", anamnese: { gatishmeria: "tani" }, step: "result" },
+    { id: "3", anamnese: { gatishmeria: "analiza" }, step: "result" },
+    { id: "4", anamnese: {}, step: "result" }
+  ]);
+  assert.equal(b.basis, 3);
+  const tani = b.gruppen.find((g) => g.id === "tani");
+  assert.equal(tani.anzahl, 2);
+  assert.equal(tani.bestellt, 1);
+  assert.equal(tani.bestelltAnteil, 0.5);
+  assert.equal(b.gruppen.find((g) => g.id === "pasi").anzahl, 0);
+});
+
+test("Heart: Marke 'Will starten' nur bei 'sa më shpejt' und ohne Bestellung", () => {
+  const render = readFileSync("apps/mnyra-heart/heart-lifeskin-render.js", "utf8");
+  assert.match(render, /sitzung\.anamnese\?\.gatishmeria === "tani" && !sitzung\.hatBestellt/);
+  assert.match(render, /\{ id: "gati", label: "Gati" \}/);
+});

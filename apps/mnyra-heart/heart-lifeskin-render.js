@@ -20,7 +20,7 @@ import { renderHeartIcon, renderGeraetZeichen } from "./heart-icons.js";
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
 import { LANDING_SCHIRME, landingLesen } from "../../shared/lifeskin-landingtiefe.js";
-import { ZEITRAEUME, TYPEN, typVon, istAnalyse, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueZweige, baueMaintrichter, baueKauftrichter, baueLandingtrichter, ohneScanGelaufen, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
+import { ZEITRAEUME, TYPEN, typVon, istAnalyse, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueZweige, baueBereitschaft, baueMaintrichter, baueKauftrichter, baueLandingtrichter, ohneScanGelaufen, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
 // (Die eigenen Texte der alten Analyseseite werden nicht mehr bearbeitet - sie reisen unsichtbar mit.)
 // Die Antworten aus dem Trichter, uebersetzt - aus DERSELBEN Quelle, aus
 // der auch der Prompt gefuellt wird. Eine eigene Tabelle hier waere eine
@@ -427,6 +427,8 @@ const TRICHTER_CHIPS = Object.freeze([
   { id: "foto", label: "Foto" },
   { id: "trup", label: "Trup/Pytje" },
   { id: "kauf", label: "Kauf" },
+  // Frage 4: Wer will anfangen - und kauft er dann? Im Chip: "Po, sa më shpejt".
+  { id: "gati", label: "Gati" },
   { id: "bericht", label: "Bericht" },
   { id: "landing", label: "Landing" }
 ]);
@@ -475,6 +477,22 @@ function renderLandingVergleich({ vergleich }) {
       </div>`;
 }
 
+// BEREITSCHAFT JE ANTWORT: Patient und Bestellt je Gruppe, wie beim
+// Landing-Vergleich.
+function renderBereitschaft({ gruppen }) {
+  const spalte = (g) => `
+        <div class="heart-lp-vergleich__spalte">
+          <b>${escapeHtml(g.label)}</b>
+          <span>${g.anzahl} Antworten</span>
+          <span>${g.patient} Patient</span>
+          <span>${g.bestellt} Bestellt · ${prozent(g.bestelltAnteil)}</span>
+        </div>`;
+  return `
+      <div class="heart-lp-vergleich heart-lp-vergleich--drei">
+        ${gruppen.map(spalte).join("")}
+      </div>`;
+}
+
 // Alle sechs auf einmal gerechnet. EINE Stelle, damit der Chip dieselbe
 // Zahl traegt wie der Trichter darunter - zwei Rechnungen waeren zwei
 // Zahlen, die auseinander laufen.
@@ -489,6 +507,13 @@ function baueTrichterListe(sitzungen, imBlick, zeitraum) {
     if (chip.id === "kauf") {
       return { ...chip, stufen: baueKauftrichter(imBlick),
         fuss: "Der Laden auf der Landingpage: wer die Mittel gesehen, etwas hineingelegt und bezahlt hat." };
+    }
+    if (chip.id === "gati") {
+      const b = baueBereitschaft(imBlick);
+      return { ...chip, chipStufe: 0, stufen: b.gruppen, extra: b.basis ? renderBereitschaft(b) : "",
+        fuss: b.basis
+          ? "Antwort auf Frage 4 („A doni që Dr. Gashi t'ju përgatisë edhe terapinë?“). Wer „Po, sa më shpejt“ sagt und nicht bestellt hat: zuerst auf WhatsApp anschreiben (Marke „Will starten“ am Fall)."
+          : "Noch keine Antworten – die Frage steht seit 27.09. im Trichter." };
     }
     if (chip.id === "landing") {
       // IM CHIP: die gemessenen Landing-Besuche (erste Stufe).
@@ -1093,7 +1118,12 @@ function fallMarken(sitzung, fach = "", bericht = null) {
     bestellt: [m.wert],
     archiviert: [m.auf, m.kasse, m.wert]
   })[fach] || [m.auf, m.kasse];
-  const reihe = artMarke(sitzung) + landingMarke(sitzung)
+  // WILL STARTEN: Er hat auf Frage 4 "Po, dua ta filloj sa më shpejt"
+  // getippt und noch nicht bestellt - der Fall, dem man auf WhatsApp
+  // zuerst nachgeht. Nach der Bestellung verschwindet die Marke.
+  const gati = sitzung.anamnese?.gatishmeria === "tani" && !sitzung.hatBestellt
+    ? `<span class="heart-lifeskin-pill heart-lifeskin-pill--gati heart-lifeskin-pill--an" title="Frage 4: Po, dua ta filloj sa më shpejt">Will starten</span>` : "";
+  const reihe = gati + artMarke(sitzung) + landingMarke(sitzung)
     + (sitzung.nurBericht ? `<span class="heart-lifeskin-pill heart-lifeskin-pill--paskanim heart-lifeskin-pill--an" title="Die Sitzung kam nicht an, der Bericht schon - Kontaktdaten fehlen">nur Bericht</span>` : "")
     + marken.map((m) => `<span class="heart-lifeskin-pill heart-lifeskin-pill--${m.id}${m.an ? " heart-lifeskin-pill--an" : ""}">${escapeHtml(m.label)}</span>`).join("");
 
