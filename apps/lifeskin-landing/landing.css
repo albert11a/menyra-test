@@ -433,6 +433,8 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   transform: none;
   will-change: auto;
 }
+/* Beim Oeffnen schon im Bild (landing.js, Abschnitt 1): ohne Bewegung. */
+.js [data-anim].sofort { transition: none; }
 /* Im ersten Blick laeuft die Staffelung enger: Dort kommen fuenf
  * Stuecke gleichzeitig herein, und mit 70 ms je Stueck haette das
  * letzte - der Knopf - 280 ms Verzug. Der Knopf ist das, worauf es
@@ -553,63 +555,52 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
  * und nicht unter dem Kopf. Auf einem niedrigen Fenster waechst der
  * Inhalt ueber die Mindesthoehe hinaus; dann ist die Mitte unwirksam
  * und nichts wird abgeschnitten. */
-/* NACHTRAG 27.09. - DER ERSTE BLICK ENDET IN DEN FAELLEN, NICHT IM LEEREN.
+/* NACHTRAG 27.09. - DER ERSTE BLICK IST KEIN GANZER BILDSCHIRM MEHR.
  *
  * "Genau ein Bildschirm, Inhalt in der Mitte" hatte einen Preis, den
  * erst die Besucher gezeigt haben: Oben und unten je rund 200 Punkte
- * Leere, darunter nichts, was hereinschaut. Die Seite sah aus, als ende
- * sie am Rand - kaum jemand scrollte.
+ * Leere, und darunter nichts, was hereinschaut. Die Seite sah aus, als
+ * ende sie am Rand - kaum jemand scrollte.
  *
- * Jetzt steht der Inhalt oben, und die Reihe der Vorher/Nachher-
- * Aufnahmen (.blick) fuellt, was vom Bildschirm bleibt - und reicht
- * 56 Punkte darueber hinaus. Damit ist sie auf jedem Telefon unten
- * angeschnitten (und rechts, durch die naechste Karte): das Zeichen
- * zum Weiterscrollen. "SI FUNKSIONON" liegt dadurch immer unter der
- * Kante - im ersten Bild steht ein Gedanke und sein Beweis, keine
- * zweite Ueberschrift.
+ * Jetzt steht der Inhalt oben, darunter EIN Fall als flache Karte
+ * (.blick), und der Abschnitt ist so hoch wie sein Inhalt. Was danach
+ * kommt - "SI FUNKSIONON" -, schaut unten herein und ist sofort zu
+ * sehen (landing.js, Abschnitt 1): Das sagt dem Daumen, dass es
+ * weitergeht.
  *
- * WIE DIE REIHE WAECHST, ohne dass ein Skript misst: Der Abschnitt hat
- * eine Mindesthoehe (Fenster minus Kopf plus 56), ist eine Spalte, und
- * die Reihe nimmt mit flex-grow den Rest. Die Bilder liegen absolut in
- * ihren Haelften, tragen also keine eigene Hoehe - die Haelften sind so
- * hoch wie die Reihe. Auf einem kleinen Telefon ist nichts uebrig; dann
- * gilt die Mindesthoehe der Reihe (190), und der Abschnitt waechst ueber
- * das Fenster hinaus. Beides ohne Nachrechnen, beides ohne Sprung. */
+ * GETESTET UND VERWORFEN: Die Aufnahmen bis unter die Kante wachsen zu
+ * lassen. Das war zu gross - der Beweis erschlug den Satz darueber. */
 .held {
   position: relative;
-  min-height: calc(100vh - var(--kopf-h) - env(safe-area-inset-top) + 56px);
   padding-top: 20px;
+  padding-bottom: 8px;
   padding-inline: var(--rand);
   display: flex;
   flex-direction: column;
   background: var(--grund);
 }
-@supports (height: 100svh) {
-  .held { min-height: calc(100svh - var(--kopf-h) - env(safe-area-inset-top) + 56px); }
-}
 
-/* ── Die Reihe der Faelle im ersten Blick ─────────────────────────
+/* ── Der Fall im ersten Blick ─────────────────────────────────────
  *
- * Randlos bis an die Fensterkante (negativer Rand), damit die zweite
- * Karte rechts angeschnitten ist. Eine Karte ist 80 % breit.
+ * EINE KARTE, QUER, SO BREIT WIE DER TEXT - und keine angeschnittene
+ * daneben. Die Karte ist halb so hoch wie breit (2 : 1), also gut 170
+ * Punkte auf einem 390er: klein genug, dass Ueberschrift und Knopf das
+ * Erste bleiben. Weitere Faelle kommen per Wischen; der Abstand
+ * zwischen den Karten ist so breit wie der Rand, und scroll-snap haelt
+ * jede Karte genau an ihrer Stelle - so steht nie ein halber Fall am
+ * Rand.
  *
  * JEDE HAELFTE TRAEGT IHR EIGENES SCHILD - "PARA" dunkel, "PAS" in der
  * Farbe des Kaufens, wie an den Faellen weiter unten. Ein gemeinsames
  * Schild "PARA · PAS" lag quer ueber der ersten Aufnahme und sagte
- * nicht, welche welche ist. Oben und nicht unten: Unten ist die Reihe
- * mit Absicht angeschnitten, ein Schild dort laege unter der Kante.
+ * nicht, welche welche ist.
  *
  * KEIN FLACKERN BEIM LADEN. Solange data-wartet steht, sind nur die
  * Aufnahmen durchsichtig - Flaechen, Schilder und Mass stehen schon.
  * raste.js nimmt das Merkmal weg, wenn feststeht, welche Faelle es sind,
  * und ihre Bilder fertig dekodiert sind; dann blenden sie einmal ein.
  * Gebunden an .js: Ohne Skript sind die Bilder einfach da. */
-.blick {
-  flex: 1 0 auto;
-  display: flex;
-  flex-direction: column;
-  margin-top: 30px;
-}
+.blick { margin-top: 30px; }
 .blick__kopf {
   margin: 0 0 12px;
   font-size: 12px;
@@ -618,28 +609,29 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   color: var(--text-2);
 }
 .blick__bahn {
-  flex: 1 0 190px;
   display: flex;
-  gap: 10px;
+  gap: var(--rand);
   margin-inline: calc(-1 * var(--rand));
-  padding-inline: var(--rand);
+  padding: 0 var(--rand) 20px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-padding-inline-start: var(--rand);
-  scroll-snap-type: x proximity;
+  scroll-snap-type: x mandatory;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
 .blick__bahn::-webkit-scrollbar { display: none; }
 .blick__fall {
-  flex: 0 0 80%;
-  max-width: 360px;
+  flex: 0 0 100%;
+  aspect-ratio: 2 / 1;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 2px;
   scroll-snap-align: start;
-  border-radius: var(--rund-l) var(--rund-l) 0 0;
+  scroll-snap-stop: always;
+  border-radius: var(--rund-l);
   overflow: hidden;
+  box-shadow: var(--hebung);
   -webkit-tap-highlight-color: transparent;
 }
 .blick__halb {
@@ -656,7 +648,7 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 50% 22%;
+  object-position: 50% 25%;
   transition: opacity 0.35s var(--kurve);
 }
 .js .blick[data-wartet] .blick__halb img { opacity: 0; }
@@ -2804,13 +2796,11 @@ html.shporta-hapur:has(#ls-einstieg[data-aktiv="ja"]) { overflow: hidden; }
      Leere, und der Blick faengt bei keiner von beiden an. */
   .held__leib { max-width: 650px; margin-inline: 0; }
   /* Die Faelle stehen an derselben Kante wie der Text, nicht randlos. */
-  /* Auf dem Schreibtisch keine Fuellung bis zur Kante: Eine Reihe
-     von 500 Punkten Hoehe waere dort ein Plakat. Feste Hoehe, dieselbe
-     linke Kante wie der Text. */
-  .held { min-height: 0; padding-bottom: 32px; }
-  .blick { flex: none; }
-  .blick__bahn { flex: none; height: 250px; margin-inline: 0; padding-inline: 0; scroll-padding-inline-start: 0; }
-  .blick__fall { flex-basis: 360px; border-radius: var(--rund-l); }
+  /* Auf dem Schreibtisch stehen die Faelle nebeneinander, an derselben
+     linken Kante wie der Text. */
+  .held { padding-bottom: 32px; }
+  .blick__bahn { gap: 12px; margin-inline: 0; padding-inline: 0; scroll-padding-inline-start: 0; }
+  .blick__fall { flex-basis: 360px; }
   /* Der Hinweis nach unten steht an derselben Kante wie alles andere.
      In der Mitte des Fensters gehoerte er zu nichts. */
   .held__weiter { margin: 40px auto 0 0; }

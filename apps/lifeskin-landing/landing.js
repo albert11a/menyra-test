@@ -191,8 +191,21 @@
       });
     }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
 
+    /* WAS BEIM OEFFNEN SCHON IM BILD STEHT, STEHT EINFACH DA.
+     * Unter dem ersten Blick schaut der naechste Abschnitt herein
+     * ("SI FUNKSIONON"). Mit der Animation war genau dieser Rand leer:
+     * Er lag im unteren Streifen (-8 %), der nicht ausloest - und das
+     * Zeichen "hier geht es weiter" fehlte. Der erste Blick selbst
+     * behaelt sein Hereinkommen; alles andere, was beim Laden (oder nach
+     * dem Neuladen an alter Stelle) schon zu sehen ist, erscheint ohne
+     * Bewegung. Einmal gemessen, beim Start. */
+    var fensterH = window.innerHeight;
     for (var j = 0; j < stuecke.length; j++) {
       stuecke[j].__lsNr = j;
+      if (!stuecke[j].closest(".held") && stuecke[j].getBoundingClientRect().top < fensterH) {
+        stuecke[j].classList.add("ein", "sofort");
+        continue;
+      }
       waechter.observe(stuecke[j]);
     }
   }

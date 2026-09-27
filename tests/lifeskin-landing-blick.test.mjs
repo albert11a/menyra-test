@@ -6,27 +6,32 @@ import { readFileSync } from "node:fs";
 
 const lies = (pfad) => readFileSync(new URL(`../${pfad}`, import.meta.url), "utf8");
 
-test("der erste Blick endet in den Faellen: Inhalt oben, Reihe fuellt bis unter die Kante", () => {
+test("der erste Blick: Inhalt oben, ein kleiner Fall quer, keine halbe Karte daneben", () => {
   const css = lies("apps/lifeskin-landing/landing.css");
   const regel = (wahl) => css.slice(css.indexOf(`\n${wahl} {`), css.indexOf("}", css.indexOf(`\n${wahl} {`)));
   const held = regel(".held");
   assert.doesNotMatch(held, /justify-content: center/, "der Inhalt steht wieder in der Mitte");
-  assert.match(held, /min-height: calc\(100vh - var\(--kopf-h\) - env\(safe-area-inset-top\) \+ 56px\)/,
-    "die Reihe reicht nicht mehr unter die Kante - dann steht 'Si funksionon' im ersten Bild");
-  assert.match(css, /\.held \{ min-height: calc\(100svh - var\(--kopf-h\) - env\(safe-area-inset-top\) \+ 56px\); \}/);
-  assert.match(regel(".blick"), /flex: 1 0 auto/);
-  assert.match(regel(".blick__bahn"), /flex: 1 0 190px/);
-  assert.match(regel(".blick__halb img"), /position: absolute/, "die Bilder bestimmen wieder die Hoehe");
+  assert.doesNotMatch(held, /min-height/, "der erste Blick fuellt wieder den Bildschirm - dann schaut nichts herein");
+  const fall = regel(".blick__fall");
+  assert.match(fall, /flex: 0 0 100%/, "neben dem Fall schaut wieder eine halbe Karte herein");
+  assert.match(fall, /aspect-ratio: 2 \/ 1/, "der Fall ist nicht mehr klein und quer");
+  assert.match(regel(".blick__bahn"), /gap: var\(--rand\)/, "die naechste Karte ragt in den Rand");
+  assert.match(regel(".blick__bahn"), /scroll-snap-type: x mandatory/);
 });
 
-test("jede Haelfte hat ihr eigenes Schild, oben", () => {
+test("was beim Oeffnen unter dem ersten Blick schon im Bild ist, steht ohne Animation da", () => {
+  const js = lies("apps/lifeskin-landing/landing.js");
+  assert.match(js, /!stuecke\[j\]\.closest\("\.held"\) && stuecke\[j\]\.getBoundingClientRect\(\)\.top < fensterH/);
+  assert.match(js, /classList\.add\("ein", "sofort"\)/);
+  assert.match(lies("apps/lifeskin-landing/landing.css"), /\.js \[data-anim\]\.sofort \{ transition: none; \}/);
+});
+
+test("jede Haelfte hat ihr eigenes Schild", () => {
   const html = lies("apps/lifeskin-landing/index.html");
   const reihe = html.slice(html.indexOf('id="blick"'), html.indexOf('id="pse"'));
   assert.equal((reihe.match(/class="blick__etiket" aria-hidden="true">PARA</g) || []).length, 4);
   assert.equal((reihe.match(/class="blick__etiket blick__etiket--pas" aria-hidden="true">PAS</g) || []).length, 4);
   assert.doesNotMatch(reihe, /PARA · PAS/);
-  const css = lies("apps/lifeskin-landing/landing.css");
-  assert.match(css.slice(css.indexOf("\n.blick__etiket {")), /^[\s\S]*?top: 8px/);
 });
 
 test("kein Flackern: Bilder blenden erst ein, wenn feststeht, welche es sind", () => {
