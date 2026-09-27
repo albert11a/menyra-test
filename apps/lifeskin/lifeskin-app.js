@@ -35,7 +35,7 @@ import { netzVorladen, netzHolen, netzStand, netzArt, netzFehlerFolge, messeNetz
 import { STANDARD_KONFIG, ALTERSGRUPPEN } from "./lifeskin-catalog.js";
 import { OBERFLAECHE, EINSTIEG_HINWEIS, EINSTIEG_KARTEN, ARZT_BILD, ARZT_NAME,
   FRAGEN, FRAGEN_NACH_SCAN, FRAGEN_NACH_AUFNAHME, FRAGEN_PA_SKANIM, FRAGEN_PA_SKANIM_NUMRI,
-  FRAGEN_TEXTE, t, fuelle } from "./lifeskin-content.js";
+  FRAGEN_TEXTE, OBERFLAECHE_WEGE, frageFuerWeg, t, fuelle } from "./lifeskin-content.js";
 import { besteGuete, Flaechenkamera, beiFreigabe, KAMERA_HAENGT_MS, BILD_GRENZE_MS, ausDatei as fotoAusDatei } from "./lifeskin-foto.js";
 import { Sitzung } from "./lifeskin-session.js";
 import { starteKlickpfad } from "../../shared/lifeskin-klickpfad.js";
@@ -491,6 +491,16 @@ export function varianteLesen(wurzel) {
   return wurzel?.dataset?.lsVariante === "kurz" ? "kurz" : "klassik";
 }
 
+// UEBER WELCHE LANDINGPAGE ER KAM - "lifeskin2" (apps/lifeskin-2) oder "".
+//
+// Wie die Fassung am Aufbau entschieden (<html data-ls-weg="lifeskin2">),
+// und aus demselben Grund hier und ohne Import: ohne Browser nachrechenbar.
+// Dieselbe Liste wie shared/lifeskin-weg.js - tests/lifeskin-2.test.mjs
+// haelt beide gleich.
+export function wegLesen(wurzel) {
+  return wurzel?.dataset?.lsWeg === "lifeskin2" ? "lifeskin2" : "";
+}
+
 // DER BROWSER IN EINER APP AUF ANDROID - dort gibt es womoeglich keine
 // Live-Kamera.
 //
@@ -614,6 +624,9 @@ export class Trichter {
     // alte Fassung. Ein Trichter, der ohne Zutun etwas anderes tut als
     // bisher, waere genau das, was hier niemand will.
     this.variante = variante || varianteLesen(globalThis.document?.documentElement);
+    // Ueber welche Landingpage er kam ("lifeskin2" oder "") - die Fragen
+    // sprechen dann in ihren Worten (frageFuerWeg).
+    this.weg = wegLesen(globalThis.document?.documentElement);
     this.pixel = new Pixel();
     this.sitzung = new Sitzung({ beiSchritt: (name, zusatz) => this.pixel.melde(name, zusatz) });
     /* Derselbe Speicher, in dem die Sitzung ihre Kennung haelt: Er
@@ -701,7 +714,7 @@ export class Trichter {
   }
 
   text(schluessel, werte) {
-    const roh = t(OBERFLAECHE[schluessel], this.sprache);
+    const roh = t(OBERFLAECHE_WEGE[this.weg]?.[schluessel] || OBERFLAECHE[schluessel], this.sprache);
     return werte ? fuelle(roh, werte) : roh;
   }
 
@@ -4252,7 +4265,7 @@ export class Trichter {
 
   #frageZeichnen({ richtung = null } = {}) {
     this.#frageBlattBewegen(richtung);
-    const frage = this.fragenListe[this.fragen.i];
+    const frage = frageFuerWeg(this.fragenListe[this.fragen.i], this.weg);
     // JEDE FRAGE ZAEHLT, SOBALD SIE DA IST - nicht erst, wenn sie
     // beantwortet ist. Sonst stuende der Verlust bei der Frage davor, und
     // die Zahl zeigte auf die falsche Stelle.

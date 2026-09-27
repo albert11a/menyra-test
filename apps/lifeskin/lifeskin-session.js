@@ -14,6 +14,7 @@
 // Der wichtigste Satz in diesem Modul: Ein Schreibfehler darf den Trichter
 // nie anhalten. Wenn die Zaehlung ausfaellt, verkauft die Seite weiter.
 
+import { LIFESKIN_WEGE, wegGueltig } from "../../shared/lifeskin-weg.js";
 import { pfadPatch } from "../../shared/lifeskin-klickpfad.js";
 import { meldungAnstossen } from "../../shared/lifeskin-melden.js";
 
@@ -191,8 +192,22 @@ export function klickKennung({ suche, keks = "", speicher = null, jetzt = Date.n
   return fbc;
 }
 
+// UEBER WELCHE LANDINGPAGE JEMAND KAM - "lifeskin2" oder "".
+//
+// Die Seite traegt es am Wurzelelement (<html data-ls-weg="lifeskin2">,
+// apps/lifeskin-2/index.html), nicht in der Adresse: Ein utm-Zusatz geht
+// beim Teilen verloren oder wird von Hand falsch getippt, das Merkmal der
+// Seite nicht. Es steht in der Herkunft (source ist in den Regeln eine
+// freie Karte) - keine Regel-Aenderung. Heart trennt daran die Tabs
+// "Lifeskin" und "Lifeskin 2". Nur bekannte Wege, sonst "".
+export { LIFESKIN_WEGE };
+export function wegAuslesen(wurzel = globalThis.document?.documentElement) {
+  return wegGueltig(wurzel?.dataset?.lsWeg);
+}
+
 export function herkunftAuslesen(ort = globalThis.location, verweis = globalThis.document?.referrer,
-  keks = globalThis.document?.cookie, speicher = (() => { try { return globalThis.sessionStorage; } catch { return null; } })()) {
+  keks = globalThis.document?.cookie, speicher = (() => { try { return globalThis.sessionStorage; } catch { return null; } })(),
+  wurzel = globalThis.document?.documentElement) {
   let suche;
   try {
     suche = new URLSearchParams(ort?.search || "");
@@ -217,12 +232,14 @@ export function herkunftAuslesen(ort = globalThis.location, verweis = globalThis
   // eine Regel gebraucht, und bis die ausgerollt ist, wiese hasOnly() die
   // GANZE Sitzung ab.
   const fbc = klickKennung({ suche, keks, speicher });
+  const weg = wegAuslesen(wurzel);
   return {
     utmSource: suche.get("utm_source") || (test ? "test" : ""),
     utmCampaign: suche.get("utm_campaign") || (test ? "test" : ""),
     utmContent: suche.get("utm_content") || "",
     referrer: String(verweis || "").slice(0, 240),
-    ...(fbc ? { fbc } : {})
+    ...(fbc ? { fbc } : {}),
+    ...(weg ? { weg } : {})
   };
 }
 
@@ -1012,8 +1029,15 @@ export class Sitzung {
   }
 
   // Wohin der Patient nach dem Scan geht.
+  //
+  // Mit ?weg=lifeskin2, wenn er ueber LifeSkin 2 kam: Die Warteseite ist
+  // oeffentlich und liest die Sitzung nicht - so weiss sie trotzdem, welches
+  // Versprechen er gelesen hat, und spricht in denselben Worten weiter.
   get berichtPfad() {
-    return `/analiza/${this.id}`;
+    // Die Sitzung zuerst; beim Fortsetzen (Zurueck aus WhatsApp) ist die
+    // Herkunft noch nicht wieder gelesen - dann die Seite selbst.
+    const weg = [this.stand?.source?.weg, wegAuslesen()].find((w) => LIFESKIN_WEGE.includes(w)) || "";
+    return `/analiza/${this.id}${weg ? `?weg=${weg}` : ""}`;
   }
 
   // Der Klickpfad (shared/lifeskin-klickpfad.js) - in dieselbe Kette wie

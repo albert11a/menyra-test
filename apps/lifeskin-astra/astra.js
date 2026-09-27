@@ -25,7 +25,8 @@ import { Pixel, pixelKennungen } from "../lifeskin/lifeskin-pixel.js";
 import { AnalyseDaten, kennungAusPfad } from "./astra-daten.js";
 import { starteKlickpfad } from "../../shared/lifeskin-klickpfad.js";
 import { ikona, ikonenSetzen } from "./astra-ikona.js";
-import { TEXTE, NDJEKJA, PYETJET, t, fuelle } from "./astra-texte.js";
+import { TEXTE, TEXTE_WEGE, NDJEKJA, PYETJET, t, fuelle } from "./astra-texte.js";
+import { wegAusSuche, wegGueltig } from "../../shared/lifeskin-weg.js";
 import { standardText } from "./astra-texte-plan.js";
 import { meldungAnstossen } from "../../shared/lifeskin-melden.js";
 
@@ -235,6 +236,10 @@ export class Analiza {
   }
 
   get kennung() { return this.quelle.kennung; }
+  // UEBER WELCHE LANDINGPAGE ER KAM (shared/lifeskin-weg.js): aus der
+  // Adresse (?weg=, haengt der Trichter an) oder aus dem Bericht (weg,
+  // schreibt Heart beim Freigeben).
+  get weg() { return wegAusSuche(this.ort?.search) || wegGueltig(this.daten?.weg); }
   get raport() { return this.daten?.raport || {}; }
   get preis() { return Number(this.daten?.preis) || STANDARD_KONFIG.setPreis; }
 
@@ -250,6 +255,7 @@ export class Analiza {
     const eigen = this.daten?.texte?.[schluessel];
     const roh = typeof eigen === "string" && eigen.trim()
       ? eigen.trim()
+      : TEXTE_WEGE[this.weg]?.[schluessel] ? t(TEXTE_WEGE[this.weg][schluessel], this.sprache)
       : (TEXTE[schluessel] ? t(TEXTE[schluessel], this.sprache) : standardText(schluessel, this.sprache));
     return werte ? fuelle(roh, werte) : roh;
   }

@@ -350,7 +350,7 @@ export function normalisiere(id, rohdaten) {
 
 // Wie weit ist eine Sitzung gekommen?
 // Wie weit ein Lauf gekommen ist - gemessen an der vollen Schrittfolge.
-function stufenIndex(step) {
+export function stufenIndex(step) {
   const i = SCHRITT_FOLGE.indexOf(step);
   return i < 0 ? 0 : i;
 }

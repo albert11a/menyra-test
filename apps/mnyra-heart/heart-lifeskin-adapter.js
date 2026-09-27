@@ -16,6 +16,7 @@
 // einmal offen hatte, sieht ihn beim naechsten Mal ohne Warten.
 
 import { antwortenFuerBericht } from "../../shared/lifeskin-antworten.js";
+import { wegGueltig } from "../../shared/lifeskin-weg.js";
 import { db } from "/shared/firebase-config.js";
 import {
   TRICHTER_STUFEN,
@@ -535,7 +536,7 @@ export async function ladeBericht(sitzungId) {
   return schnappschuss.exists() ? { id: schnappschuss.id, ...(schnappschuss.data() || {}) } : null;
 }
 
-export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport, texte, ohneBild = false, raste = [], klientet = [], nurStaff = false, bereit = false, antworten = null }) {
+export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport, texte, ohneBild = false, raste = [], klientet = [], nurStaff = false, bereit = false, antworten = null, weg = "" }) {
   if (!sitzungId) throw new Error("Bericht ohne Kennung");
   await setDoc(doc(db, "lifeskin", TENANT, "reports", sitzungId), {
     status: nurStaff || bereit ? "vorschau" : "fertig",
@@ -589,6 +590,11 @@ export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwe
     // Gesundheitsangabe (shared/lifeskin-antworten.js). Die Therapieseite
     // spiegelt sie zurueck ("Ju na thatë …"). Keine Antworten: null.
     antworten: antwortenFuerBericht(antworten),
+    // Ueber welche Landingpage er kam ("lifeskin2" oder "") - die
+    // Therapieseite beginnt bei LifeSkin 2 mit dem Urteil ("Po, ju
+    // përshtatet"). Der Patient darf den Bericht nur anlegen, nicht
+    // erweitern; deshalb schreibt es Heart hier (shared/lifeskin-weg.js).
+    weg: wegGueltig(weg),
     // Welche Vorher/Nachher-Faelle die Seite zeigt, in dieser Reihenfolge.
     raste: (Array.isArray(raste) ? raste : []).map((x) => String(x || "").slice(0, 40)).filter(Boolean).slice(0, 12),
     // Die Kundenbilder ("Nga klientët tanë"), die Heart gewaehlt hat.

@@ -1107,7 +1107,28 @@ export const FRAGEN = Object.freeze([
       { id: "tani", text: { sq: "Po, dua ta filloj sa më shpejt", de: "Ja, ich möchte so bald wie möglich anfangen" } },
       { id: "pasi", text: { sq: "Po, kur ta shoh çka më duhet", de: "Ja, wenn ich sehe, was ich brauche" } },
       { id: "analiza", text: { sq: "Së pari dua vetëm analizën", de: "Zuerst möchte ich nur die Analyse" } }
-    ]
+    ],
+    // LIFESKIN 2 (/lifeskin2) fragt dasselbe in den Worten seiner
+    // Landingpage: Dort ist die Therapie das Angebot und die Pruefung der
+    // Weg dorthin - "Analyse" kommt dem Kunden gar nicht vor. Die
+    // Kennungen der Antworten bleiben, Heart und Prompt lesen sie wie immer.
+    wege: {
+      lifeskin2: {
+        titel: {
+          sq: "Nëse ju përshtatet, a doni ta filloni terapinë 4-javore?",
+          de: "Wenn sie zu Ihnen passt, möchten Sie die 4-Wochen-Therapie beginnen?"
+        },
+        unter: {
+          sq: "Kontrolli mbetet falas. Porositni vetëm nëse ju përshtatet.",
+          de: "Die Prüfung bleibt kostenlos. Sie bestellen nur, wenn es passt."
+        },
+        antworten: {
+          tani: { sq: "Po, dua ta filloj sa më shpejt", de: "Ja, so bald wie möglich" },
+          pasi: { sq: "Po, kur ta shoh cilin set më duhet", de: "Ja, wenn ich sehe, welches Set ich brauche" },
+          analiza: { sq: "Së pari dua të di nëse më përshtatet", de: "Zuerst will ich wissen, ob es passt" }
+        }
+      }
+    }
   },
   {
     // DER NAME STEHT ZULETZT, und das ist kein Zufall.
@@ -1148,6 +1169,41 @@ export const FRAGEN = Object.freeze([
   }
 ]);
 
+
+// DIE OBERFLAECHE IN DEN WORTEN VON LIFESKIN 2.
+//
+// Nur, was dort "Analyse" verspricht, wo LifeSkin 2 eine Antwort
+// verspricht: ob die Therapie passt. Alles andere gilt wie in OBERFLAECHE.
+export const OBERFLAECHE_WEGE = Object.freeze({
+  lifeskin2: Object.freeze({
+    telKnopf: { sq: "Merrni përgjigjen në WhatsApp", de: "Antwort per WhatsApp erhalten" },
+    telKnopfViber: { sq: "Merrni përgjigjen në Viber", de: "Antwort per Viber erhalten" },
+    telGesichertUnter: {
+      sq: "Dr. Violeta Gashi kontrollon nëse terapia ju përshtatet dhe ju shkruan sot.",
+      de: "Dr. Violeta Gashi prüft, ob die Therapie zu Ihnen passt, und schreibt Ihnen heute."
+    },
+    fotoAnalyseAkte: { sq: "Rasti po i dërgohet Dr. Gashit për kontroll", de: "Der Fall geht zur Prüfung an Dr. Gashi" }
+  })
+});
+
+// DIE FRAGE IN DEN WORTEN DER LANDINGPAGE, UEBER DIE JEMAND KAM.
+//
+// Eine Frage kann je Weg (lifeskin-session.js, wegAuslesen) eigene Texte
+// tragen (frage.wege[weg]). Getauscht werden nur Titel, Unterzeile und die
+// Worte der Antworten - nie ihre Kennungen, nie ihre Reihenfolge. Ohne Weg
+// oder ohne eigene Texte kommt die Frage unveraendert zurueck.
+export function frageFuerWeg(frage, weg) {
+  const eigen = weg && frage?.wege?.[weg];
+  if (!eigen) return frage;
+  return {
+    ...frage,
+    titel: eigen.titel || frage.titel,
+    unter: eigen.unter || frage.unter,
+    antworten: Array.isArray(frage.antworten)
+      ? frage.antworten.map((a) => (eigen.antworten?.[a.id] ? { ...a, text: eigen.antworten[a.id] } : a))
+      : frage.antworten
+  };
+}
 
 // ---------- Welche Fragen auf welchem Weg gestellt werden ----------
 //

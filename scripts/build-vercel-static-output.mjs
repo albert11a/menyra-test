@@ -118,6 +118,8 @@ const OHNE_KOMMENTARE = [
   // warum er dort steht. Das gehoert in das Verzeichnis, nicht auf das
   // Telefon eines Mitbewerbers.
   "apps/lifeskin-landing",
+  // LifeSkin 2 unter /lifeskin2 - dieselbe Seite mit anderem Versprechen.
+  "apps/lifeskin-2",
   // Die kurze Fassung. Sie traegt dieselben Begruendungen im Aufbau und im
   // Stilblatt - und dieselben gehoeren nicht auf das Telefon eines
   // Patienten oder eines Mitbewerbers.
