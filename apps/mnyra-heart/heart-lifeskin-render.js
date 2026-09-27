@@ -2124,7 +2124,13 @@ function befundGruppe(name, titel, inhalt, { id = "", hinweis = "" } = {}) {
           <span class="heart-befund__gruppentitel">${titel}${hinweis ? `<small>${hinweis}</small>` : ""}</span>
           <span class="heart-stand" data-stand-fuer="${escapeHtml(name)}" data-stand="" aria-hidden="true"></span>
         </summary>
-        <div class="heart-befund__gruppenleib">${inhalt}</div>
+        <div class="heart-befund__gruppenleib">${inhalt}
+          <!-- Am Ende des Abschnitts zuklappen, ohne zurueck nach oben zum
+               Kopf zu scrollen. Gemerkt wird es wie beim Kopf ("toggle"). -->
+          <button type="button" class="heart-befund__zuklappen" data-action="befund-gruppe-zu" aria-label="${escapeHtml(titel)} zuklappen">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
+          </button>
+        </div>
       </details>`;
 }
 

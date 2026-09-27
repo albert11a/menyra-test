@@ -37,6 +37,18 @@ export function bindHeartEvents({
 
     const action = String(target.getAttribute("data-action") || "").trim();
 
+    // Befund-Abschnitt von unten zuklappen: Kopf wieder ins Bild holen, dann
+    // zu. Das "toggle" merkt es wie ein Tipp auf den Kopf.
+    if (action === "befund-gruppe-zu") {
+      const gruppe = target.closest("details.heart-befund__gruppe");
+      if (gruppe) {
+        gruppe.open = false;
+        const kopf = gruppe.querySelector(".heart-befund__gruppenkopf");
+        if (kopf && kopf.getBoundingClientRect().top < 0) kopf.scrollIntoView({ block: "start" });
+      }
+      return;
+    }
+
     // "Was gibt es Neues" traegt beides: die Ansicht, in die es fuehrt, und das
     // Lokal, das dort geoeffnet werden soll. Darum vor der reinen Navigation.
     if (action === "open-start-news") {

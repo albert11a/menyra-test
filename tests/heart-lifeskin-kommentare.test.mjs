@@ -88,3 +88,13 @@ test("das Formular steht unter Reaktionen, bleibt beim Neuzeichnen und ist verdr
   assert.match(heart, /lifeskinKommentareSpeichern\(\) \{ return lifeskinKommentareSpeichern\(\); \}/);
   assert.match(heart, /kommentarVorschauSetzen\(form\)/);
 });
+
+test("Befund-Abschnitte haben unten mittig einen Pfeil zum Zuklappen", () => {
+  const render = lies("apps/mnyra-heart/heart-lifeskin-render.js");
+  const gruppe = render.slice(render.indexOf("function befundGruppe"), render.indexOf("// DIE NACHRICHT VORAB"));
+  assert.match(gruppe, /heart-befund__gruppenleib">\$\{inhalt\}[\s\S]*data-action="befund-gruppe-zu"[\s\S]*<\/div>\s*<\/details>/,
+    "der Pfeil steht nicht am Ende des Abschnitts");
+  const ereignisse = lies("apps/mnyra-heart/heart-events.js");
+  assert.match(ereignisse, /befund-gruppe-zu[\s\S]{0,200}gruppe\.open = false/);
+  assert.match(lies("apps/mnyra-heart/heart.css"), /\.heart-befund__zuklappen \{[\s\S]*?align-self: center/);
+});
