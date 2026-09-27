@@ -6495,7 +6495,8 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 /* Ohne Titel und Pfeil: offen nur die Zahlen (Doppeltipp klappt zu), zu
    nur die schmale Zeile mit den drei Zahlen (Tipp klappt auf). */
 .heart-kachelklapp[open] > .heart-klapp__kopf { display: none; }
-.heart-kachelklapp[open] > .heart-lifeskin-kacheln { margin-top: -12px; }
+.heart-kachelklapp[open] > .heart-lifeskin-chips { margin-top: -4px; }
+.heart-kachelklapp > .heart-lifeskin-chips + .heart-lifeskin-kacheln { margin-top: 4px; }
 .heart-kachelklapp > .heart-klapp__kopf::before { content: none; }
 .heart-kachelklapp > .heart-klapp__kopf .heart-klapp__zahl { font-size: 13px; }
 .heart-kachelklapp[open] { cursor: default; user-select: none; -webkit-user-select: none; }

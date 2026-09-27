@@ -110,3 +110,10 @@ test("Zahlen: ohne Titel und Pfeil, Doppeltipp klappt zu", () => {
   assert.match(ereignisse, /if \(zahlenDoppeltipp\(event\)\) return;/);
   assert.match(ereignisse, /jetzt - letzterTipp\.zeit < 350/);
 });
+
+test("die Zeitraum-Chips stehen in der Zahlen-Karte - sonst huepft sie beim Zuklappen", () => {
+  const render = lies("apps/mnyra-heart/heart-lifeskin-render.js");
+  assert.match(render, /renderKacheln\(zahlen, zeitraum, renderChips\(ZEITRAEUME/);
+  const block = render.slice(render.indexOf("function renderKacheln"), render.indexOf('<div class="heart-lifeskin-kacheln">', render.indexOf("function renderKacheln")));
+  assert.match(block, /<\/summary>[\s\S]*\$\{chips\}/);
+});
