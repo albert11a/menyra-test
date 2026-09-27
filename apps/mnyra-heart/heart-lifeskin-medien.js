@@ -270,7 +270,6 @@ export function renderBefundMedienAuswahl(zustand = {}, bericht = null) {
     return `<p class="heart-lifeskin-leer">Kein Foto oder Video eingeschaltet – unter „Mehr anzeigen → Fotos &amp; Videos“.</p>`;
   }
   return `
-    <p class="heart-befund__hilfe">Antippen zum Auswählen. Keines gewählt – die Seite zeigt den Abschnitt nicht.</p>
     <div class="heart-rasti-wahl">
       ${liste.map((m) => `
       <label class="heart-rasti-wahl__karte heart-rasti-wahl__karte--medium">

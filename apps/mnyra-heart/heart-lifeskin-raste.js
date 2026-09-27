@@ -345,7 +345,6 @@ export function renderBefundRasteAuswahl(liste, bericht, zustand = {}) {
     ? `<img src="${escapeHtml(src)}" alt="${escapeHtml(wort)}" loading="lazy" />`
     : `<span class="heart-rasti-wahl__ohne">${escapeHtml(wort)}</span>`;
   return `
-    <p class="heart-befund__hilfe">Antippen zum Auswählen. Mindestens eines – die Seite zeigt sie in dieser Reihenfolge.</p>
     <div class="heart-rasti-wahl">
       ${kandidaten.map((r) => {
         const b = bilderVon(r, zustand);

@@ -2227,7 +2227,7 @@ function renderPatientKnoepfe(sitzung, bericht, fertig) {
         </div>
         <!-- 2. FINAL: nach der Freigabe, mit Anrede und Link. -->
         ${endText ? (wa ? `<a class="heart-befund__knopf heart-befund__knopf--wa" href="${escapeHtml(waLink(endText))}" target="_blank" rel="noopener">
-          ${renderHeartIcon("send", "heart-befund__knopficon")}Befund in WhatsApp senden<small>mit Anrede und Link</small></a>`
+          ${renderHeartIcon("send", "heart-befund__knopficon")}Befund in WhatsApp senden</a>`
           : `<button type="button" class="heart-befund__knopf" data-action="lifeskin-text-kopieren" data-wert="${escapeHtml(endText)}"
                data-was="WhatsApp-Nachricht">${renderHeartIcon("copy", "heart-befund__knopficon")}Befund-Nachricht kopieren</button>`)
           : ""}
@@ -2242,11 +2242,10 @@ function renderPatientKnoepfe(sitzung, bericht, fertig) {
 // Tasten, die passende hervorgehoben - Heart weiss, wie weit er kam.
 function renderNachfassen3(sitzung, bericht, fertig, taste) {
   if (!fertig || istBestellt(sitzung, bericht)) return "";
+  // Die passende Taste ist hervorgehoben (gruener Rand) - ohne Satz dazu.
   const passt = nachfassArt(sitzung, bericht);
-  const lage = NACHFASS_ARTEN.find((a) => a.id === passt);
   return `
         <span class="heart-befund__zwischen heart-befund__zwischen--icon">${renderHeartIcon("send", "heart-befund__knopficon")}Nachfassen</span>
-        ${lage ? `<p class="heart-befund__hilfe">Passend: <b>${escapeHtml(lage.taste)}</b> – ${escapeHtml(lage.hilfe)}.</p>` : ""}
         <div class="heart-befund__wareihe heart-befund__wareihe--drei">
           ${NACHFASS_ARTEN.map((a) => taste(nachfassNachricht(sitzung, bericht, a.id),
             `${renderHeartIcon("send", "heart-befund__wataicon")}${escapeHtml(a.taste)}`,
@@ -2467,12 +2466,11 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({}), 
           </div>`)}`)}
 
       ${befundGruppe("seite", "Therapieseite prüfen", `
-        <p class="heart-befund__hilfe">So steht es beim Patienten. Jedes Feld lässt sich ändern.</p>
         ${renderShitjaFelder(raport.shitja, produkte, [...gewaehlt.keys()], { patient: String(sitzung.name || "").trim(), ohneFoto })}`)}
 
-      ${befundGruppe("raste", "Ergebnisse auf der Seite", renderBefundRasteAuswahl(raste, bericht, zustand), { hinweis: "Vorher / Nachher" })}
+      ${befundGruppe("raste", "Ergebnisse auf der Seite", renderBefundRasteAuswahl(raste, bericht, zustand))}
 
-      ${befundGruppe("klientet", "Kundenfotos & -videos", renderBefundMedienAuswahl(zustand, bericht), { hinweis: "Nga klientët tanë" })}
+      ${befundGruppe("klientet", "Kundenfotos & -videos", renderBefundMedienAuswahl(zustand, bericht))}
 
       ${befundGruppe("details", "Analyse-Details", `
         <textarea hidden data-raport-meta>${escapeHtml(JSON.stringify(raport || {}))}</textarea>
@@ -2489,7 +2487,7 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({}), 
           <label class="heart-lifeskin-feld">Begriffe und Erklärungen (JSON)
             <textarea class="heart-lifeskin-eingabe" rows="4" data-raport-terms>${escapeHtml(JSON.stringify(raport.termat || [], null, 2))}</textarea>
           </label>
-        </div>`, { id: "lifeskin-bogen", hinweis: "Diagnose, Zonen, Messwerte" })}
+        </div>`, { id: "lifeskin-bogen" })}
 
       </div><!-- /Bogen -->
 
