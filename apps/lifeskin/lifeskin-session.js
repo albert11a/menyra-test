@@ -982,6 +982,15 @@ export class Sitzung {
     return this.#sammeln(daten, masken);
   }
 
+  // Was auf der Landingpage gesehen wurde (shared/lifeskin-landingtiefe.js)
+  // - unter timings.landing, Feld fuer Feld, in derselben Kette wie alles
+  // andere und damit nie vor dem Anlegen der Sitzung.
+  landingSchreiben(daten) {
+    const felderListe = Object.keys(daten || {});
+    if (!felderListe.length) return this.kette;
+    return this.#sammeln({ timings: { landing: { ...daten } } }, felderListe.map((f) => `timings.landing.${f}`));
+  }
+
   // Einzelne Felder ergaenzen, ohne den Schritt zu bewegen.
   //
   // Das ist der Weg, auf dem die Anschrift ankommt: Feld fuer Feld, beim

@@ -19,7 +19,8 @@ import { renderHeartIcon, renderGeraetZeichen } from "./heart-icons.js";
 // Der Setpreis kommt aus derselben Quelle wie im Trichter. Zwei Zahlen an
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
-import { ZEITRAEUME, TYPEN, typVon, istAnalyse, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueZweige, baueMaintrichter, baueKauftrichter, ohneScanGelaufen, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
+import { LANDING_SCHIRME, landingLesen } from "../../shared/lifeskin-landingtiefe.js";
+import { ZEITRAEUME, TYPEN, typVon, istAnalyse, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueZweige, baueMaintrichter, baueKauftrichter, baueLandingtrichter, ohneScanGelaufen, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
 // (Die eigenen Texte der alten Analyseseite werden nicht mehr bearbeitet - sie reisen unsichtbar mit.)
 // Die Antworten aus dem Trichter, uebersetzt - aus DERSELBEN Quelle, aus
 // der auch der Prompt gefuellt wird. Eine eigene Tabelle hier waere eine
@@ -426,7 +427,8 @@ const TRICHTER_CHIPS = Object.freeze([
   { id: "foto", label: "Foto" },
   { id: "trup", label: "Trup/Pytje" },
   { id: "kauf", label: "Kauf" },
-  { id: "bericht", label: "Bericht" }
+  { id: "bericht", label: "Bericht" },
+  { id: "landing", label: "Landing" }
 ]);
 
 // Eine Reihe Stufen als Balken. Ein Baustein fuer alle sechs Trichter -
@@ -455,6 +457,24 @@ function renderStufen(stufen, { schlimmsterAb = 0.2 } = {}) {
   }).join("");
 }
 
+// OHNE SCROLL GEGEN MIT SCROLL: Wer bestellt eher - wer die Landingpage
+// liest, oder wer sofort weitergeht? Je Gruppe: Mënyra, Patient, Bestellt,
+// und der Anteil an der eigenen Gruppe.
+function renderLandingVergleich({ vergleich }) {
+  const spalte = (titel, g) => `
+        <div class="heart-lp-vergleich__spalte">
+          <b>${escapeHtml(titel)}</b>
+          <span>${g.menyra} Mënyra</span>
+          <span>${g.patient} Patient · ${prozent(g.patientAnteil)}</span>
+          <span>${g.bestellt} Bestellt · ${prozent(g.bestelltAnteil)}</span>
+        </div>`;
+  return `
+      <div class="heart-lp-vergleich">
+        ${spalte("Ohne Scroll", vergleich.direkt)}
+        ${spalte("Mit Scroll", vergleich.scroll)}
+      </div>`;
+}
+
 // Alle sechs auf einmal gerechnet. EINE Stelle, damit der Chip dieselbe
 // Zahl traegt wie der Trichter darunter - zwei Rechnungen waeren zwei
 // Zahlen, die auseinander laufen.
@@ -469,6 +489,14 @@ function baueTrichterListe(sitzungen, imBlick, zeitraum) {
     if (chip.id === "kauf") {
       return { ...chip, stufen: baueKauftrichter(imBlick),
         fuss: "Der Laden auf der Landingpage: wer die Mittel gesehen, etwas hineingelegt und bezahlt hat." };
+    }
+    if (chip.id === "landing") {
+      // IM CHIP: die gemessenen Landing-Besuche (erste Stufe).
+      const lp = baueLandingtrichter(imBlick);
+      return { ...chip, chipStufe: 0, stufen: lp.stufen, extra: renderLandingVergleich(lp),
+        fuss: lp.basis
+          ? "Welche Bildschirme der Landingpage im Bild standen, und wer ohne oder mit Scroll zur Mënyra ging. Gezählt nur Besuche mit Messung."
+          : "Noch keine gemessenen Besuche – die Messung zählt ab jetzt." };
     }
     if (chip.id === "bericht") {
       // IM CHIP STEHT HIER DIE ERSTE STUFE, nicht die letzte: Diese
@@ -513,6 +541,7 @@ function renderTrichter(liste, gewaehlt = "main") {
     <section class="heart-lifeskin-block">
       <h3 class="heart-lifeskin-block__titel">Trichter · ${escapeHtml(offen.titel || offen.label)}</h3>
       <div class="heart-lifeskin-trichter">${renderStufen(offen.stufen)}</div>
+      ${offen.extra || ""}
       ${offen.fuss ? `<p class="heart-lifeskin-block__fuss">${escapeHtml(offen.fuss)}</p>` : ""}
       ${schlimmster && schlimmster.verlust > 0.2
         ? `<p class="heart-lifeskin-block__fuss">Groesster Verlust bei „${escapeHtml(schlimmster.label)}" — ${escapeHtml(verloreneLeute(offen.stufen, schlimmster))}.</p>`
@@ -1034,6 +1063,17 @@ function fallWert(sitzung, bericht) {
   return betrag > 0 ? euro(betrag) : "";
 }
 
+// SCROLL / NO SCROLL: hat er die Landingpage gelesen, bevor er zur Mënyra
+// ging? In jedem Fach, direkt nach der Art. Ohne Messung (aeltere Faelle)
+// steht nichts.
+function landingMarke(sitzung) {
+  const lp = landingLesen(sitzung);
+  if (!lp.weg) return "";
+  return lp.weg === "scroll"
+    ? `<span class="heart-lifeskin-pill heart-lifeskin-pill--lpscroll heart-lifeskin-pill--an" title="Hat die Landingpage gelesen (bis Bildschirm ${lp.tiefe})">Scroll</span>`
+    : `<span class="heart-lifeskin-pill heart-lifeskin-pill--lpdirekt heart-lifeskin-pill--an" title="Direkt von Bildschirm 1 zur Mënyra">No scroll</span>`;
+}
+
 function fallMarken(sitzung, fach = "", bericht = null) {
   const wert = fallWert(sitzung, bericht);
   const m = {
@@ -1053,7 +1093,7 @@ function fallMarken(sitzung, fach = "", bericht = null) {
     bestellt: [m.wert],
     archiviert: [m.auf, m.kasse, m.wert]
   })[fach] || [m.auf, m.kasse];
-  const reihe = artMarke(sitzung)
+  const reihe = artMarke(sitzung) + landingMarke(sitzung)
     + (sitzung.nurBericht ? `<span class="heart-lifeskin-pill heart-lifeskin-pill--paskanim heart-lifeskin-pill--an" title="Die Sitzung kam nicht an, der Bericht schon - Kontaktdaten fehlen">nur Bericht</span>` : "")
     + marken.map((m) => `<span class="heart-lifeskin-pill heart-lifeskin-pill--${m.id}${m.an ? " heart-lifeskin-pill--an" : ""}">${escapeHtml(m.label)}</span>`).join("");
 
@@ -1705,6 +1745,28 @@ function renderSchritteInhalt(sitzung) {
     <p class="heart-lifeskin-block__fuss">Zuletzt aktiv: ${escapeHtml(datumKurz(sitzung.updatedAt))} ${escapeHtml(uhrzeit(sitzung.updatedAt))}</p>`;
 }
 
+// DIE LANDINGPAGE DIESES FALLS: welche der neun Bildschirme er gesehen
+// hat, von welchem er weiter zur Mënyra ging, und ob mit oder ohne Scroll.
+export function renderLandingInhalt(sitzung) {
+  const lp = landingLesen(sitzung);
+  if (!lp.gemessen) return `<p class="heart-lifeskin-leer">Für diesen Fall gibt es noch keine Messung der Landingpage.</p>`;
+  const weiter = lp.ab || (lp.weg ? lp.bisDahin : 0);
+  return `
+    <ol class="heart-schritte">
+      ${LANDING_SCHIRME.map((schirm) => {
+        const ja = lp.gesehen.includes(schirm.nr);
+        const hier = weiter === schirm.nr && lp.weg;
+        return `
+        <li class="heart-schritte__zeile${ja ? " heart-schritte__zeile--an" : ""}${hier ? " heart-schritte__zeile--stopp" : ""}">
+          <span class="heart-schritte__nr">${ja ? renderHeartIcon("check", "heart-schritte__haken") : schirm.nr}</span>
+          <span class="heart-schritte__text">${escapeHtml(`${schirm.nr} · ${schirm.label}`)}</span>
+          ${hier ? `<em>hier zur Mënyra</em>` : ""}
+        </li>`;
+      }).join("")}
+    </ol>
+    <p class="heart-lifeskin-block__fuss">${lp.weg === "scroll" ? "Mit Scroll zur Mënyra" : lp.weg === "direkt" ? "Ohne Scroll zur Mënyra (direkt von Bildschirm 1)" : "Noch nicht zur Mënyra"} · ${lp.gesehen.length} von ${LANDING_SCHIRME.length} Bildschirmen gesehen</p>`;
+}
+
 // DER KLICKPFAD, lesbar: je Besuch ein Abschnitt, je Ereignis ein Satz.
 const PFAD_ZEICHEN = Object.freeze({
   geoeffnet: "fileText", bildschirm: "fileText", klick: "pointer", aufgeklappt: "chevronDown", zugeklappt: "chevronRight",
@@ -1905,6 +1967,13 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
         : `<p class="heart-lifeskin-leer">${escapeHtml(ohneBild)}</p>`}
 
       ${fallKarte("schritte", "Seine Schritte", renderSchritteInhalt(sitzung), { standard: true, meta: `${gegangen}/${schritte.length}${bisHier ? ` · ${escapeHtml(bisHier)}` : ""}` })}
+
+      ${(() => {
+        const lp = landingLesen(sitzung);
+        const meta = !lp.gemessen ? "keine Messung"
+          : `${lp.weg === "scroll" ? "Scroll" : lp.weg === "direkt" ? "No scroll" : "–"} · ${lp.gesehen.length}/${LANDING_SCHIRME.length}`;
+        return fallKarte("landing", "Landing", renderLandingInhalt(sitzung), { meta });
+      })()}
 
       ${renderBefundEditor(sitzung, produkte, bericht, raste, zustand)}
 

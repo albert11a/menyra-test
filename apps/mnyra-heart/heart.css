@@ -6497,6 +6497,18 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 .heart-kachelklapp[open] > .heart-klapp__kopf { display: none; }
 /* Oben in der Karte: kleinere Chips zum Wischen, ganz rechts der Pfeil
    zum Zuklappen. Zu: die Zahlenzeile, rechts der Pfeil zum Aufklappen. */
+/* Landing: Scroll / No scroll an jedem Fall, der Vergleich im Trichter. */
+.heart-lifeskin-pill--lpscroll.heart-lifeskin-pill--an { background: #1f3a2f; color: #7fd6a8; border-color: transparent; }
+.heart-lifeskin-pill--lpdirekt.heart-lifeskin-pill--an { background: #3a2c1a; color: #f0b56a; border-color: transparent; }
+.heart-lp-vergleich { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+.heart-lp-vergleich__spalte {
+  display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid var(--heart-border, #2a2c2e); font-size: 12.5px; color: var(--heart-muted, #8f918d);
+}
+.heart-lp-vergleich__spalte b { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--heart-text, #f7f7f2); }
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-pill--lpscroll.heart-lifeskin-pill--an { background: #e3f3ea; color: #1d6b45; }
+:where(html[data-heart-theme="tag"]) .heart-lifeskin-pill--lpdirekt.heart-lifeskin-pill--an { background: #fbeedd; color: #8a5317; }
+
 /* DER DATUM-KNOPF IM KOPF und die Chipreihe, die an seine Stelle tritt. */
 .heart-topbar--zeitwahl { gap: 8px; }
 /* Die fuenf fuellen die Zeile; ist der Bildschirm zu schmal (320 px),

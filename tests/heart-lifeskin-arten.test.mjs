@@ -185,7 +185,7 @@ test("ueber dem Trichter stehen sechs Chips, jeder mit seiner Zahl", () => {
   });
   const chips = [...html.matchAll(/data-action="lifeskin-trichter" data-wert="([a-z]+)"/g)]
     .map((m) => m[1]);
-  assert.deepEqual(chips, ["main", "scan", "foto", "trup", "kauf", "bericht"]);
+  assert.deepEqual(chips, ["main", "scan", "foto", "trup", "kauf", "bericht", "landing"]);
   // Der offene steht darunter, mit seiner Ueberschrift.
   assert.match(html, /Trichter · Main/);
   assert.match(html, /aria-pressed="true"[\s\S]{0,80}Main/);

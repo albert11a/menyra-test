@@ -1,4 +1,5 @@
 import { statistikTag } from "../../shared/lifeskin-statistik.js";
+import { LANDING_SCHIRME, landingLesen } from "../../shared/lifeskin-landingtiefe.js";
 // Die Rechnung hinter dem Lifeskin-Bericht.
 //
 // Reine Funktionen, kein Firebase, kein DOM. Sie liegen getrennt vom Adapter,
@@ -768,6 +769,51 @@ export function baueMaintrichter(sitzungen) {
     anteil: landing ? zahlen[i] / landing : 0,
     verlust: i === 0 ? 0 : (landing ? (landing - patient) / landing : 0)
   }));
+}
+
+// DER LANDING-TRICHTER: was von der Landingpage gesehen wurde, und wer
+// mit oder ohne Lesen zur Mënyra ging (shared/lifeskin-landingtiefe.js).
+//
+// GEZAEHLT WIRD NUR, WAS GEMESSEN IST. Besuche von vor der Messung haben
+// keine Angabe; sie mitzuzaehlen hiesse, jeden von ihnen als "nichts
+// gesehen" zu werten. Der Nenner ist deshalb: Landing-Besuche MIT Messung.
+//
+// Jeder Bildschirm zaehlt fuer sich (wer Bildschirm 5 sah, hat nicht
+// zwingend 4 gesehen - die Knoepfe springen). Der Anteil ist der an allen
+// gemessenen Landing-Besuchen.
+//
+// Darunter der Vergleich, um den es geht: Von denen, die OHNE Scroll zur
+// Mënyra gingen, und von denen MIT Scroll - wie viele wurden Patient, wie
+// viele haben bestellt?
+export function baueLandingtrichter(sitzungen) {
+  const alle = (Array.isArray(sitzungen) ? sitzungen : []).filter(istLanding);
+  const gemessen = alle.map((s) => ({ s, lp: landingLesen(s) })).filter((x) => x.lp.gemessen);
+  const basis = gemessen.length;
+  const zeile = (id, label, anzahl, vorher) => ({
+    id, label, anzahl,
+    anteil: basis ? anzahl / basis : 0,
+    verlust: vorher === undefined || !vorher ? 0 : Math.max(0, (vorher - anzahl) / vorher)
+  });
+  const stufen = [zeile("landing", "Landing", basis)];
+  let vorher = basis;
+  for (const schirm of LANDING_SCHIRME) {
+    const anzahl = gemessen.filter((x) => x.lp.gesehen.includes(schirm.nr)).length;
+    stufen.push(zeile(`s${schirm.nr}`, `${schirm.nr} · ${schirm.label}`, anzahl, vorher));
+    vorher = anzahl;
+  }
+  const gruppe = (weg) => {
+    const seine = gemessen.filter((x) => x.lp.weg === weg).map((x) => x.s);
+    const patient = seine.filter(istPatient).length;
+    const bestellt = seine.filter((s) => s?.hatBestellt === true).length;
+    return { menyra: seine.length, patient, bestellt,
+      patientAnteil: seine.length ? patient / seine.length : 0,
+      bestelltAnteil: seine.length ? bestellt / seine.length : 0 };
+  };
+  const direkt = gruppe("direkt");
+  const scroll = gruppe("scroll");
+  stufen.push(zeile("menyra-direkt", "Mënyra ohne Scroll", direkt.menyra));
+  stufen.push(zeile("menyra-scroll", "Mënyra mit Scroll", scroll.menyra));
+  return { stufen, vergleich: { direkt, scroll }, basis };
 }
 
 // Report activity belongs to its event day, not to the original scan day.

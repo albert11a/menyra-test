@@ -41,6 +41,7 @@ import { Sitzung } from "./lifeskin-session.js";
 import { starteKlickpfad } from "../../shared/lifeskin-klickpfad.js";
 import { Pixel } from "./lifeskin-pixel.js";
 import { untenNachziehenStarten } from "../../shared/lifeskin-unten.js";
+import { starteLandingtiefe } from "./lifeskin-landingtiefe.js";
 
 // Sechs Bildschirme, nicht mehr zehn.
 //
@@ -899,6 +900,10 @@ export class Trichter {
     // ohne Platz und jedes gaelte als "schon im Bild".
     this.#einblenden();
 
+    // Landing-Messung (lifeskin-landingtiefe.js). Sie schreibt erst im
+    // naechsten Bild (IntersectionObserver) oder beim Tipp - also immer
+    // nach dem Anlegen der Sitzung in der Zeile darunter.
+    this.landingtiefe = starteLandingtiefe({ schreiben: (d) => this.sitzung.landingSchreiben(d) });
     this.sitzung.starte({ sprache: this.sprache });
 
     // ZULETZT, und das ist die Reihenfolge, auf die es ankommt: Erst steht
@@ -1787,6 +1792,7 @@ export class Trichter {
     //
     // Geprueft wird am Aufbau und nicht an der Fassung: Die beiden
     // Seiten ohne diesen Bildschirm laufen unveraendert weiter.
+    if ((this.sitzung.stand?.step || "opened") === "opened") this.landingtiefe?.weiter();
     if ($("#ls-wahl")) {
       this.sitzung.schritt("wahl");
       this.zeige("wahl");
