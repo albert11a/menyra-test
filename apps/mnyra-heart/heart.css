@@ -6535,11 +6535,13 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 .heart-kachelklapp .heart-lifeskin-kacheln {
   background: none; border: 0; border-radius: 0; gap: 0; overflow: visible;
 }
+/* Nur waagrechte Linien zwischen den Reihen, ueber die ganze Breite -
+   keine senkrechte, die oben und unten offen endet ("halbe Linien"). */
 .heart-kachelklapp .heart-lifeskin-kachel { background: none; padding: 12px 12px 13px 0; }
-.heart-kachelklapp .heart-lifeskin-kachel:nth-child(even) {
-  padding-left: 14px; padding-right: 0; border-left: 1px solid var(--heart-border, #2a2c2e);
-}
+.heart-kachelklapp .heart-lifeskin-kachel:nth-child(even) { padding-left: 14px; padding-right: 0; }
 .heart-kachelklapp .heart-lifeskin-kachel:nth-child(n+3) { border-top: 1px solid var(--heart-border, #2a2c2e); }
+/* Fälle zugeklappt: kein Zahnrad im Kopf - es waehlt nur in der offenen Liste aus. */
+.heart-klapp:not([open]) > .heart-klapp__kopf > .heart-faelle-zahnrad { display: none; }
 
 /* ============================================================
    DIE SCHUBLADE MIT DREI EINTRAEGEN (25.09.)
