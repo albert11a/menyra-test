@@ -198,3 +198,35 @@ Sammlungs- oder DOM-ID-Entfernungen. Heart schreibt ein zusaetzliches Feld
   sie zuerst auf WhatsApp anzuschreiben.
 - Bei "Së pari dua vetëm analizën" die Seitenreihenfolge testen (Analyse vor
   Preis).
+
+## 8. Kaeufe der Anzeige zuordnen (27.09., abends)
+
+Problem: Anzeige und Analyse laufen im Instagram-Fenster, gekauft wird
+Tage spaeter in Safari/Chrome (WhatsApp-Link). Dort fehlt die
+Klick-Kennung (_fbc) - Meta ordnet den Kauf keiner Anzeige zu.
+
+- **Trichter** (`lifeskin-session.js`, `klickKennung`): merkt sich beim
+  ersten Besuch `fbclid` bzw. den Keks `_fbc` als `source.fbc`
+  (Format `fb.1.<ms>.<fbclid>`), auch ueber ein Neuladen (Tab-Speicher).
+  `source` ist in den Regeln eine freie Karte - **keine Regel-Aenderung,
+  kein Regel-Deploy**. Kein Anzeigenklick: kein Feld.
+- **Conversions API** (`functions/lifeskin-capi-payload.js`): fehlt am
+  Kauf `_fbc`, wird `source.fbc` aus dem ersten Besuch genommen. Die
+  eventID bleibt die des Browsers (keine Doppelzaehlung), sonst geht nichts
+  Neues mit (kein utm, kein Verweis, keine Person).
+- Heart liest aus `source` nur utm und referrer - nichts aendert sich an
+  Zahlen oder Anzeige.
+
+**Wirksam erst nach dem Functions-Deploy** (von Hand, nicht aus dieser
+Sitzung):
+
+```
+firebase deploy --only functions:lifeskinCapiPurchase --project menyra-c0e68
+```
+
+Voraussetzung: Secret `META_CAPI_TOKEN` ist gesetzt (Ereignismanager →
+Datensatz → Einstellungen → Conversions API → Zugriffstoken). Ohne Token
+tut die Function nichts (Warnung `no_token` im Log).
+
+Pruefung: `tests/lifeskin-capi.test.mjs` (+2), `npm test` 2795 bestanden,
+Pruefstand K6 gegen dist 50/50.
