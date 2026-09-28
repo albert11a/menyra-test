@@ -97,3 +97,13 @@ Im stillen Modus (`?still=1`) wird nichts gemeldet und nichts gezaehlt.
 ## Rueckweg
 
 `git revert` der Commits. Keine Regel-, Sammlungs- oder Routen-Entfernung.
+
+## Titelbild (Heart, zuschneidbar)
+
+Heart -> Lifeskin Shop -> Mehr anzeigen -> "Shop-Titelbild": Bild wählen,
+im Rahmen 7:5 verschieben und zoomen, speichern. Ablage:
+`lifeskin/{tenant}/config/shopHero { foto: "data:image/jpeg..." }` (1400 px
+breit, höchstens ~450 KB). Der Shop (`Dyqan.titelbild()`) tauscht das Bild
+nach dem Dekodieren und gibt dem Rahmen `data-eigen` (aspect-ratio 7/5).
+"Standardbild" löscht das Dokument, dann gilt wieder `lf-acne-2.jpg`.
+Zuschneiden: `apps/mnyra-heart/heart-lifeskin-schnitt.js`.

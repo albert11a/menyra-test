@@ -20,6 +20,13 @@
 export const SETET_DOK = "shopSetet";
 export const SET_FOTO_PRAEFIX = "shopSetFoto-";
 export const SETET_MAX = 12;
+
+// DAS TITELBILD DES LADENS (oben, "THE ACNE DUO") - in Heart gewaehlt und
+// zugeschnitten: lifeskin/{tenant}/config/shopHero { foto: "data:image/..." }.
+// Zugeschnitten wird im Verhaeltnis 7:5 (auf dem Telefon 350 x 250); steht
+// ein eigenes Bild da, hat sein Rahmen im Shop genau dieses Verhaeltnis.
+export const SHOP_HERO_DOK = "shopHero";
+export const SHOP_HERO_VERHAELTNIS = 7 / 5;
 export const SET_PRODUKTE_MAX = 4;
 
 const ASSETS = "/apps/lifeskin-shop/assets/";

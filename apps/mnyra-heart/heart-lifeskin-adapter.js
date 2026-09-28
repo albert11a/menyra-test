@@ -49,7 +49,7 @@ import {
 } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import { LIVE_FENSTER_MS, ohnePfad } from "./heart-lifeskin-live.js";
 import { mediumNormalisieren } from "../../shared/lifeskin-medien.js";
-import { SETET_DOK, SET_FOTO_PRAEFIX } from "../../shared/lifeskin-shop-sets.js";
+import { SETET_DOK, SET_FOTO_PRAEFIX, SHOP_HERO_DOK } from "../../shared/lifeskin-shop-sets.js";
 
 const TENANT = "lifeskin";
 const SITZUNG_GRENZE = 3000;
@@ -194,10 +194,11 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
   // Die Sets des Ladens (/lifeskinshop): eigene Liste, Bilder je Set in
   // eigenen Dokumenten - beides nicht in die Konfiguration einruehren.
   const setetDok = konfigDocs.find((d) => d.id === SETET_DOK)?.data() || null;
+  const heroDok = konfigDocs.find((d) => d.id === SHOP_HERO_DOK)?.data() || null;
   const konfig = konfigDocs
     .filter((d) => !String(d.id).startsWith(LANDING_FOTOT_PRAEFIX) && !String(d.id).startsWith(ANALYSE_FOTOT_PRAEFIX))
     .filter((d) => d.id !== RASTE_DOK_ID && !String(d.id).startsWith(RASTI_BILD_ID))
-    .filter((d) => d.id !== SETET_DOK && !String(d.id).startsWith(SET_FOTO_PRAEFIX))
+    .filter((d) => d.id !== SETET_DOK && d.id !== SHOP_HERO_DOK && !String(d.id).startsWith(SET_FOTO_PRAEFIX))
     .reduce((zusammen, d) => ({ ...zusammen, ...(d.data() || {}) }), {});
   const setPreis = Number.isFinite(Number(konfig.setPreis)) && Number(konfig.setPreis) > 0
     ? Number(konfig.setPreis)
@@ -249,6 +250,8 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     raste: Array.isArray(rasteDok?.lista) ? rasteDok.lista : null,
     // null: noch nie gespeichert - es gelten die drei Sets der Seite.
     shopSetet: Array.isArray(setetDok?.lista) ? setetDok.lista : null,
+    // Das Titelbild des Ladens: "" = das Bild der Seite.
+    shopHero: typeof heroDok?.foto === "string" && heroDok.foto.startsWith("data:image/") ? heroDok.foto : "",
     // Leer: noch nie gespeichert - es gelten die vier Standardfotos.
     medien: medienDocs.map((d) => mediumNormalisieren(d.data() || {}, d.id)),
     kennzahlen: baueKennzahlen(sitzungen, { setPreis }),
@@ -532,6 +535,15 @@ export async function speichereShopSetFoto(id, foto) {
 export async function loescheShopSetFoto(id) {
   if (!id) return;
   await deleteDoc(doc(db, "lifeskin", TENANT, "config", `${SET_FOTO_PRAEFIX}${id}`));
+}
+
+export async function speichereShopHero(foto) {
+  await setDoc(doc(db, "lifeskin", TENANT, "config", SHOP_HERO_DOK),
+    { foto: String(foto || ""), updatedAt: new Date().toISOString() });
+}
+
+export async function loescheShopHero() {
+  await deleteDoc(doc(db, "lifeskin", TENANT, "config", SHOP_HERO_DOK));
 }
 
 export async function speichereProdukt(produkt) {

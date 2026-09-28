@@ -189,3 +189,48 @@ test("einzeln nur die Mittel der Sets im Shop - vorerst LF ACNE und LF MOISTUR",
   assert.deepEqual(einzelAusSets(mittel, setetOderStandard(null)).map((m) => m.id), ["lf-acne", "lf-moistur", "lf-pigment", "lf-pore"]);
   assert.equal(einzelAusSets(mittel, []).length, 4, "ohne Sets alle Mittel");
 });
+
+test("Titelbild: in Heart zuschneiden (7:5), der Shop nimmt es aus config/shopHero", async () => {
+  const { ausschnitt } = await import("../apps/mnyra-heart/heart-lifeskin-schnitt.js");
+  // 1000 x 1000 in einem Rahmen 350 x 250: deckt bei 0,35, mittig.
+  const mitte = ausschnitt({ w: 1000, h: 1000, rw: 350, rh: 250, zoom: 1, dx: 0, dy: -50 });
+  assert.equal(Math.round(mitte.sw), 1000);
+  assert.equal(Math.round(mitte.sh), 714);
+  assert.equal(Math.round(mitte.sy), 143);
+  const nah = ausschnitt({ w: 1000, h: 1000, rw: 350, rh: 250, zoom: 2, dx: -350, dy: -350 });
+  assert.equal(Math.round(nah.sw), 500);
+  assert.equal(Math.round(nah.sx), 500);
+
+  const { renderShopHero, renderShopHeroEditor } = await import("../apps/mnyra-heart/heart-lifeskin-shopsets.js");
+  assert.match(renderShopHero({}), /lf-acne-2\.jpg/);
+  assert.match(renderShopHero({}), /data-action="lifeskin-shophero-waehlen"/);
+  assert.doesNotMatch(renderShopHero({}), /lifeskin-shophero-weg/);
+  assert.match(renderShopHero({ shopHero: "data:image/jpeg;base64,AA" }), /data-action="lifeskin-shophero-weg"/);
+  const editor = renderShopHeroEditor({ shopHeroRoh: "data:image/jpeg;base64,AA" });
+  assert.match(editor, /data-schnitt-rahmen[^>]*aspect-ratio:1\.4/);
+  assert.match(editor, /data-schnitt-zoom/);
+  assert.match(editor, /data-action="lifeskin-shophero-speichern"/);
+  const events = lies("apps/mnyra-heart/heart-events.js");
+  for (const a of ["lifeskin-shophero-waehlen", "lifeskin-shophero-zu", "lifeskin-shophero-speichern", "lifeskin-shophero-weg"]) {
+    assert.ok(events.includes(`"${a}"`), `${a} fehlt`);
+  }
+
+  // Der Shop tauscht das Bild und gibt dem Rahmen das Verhaeltnis.
+  const { Dyqan } = await import("../apps/lifeskin-shop/shop.js");
+  const img = { src: "/apps/lifeskin-shop/assets/lf-acne-2.jpg" };
+  const attr = {};
+  const rahmen = { querySelector: () => img, setAttribute: (k, v) => { attr[k] = v; } };
+  const dokument = { querySelector: (w) => (w.includes("hero-photo") ? rahmen : null), defaultView: {} };
+  const foto = "data:image/jpeg;base64,AA";
+  const holen = async (url) => (url.endsWith("/shopHero")
+    ? { ok: true, status: 200, json: async () => ({ fields: { foto: { stringValue: foto } } }) }
+    : { ok: false, status: 404 });
+  await new Dyqan({ dokument, speicher: null, holen }).titelbild();
+  assert.equal(img.src, foto);
+  assert.ok("data-eigen" in attr);
+  const leer = { src: "alt" };
+  const rahmen2 = { querySelector: () => leer, setAttribute: () => { throw new Error("nicht setzen"); } };
+  await new Dyqan({ dokument: { querySelector: () => rahmen2, defaultView: {} }, speicher: null, holen: async () => ({ ok: false, status: 404 }) }).titelbild();
+  assert.equal(leer.src, "alt", "ohne eigenes Bild bleibt das Standardbild");
+  assert.match(lies("apps/lifeskin-shop/shop-rahmen.css"), /\.hero-photo\[data-eigen\] \{ height: auto; aspect-ratio: 7 \/ 5; \}/);
+});

@@ -9,7 +9,7 @@
 import { escapeHtml } from "./heart-ui-utils.js";
 import { renderHeartIcon } from "./heart-icons.js";
 import { klappAttr } from "./heart-lifeskin-klapp.js";
-import { SETET_STANDARD, SET_PRODUKTE_MAX, setetNormalisieren } from "../../shared/lifeskin-shop-sets.js";
+import { SETET_STANDARD, SET_PRODUKTE_MAX, setetNormalisieren, SHOP_HERO_VERHAELTNIS } from "../../shared/lifeskin-shop-sets.js";
 import { preisFuer } from "../../shared/lifeskin-preise.js";
 
 // Die Liste, mit der Heart arbeitet: gespeichert, sonst die drei Sets, die
@@ -138,6 +138,53 @@ export function renderShopSetEditor(zustand, produkte) {
         ${neu ? "" : `<button type="button" class="heart-lifeskin-resetknopf heart-lifeskin-resetknopf--scharf"
                 data-action="lifeskin-shopset-loeschen" ${status ? "disabled" : ""}>
           ${zustand.shopSetLoeschen ? "Wirklich löschen? Nochmal tippen" : "Löschen"}</button>`}
+      </div>
+    </section>`;
+}
+
+// ── Das Titelbild des Ladens ─────────────────────────────────────────
+const HERO_STANDARD = "/apps/lifeskin-shop/assets/lf-acne-2.jpg";
+
+export function renderShopHero(zustand) {
+  const eigen = String(zustand?.shopHero || "");
+  const status = zustand?.shopHeroStatus || "";
+  return `
+    <details class="heart-lifeskin-block heart-klapp" ${klappAttr("shophero")}>
+      <summary class="heart-klapp__kopf">
+        <h3 class="heart-lifeskin-block__titel">Shop-Titelbild</h3>
+        <span class="heart-klapp__zahl">${eigen ? "eigenes Bild" : "Standard"}</span>
+      </summary>
+      <p class="heart-lifeskin-block__fuss">Das große Bild oben im Shop („The Acne Duo“). Bild wählen, dann verschieben und zoomen –
+        genau dieser Ausschnitt steht im Shop.</p>
+      <div style="aspect-ratio:${SHOP_HERO_VERHAELTNIS};border-radius:6px;overflow:hidden;background:#eee;max-width:420px">
+        <img src="${escapeHtml(eigen || HERO_STANDARD)}" alt="Shop-Titelbild" style="width:100%;height:100%;object-fit:cover;display:block" />
+      </div>
+      <div class="heart-lifeskin-editor__fuss">
+        <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-shophero-waehlen" ${status ? "disabled" : ""}>Bild wählen und zuschneiden</button>
+        ${eigen ? `<button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-shophero-weg" ${status ? "disabled" : ""}>Standardbild</button>` : ""}
+      </div>
+    </details>`;
+}
+
+export function renderShopHeroEditor(zustand) {
+  const status = zustand?.shopHeroStatus || "";
+  return `
+    <section class="heart-lifeskin-editor">
+      <button type="button" class="heart-lifeskin-zurueck" data-action="lifeskin-shophero-zu">← Zurück</button>
+      <h3 class="heart-lifeskin-block__titel">Shop-Titelbild zuschneiden</h3>
+      <p class="heart-lifeskin-block__fuss">Mit dem Finger verschieben, mit dem Regler zoomen. Was im Rahmen steht, steht so im Shop.</p>
+      <div data-schnitt-rahmen style="position:relative;aspect-ratio:${SHOP_HERO_VERHAELTNIS};max-width:520px;overflow:hidden;border-radius:6px;background:#111;touch-action:none;cursor:grab">
+        <img data-schnitt-bild src="${escapeHtml(zustand.shopHeroRoh || "")}" alt="" draggable="false"
+             style="position:absolute;left:0;top:0;max-width:none;transform-origin:0 0;user-select:none;-webkit-user-drag:none" />
+      </div>
+      <label class="heart-lifeskin-feld" style="max-width:520px">
+        <span>Zoom</span>
+        <input type="range" data-schnitt-zoom min="1" max="4" step="0.01" value="1" />
+      </label>
+      <div class="heart-lifeskin-editor__fuss">
+        <button type="button" class="heart-lifeskin-resetknopf heart-lifeskin-resetknopf--speichern" data-action="lifeskin-shophero-speichern" ${status ? "disabled" : ""}>
+          ${status === "laeuft" ? "Wird gespeichert …" : "Speichern"}</button>
+        <button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-shophero-zu">Abbrechen</button>
       </div>
     </section>`;
 }

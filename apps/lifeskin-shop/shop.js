@@ -31,7 +31,7 @@ import { ansichtOeffnen, ansichtSchliessen } from "../../shared/lifeskin-ansicht
 import { mittelBauen, holeSammlung, FOTO_PRAEFIX } from "../lifeskin-landing/shop.js";
 import { rasteLaden, rasteFuer, rasteMitBildern } from "../../shared/lifeskin-raste.js";
 import {
-  SETET_DOK, SET_FOTO_PRAEFIX, SETET_STANDARD, MITTEL_FOTOS_STANDARD, MITTEL_NENTITUJ,
+  SETET_DOK, SET_FOTO_PRAEFIX, SHOP_HERO_DOK, SETET_STANDARD, MITTEL_FOTOS_STANDARD, MITTEL_NENTITUJ,
   setetOderStandard, setetNormalisieren, aktiveSetet, nevojaKennung
 } from "../../shared/lifeskin-shop-sets.js";
 
@@ -135,7 +135,29 @@ export class Dyqan {
     this.#korbZahl();
     this.#ereignisse();
     this.#beobachten();
+    this.titelbild();
     this.laden();
+  }
+
+  // ── Das Titelbild aus Heart (zugeschnitten 7:5) ─────────────────────
+  // Eine eigene Anfrage, damit es nicht auf Produkte und Faelle wartet. Das
+  // neue Bild wird erst dekodiert, dann getauscht - kein leerer Rahmen.
+  async titelbild() {
+    try {
+      const d = await holeDok(SHOP_HERO_DOK, this.holen);
+      const foto = typeof d?.foto === "string" && d.foto.startsWith("data:image/") ? d.foto : "";
+      const rahmen = $("#ls-einstieg .hero-photo", this.dok);
+      const img = rahmen?.querySelector(":scope > img");
+      if (!foto || !img) return;
+      const Bild = this.dok.defaultView?.Image || globalThis.Image;
+      if (Bild) {
+        const probe = new Bild();
+        probe.src = foto;
+        await probe.decode?.().catch(() => {});
+      }
+      img.src = foto;
+      rahmen.setAttribute("data-eigen", "");
+    } catch { /* dann bleibt das Bild aus dem Aufbau */ }
   }
 
   // ── Was der Laden an der Sitzung festhaelt (wie auf /lifeskin) ──────
