@@ -120,6 +120,8 @@ const OHNE_KOMMENTARE = [
   "apps/lifeskin-landing",
   // LifeSkin 2 unter /lifeskin2 - dieselbe Seite mit anderem Versprechen.
   "apps/lifeskin-2",
+  // Der Laden unter /lifeskinshop.
+  "apps/lifeskin-shop",
   // Die kurze Fassung. Sie traegt dieselben Begruendungen im Aufbau und im
   // Stilblatt - und dieselben gehoeren nicht auf das Telefon eines
   // Patienten oder eines Mitbewerbers.
@@ -238,7 +240,11 @@ const EINZEL_EINSTIEGE = [
   "apps/lifeskin-verkauf/terapia.js",
   "apps/lifeskin/lifeskin-app.js",
   "apps/lifeskin-landing/shop.js",
-  "apps/lifeskin-landing/raste.js"
+  "apps/lifeskin-landing/raste.js",
+  // Der Laden unter /lifeskinshop - dieselbe Begruendung wie die
+  // Landingpage (Werbeziel). Er teilt keinen Zustand auf Modulebene mit dem
+  // Trichter; der Trichter kommt ueber globalThis.__lifeskinTrichter.
+  "apps/lifeskin-shop/shop.js"
 ];
 // Welche Einzeldateien in welchem Buendel stecken - fuer die modulepreload-
 // Zeilen unten.

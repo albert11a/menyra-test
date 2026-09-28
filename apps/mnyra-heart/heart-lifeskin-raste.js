@@ -61,7 +61,7 @@ export function renderRaste(zustand) {
                   aria-pressed="${an ? "true" : "false"}" ${gesperrt ? "disabled" : ""}>
             ${an ? "✓ " : ""}${wort}</button>`;
     };
-    const aus = !r.landing && !r.analiza;
+    const aus = !r.landing && !r.analiza && !r.shop;
     return `
       <div class="heart-rasti-zeile${aus ? " heart-rasti-zeile--aus" : ""}">
         <div class="heart-rasti-bilder">${vorschau(b.para, "Vorher")}${vorschau(b.pas, "Nachher")}</div>
@@ -70,7 +70,7 @@ export function renderRaste(zustand) {
           <small>${escapeHtml([r.gjetja, r.produkte.length ? rastiProdukteText(r) : "", euro(r.cmimi)].filter(Boolean).join(" · "))}</small>
           ${aus ? `<small class="heart-rasti-aus">Ausgeschaltet – erscheint nirgends</small>` : ""}
         </div>
-        <div class="heart-rasti-orte">${ort("landing", "Landing")}${ort("oben", "Oben")}${ort("analiza", "Analyseseite")}</div>
+        <div class="heart-rasti-orte">${ort("landing", "Landing")}${ort("oben", "Oben")}${ort("analiza", "Analyseseite")}${ort("shop", "Shop")}</div>
         <div class="heart-rasti-aktionen">
           <button type="button" class="heart-rasti-mini" data-action="lifeskin-rasti-schieben" data-id="${escapeHtml(r.id)}" data-richtung="hoch"
                   aria-label="Nach oben" ${i === 0 || status ? "disabled" : ""}>↑</button>
@@ -191,6 +191,7 @@ export function renderRastiEditor(zustand, produkte) {
         <label class="heart-rasti-haken"><input type="checkbox" data-rastifeld-an="landing"${r.landing ? " checked" : ""} /> Landingpage</label>
         <label class="heart-rasti-haken"><input type="checkbox" data-rastifeld-an="oben"${r.oben !== false ? " checked" : ""} /> Oben auf der Landingpage (unter dem Knopf)</label>
         <label class="heart-rasti-haken"><input type="checkbox" data-rastifeld-an="analiza"${r.analiza ? " checked" : ""} /> Analyseseite (im Befund wählbar)</label>
+        <label class="heart-rasti-haken"><input type="checkbox" data-rastifeld-an="shop"${r.shop ? " checked" : ""} /> Shop (mnyra.com/lifeskinshop)</label>
       </div>
 
       <div class="heart-lifeskin-editor__fuss">

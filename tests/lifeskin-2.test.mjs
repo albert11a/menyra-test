@@ -82,7 +82,8 @@ test("/lifeskin2 ist erreichbar: Vercel, Entwicklungsserver, Service Worker, Bui
 });
 
 test("der Weg: nur bekannte Namen, sonst der bisherige", () => {
-  assert.deepEqual([...LIFESKIN_WEGE], ["lifeskin2"]);
+  // Dazu der Laden (/lifeskinshop) - docs/lifeskin-shop.md.
+  assert.deepEqual([...LIFESKIN_WEGE], ["lifeskin2", "lifeskinshop"]);
   assert.equal(wegGueltig("lifeskin2"), "lifeskin2");
   assert.equal(wegGueltig("lifeskin3"), "");
   assert.equal(wegGueltig(undefined), "");

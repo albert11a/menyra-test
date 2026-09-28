@@ -105,7 +105,7 @@ test("Heart bestimmt, welche Faelle oben stehen - der Tipp findet den Fall ueber
   const heart = lies("apps/mnyra-heart/heart-lifeskin-raste.js");
   assert.match(heart, /ort\("oben", "Oben"\)/);
   assert.match(heart, /data-rastifeld-an="oben"/);
-  assert.match(lies("apps/mnyra-heart/heart.js"), /\["landing", "oben", "analiza"\]\.includes\(ort\)/);
+  assert.match(lies("apps/mnyra-heart/heart.js"), /\["landing", "oben", "analiza", "shop"\]\.includes\(ort\)/);
 });
 
 // ══ /lifeskin: DIE FAELLE SELBST STEHEN IM ERSTEN BILD ════════════════

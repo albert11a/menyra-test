@@ -16,7 +16,11 @@
 // Nur bekannte Namen gelten. Alles andere ist "", also der bisherige Weg:
 // Ein Tippfehler in einer Adresse darf keinen Fall in den falschen Tab
 // schieben.
-export const LIFESKIN_WEGE = Object.freeze(["lifeskin2"]);
+// "lifeskinshop" ist der Laden unter /lifeskinshop (28.09.): Sets und
+// Einzelmittel direkt kaufen, dazu "Gjeni setin" in dieselbe Analyse wie
+// /lifeskin (Lead bei der Nummer) - getrennt gezaehlt, eigener Heart-Tab
+// (docs/lifeskin-shop.md).
+export const LIFESKIN_WEGE = Object.freeze(["lifeskin2", "lifeskinshop"]);
 
 export function wegGueltig(weg) {
   const w = String(weg || "").trim();
@@ -34,4 +38,4 @@ export function wegDerSitzung(sitzung) {
 }
 
 // Name fuer Heart und Berichte.
-export const WEG_NAMEN = Object.freeze({ "": "Lifeskin", lifeskin2: "Lifeskin 2" });
+export const WEG_NAMEN = Object.freeze({ "": "Lifeskin", lifeskin2: "Lifeskin 2", lifeskinshop: "Lifeskin Shop" });

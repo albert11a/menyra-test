@@ -123,7 +123,7 @@ function karteAus(felder) {
  * von zwoelf Runden ist ein Riegel gegen eine Antwort, die immer ein
  * Token mitschickt - eine Seite, die ewig laedt, ist schlimmer als
  * eine, die etwas weglaesst. */
-async function holeSammlung(name, holen = fetch, nurFeld = "") {
+export async function holeSammlung(name, holen = fetch, nurFeld = "") {
   /* NUR DAS NOETIGE FELD. In "config" liegen auch die Bilder der
      Analyseseite (Feld "bilder") und der Vorher/Nachher-Faelle - mit
      mask.fieldPaths kommen die nicht mit, nur "fotot". */
@@ -1033,7 +1033,10 @@ function escape(text) {
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
-if (typeof document !== "undefined" && !globalThis.__LIFESKIN_TEST__) {
+// Nur, wo sein Raster steht (/lifeskin, /lifeskin2): Der Laden unter
+// /lifeskinshop importiert die Datenfunktionen dieser Datei und darf dabei
+// keinen zweiten Laden mitstarten.
+if (typeof document !== "undefined" && !globalThis.__LIFESKIN_TEST__ && document.getElementById("rrjeta")) {
   const start = () => new Laden().starte();
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();

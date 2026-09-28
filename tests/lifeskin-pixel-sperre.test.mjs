@@ -49,6 +49,11 @@ const SEITEN = Object.freeze([
   "apps/lifeskin-landing/shop.js",
   "apps/lifeskin-landing/index.html",
   "apps/lifeskin-2/index.html",
+  // Der Laden unter /lifeskinshop. Pixel-Aenderung erlaubt von Albert
+  // (albert11a, Inhaber) am 28.09.2026: /lifeskinshop meldet AddToCart,
+  // InitiateCheckout, Purchase (Browser + CAPI) und Lead wie die anderen Wege.
+  "apps/lifeskin-shop/shop.js",
+  "apps/lifeskin-shop/index.html",
   "functions/index.js"
 ]);
 const PIXEL_ZEILE = /\bpixel\??\.\w+\(|\bfbq\(|trackCustom|new Pixel\(|pixelKennungen|lifeskinCapi|\bfbc\b|\bfbp\b/;
@@ -56,7 +61,7 @@ const PIXEL_ZEILE = /\bpixel\??\.\w+\(|\bfbq\(|trackCustom|new Pixel\(|pixelKenn
 export function pixelZeilen(pfad) {
   return lies(pfad).split("\n").map((z) => z.trim()).filter((z) => PIXEL_ZEILE.test(z)).join("\n");
 }
-const SEITEN_HASH = "978b3cfdffb89540";
+const SEITEN_HASH = "a8d32f596e5eabb0";
 
 test("Meta-Pixel-Sperre: die Pixel-Dateien sind unveraendert", () => {
   for (const [pfad, erwartet] of Object.entries(DATEIEN)) {

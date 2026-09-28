@@ -1,0 +1,116 @@
+/* DER RAHMEN DES LADENS IM TRICHTER (/lifeskinshop).
+ *
+ * shop.css ist die Gestaltung des Ladens, begrenzt auf #ls-einstieg. Hier
+ * steht, was ihn in den Trichter einpasst - und was dazukam: die Kasse als
+ * eigene Ansicht und die Faelle zum Wischen. */
+
+/* Die Seite scrollt als Dokument (landing.css), auf weissem Grund. */
+html:has(#ls-einstieg[data-aktiv="ja"]),
+body:has(#ls-einstieg[data-aktiv="ja"]) { background: #fff; }
+html:has(#ls-einstieg[data-aktiv="ja"]) { scroll-padding-top: 72px; }
+
+/* Ein Block und keine Flex-Spalte: Kaesten mit margin: auto (Leiste oben,
+   .page) schrumpften darin auf ihren Inhalt. */
+#ls-einstieg[data-aktiv="ja"] { display: block; }
+#ls-einstieg {
+  font-size: 16px;
+  line-height: normal;
+  letter-spacing: normal;
+}
+
+/* DIE LEISTE UNTEN HAENGT OBEN (100dvh) UND NICHT AN "bottom" - aus
+ * demselben Grund wie auf /lifeskin (landing.css, .dock): iOS behaelt nach
+ * der Tastatur eine zu kleine Hoehe fuer alles Feste, "unten" liegt dann
+ * mitten im Bild. dvh folgt der Tastatur nicht. Versteckt ist sie
+ * display: none (hidden) - dann faerbt Safari seine Leiste auch nicht mehr. */
+#ls-einstieg .sticky {
+  bottom: auto;
+  top: 100vh;
+  top: 100dvh;
+  transform: translate(-50%, -100%);
+}
+
+/* ── Die Faelle zum Wischen ─────────────────────────────────────────── */
+#ls-einstieg .proof-bahn {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  margin: 20px -20px 0;
+  padding: 0 20px 4px;
+  scroll-padding-inline-start: 20px;
+}
+#ls-einstieg .proof-bahn::-webkit-scrollbar { display: none; }
+#ls-einstieg .proof-rast {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  min-width: 0;
+}
+#ls-einstieg .proof-bahn:has(.proof-rast + .proof-rast) .proof-rast { flex-basis: 88%; }
+#ls-einstieg .proof-rast .proof-pair { margin-top: 0; }
+#ls-einstieg .proof-rast__fjale { margin-top: 10px; font-size: 13px; color: var(--muted); line-height: 1.45; }
+#ls-einstieg .proof-rast__fjale strong { display: block; color: var(--ink); font-size: 14px; }
+#ls-einstieg .proof-pikat { display: flex; justify-content: center; gap: 6px; margin-top: 14px; }
+#ls-einstieg .proof-pikat i { width: 6px; height: 6px; border-radius: 99px; background: #123b3e33; transition: width .2s, background .2s; }
+#ls-einstieg .proof-pikat i[data-an="ja"] { width: 18px; background: var(--ink); }
+
+/* ── Die Kasse: eine eigene Ansicht an der Stelle des Ladens ────────── */
+:root[data-ansicht] #ls-einstieg > :not(#kasa) { display: none !important; }
+#ls-einstieg .kasa {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: calc(env(safe-area-inset-top) + 14px) 22px calc(env(safe-area-inset-bottom) + 24px);
+  background: #fff;
+}
+@supports (min-height: 100svh) { #ls-einstieg .kasa { min-height: 100svh; } }
+#ls-einstieg .kasa__koka { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+#ls-einstieg .kasa__koka h2 { font-size: 24px; margin-top: 4px; }
+#ls-einstieg #kasa-trup { display: flex; flex-direction: column; flex: 1 0 auto; }
+#ls-einstieg .kasa__bosh { font-size: 14px; color: var(--muted); margin: 10px 0 20px; }
+#ls-einstieg .kasa__forma { display: grid; gap: 12px; margin: 8px 0 16px; }
+#ls-einstieg .kasa__forma .eyebrow { margin-bottom: 2px; }
+#ls-einstieg .kasa__fushe { display: grid; gap: 6px; }
+#ls-einstieg .kasa__fushe span { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+/* 16 Punkte im Feld: Safari zoomt sonst beim Hineintippen. */
+#ls-einstieg .kasa__fushe input {
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 14px;
+  border: 1px solid #bbc9c7;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+}
+#ls-einstieg .kasa__fushe input:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 3px #123b3e1f; }
+#ls-einstieg .kasa__fushe input[aria-invalid="true"] { border-color: #a12727; }
+#ls-einstieg .kasa__premtime {
+  display: flex; flex-wrap: wrap; gap: 8px 14px;
+  margin: auto 0 14px; padding: 16px 0 0;
+  list-style: none; font-size: 12px; font-weight: 600; color: var(--ink);
+}
+#ls-einstieg .kasa__premtime li { display: inline-flex; align-items: center; gap: 6px; }
+#ls-einstieg .kasa__premtime .icon { width: 16px; height: 16px; }
+#ls-einstieg #kasa-dergo { justify-content: center; }
+#ls-einstieg #kasa-dergo[disabled] { opacity: .7; }
+#ls-einstieg #kasa-dergo-shuma { opacity: .85; margin-left: 6px; }
+#ls-einstieg .kasa__shenim { font-size: 12px; color: var(--muted); text-align: center; margin-top: 10px; }
+#ls-einstieg .checkout-error { margin: 0 0 12px; }
+#ls-einstieg .kasa__faleminderit { text-align: center; padding: 30px 4px; display: grid; gap: 12px; justify-items: center; }
+#ls-einstieg .kasa__faleminderit[hidden] { display: none; }
+#ls-einstieg .kasa__faleminderit p { font-size: 14px; color: var(--muted); max-width: 34ch; }
+#ls-einstieg .kasa__shenje { width: 44px; height: 44px; color: var(--ink); }
+#ls-einstieg .basket-row .sasia { font-size: 12px; color: var(--muted); }
+
+/* Das Bild eines Einzelmittels oeffnet seine Details. */
+/* Staerker als "#ls-einstieg .single-card button" (der Preis-Knopf). */
+#ls-einstieg .single-card button.single-card__bild { display: block; width: 100%; padding: 0; margin: 0; border: 0; border-radius: 8px; background: none; min-height: 0; }
+#ls-einstieg .single-card .single-card__bild img { aspect-ratio: 4/5; border-radius: 8px; background: var(--wash); }
+#ls-einstieg .detail-veprimi { margin: 0 0 16px; padding: 0 0 0 18px; list-style: disc; font-size: 14px; color: var(--muted); line-height: 1.5; }
