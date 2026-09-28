@@ -108,6 +108,14 @@ sich daran nichts.
   wieder alles aus dem Laden, auch von vor dem Zaehlbeginn. Vorher waren sie
   mit ausgeblendet - ein Fall von davor stand nirgends, auch wenn Dr. Gashi
   ihn noch beantworten musste.
+- **Faelle nach Korb/Kasse** (28.09., 23:21, Testfall LS-2809-NBJ39): Wer im
+  Laden erst das Set in den Korb legt und die Kasse oeffnet und DANACH die
+  Kontrolle macht, trug `kasseGeoeffnet` schon vor dem Bericht. Heart legte
+  den neuen Fall deshalb ins Fach "Kasse" statt "Offen" - Dr. Gashi sah ihn
+  nicht. Jetzt steht ein Fall mit abgegebenem, noch nicht beantwortetem
+  Bericht immer unter "Offen"; "Kasse" und "Bestellt" gelten erst nach der
+  Antwort. Faelle ohne Bericht (alte Laden-Kaeufe auf /lifeskin) bleiben,
+  wo sie waren. Betrifft auch den Laden auf /lifeskin.
 - **Stille Links**: Wer im selben Tab einmal still bis zur Nummer ging,
   landete danach mit jedem stillen Link auf "Ky rast nuk u gjet" (im
   stillen Modus wird kein Bericht angelegt, der Trichter sprang trotzdem

@@ -1041,6 +1041,19 @@ const FAECHER = Object.freeze([
 function fachVon(sitzung, bericht) {
   const zustand = zustandVon(sitzung, bericht);
   if (zustand === "archiviert" || zustand === "spaeter") return zustand;
+  // NOCH NICHT BEANTWORTET HEISST OFFEN - auch mit Korb, Kasse oder
+  // Bestellung davor.
+  //
+  // Auf /lifeskin ging die Kasse nur NACH der Antwort auf. Im Laden
+  // (/lifeskinshop und der Laden auf /lifeskin) geht sie auch VOR der
+  // Kontrolle auf: Set in den Korb, Kasse, dann doch erst "A është ky set
+  // për ju?". Der neue Fall lag dann unter "Kasse" statt unter "Offen", und
+  // Dr. Gashi sah ihn nicht (28.09.: "es kommt nichts bei Faelle an").
+  //
+  // Nur MIT Bericht: Er ist der abgegebene Fall. Alte Einkaeufe im Laden
+  // auf /lifeskin (vor der Marke shopKauf) haben keinen und bleiben, wo
+  // sie waren - sonst stuenden sie ploetzlich als offene Arbeit da.
+  if (zustand === "neu" && bericht) return "alle";
   if (sitzung?.hatBestellt === true) return "bestellt";
   // An der Kasse gewesen, aber nicht bestellt: der Fall, bei dem sich
   // Nachfragen am meisten lohnt.

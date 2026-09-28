@@ -345,6 +345,36 @@ test("der Zaehlbeginn blendet keinen Fall aus: Faelle zeigen auch die von davor,
   assert.match(html, /1 älterer Besuch nicht mitgezählt/);
 });
 
+test("erst Korb und Kasse, dann die Kontrolle: der neue Fall steht unter Offen, nicht unter Kasse", async () => {
+  const b = await import("../apps/mnyra-heart/heart-lifeskin-berechnung.js");
+  const { renderLifeskin } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
+  const jetzt = new Date().toISOString();
+  const fall = (id, extra = {}) => ({ id, createdAt: jetzt, updatedAt: jetzt, step: "result", warteseiteGeoeffnet: true,
+    name: id, code: `LS-${id}`, photos: ["zona"], source: { weg: "lifeskinshop" }, device: {},
+    hatBestellt: false, hatAnschrift: false, hatTelefon: true, ...extra });
+  // So kam der Fall am 28.09. um 23:21: Set in den Korb, Kasse, dann Foto.
+  const vorher = fall("KorbKasseDannFoto", { imKorb: true, korbWert: 39, kasseGeoeffnet: true, kasseGeoeffnetAt: jetzt });
+  const gekauft = fall("GekauftDannFoto", { imKorb: true, kasseGeoeffnet: true, hatBestellt: true, order: { total: 39 } });
+  const beantwortet = fall("BeantwortetMitKasse", { berichtGeoeffnet: true, kasseGeoeffnet: true, kasseGeoeffnetAt: jetzt });
+  const berichte = { [vorher.id]: { status: "wartet" }, [gekauft.id]: { status: "wartet" },
+    [beantwortet.id]: { status: "fertig", freigabeAt: jetzt } };
+  const zeichne = (fach) => renderLifeskin({
+    status: "ready", loadedFrom: "network", weg: "lifeskinshop", sitzungen: [vorher, gekauft, beantwortet], tests: [], berichte,
+    produkte: [], abdeckung: [], kennzahlen: b.baueKennzahlen([]), trichter: b.baueTrichter([]),
+    lesetiefe: b.baueLesetiefe([]), herkunft: b.baueHerkunft([]), verteilung: b.baueVerteilung([]), verlauf: [],
+    offen: "", fotos: {}, fotosStatus: "", zeitraum: "", fach
+  });
+  const imFach = (html) => [...html.slice(html.indexOf(">Fälle<"), html.indexOf(">Bestellungen<"))
+    .matchAll(/data-action="lifeskin-sitzung" data-id="([^"]+)"/g)].map((m) => m[1]).sort();
+  assert.deepEqual(imFach(zeichne("alle")), ["GekauftDannFoto", "KorbKasseDannFoto"],
+    "Ein unbeantworteter Fall fehlt unter Offen");
+  // Kasse und Bestellt gelten erst nach der Antwort.
+  assert.deepEqual(imFach(zeichne("kasse")), ["BeantwortetMitKasse"]);
+  assert.deepEqual(imFach(zeichne("bestellt")), []);
+  assert.match(lies("apps/mnyra-heart/heart-lifeskin-render.js"), /if \(zustand === "neu" && bericht\) return "alle";/,
+    "Ohne Bericht (alte Laden-Kaeufe) muss es beim alten Fach bleiben");
+});
+
 test("stille Links: kein Sprung auf einen Fall, den es im stillen Modus nicht gibt", () => {
   const app = lies("apps/lifeskin/lifeskin-app.js");
   assert.match(app, /if \(this\.sitzung\.fortsetzbar\(\) && globalThis\.__mnyraStill !== true\) \{\s*globalThis\.location\.replace\(this\.sitzung\.berichtPfad\);/);
