@@ -11,7 +11,8 @@
 // neue Weg besser verkauft - also steht sie hier in einer Reihe, mit der
 // Zeit bis zur Antwort daneben.
 import { wegDerSitzung, zaehltImWeg } from "../../shared/lifeskin-weg.js";
-import { stufenIndex, istPatient } from "./heart-lifeskin-berechnung.js";
+import { stufenIndex, istPatient, istLanding } from "./heart-lifeskin-berechnung.js";
+import { SHOP_ABSCHNITTE, shopTiefe } from "../../shared/lifeskin-shopsicht.js";
 
 // Nur die Faelle eines Wegs. "" ist der bisherige Weg (/lifeskin) - dort
 // bleiben alle Faelle ohne Merkmal, also auch jeder von vorher.
@@ -130,14 +131,26 @@ export function baueLs2Weg(sitzungen, berichte = {}) {
 const istShopKauf = (s) => s?.hatBestellt === true;
 const imKorbS = (s) => s?.imKorb === true || s?.kasseGeoeffnet === true || istShopKauf(s);
 
-export const SHOP_STUFEN = Object.freeze([
-  { id: "besuch", label: "Shop geöffnet", gilt: () => true },
-  { id: "produkte", label: "Sets / Produkte angesehen", gilt: (s) => s?.produkteGesehen === true || imKorbS(s) },
-  { id: "korb", label: "In den Warenkorb (AddToCart)", gilt: imKorbS },
-  { id: "kasse", label: "Kasse geöffnet (InitiateCheckout)", gilt: (s) => s?.kasseGeoeffnet === true || istShopKauf(s) },
-  { id: "anschrift", label: "Anschrift begonnen", gilt: (s) => s?.adresseBegonnen === true || istShopKauf(s) },
-  { id: "bestellt", label: "Bestellt (Purchase)", gilt: istShopKauf }
-]);
+// DIE SEITE, ABSCHNITT FUER ABSCHNITT (1-9) - wie weit jemand gekommen
+// ist (shared/lifeskin-shopsicht.js; die Namen hat der Inhaber vergeben).
+// Wer bis 5 gescrollt hat, zaehlt auch bei 1 bis 4: Die Zahl heisst "bis
+// hierher", und kein Balken kann laenger sein als der davor.
+export const SHOP_SEITE = Object.freeze(SHOP_ABSCHNITTE.map((a) => Object.freeze({
+  id: `s${a.nr}`,
+  nr: a.nr,
+  label: a.name,
+  gilt: a.nr === 1 ? (s) => istLanding(s) || shopTiefe(s) > 1 : (s) => shopTiefe(s) >= a.nr
+})));
+
+// DER KAUF (10-13) - eine eigene Reihe und nicht die Fortsetzung der
+// Seite: Wer oben auf "Porosit setin" tippt und kauft, war nie bei
+// "Fundi". In einer Reihe gezaehlt, stuende er dort trotzdem.
+export const SHOP_KAUF = Object.freeze([
+  { id: "korb", nr: 10, label: "Shport", gilt: imKorbS },
+  { id: "kasse", nr: 11, label: "Arka", gilt: (s) => s?.kasseGeoeffnet === true || istShopKauf(s) },
+  { id: "anschrift", nr: 12, label: "Adresa", gilt: (s) => s?.adresseBegonnen === true || istShopKauf(s) },
+  { id: "bestellt", nr: 13, label: "Gotat Nalt", gilt: istShopKauf }
+].map((stufe) => Object.freeze(stufe)));
 
 // Die Analyse ueber "Gjeni setin". Ein Kauf im Laden schreibt auch eine
 // Nummer (Kasse) und den Schritt "ordered" - er zaehlt hier nur, wenn
@@ -156,7 +169,7 @@ function stufenZaehlen(liste, stufen) {
     stufen.forEach((stufe, i) => { if (stufe.gilt(s)) weiteste = i; });
     return weiteste;
   });
-  const raus = stufen.map((stufe, i) => ({ id: stufe.id, label: stufe.label, anzahl: erreicht.filter((w) => w >= i).length }));
+  const raus = stufen.map((stufe, i) => ({ id: stufe.id, nr: stufe.nr, label: stufe.label, anzahl: erreicht.filter((w) => w >= i).length }));
   raus.forEach((stufe, i) => {
     const vorher = i ? raus[i - 1].anzahl : stufe.anzahl;
     stufe.verlust = i && vorher ? (vorher - stufe.anzahl) / vorher : 0;
@@ -166,7 +179,8 @@ function stufenZaehlen(liste, stufen) {
 
 export function baueShopWeg(sitzungen) {
   const liste = Array.isArray(sitzungen) ? sitzungen : [];
-  const stufen = stufenZaehlen(liste, SHOP_STUFEN);
+  const seite = stufenZaehlen(liste, SHOP_SEITE);
+  const kauf = stufenZaehlen(liste, SHOP_KAUF);
   const kaeufe = liste.filter(istShopKauf);
   const umsatz = kaeufe.reduce((summe, s) => summe + (Number(s?.order?.total) || 0), 0);
   // Was gekauft wurde: je Set, und Einzelmittel ohne Set.
@@ -178,8 +192,11 @@ export function baueShopWeg(sitzungen) {
   const analyse = stufenZaehlen(liste, SHOP_ANALYSE_STUFEN);
   const koerbe = liste.filter(imKorbS);
   return {
-    stufen,
+    seite,
+    kauf,
     analyse,
+    // Der Massstab fuer alle Balken der Karte: die Shop-Besucher (1).
+    besucher: seite[0]?.anzahl || 0,
     besuche: liste.length,
     kaeufe: kaeufe.length,
     umsatz,

@@ -4382,6 +4382,35 @@ der Balken zeigt es. */
 .heart-lifeskin-stufe__verlust { color: #b4531f; }
 .heart-lifeskin-stufe--schlimmst .heart-lifeskin-stufe__name { font-weight: 700; }
 
+/* LIFESKIN SHOP: nummerierte Schritte - Kreis, Name, Balken, Zahl
+   (Wunsch Inhaber 29.09.). Die Namensspalte ist fest, damit jeder Balken
+   an derselben Stelle beginnt. */
+.heart-shopschritte { display: flex; flex-direction: column; gap: 4px; }
+.heart-shopschritte--kauf {
+  margin-top: 10px; padding-top: 10px;
+  border-top: 1px solid var(--heart-border, #e6e6e3);
+}
+.heart-shopschritt {
+  display: grid;
+  grid-template-columns: 20px 5.4rem 1fr 2.2rem;
+  align-items: center; gap: 8px;
+  min-height: 26px;
+}
+.heart-shopschritt__nr {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 1.5px solid #00796a;
+  display: grid; place-items: center;
+  font-size: 10.5px; font-weight: 700; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.heart-shopschritt__name { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.heart-shopschritt__spur { height: 14px; }
+.heart-shopschritt__balken {
+  display: block; height: 100%;
+  background: #00796a; border-radius: 0 3px 3px 0;
+}
+.heart-shopschritt__zahl { font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+
 /* Zeilen (Bestellungen, Nachfassen, Analysen, Produkte) */
 .heart-lifeskin-zeilen { display: flex; flex-direction: column; }
 .heart-lifeskin-zeile {

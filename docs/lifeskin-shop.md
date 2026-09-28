@@ -244,3 +244,46 @@ Erlaubt vom Inhaber (Albert) am 28.09.2026 - erst danach auf main.
   alle Wege "Analiza juaj e lëkurës · LifeSkin"; der Seitentitel selbst ist
   neutral ("Rasti juaj", "Terapia juaj"). Eine Aenderung traefe auch
   /lifeskin.
+
+## Karte "Shop" in Heart: Abschnitt fuer Abschnitt (29.09.)
+
+Wunsch Inhaber: klare Schritte von oben bis ganz unten auf der Seite, kurze
+Namen, je Zeile ein kleiner Kreis mit der Nummer, der Name, ein Balken und
+die Zahl. Alle Balken beginnen an derselben Stelle und messen an den
+Shop-Besuchern (1). Der Hinweis "Gezaehlt ab ..." ist weg (gezaehlt wird
+weiter ab dem Zaehlbeginn).
+
+**Seite (1-9)**, gezaehlt "bis hierher" - wer bis 5 kam, zaehlt auch bei 1-4:
+
+| Nr | Name | Abschnitt auf der Seite |
+|---|---|---|
+| 1 | Acne duo | Titelbild (jeder sichtbare Besuch) |
+| 2 | Para - Pas | `#rezultate` "Shihni ndryshimin" |
+| 3 | Informata | `#setet` "Kujdes për aknet" |
+| 4 | SkinReact | `#zgjedhja` "A është ky set për ju?" |
+| 5 | Postimet | `#klientet` "LifeSkin në përditshmëri" |
+| 6 | Dërgesa | `#rutina` "Nga zgjedhja te dera juaj" |
+| 7 | Instagram | `.social-presence` "Njihuni me ne" |
+| 8 | F.A.Q | `.faq` "Qartë, që në fillim" |
+| 9 | Fundi | `.closing` "Një fillim më i qartë" |
+
+**Kauf (10-13)**, eigene Reihe unter einem Strich: 10 Shport (in den Korb),
+11 Arka (Kasse offen), 12 Adresa (Anschrift begonnen), 13 Gotat Nalt
+(bestellt). Getrennt gezaehlt, weil wer oben auf "Porosit setin" tippt und
+kauft, nie bei "Fundi" war.
+
+**Messung:** Der Laden (`Dyqan.#beobachten`) schreibt je gesehenen Abschnitt
+`timings.shop.sN = true` (+ `v`) in die Sitzung - gesehen heisst wie auf
+/lifeskin: mindestens 40 % des Fensters oder die Haelfte des Abschnitts im
+Bild (`schirmGesehen`). Erst wenn der Trichter die Sitzung angelegt hat;
+im stillen Modus nichts. `timings` ist in firestore.rules eine offene
+Karte: keine neue Regel. Kein Pixel. Heart liest die Tiefe aus den Feldern
+(`shopTiefe`, `shared/lifeskin-shopsicht.js`); Besuche von vor der Messung
+zaehlen mit `produkteGesehen` bis 3, sonst bei 1.
+
+Namen wie vom Inhaber, drei Schreibweisen angeglichen: "Skinract" ->
+"SkinReact", "Dergesa" -> "Dërgesa", "instagram" -> "Instagram".
+
+**Noch offen:** 14-16 (Kontrolle gestartet, Nummer, abgegeben) bekommen
+eine eigene Karte; bis dahin steht dort der bisherige Block
+"„Gjeni setin“ · Analyse".

@@ -1077,6 +1077,14 @@ export class Sitzung {
     return this.#sammeln({ timings: { landing: { ...daten } } }, felderListe.map((f) => `timings.landing.${f}`));
   }
 
+  // Dasselbe fuer den Laden (/lifeskinshop): welche seiner Abschnitte im
+  // Bild standen (shared/lifeskin-shopsicht.js), unter timings.shop.
+  shopSichtSchreiben(daten) {
+    const felderListe = Object.keys(daten || {});
+    if (!felderListe.length) return this.kette;
+    return this.#sammeln({ timings: { shop: { ...daten } } }, felderListe.map((f) => `timings.shop.${f}`));
+  }
+
   // Einzelne Felder ergaenzen, ohne den Schritt zu bewegen.
   //
   // Das ist der Weg, auf dem die Anschrift ankommt: Feld fuer Feld, beim

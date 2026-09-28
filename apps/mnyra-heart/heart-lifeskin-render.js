@@ -35,9 +35,9 @@ import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 // Aufklappen, das ein Neuzeichnen ueberlebt.
 import { renderRaste, renderRastiEditor, renderBefundRasteAuswahl, rasteListe } from "./heart-lifeskin-raste.js";
 import { klappAttr, alsKlapp } from "./heart-lifeskin-klapp.js";
-import { nachWeg, vorDemZaehlbeginn, baueLs2Weg, baueShopWeg, dauerText as ls2Dauer } from "./heart-lifeskin-weg.js";
+import { nachWeg, baueLs2Weg, baueShopWeg, dauerText as ls2Dauer } from "./heart-lifeskin-weg.js";
 import { renderShopSetet, renderShopSetEditor, renderShopHero, renderShopHeroEditor } from "./heart-lifeskin-shopsets.js";
-import { wegGueltig, WEG_ZAEHLT_AB } from "../../shared/lifeskin-weg.js";
+import { wegGueltig } from "../../shared/lifeskin-weg.js";
 import { perputhjaGueltig } from "../../shared/lifeskin-perputhja.js";
 import { entwurfLesen, promptGemacht } from "./heart-lifeskin-entwurf.js";
 import { mitFingerabdruck } from "./heart-morph.js";
@@ -597,9 +597,23 @@ function renderLs2Weg(weg, zeitraum = "") {
     </section>`, "ls2weg", { zahl: `${weg.stufen.at(-1)?.anzahl || 0} Käufe` });
 }
 
-// LIFESKIN SHOP: vom Besuch bis zum Kauf, daneben die Analyse ueber
-// "Gjeni setin" (Lead) und was gekauft wird. Die Pixel-Namen stehen an den
-// Stufen, damit Heart und Meta nebeneinander gelesen werden koennen.
+// LIFESKIN SHOP: die Seite Abschnitt fuer Abschnitt (1-9), dann der Kauf
+// (10-13) - Namen und Aufbau vom Inhaber (29.09.): nummerierter Kreis,
+// Name, Balken, Zahl. Alle Balken beginnen an derselben Stelle und messen
+// an derselben Zahl: den Shop-Besuchern (1).
+function renderShopSchritte(stufen, basis) {
+  return stufen.map((stufe) => {
+    const breite = stufe.anzahl && basis ? Math.max(0.6, (stufe.anzahl / basis) * 100) : 0;
+    return `
+      <div class="heart-shopschritt">
+        <span class="heart-shopschritt__nr">${escapeHtml(stufe.nr)}</span>
+        <span class="heart-shopschritt__name">${escapeHtml(stufe.label)}</span>
+        <span class="heart-shopschritt__spur"><span class="heart-shopschritt__balken" style="width:${Math.min(100, breite).toFixed(1)}%"></span></span>
+        <b class="heart-shopschritt__zahl">${stufe.anzahl}</b>
+      </div>`;
+  }).join("");
+}
+
 function renderShopWeg(weg, zeitraum = "") {
   const wort = ZEITRAEUME.find((z) => z.id === (zeitraum || "heute"))?.label || "";
   const was = weg.nachSet.length
@@ -608,14 +622,24 @@ function renderShopWeg(weg, zeitraum = "") {
   return alsKlapp(`
     <section class="heart-lifeskin-block">
       <h3 class="heart-lifeskin-block__titel">Shop · vom Besuch bis zum Kauf${wort ? ` · ${escapeHtml(wort)}` : ""}</h3>
-      <div class="heart-lifeskin-trichter">${renderStufen(weg.stufen)}</div>
+      <div class="heart-shopschritte">${renderShopSchritte(weg.seite, weg.besucher)}</div>
+      <div class="heart-shopschritte heart-shopschritte--kauf">${renderShopSchritte(weg.kauf, weg.besucher)}</div>
       <p class="heart-lifeskin-block__fuss">Umsatz <b>${escapeHtml(euro(weg.umsatz) || "0 €")}</b> · ${weg.kaeufe} ${weg.kaeufe === 1 ? "Bestellung" : "Bestellungen"}
         · Ø Bestellung <b>${escapeHtml(euro(weg.bestellwert) || "—")}</b> · Ø Warenkorb <b>${escapeHtml(euro(weg.korbwert) || "—")}</b>
         · Kauf je Besuch <b>${prozent(weg.kaufquote)}</b></p>
       <p class="heart-lifeskin-block__fuss">Gekauft: ${was}</p>
-      <h3 class="heart-lifeskin-block__titel">„Gjeni setin për lëkurën tuaj“ · Analyse</h3>
-      <div class="heart-lifeskin-trichter">${renderStufen(weg.analyse)}</div>
     </section>`, "shopweg", { zahl: `${weg.kaeufe} Käufe` });
+}
+
+// DIE KONTROLLE (spaeter 14-16) - vorerst in einer eigenen Karte mit dem
+// bisherigen Inhalt. Wie sie aussehen soll, legt der Inhaber noch fest.
+function renderShopKontrolle(weg, zeitraum = "") {
+  const wort = ZEITRAEUME.find((z) => z.id === (zeitraum || "heute"))?.label || "";
+  return alsKlapp(`
+    <section class="heart-lifeskin-block">
+      <h3 class="heart-lifeskin-block__titel">„Gjeni setin për lëkurën tuaj“ · Analyse${wort ? ` · ${escapeHtml(wort)}` : ""}</h3>
+      <div class="heart-lifeskin-trichter">${renderStufen(weg.analyse)}</div>
+    </section>`, "shopkontrolle", { zahl: `${weg.analyse.at(-1)?.anzahl || 0} abgegeben` });
 }
 
 // Die Bestellungen haben einen eigenen Zeitraum.
@@ -3256,25 +3280,6 @@ export function mitWegFaellen(zustand, weg, sitzungen = nachWeg(zustand?.sitzung
   };
 }
 
-// DER ZAEHLBEGINN EINES WEGS (WEG_ZAEHLT_AB, shared/lifeskin-weg.js).
-// Ausgeblendet ist nicht geloescht - und das steht hier, mit Zahl, damit
-// kein Fall still verschwindet. Bestellungen davor werden eigens genannt.
-export function renderZaehlbeginn(sitzungen, weg) {
-  const ab = WEG_ZAEHLT_AB[wegGueltig(weg)];
-  if (!ab) return "";
-  const { anzahl, bestellt } = vorDemZaehlbeginn(sitzungen, weg);
-  const d = new Date(ab);
-  const zwei = (n) => String(n).padStart(2, "0");
-  const wann = Number.isNaN(d.getTime()) ? ab
-    : `${zwei(d.getDate())}.${zwei(d.getMonth() + 1)}.${d.getFullYear()}, ${zwei(d.getHours())}:${zwei(d.getMinutes())}`;
-  return `
-      <p class="heart-lifeskin-block__fuss heart-zaehlbeginn">
-        Gezählt ab ${escapeHtml(wann)} (auf 0 gestellt)${anzahl
-          ? ` · ${anzahl} ${anzahl === 1 ? "älterer Besuch" : "ältere Besuche"} nicht mitgezählt${bestellt ? `, davon ${bestellt} mit Bestellung` : ""}`
-          : ""}. Fälle, Bestellungen und Tests stehen unten vollständig.
-      </p>`;
-}
-
 export function renderLifeskin(zustand) {
   if (zustand?.status === "error") {
     return `<p class="heart-lifeskin-leer">Die Zahlen liessen sich nicht laden. ${escapeHtml(zustand.fehler || "")}</p>`;
@@ -3378,6 +3383,7 @@ export function renderLifeskin(zustand) {
     ? baueKennzahlen(sitzungen || [], { setPreis: zustand.konfig?.setPreis, zeitraum })
     : baueKennzahlen(sitzungen || [], { setPreis: zustand.konfig?.setPreis });
   const trichterListe = baueTrichterListe(sitzungen, imBlick, zeitraum);
+  const shopWeg = weg === "lifeskinshop" ? baueShopWeg(imBlick) : null;
 
   // DIE REIHENFOLGE IST DIE DES BLICKS UND NICHT DIE DER GESCHICHTE:
   //
@@ -3395,8 +3401,7 @@ export function renderLifeskin(zustand) {
           auf <b>mnyra.com/${weg ? escapeHtml(weg) : "lifeskin"}</b>.
         </p>` : ""}
       ${weg === "lifeskin2" ? renderLs2Weg(baueLs2Weg(imBlick, zustand.berichte || {}), zeitraum) : ""}
-      ${renderZaehlbeginn(zustand.sitzungen, weg)}
-      ${weg === "lifeskinshop" ? renderShopWeg(baueShopWeg(imBlick), zeitraum) : ""}
+      ${weg === "lifeskinshop" ? renderShopWeg(shopWeg, zeitraum) + renderShopKontrolle(shopWeg, zeitraum) : ""}
       ${renderKacheln(zahlen, zeitraum)}
       ${zustand.liveFehler
         ? leererBlock("Live", "Verbindung unterbrochen — Live-Zahlen nicht verfuegbar.")

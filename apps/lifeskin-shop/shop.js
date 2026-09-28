@@ -36,6 +36,8 @@ import {
 } from "../../shared/lifeskin-shop-sets.js";
 
 import { medienListe } from "../../shared/lifeskin-medien.js";
+import { SHOP_ABSCHNITTE, shopSichtPatch } from "../../shared/lifeskin-shopsicht.js";
+import { schirmGesehen } from "../../shared/lifeskin-landingtiefe.js";
 
 const BASIS = `${LIFESKIN_FIRESTORE_BASE}/lifeskin/${LIFESKIN_TENANT}/config`;
 const IKONAT = "/apps/lifeskin-shop/icons.svg";
@@ -736,6 +738,40 @@ export class Dyqan {
       const el = $(id, this.dok);
       if (el) waechter.observe(el);
     }
+
+    // WIE WEIT GESCROLLT WURDE, Abschnitt fuer Abschnitt - fuer die Karte
+    // "Shop" in Heart (shared/lifeskin-shopsicht.js). Gesehen heisst: wirklich
+    // im Bild, nicht nur mit einer Kante (dieselbe Regel wie auf /lifeskin).
+    // Ein gesehener Abschnitt wird nicht weiter beobachtet.
+    const nrVon = new Map();
+    const fenster = this.dok.defaultView || globalThis;
+    const sicht = new IntersectionObserver((eintraege) => {
+      for (const e of eintraege) {
+        if (!e.isIntersecting) continue;
+        if (!schirmGesehen(e.intersectionRect.height, e.boundingClientRect.height, fenster.innerHeight)) continue;
+        sicht.unobserve(e.target);
+        this.#sichtMerken(nrVon.get(e.target));
+      }
+    }, { threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] });
+    for (const a of SHOP_ABSCHNITTE) {
+      const el = this.dok.querySelector(a.wahl);
+      if (!el) continue;
+      nrVon.set(el, a.nr);
+      sicht.observe(el);
+    }
+  }
+
+  // Ein gesehener Abschnitt in die Sitzung (timings.shop.sN) - erst, wenn
+  // der Trichter sie angelegt hat, sonst ginge das Feld vor dem Anlegen
+  // hinaus. Im stillen Modus schreibt die Seite ohnehin nichts.
+  async #sichtMerken(nr) {
+    try {
+      const patch = shopSichtPatch(nr);
+      const sitzung = patch ? await this.#sitzung() : null;
+      if (!sitzung?.shopSichtSchreiben) return;
+      for (let i = 0; i < 50 && sitzung.angelegt !== true; i += 1) await pause(100);
+      if (sitzung.angelegt === true) sitzung.shopSichtSchreiben(patch);
+    } catch { /* Messtechnik darf den Verkauf nie anhalten. */ }
   }
 }
 

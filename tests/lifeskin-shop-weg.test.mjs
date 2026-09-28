@@ -312,10 +312,9 @@ test("der Laden zaehlt in Heart ab dem Zaehlbeginn - aeltere Besuche ausgeblende
   assert.deepEqual(nachWeg(sitzungen, "lifeskin2").map((x) => x.id), ["ls2"]);
   assert.equal(zaehltImWeg(s("x", "", vor), ""), true);
   assert.deepEqual(vorDemZaehlbeginn(sitzungen, "lifeskinshop"), { anzahl: 2, bestellt: 1 });
-  const { renderZaehlbeginn } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
-  const hinweis = renderZaehlbeginn(sitzungen, "lifeskinshop");
-  assert.match(hinweis, /Gezählt ab .*auf 0 gestellt.*2 ältere Besuche nicht mitgezählt, davon 1 mit Bestellung\. Fälle, Bestellungen und Tests stehen unten vollständig\./s);
-  assert.equal(renderZaehlbeginn(sitzungen, "lifeskin2"), "");
+  // Der Hinweis "Gezaehlt ab ..." steht seit dem 29.09. nicht mehr in Heart
+  // (Wunsch Inhaber) - gezaehlt wird trotzdem ab dem Zaehlbeginn.
+  assert.doesNotMatch(lies("apps/mnyra-heart/heart-lifeskin-render.js"), /Gezählt ab|renderZaehlbeginn/);
   // Live zaehlt ab demselben Zeitpunkt.
   assert.match(lies("apps/mnyra-heart/heart.js"), /wegDerSitzung\(s\) === weg && zaehltImWeg\(s, weg\)/);
 });
@@ -342,7 +341,7 @@ test("der Zaehlbeginn blendet keinen Fall aus: Faelle zeigen auch die von davor,
   assert.ok(faelle.includes("AltVorDemBeginn"), "Der Fall von vor dem Zaehlbeginn fehlt in Faelle");
   assert.ok(faelle.includes("NeuNachDemBeginn"));
   assert.ok(html.includes("EigenerTestVorher"), "Der eigene Test von davor fehlt bei Tests");
-  assert.match(html, /1 älterer Besuch nicht mitgezählt/);
+  assert.doesNotMatch(html, /Gezählt ab/);
 });
 
 test("erst Korb und Kasse, dann die Kontrolle: der neue Fall steht unter Offen, nicht unter Kasse", async () => {
@@ -473,4 +472,97 @@ test("nach einem Kauf im Laden fuehrt Neuladen nicht auf eine Warteseite ohne Fa
   await fall.schritt("result");
   await fall.schritt("ordered", { order: { total: 39 } });
   assert.ok(new Sitzung({ fetchFn, speicher }).fortsetzbar(), "Wer seinen Fall hat, faengt wieder vorne an");
+});
+
+// ---------- Die Karte "Shop" in Heart (29.09., Wunsch Inhaber) ----------
+
+test("die Seite Abschnitt fuer Abschnitt: 9 Namen, gemessen im Bild, gezaehlt 'bis hierher'", async () => {
+  const { SHOP_ABSCHNITTE, shopSichtPatch, shopTiefe } = await import("../shared/lifeskin-shopsicht.js");
+  assert.deepEqual(SHOP_ABSCHNITTE.map((a) => a.name),
+    ["Acne duo", "Para - Pas", "Informata", "SkinReact", "Postimet", "Dërgesa", "Instagram", "F.A.Q", "Fundi"]);
+  // Jeder Abschnitt steht so auf der Seite, wie er gesucht wird.
+  const html = lies("apps/lifeskin-shop/index.html");
+  const main = html.slice(html.indexOf('<main id="main">'), html.indexOf("</main>"));
+  for (const [wahl, muster] of [["main > .hero", /\n<section class="hero"/], ["#rezultate", /<section[^>]*id="rezultate"/],
+    ["#setet", /<section[^>]*id="setet"/], ["#zgjedhja", /<section[^>]*id="zgjedhja"/], ["#klientet", /<section[^>]*id="klientet"/],
+    ["#rutina", /<section[^>]*id="rutina"/], ["main > .social-presence", /\n<section class="social-presence"/],
+    ["main > .faq", /\n<section class="faq"/], ["main > .closing", /\n<section class="closing"/]]) {
+    assert.ok(SHOP_ABSCHNITTE.some((a) => a.wahl === wahl), wahl);
+    assert.match(main, muster, `${wahl} steht nicht (mehr) auf der Seite`);
+  }
+  assert.deepEqual(shopSichtPatch(4), { v: 1, s4: true });
+  assert.equal(shopSichtPatch(0), null);
+  assert.equal(shopSichtPatch(10), null);
+  // Die Tiefe kommt aus den Feldern - ein spaeterer, kuerzerer Aufruf nimmt nichts weg.
+  assert.equal(shopTiefe({ timings: { shop: { v: 1, s1: true, s2: true, s7: true } } }), 7);
+  assert.equal(shopTiefe({ timings: { shop: { v: 1 } } }), 1);
+  // Besuche von vor der Messung: produkteGesehen heisst bis "Informata".
+  assert.equal(shopTiefe({ produkteGesehen: true }), 3);
+  assert.equal(shopTiefe({}), 1);
+});
+
+test("Seite und Kauf zaehlen getrennt: Wer oben kauft, war nicht bei Fundi", async () => {
+  const { baueShopWeg } = await import("../apps/mnyra-heart/heart-lifeskin-weg.js");
+  const sicht = (...nr) => ({ timings: { shop: Object.fromEntries([["v", 1], ...nr.map((n) => [`s${n}`, true])]) } });
+  const w = baueShopWeg([
+    { ...sicht(1, 2, 3, 4, 5, 6, 7, 8, 9) },
+    { ...sicht(1, 2, 3) },
+    // Oben auf "Porosit setin", gekauft, nie gescrollt.
+    { ...sicht(1), imKorb: true, kasseGeoeffnet: true, adresseBegonnen: true, hatBestellt: true, order: { total: 39 } },
+    // Eine Vorab-Ladung, die nie im Bild war, zaehlt nicht als Besucher.
+    { gesehen: false }
+  ]);
+  assert.deepEqual(w.seite.map((s) => [s.nr, s.label, s.anzahl]), [
+    [1, "Acne duo", 3], [2, "Para - Pas", 2], [3, "Informata", 2], [4, "SkinReact", 1], [5, "Postimet", 1],
+    [6, "Dërgesa", 1], [7, "Instagram", 1], [8, "F.A.Q", 1], [9, "Fundi", 1]
+  ]);
+  assert.deepEqual(w.kauf.map((s) => [s.nr, s.label, s.anzahl]), [[10, "Shport", 1], [11, "Arka", 1], [12, "Adresa", 1], [13, "Gotat Nalt", 1]]);
+  assert.equal(w.besucher, 3);
+});
+
+test("die Karte: Kreis mit Nummer, Name, Balken, Zahl - 1 bis 13, der Kauf abgesetzt", async () => {
+  const b = await import("../apps/mnyra-heart/heart-lifeskin-berechnung.js");
+  const { renderLifeskin } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
+  const jetzt = new Date().toISOString();
+  const s = (id, extra = {}) => ({ id, createdAt: jetzt, updatedAt: jetzt, step: "opened", source: { weg: "lifeskinshop" }, device: {}, ...extra });
+  const html = renderLifeskin({
+    status: "ready", loadedFrom: "network", weg: "lifeskinshop", tests: [], berichte: {},
+    sitzungen: [s("a", { timings: { shop: { v: 1, s1: true, s2: true } } }), s("b", { imKorb: true, korbWert: 39 })],
+    produkte: [], abdeckung: [], kennzahlen: b.baueKennzahlen([]), trichter: b.baueTrichter([]),
+    lesetiefe: b.baueLesetiefe([]), herkunft: b.baueHerkunft([]), verteilung: b.baueVerteilung([]), verlauf: [],
+    offen: "", fotos: {}, fotosStatus: "", zeitraum: "", fach: "alle"
+  });
+  const zeilen = [...html.matchAll(/<div class="heart-shopschritt">\s*<span class="heart-shopschritt__nr">(\d+)<\/span>\s*<span class="heart-shopschritt__name">([^<]+)<\/span>\s*<span class="heart-shopschritt__spur"><span class="heart-shopschritt__balken" style="width:([\d.]+)%"><\/span><\/span>\s*<b class="heart-shopschritt__zahl">(\d+)<\/b>/g)]
+    .map((m) => [Number(m[1]), m[2], Number(m[3]), Number(m[4])]);
+  assert.deepEqual(zeilen.map((z) => z[0]), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+  assert.deepEqual(zeilen.map((z) => z[1]), ["Acne duo", "Para - Pas", "Informata", "SkinReact", "Postimet", "Dërgesa",
+    "Instagram", "F.A.Q", "Fundi", "Shport", "Arka", "Adresa", "Gotat Nalt"]);
+  // Alle Balken am selben Massstab: den Shop-Besuchern.
+  assert.deepEqual(zeilen.map((z) => [z[2], z[3]]).slice(0, 3), [[100, 2], [50, 1], [0, 0]]);
+  assert.deepEqual(zeilen[9].slice(2), [50, 1], "Shport misst nicht an den Besuchern");
+  // Der Kauf steht in einem eigenen, abgesetzten Block; die Kontrolle in eigener Karte.
+  assert.match(html, /<div class="heart-shopschritte heart-shopschritte--kauf">/);
+  assert.match(html, /data-klapp="shopkontrolle"/);
+  assert.doesNotMatch(html, /Shop geöffnet|Sets \/ Produkte angesehen/);
+  // Das Aussehen: kleiner Kreis, feste Namensspalte, damit jeder Balken gleich beginnt.
+  const css = lies("apps/mnyra-heart/heart.css");
+  assert.match(css, /\.heart-shopschritt \{\s*display: grid;\s*grid-template-columns: 20px 5\.4rem 1fr 2\.2rem;/);
+  assert.match(css, /\.heart-shopschritt__nr \{\s*width: 20px; height: 20px; border-radius: 50%;/);
+});
+
+test("der Laden misst die Abschnitte - erst nach dem Anlegen der Sitzung, ohne Pixel", async () => {
+  const shop = lies("apps/lifeskin-shop/shop.js");
+  assert.match(shop, /import \{ SHOP_ABSCHNITTE, shopSichtPatch \} from "\.\.\/\.\.\/shared\/lifeskin-shopsicht\.js";/);
+  assert.match(shop, /for \(const a of SHOP_ABSCHNITTE\) \{\s*const el = this\.dok\.querySelector\(a\.wahl\);/);
+  assert.match(shop, /if \(sitzung\.angelegt === true\) sitzung\.shopSichtSchreiben\(patch\);/);
+  const { Sitzung } = await import("../apps/lifeskin/lifeskin-session.js");
+  const aufrufe = [];
+  const fetchFn = async (url, init = {}) => { aufrufe.push({ url, init }); return { ok: true, status: 200, json: async () => ({}) }; };
+  const sitzung = new Sitzung({ fetchFn, speicher: null });
+  await sitzung.starte({ sprache: "sq" });
+  await sitzung.shopSichtSchreiben({ v: 1, s3: true });
+  const letzte = aufrufe.at(-1);
+  assert.match(letzte.url, /updateMask\.fieldPaths=timings\.shop\.v/);
+  assert.match(letzte.url, /updateMask\.fieldPaths=timings\.shop\.s3/);
+  assert.doesNotMatch(letzte.url, /fieldPaths=timings(?!\.)/, "die ganze timings-Karte wuerde ueberschrieben");
 });
