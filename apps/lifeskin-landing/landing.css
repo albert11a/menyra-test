@@ -1075,9 +1075,37 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   font-weight: 700;
   letter-spacing: 0.02em;
 }
+/* Zeichen statt Zahl (Lucide), in demselben kleinen Kreis. */
+.hapi__nr--zeichen svg { width: 18px; height: 18px; display: block; }
 .hapi__tekst { display: grid; gap: 3px; padding-top: 3px; }
 .hapi__tekst strong { font-size: 17.5px; font-weight: 680; letter-spacing: -0.02em; }
 .hapi__tekst span { font-size: 14.5px; line-height: 1.5; color: var(--text-2); }
+
+/* DIE DREI ZUSAGEN unter dem Weg - dieselben wie an der Kasse. Kleine
+ * Marken in einer Reihe; auf 320 Punkten brechen sie um, statt zu
+ * stauchen. */
+.zusagen {
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.zusagen li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border-radius: var(--rund-voll);
+  background: var(--flaeche);
+  border: 1px solid var(--linie-stark);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.zusagen__zeichen { display: inline-flex; color: var(--basis); }
+.zusagen__zeichen svg { width: 16px; height: 16px; display: block; }
 
 /* Die Namen der Sache, mehr nicht. Hier lag einmal ein Raster aus acht
  * Karten mit Zeichen und je einer Erklaerung - acht Flaechen und
@@ -1324,6 +1352,23 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   transition: width 0.24s var(--kurve), background 0.24s var(--kurve);
 }
 .pikat i[data-an="ja"] { width: 20px; background: var(--basis); }
+
+/* ── Die Faelle gleich unter dem ersten Blick (/lifeskin) ──────────
+ *
+ * Sie stehen dort, wo die Reihe "RASTE REALE" stand (index.html,
+ * Abschnitt B). Oben wenig Luft - der Abschnitt setzt den ersten Blick
+ * fort und beginnt keinen neuen -, und die Bahn rueckt naeher an die
+ * Ueberschrift, damit die erste Karte im ersten Bild hereinschaut.
+ *
+ * KEIN FLACKERN: Solange data-wartet an der Bahn steht, sind nur die
+ * Aufnahmen durchsichtig; Flaechen, Schilder und Text stehen schon.
+ * raste.js (oder nach vier Sekunden landing.js) nimmt das Merkmal weg. */
+.abschnitt--rastet { padding-top: 26px; padding-bottom: var(--luft); }
+.abschnitt--rastet .titel { margin-top: 10px; max-width: none; }
+.abschnitt--rastet .unter { margin-top: 8px; }
+.abschnitt--rastet .rastet { margin-top: 20px; }
+.gjysma img { transition: opacity 0.35s var(--kurve); }
+.js .rastet[data-wartet] .gjysma img { opacity: 0; }
 
 
 /* ══ 05 DIE MARKE ══════════════════════════════════════════════════
@@ -1873,6 +1918,14 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
 .dock .knopf { min-height: 54px; }
 .dock[data-sichtbar="ja"] { pointer-events: auto; }
 .dock[data-sichtbar="ja"] .dock__leib { transform: none; }
+/* VERSTECKT HEISST UNSICHTBAR - nicht nur "unter den Rand geschoben".
+   Rechnet iOS "unten" nach Tastatur, Ueberscrollen oder der Rueckkehr
+   aus einer anderen App auch nur ein Stueck falsch, ragte die
+   geschobene Leiste ins Bild. Dieselbe Regel wie an der Kaufleiste der
+   Therapieseite; das Gleiten bleibt (visibility schaltet erst danach). */
+.dock__leib { transition: transform 0.36s var(--kurve), visibility 0s linear 0.36s; }
+.dock:not([data-sichtbar="ja"]) .dock__leib { visibility: hidden; }
+.dock[data-sichtbar="ja"] .dock__leib { visibility: visible; transition: transform 0.36s var(--kurve), visibility 0s linear 0s; }
 .dock__klein {
   margin-top: 6px;
   text-align: center;
@@ -2732,15 +2785,49 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
 }
 .shporta__faleminderit .knopf { margin-top: 10px; }
 
-/* Hinter der offenen Kasse scrollt die Seite nicht mit. Ohne das
-   wandert der Inhalt darunter weg, waehrend jemand tippt - und nach
-   dem Schliessen steht er woanders als vorher.
+/* ══ KASSE UND MITTEL SIND EINE EIGENE ANSICHT - KEIN FESTES FENSTER ══
  *
- * MIT :has() GEBUNDEN wie jede andere Regel an html und body auf
- * dieser Seite: Das Dokument gehoert dem Trichter, und die
- * Landingpage darf ihm nur vorschreiben, was gilt, solange sie der
- * aktive Bildschirm ist. */
-html.shporta-hapur:has(#ls-einstieg[data-aktiv="ja"]) { overflow: hidden; }
+ * DERSELBE FEHLER WIE AUF DER THERAPIESEITE (26.09.), und dieselbe
+ * Loesung (shared/lifeskin-ansicht.js). Kasse und Mittel-Blatt lagen als
+ * "position: fixed" ueber der Seite, die Kasse mit vier Feldern und dazu
+ * eine Scroll-Sperre (html overflow: hidden). Beim Tippen schob iOS
+ * (Safari, Instagram, Facebook) die Seite unter der Tastatur weg und
+ * liess sie nach dem Schliessen verschoben: Die feste Leiste unten
+ * ("Zbuloni rutinën tuaj") und die Still-Pille standen danach um die
+ * Tastaturhoehe zu hoch, mitten im Bildschirm.
+ *
+ * JETZT treten beide beim Oeffnen an die Stelle der Seite: Die Seite
+ * (#lp) und die Leiste (#dock) sind so lange weg, die Ansicht ist
+ * gewoehnlicher Inhalt im Dokument, und das Dokument scrollt. Keine
+ * Sperre, nichts Festes, nichts nachzurechnen. Die Leiste mit dem Knopf
+ * steht am Ende der Ansicht (margin-top: auto in einer Spalte, die
+ * mindestens so hoch ist wie das Fenster) - wie auf der Therapieseite. */
+/* :root statt html: Die Regel trifft nur #lp und #dock, und die gibt es
+   nur auf der Landingpage - sie fasst am Trichter nichts an. */
+:root[data-ansicht] #lp,
+:root[data-ansicht] #dock { display: none !important; }
+.shporta,
+.mjetiblatt {
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  /* Volle Breite (bis 560): Im Einstieg, einer Flex-Spalte, schrumpft ein
+     Kasten mit margin-inline: auto sonst auf seinen Inhalt. */
+  width: 100%;
+  height: auto;
+  min-height: 100vh;
+}
+@supports (height: 100svh) {
+  .shporta,
+  .mjetiblatt { height: auto; min-height: 100svh; }
+}
+.shporta__mes,
+.mjetiblatt__mes {
+  flex: 1 0 auto;
+  overflow: visible;
+}
+.shporta__faleminderit { flex: 1 0 auto; overflow: visible; }
+.shporta__leiste { margin-top: auto; }
 
 
 @media (min-width: 720px) {
@@ -3135,7 +3222,7 @@ html.shporta-hapur:has(#ls-einstieg[data-aktiv="ja"]) { overflow: hidden; }
   }
   .menyra:active, .profil:active, .knopf:active { transform: none; }
   .menyra:hover, .profil:hover { transform: none; }
-  .dock__leib { transition: none; }
+  .dock__leib, .dock[data-sichtbar="ja"] .dock__leib { transition: none; }
   .pyetje__trup { transition: none; }
   .kopf { transition: none; }
 }

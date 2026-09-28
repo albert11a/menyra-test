@@ -30,15 +30,15 @@ test("gesehen heisst wirklich im Bild, nicht nur eine Kante", () => {
 });
 
 test("jeder Bildschirm schreibt nur sein eigenes Feld, die Tiefe nur wenn sie waechst", () => {
-  assert.deepEqual(landingSichtPatch(3, 1), { v: 1, s3: true, tiefe: 3 });
-  assert.deepEqual(landingSichtPatch(2, 5), { v: 1, s2: true });
+  assert.deepEqual(landingSichtPatch(3, 1), { v: 2, s3: true, tiefe: 3 });
+  assert.deepEqual(landingSichtPatch(2, 5), { v: 2, s2: true });
   assert.equal(landingSichtPatch(10, 0), null);
   assert.equal(landingSichtPatch(0, 0), null);
 });
 
 test("ohne Scroll heisst: nur Bildschirm 1 gesehen", () => {
-  assert.deepEqual(landingWeiterPatch([1], 1), { v: 1, weg: "direkt", ab: 1, bisDahin: 1 });
-  assert.deepEqual(landingWeiterPatch([1, 2, 3], 3), { v: 1, weg: "scroll", ab: 3, bisDahin: 3 });
+  assert.deepEqual(landingWeiterPatch([1], 1), { v: 2, weg: "direkt", ab: 1, bisDahin: 1 });
+  assert.deepEqual(landingWeiterPatch([1, 2, 3], 3), { v: 2, weg: "scroll", ab: 3, bisDahin: 3 });
   assert.equal(landingWeiterPatch([], 0).weg, "direkt");
   assert.equal(landingWeiterPatch(new Set([1, 9]), 9).weg, "scroll");
 });
@@ -46,15 +46,29 @@ test("ohne Scroll heisst: nur Bildschirm 1 gesehen", () => {
 test("Heart liest den Stand - und ohne Messung ist nichts gemessen", () => {
   assert.equal(landingLesen({}).gemessen, false);
   assert.equal(landingLesen({ timings: { pfad: {} } }).gemessen, false);
-  const lp = landingLesen({ timings: { landing: { v: 1, s1: true, s2: true, s5: true, tiefe: 5, weg: "scroll", ab: 5, bisDahin: 5 } } });
+  const lp = landingLesen({ timings: { landing: { v: 2, s1: true, s2: true, s5: true, tiefe: 5, weg: "scroll", ab: 5, bisDahin: 5 } } });
   assert.deepEqual(lp.gesehen, [1, 2, 5]);
   assert.equal(lp.tiefe, 5);
   assert.equal(lp.weg, "scroll");
-  assert.equal(landingLesen({ timings: { landing: { v: 1, weg: "quatsch" } } }).weg, "");
+  assert.equal(landingLesen({ timings: { landing: { v: 2, weg: "quatsch" } } }).weg, "");
+});
+
+test("Messungen von vorher (Version 1) zaehlen in den Nummern von heute", () => {
+  // Version 1: 2 = "Si funksionon", 3 = die Faelle. Seit Version 2 stehen die
+  // Faelle gleich unter dem ersten Blick - 2 und 3 tauschen.
+  const alt = (felder) => landingLesen({ timings: { landing: { v: 1, ...felder } } });
+  assert.deepEqual(alt({ s1: true, s2: true, tiefe: 2 }).gesehen, [1, 3]);
+  assert.equal(alt({ s1: true, s2: true, tiefe: 2 }).tiefe, 3);
+  assert.deepEqual(alt({ s1: true, s2: true, s3: true, s5: true, tiefe: 5 }).gesehen, [1, 2, 3, 5]);
+  assert.deepEqual(alt({ s1: true, s3: true, tiefe: 3, ab: 3, bisDahin: 3, weg: "scroll" }),
+    { gemessen: true, gesehen: [1, 2], tiefe: 3, weg: "scroll", ab: 2, bisDahin: 3 });
+  const html = lies("apps/lifeskin-landing/index.html");
+  assert.ok(html.indexOf('id="held"') < html.indexOf('id="rezultatet"')
+    && html.indexOf('id="rezultatet"') < html.indexOf('id="pse"'), "die Faelle stehen nicht gleich unter dem ersten Blick");
 });
 
 test("der Landing-Trichter zaehlt nur gemessene Besuche und vergleicht beide Wege", () => {
-  const lp = (felder) => ({ timings: { landing: { v: 1, ...felder } } });
+  const lp = (felder) => ({ timings: { landing: { v: 2, ...felder } } });
   const sitzungen = [
     { id: "a", ...lp({ s1: true, weg: "direkt" }), step: "wahl" },
     { id: "b", ...lp({ s1: true, weg: "direkt" }), step: "result", warteseiteGeoeffnet: true, hatBestellt: true },
@@ -83,7 +97,7 @@ test("der Landing-Trichter zaehlt nur gemessene Besuche und vergleicht beide Weg
 
 test("Heart zeigt es an drei Stellen: Trichter, Fall-Chip, Fall-Ansicht", async () => {
   const { renderLandingInhalt } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
-  const html = renderLandingInhalt({ timings: { landing: { v: 1, s1: true, s2: true, s3: true, weg: "scroll", ab: 3, bisDahin: 3 } } });
+  const html = renderLandingInhalt({ timings: { landing: { v: 2, s1: true, s2: true, s3: true, weg: "scroll", ab: 3, bisDahin: 3 } } });
   assert.equal((html.match(/heart-schritte__zeile--an/g) || []).length, 3);
   assert.match(html, /hier zur Mënyra/);
   assert.match(html, /Mit Scroll zur Mënyra/);

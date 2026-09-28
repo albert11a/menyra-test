@@ -381,150 +381,33 @@
                ersetzt: Der erste Blick traegt jetzt die Reihe der drei
                Schritte, und die sagt mehr als eine Jahresangabe. -->
         </div>
-        <!-- DIE FAELLE SCHAUEN SCHON IM ERSTEN BILD HEREIN.
-             Der erste Blick ging genau in einem Bildschirm auf - er sah
-             aus wie die ganze Seite, und kaum jemand scrollte. Jetzt
-             steht unter dem Knopf ein echter Vorher/Nachher-Fall als
-             kleine, quer liegende Karte (weitere per Wischen), und
-             darunter schaut der naechste Abschnitt herein.
-
-             DIESELBEN FAELLE WIE UNTEN (#rastet), dieselben Dateien.
-             Pflegt Heart andere, setzt raste.js sie ein, BEVOR die Bilder
-             sichtbar werden (data-wartet) - so tauscht sich nie ein
-             sichtbares Bild gegen ein anderes aus. Ohne Skript stehen
-             diese vier einfach da. Welche Faelle hier oben stehen, legt
-             Heart je Fall fest ("Oben"). Ein Tipp fuehrt zu DEMSELBEN
-             Fall unten mit Produkten und Preis - gefunden ueber seine
-             Kennung (data-blick = data-rasti), nicht ueber die Stelle
-             (landing.js, Abschnitt 6).
-
-             Die Bilder tragen alt="": Der Link nennt den Fall, die
-             Aufnahmen stehen unten noch einmal mit Beschreibung. Sie
-             laden sofort (kein loading="lazy"), denn sie stehen im
-             ersten Bild. -->
-        <div class="blick" data-wartet data-anim data-anim-schritt="4">
-          <p class="blick__kopf">RASTE REALE · PARA DHE PAS</p>
-          <div class="blick__bahn" id="blick" role="group" aria-label="Raste reale: para dhe pas">
-            <a class="blick__fall" href="#rezultatet" data-blick="1" aria-label="Rasti 1: Akne inflamatore, para dhe pas 28 ditësh">
-              <span class="blick__halb"><picture><source srcset="/apps/lifeskin-landing/fotot/rasti-1-dita1.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-1-dita1.jpg" alt="" width="720" height="810" decoding="async" /></picture><span class="blick__etiket" aria-hidden="true">PARA</span></span>
-              <span class="blick__halb"><picture><source srcset="/apps/lifeskin-landing/fotot/rasti-1-dita28.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-1-dita28.jpg" alt="" width="720" height="810" decoding="async" /></picture><span class="blick__etiket blick__etiket--pas" aria-hidden="true">PAS</span></span>
-            </a>
-            <a class="blick__fall" href="#rezultatet" data-blick="2" aria-label="Rasti 2: Akne hormonale, para dhe pas 28 ditësh">
-              <span class="blick__halb"><picture><source srcset="/apps/lifeskin-landing/fotot/rasti-2-dita1.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-2-dita1.jpg" alt="" width="720" height="810" decoding="async" /></picture><span class="blick__etiket" aria-hidden="true">PARA</span></span>
-              <span class="blick__halb"><picture><source srcset="/apps/lifeskin-landing/fotot/rasti-2-dita28.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-2-dita28.jpg" alt="" width="720" height="810" decoding="async" /></picture><span class="blick__etiket blick__etiket--pas" aria-hidden="true">PAS</span></span>
-            </a>
-            <a class="blick__fall" href="#rezultatet" data-blick="3" aria-label="Rasti 3: Akne &amp; pore të mëdha, para dhe pas 28 ditësh">
-              <span class="blick__halb"><picture><source srcset="/apps/lifeskin-landing/fotot/rasti-3-dita1.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-3-dita1.jpg" alt="" width="720" height="810" loading="lazy" decoding="async" /></picture><span class="blick__etiket" aria-hidden="true">PARA</span></span>
-              <span class="blick__halb"><picture><source srcset="/apps/lifeskin-landing/fotot/rasti-3-dita28.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-3-dita28.jpg" alt="" width="720" height="810" loading="lazy" decoding="async" /></picture><span class="blick__etiket blick__etiket--pas" aria-hidden="true">PAS</span></span>
-            </a>
-            <a class="blick__fall" href="#rezultatet" data-blick="4" aria-label="Rasti 4: Njolla &amp; hiperpigmentim, para dhe pas 28 ditësh">
-              <span class="blick__halb"><picture><source srcset="/apps/lifeskin-landing/fotot/rasti-4-dita1.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-4-dita1.jpg" alt="" width="720" height="810" loading="lazy" decoding="async" /></picture><span class="blick__etiket" aria-hidden="true">PARA</span></span>
-              <span class="blick__halb"><picture><source srcset="/apps/lifeskin-landing/fotot/rasti-4-dita28.webp" type="image/webp" /><img src="/apps/lifeskin-landing/fotot/rasti-4-dita28.jpg" alt="" width="720" height="810" loading="lazy" decoding="async" /></picture><span class="blick__etiket blick__etiket--pas" aria-hidden="true">PAS</span></span>
-            </a>
-          </div>
-        </div>
       </section>
 
-      <!-- ══ B WIE DIE ZWEI NAMEN ZUSAMMENHAENGEN ══════════════════════
-           DERSELBE GRUND WIE DER ERSTE BLICK, und das ist der Punkt:
-           Hier lief unter dem ersten Blick ein Streifen einer anderen
-           Farbe an, sobald das Fenster ein paar Punkte hoeher war als
-           gedacht - ein angeschnittenes Band, das nach einem Fehler
-           aussah. Auf der ganzen Seite gibt es jetzt EINEN Grund; was
-           die Abschnitte trennt, ist Luft und die Ueberschrift, nicht
-           ein Farbwechsel ueber die volle Breite. Karten heben sich
-           weiterhin in Weiss ab - eine Karte ist ein Gegenstand, ein
-           Band ist nur Farbe.
+      <!-- ══ B DIE FAELLE UND IHRE PREISE - GLEICH UNTER DEM ERSTEN BLICK ══
+           HIER STANDEN ZWEI DINGE, DIE DASSELBE ZEIGTEN (Wunsch 27.09.).
+           Unter dem Knopf lief eine Reihe "RASTE REALE · PARA DHE PAS"
+           mit denselben Vorher/Nachher-Aufnahmen, zwei Abschnitte tiefer
+           kamen sie als "RASTE TË DOKUMENTUARA" noch einmal - jetzt mit
+           Produkten und Preis. Auf dem Telefon las sich das doppelt und
+           schwer: dieselben Gesichter zweimal, und wer oben schon genug
+           gesehen hatte, scrollte ueber die Karten mit dem Preis hinweg.
 
-           DREI SCHRITTE, UND SIE VERKAUFEN NICHT DAS PAKET, SONDERN DIE
-           BEGLEITUNG. Hier stand "Na tregoni çfarë ju shqetëson" mit den
-           Schritten Analizojmë / Përshtatim / Kujdesemi - drei Woerter,
-           die jeder Versandhaendler schreiben koennte, und der erste
-           passte nicht einmal: Man erzaehlt hier nichts, man WAEHLT
-           einen Weg.
+           JETZT GIBT ES DIE FAELLE EINMAL, und zwar dort, wo die Reihe
+           stand: unmittelbar unter dem Knopf. Die Karte traegt alles in
+           einem Blick - Aufnahmen, Befund, Mittel, Preis. Die Ueberschrift
+           ist kurz gehalten, damit die erste Karte im ersten Bild
+           hereinschaut (sie ersetzt die Reihe auch als Zeichen "hier geht
+           es weiter").
 
-           Jetzt sagt der Abschnitt das, was diese Marke von einem
-           Regal unterscheidet: Man waehlt die Methode selbst, die
-           Aerztin sieht JEDEN Fall an, und waehrend der 28 Tage ist
-           jemand erreichbar. Das ist der Grund, aus dem jemand hier
-           kauft und nicht in der Apotheke - und er stand nirgends auf
-           der Seite.
+           KEIN FLACKERN: Solange data-wartet an der Bahn steht, sind nur
+           die Aufnahmen durchsichtig. raste.js setzt die in Heart
+           gepflegten Faelle ein, BEVOR sie sichtbar werden, und nimmt das
+           Merkmal dann weg; ohne Antwort zeigt landing.js nach vier
+           Sekunden die Faelle aus dem HTML. Die zwei vorderen Karten
+           laden sofort (kein loading="lazy") - sie stehen im ersten Bild.
 
-           ══ WAS HIER NICHT STEHT UND WARUM ══
-           Kein Satz verspricht ein Ergebnis. Der Auftrag nannte
-           "brenda 28 ditëve do të keni arritje si në rastet e
-           dokumentuara" - das ist eine Zusage auf einen Heilungsverlauf,
-           und die darf eine Seite ueber Haut nicht geben. Was stehen
-           darf, ist der Ablauf: wie lange es dauert und wer sich in
-           dieser Zeit meldet.
-
-           ZU HALTEN IST, WAS HIER STEHT. "Gjatë saj jeni në kontakt me
-           Dr. Gashin" ist ein Versprechen ueber den Betrieb, nicht ueber
-           die Haut. Im Trichter gibt es dafuer keine Mechanik - kein
-           Termin, keine Erinnerung, kein Verlauf. Es muss also von Hand
-           passieren. -->
-      <section class="abschnitt" id="pse">
-        <div class="innen">
-          <p class="augenbraue" data-anim>SI FUNKSIONON</p>
-          <h2 class="titel" data-anim>Një terapi e ndjekur, jo vetëm një pako.</h2>
-          <p class="unter" data-anim>
-            Ju zgjidhni si të filloni. Pastaj Dr. Violeta Gashi e shqyrton
-            vetë lëkurën tuaj, përcakton setin që i përgjigjet asaj dhe ju
-            shoqëron gjatë 28 ditëve të terapisë.
-          </p>
-
-          <ol class="hapat" id="hapat">
-            <li data-anim>
-              <span class="hapi__nr" aria-hidden="true">01</span>
-              <div class="hapi__tekst">
-                <strong>Zgjidhni mënyrën</strong>
-                <span>
-                  Skanim automatik i fytyrës, foto e zonës që ju shqetëson,
-                  shqetësim në trup ose vetëm një pyetje. Ju vendosni.
-                </span>
-              </div>
-            </li>
-            <li data-anim>
-              <span class="hapi__nr" aria-hidden="true">02</span>
-              <div class="hapi__tekst">
-                <strong>Dr. Gashi e shqyrton vetë</strong>
-                <span>
-                  Aknet, njollat, poret, shenjat — çdo rast kalon nga dora
-                  e saj para se të përcaktohet seti juaj.
-                </span>
-              </div>
-            </li>
-            <li data-anim>
-              <span class="hapi__nr" aria-hidden="true">03</span>
-              <div class="hapi__tekst">
-                <strong>Ju përcjellim 28 ditë</strong>
-                <span>
-                  Terapia zgjat 28 ditë. Gjatë saj jeni në kontakt me
-                  Dr. Gashin, që rruga juaj të ndiqet javë pas jave.
-                </span>
-              </div>
-            </li>
-          </ol>
-        </div>
-      </section>
-
-      <!-- ══ C DIE FAELLE UND IHRE PREISE ══════════════════════════════
-           EIN ABSCHNITT, WO ZWEI WAREN. Hier standen "ÇMIMET" mit zwei
-           Set-Karten und unmittelbar darunter "RASTE TË DOKUMENTUARA"
-           mit vier Fall-Karten. Auf dem Telefon las sich das als
-           dieselbe Sache zweimal: zwei Aufnahmen nebeneinander, eine
-           Karte, ein paar Zeilen darunter - und in beiden Abschnitten
-           Frauengesichter, die einander aehnlich sehen. Wer scrollt,
-           merkt nicht, dass der zweite Abschnitt etwas anderes sagt;
-           er merkt, dass er dasselbe schon gesehen hat.
-
-           JETZT TRAEGT DIE FALL-KARTE DEN PREIS SELBST. Das ist mehr
-           als eine Zusammenlegung: Vorher stand der Preis an einem
-           Beispiel-Set und der Fall ohne Preis daneben, und wer wissen
-           wollte, was der Fall gekostet hat, musste zwei Abschnitte
-           zusammenrechnen. Jetzt steht an jedem Fall, welche Mittel es
-           waren und was sie kosten - Diagnose, Dauer, Mittel, Zahl, in
-           dieser Reihenfolge und in einem Blick.
+           JETZT TRAEGT DIE FALL-KARTE DEN PREIS SELBST: Diagnose, Dauer,
+           Mittel, Zahl, in dieser Reihenfolge und in einem Blick.
 
            DIE ZAHL IST NICHT DIE GROESSTE SCHRIFT DER KARTE. Sie soll
            beantwortet sein, bevor gefragt wird, und nicht das Erste
@@ -551,21 +434,19 @@
            waere genau die Art Beweis, die beim ersten Nachfragen
            zerfaellt. "Para/Pas" duerfen nur diese vier Paare tragen:
            Sie sind als Verlauf dokumentiert. -->
-      <section class="abschnitt abschnitt--stark" id="rezultatet">
+      <section class="abschnitt abschnitt--rastet" id="rezultatet">
         <div class="innen">
-          <p class="augenbraue" data-anim>RASTE TË DOKUMENTUARA</p>
+          <p class="augenbraue">RASTE REALE · PARA DHE PAS</p>
           <!-- KEIN GEDANKENSTRICH IN DER UEBERSCHRIFT: Er landete auf dem
                Telefon am Anfang der zweiten Zeile, und eine Zeile, die
                mit einem Strich beginnt, sieht nach einem Fehler aus. -->
-          <h2 class="titel" data-anim>Rezultate që shihen dhe çmimet e tyre.</h2>
-          <p class="unter" data-anim>
-            Pacientë që kanë bërë analizën dhe kanë ndjekur terapinë e
-            përshtatur për lëkurën e tyre. Te secili rast shihni edhe
-            produktet dhe çmimin e terapisë.
+          <h2 class="titel">Lëkura e tyre, 28 ditë më vonë.</h2>
+          <p class="unter">
+            Te çdo rast shihni cilat produkte përdori dhe sa kushtoi terapia.
           </p>
         </div>
 
-        <div class="rastet" id="rastet" data-anim tabindex="0" role="group"
+        <div class="rastet" id="rastet" data-wartet tabindex="0" role="group"
              aria-label="Raste reale: para dhe pas, me produktet dhe çmimin">
           <article class="rasti" data-rasti="1" data-produkte="2" data-cmim="39" data-verifikuar="jo">
             <div class="rasti__palet">
@@ -573,14 +454,14 @@
                 <picture><source srcset="/apps/lifeskin-landing/fotot/rasti-1-dita1.webp" type="image/webp" />
                 <img src="/apps/lifeskin-landing/fotot/rasti-1-dita1.jpg"
                      alt="Para: akne në faqe"
-                     width="720" height="810" loading="lazy" decoding="async" /></picture>
+                     width="720" height="810" decoding="async" /></picture>
                 <figcaption class="etiket">PARA</figcaption>
               </figure>
               <figure class="gjysma gjysma--fund">
                 <picture><source srcset="/apps/lifeskin-landing/fotot/rasti-1-dita28.webp" type="image/webp" />
                 <img src="/apps/lifeskin-landing/fotot/rasti-1-dita28.jpg"
                      alt="Pas 28 ditësh: lëkurë e qetësuar"
-                     width="720" height="810" loading="lazy" decoding="async" /></picture>
+                     width="720" height="810" decoding="async" /></picture>
                 <figcaption class="etiket etiket--fund">PAS</figcaption>
               </figure>
             </div>
@@ -604,14 +485,14 @@
                 <picture><source srcset="/apps/lifeskin-landing/fotot/rasti-2-dita1.webp" type="image/webp" />
                 <img src="/apps/lifeskin-landing/fotot/rasti-2-dita1.jpg"
                      alt="Para: puçrra dhe skuqje"
-                     width="720" height="810" loading="lazy" decoding="async" /></picture>
+                     width="720" height="810" decoding="async" /></picture>
                 <figcaption class="etiket">PARA</figcaption>
               </figure>
               <figure class="gjysma gjysma--fund">
                 <picture><source srcset="/apps/lifeskin-landing/fotot/rasti-2-dita28.webp" type="image/webp" />
                 <img src="/apps/lifeskin-landing/fotot/rasti-2-dita28.jpg"
                      alt="Pas 28 ditësh: ton i barabartë"
-                     width="720" height="810" loading="lazy" decoding="async" /></picture>
+                     width="720" height="810" decoding="async" /></picture>
                 <figcaption class="etiket etiket--fund">PAS</figcaption>
               </figure>
             </div>
@@ -702,6 +583,109 @@
         </div>
       </section>
 
+      <!-- ══ C WIE DIE ZWEI NAMEN ZUSAMMENHAENGEN ══════════════════════
+           DERSELBE GRUND WIE DER ERSTE BLICK, und das ist der Punkt:
+           Hier lief unter dem ersten Blick ein Streifen einer anderen
+           Farbe an, sobald das Fenster ein paar Punkte hoeher war als
+           gedacht - ein angeschnittenes Band, das nach einem Fehler
+           aussah. Auf der ganzen Seite gibt es jetzt EINEN Grund; was
+           die Abschnitte trennt, ist Luft und die Ueberschrift, nicht
+           ein Farbwechsel ueber die volle Breite. Karten heben sich
+           weiterhin in Weiss ab - eine Karte ist ein Gegenstand, ein
+           Band ist nur Farbe.
+
+           DREI SCHRITTE, UND SIE VERKAUFEN NICHT DAS PAKET, SONDERN DIE
+           BEGLEITUNG. Hier stand "Na tregoni çfarë ju shqetëson" mit den
+           Schritten Analizojmë / Përshtatim / Kujdesemi - drei Woerter,
+           die jeder Versandhaendler schreiben koennte, und der erste
+           passte nicht einmal: Man erzaehlt hier nichts, man WAEHLT
+           einen Weg.
+
+           Jetzt sagt der Abschnitt das, was diese Marke von einem
+           Regal unterscheidet: Man waehlt die Methode selbst, die
+           Aerztin sieht JEDEN Fall an, und waehrend der 28 Tage ist
+           jemand erreichbar. Das ist der Grund, aus dem jemand hier
+           kauft und nicht in der Apotheke - und er stand nirgends auf
+           der Seite.
+
+           ══ WAS HIER NICHT STEHT UND WARUM ══
+           Kein Satz verspricht ein Ergebnis. Der Auftrag nannte
+           "brenda 28 ditëve do të keni arritje si në rastet e
+           dokumentuara" - das ist eine Zusage auf einen Heilungsverlauf,
+           und die darf eine Seite ueber Haut nicht geben. Was stehen
+           darf, ist der Ablauf: wie lange es dauert und wer sich in
+           dieser Zeit meldet.
+
+           ZU HALTEN IST, WAS HIER STEHT. "Gjatë saj jeni në kontakt me
+           Dr. Gashin" ist ein Versprechen ueber den Betrieb, nicht ueber
+           die Haut. Im Trichter gibt es dafuer keine Mechanik - kein
+           Termin, keine Erinnerung, kein Verlauf. Es muss also von Hand
+           passieren. -->
+      <!-- SI FUNKSIONON, NEU GESCHRIEBEN (Wunsch 27.09.): "Një terapi e
+           ndjekur, jo vetëm një pako" war richtig gemeint und schwer zu
+           lesen. Jetzt sagt die Ueberschrift in zwei kurzen Saetzen, was
+           man bekommt, und jeder Schritt beginnt mit dem, was DER BESUCHER
+           tut oder bekommt - nicht mit dem, was wir tun.
+
+           ZEICHEN STATT NUMMERN (Lucide: scan-face, stethoscope,
+           calendar-check). Die Reihenfolge sagt die Linie dazwischen;
+           das Zeichen sagt, worum es im Schritt geht.
+
+           DIE DREI ZUSAGEN DARUNTER sind dieselben wie an der Kasse
+           (Dërgesa falas, Pagesa te dera, 45 ditë garanci) - hier stehen
+           sie, bevor jemand fragt, was es kostet, es zu versuchen. -->
+      <section class="abschnitt" id="pse">
+        <div class="innen">
+          <p class="augenbraue" data-anim>SI FUNKSIONON</p>
+          <h2 class="titel" data-anim>Nuk merrni vetëm një pako. Merrni një terapi të ndjekur.</h2>
+          <p class="unter" data-anim>
+            Tre hapa të thjeshtë, nga analiza deri te rutina juaj e
+            përditshme. Gjatë gjithë kohës, Dr. Violeta Gashi është
+            pranë jush.
+          </p>
+
+          <ol class="hapat" id="hapat">
+            <li data-anim>
+              <span class="hapi__nr hapi__nr--zeichen" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01"/><path d="M15 9h.01"/></svg></span>
+              <div class="hapi__tekst">
+                <strong>Tregoni lëkurën tuaj</strong>
+                <span>
+                  Me skanim të fytyrës, me një foto ose me disa fjalë.
+                  Analiza është falas dhe pa detyrim për blerje.
+                </span>
+              </div>
+            </li>
+            <li data-anim>
+              <span class="hapi__nr hapi__nr--zeichen" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2v2"/><path d="M5 2v2"/><path d="M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1"/><path d="M8 15a6 6 0 0 0 12 0v-3"/><circle cx="20" cy="10" r="2"/></svg></span>
+              <div class="hapi__tekst">
+                <strong>Dr. Gashi zgjedh produktet</strong>
+                <span>
+                  Ajo e shikon vetë çdo rast: aknet, njollat, poret ose
+                  shenjat. Merrni vetëm atë që i duhet lëkurës suaj.
+                </span>
+              </div>
+            </li>
+            <li data-anim>
+              <span class="hapi__nr hapi__nr--zeichen" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/></svg></span>
+              <div class="hapi__tekst">
+                <strong>Ju ndjekim 28 ditë</strong>
+                <span>
+                  Ju tregojmë si t'i përdorni produktet. Gjatë terapisë jeni
+                  në kontakt me Dr. Gashin, javë pas jave.
+                </span>
+              </div>
+            </li>
+          </ol>
+
+          <ul class="zusagen" data-anim>
+            <li><span class="zusagen__zeichen" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg></span>Dërgesa falas</li>
+            <li><span class="zusagen__zeichen" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg></span>Paguani te dera</li>
+            <li><span class="zusagen__zeichen" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span>45 ditë garanci</li>
+          </ul>
+        </div>
+      </section>
+
+
 
       <!-- ══ C2 DIE MITTEL SELBST ═══════════════════════════════════════
            UNMITTELBAR HINTER DEN BELEGTEN FAELLEN, und das ist der ganze
@@ -726,11 +710,15 @@
            Raster ist schlechter als kein Abschnitt. -->
       <section class="abschnitt" id="produktet" hidden>
         <div class="innen">
+          <!-- NEU GESCHRIEBEN (Wunsch 27.09.): "Mjetet me të cilat
+               punojmë" sprach von uns. Jetzt spricht der Abschnitt von
+               den Faellen darueber - es sind dieselben Produkte - und
+               sagt in einem Satz, wie man zu seinen kommt. -->
           <p class="augenbraue" data-anim>PRODUKTET LIFESKIN</p>
-          <h2 class="titel" data-anim>Mjetet me të cilat punojmë.</h2>
+          <h2 class="titel" data-anim>Produktet pas këtyre rezultateve.</h2>
           <p class="unter" data-anim>
-            Cilat prej tyre ju duhen, e tregon analiza. Nëse e dini tashmë
-            çfarë ju nevojitet, mund ta porosisni edhe veç e veç.
+            Analiza falas ju tregon cilat ju duhen juve. Nëse e dini
+            tashmë, porositni direkt: prekni një produkt për ta parë nga afër.
           </p>
 
           <!-- Das Raster fuellt shop.js. Es bleibt leer im Aufbau: Was
@@ -739,8 +727,9 @@
           <div class="rrjeta" id="rrjeta"></div>
 
           <p class="rrjeta__fund" data-anim>
-            1 produkt 29 €, 2 produkte 39 €, 3 produkte 49 €. Dërgesa e
-            përfshirë, paguani te dera kur e merrni pakon.
+            Sa më shumë produkte, aq më lirë secili: 1 produkt 29 €,
+            2 produkte 39 €, 3 produkte 49 €. Dërgesa falas, paguani te
+            dera kur e merrni pakon.
           </p>
         </div>
       </section>

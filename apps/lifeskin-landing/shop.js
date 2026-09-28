@@ -62,6 +62,7 @@ import {
 import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 import { pixelKennungen } from "../lifeskin/lifeskin-pixel.js";
 import { preisFuer } from "../../shared/lifeskin-preise.js";
+import { ansichtOeffnen, ansichtSchliessen } from "../../shared/lifeskin-ansicht.js";
 
 /* Unter jeder Zeile im Korb: die Staffel statt "33 € për produkt". */
 const PREIS_ZEILE = `1 produkt ${preisFuer(1)} € · 2 produkte ${preisFuer(2)} € · 3 produkte ${preisFuer(3)} €`;
@@ -618,9 +619,9 @@ export class Laden {
       ${anwendungBlock}`;
   }
 
-  /* Aufmachen und zumachen. Derselbe Griff wie bei der Kasse: Das
-     Dokument gehoert dem Trichter, gesperrt wird ueber eine Klasse am
-     Wurzelelement, und der Fokus wandert in das Blatt. */
+  /* Aufmachen und zumachen. Derselbe Griff wie bei der Kasse: Das Blatt
+     tritt an die Stelle der Seite (shared/lifeskin-ansicht.js) - kein
+     festes Fenster, keine Scroll-Sperre -, und der Fokus wandert hinein. */
   #blattOeffnen(id) {
     const m = this.mittel.find((mittel) => mittel.id === id);
     const blatt = $("#mjetiblatt", this.dok);
@@ -633,8 +634,7 @@ export class Laden {
     trup.scrollTop = 0;
     const knopftext = $("#mjetiblatt-shtotekst", this.dok);
     if (knopftext) knopftext.textContent = `Shto në shportë · ${m.cmimi} €`;
-    blatt.hidden = false;
-    this.dok.documentElement.classList.add("shporta-hapur");
+    ansichtOeffnen(blatt, "mjeti", { dokument: this.dok });
     $("[data-mjeti-mbyll]", blatt)?.focus({ preventScroll: true });
 
     /* WER EIN MITTEL AUFMACHT, HAT ES ANGESEHEN - und genau das ist
@@ -647,13 +647,8 @@ export class Laden {
   #blattSchliessen() {
     const blatt = $("#mjetiblatt", this.dok);
     if (!blatt || blatt.hidden) return;
-    blatt.hidden = true;
     this.offenesMittel = "";
-    /* Nur, wenn nicht gerade die Kasse offensteht: Sonst gibt das
-       Zumachen des Blattes die Seite hinter der Kasse wieder frei. */
-    if ($("#shporta", this.dok)?.hidden !== false) {
-      this.dok.documentElement.classList.remove("shporta-hapur");
-    }
+    ansichtSchliessen(blatt, { dokument: this.dok });
   }
 
   /* ── Der Korb an seinen drei Stellen ─────────────────────────────
@@ -813,10 +808,17 @@ export class Laden {
          die Meldung "An der Kasse" haengt daran. Einmal je Besuch. */
       this.#merke({ kasseGeoeffnet: true, kasseGeoeffnetAt: new Date().toISOString() }, "kasseGeoeffnet");
     }
-    blatt.hidden = !auf;
-    /* Hinter einem offenen Blatt soll die Seite nicht mitscrollen. */
-    this.dok.documentElement.classList.toggle("shporta-hapur", auf);
-    if (auf) $("#shporta-emri", this.dok)?.focus({ preventScroll: true });
+    /* DIE KASSE TRITT AN DIE STELLE DER SEITE (shared/lifeskin-ansicht.js)
+       und liegt nicht mehr als festes Fenster mit Scroll-Sperre darueber.
+       So gebaut schob iOS beim Tippen die Seite unter der Tastatur weg,
+       und nach dem Schliessen stand die feste Leiste unten mitten im
+       Bild - derselbe Fehler wie auf der Therapieseite. */
+    if (auf) {
+      ansichtOeffnen(blatt, "kasse", { dokument: this.dok });
+      $("#shporta-emri", this.dok)?.focus({ preventScroll: true });
+    } else {
+      ansichtSchliessen(blatt, { dokument: this.dok });
+    }
   }
 
   #ereignisse() {

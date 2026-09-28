@@ -24,8 +24,8 @@
 
 export const LANDING_SCHIRME = Object.freeze([
   { nr: 1, id: "held", label: "Keni provuar shumë produkte" },
-  { nr: 2, id: "pse", label: "Si funksionon" },
-  { nr: 3, id: "rezultatet", label: "Raste të dokumentuara" },
+  { nr: 2, id: "rezultatet", label: "Raste reale · para dhe pas" },
+  { nr: 3, id: "pse", label: "Si funksionon" },
   { nr: 4, id: "produktet", label: "Produktet LifeSkin" },
   { nr: 5, id: "menyrat", label: "Hapi i parë · zgjedhja" },
   { nr: 6, id: "mjekja", label: "Ekspertiza" },
@@ -34,7 +34,25 @@ export const LANDING_SCHIRME = Object.freeze([
   { nr: 9, id: "fund", label: "Hapi i parë është falas" }
 ].map((s) => Object.freeze(s)));
 
-export const LANDING_VERSION = 1;
+// VERSION 2 (28.09.): Die Faelle stehen jetzt gleich unter dem ersten
+// Blick, "Si funksionon" danach. Die Nummern folgen der Seite, also
+// tauschen 2 und 3. Messungen der Version 1 liest landingLesen() in die
+// neuen Nummern um (V1_NACH_V2) - so zaehlt Heart alte und neue Besuche
+// in derselben Stufe.
+export const LANDING_VERSION = 2;
+const V1_NACH_V2 = Object.freeze({ 2: 3, 3: 2 });
+
+// Version 1 in die Nummern von heute. Die Tiefe ist das Hoechste, was
+// jemand gesehen hat: Alt 2 (bis "Si funksionon") ist heute 3; alt 3
+// (bis zu den Faellen, also auch an "Si funksionon" vorbei) bleibt 3.
+function ausV1(roh) {
+  const um = (n) => V1_NACH_V2[n] || n;
+  const tiefe = (n) => (Number(n) === 2 ? 3 : Number(n) || 0);
+  const neu = { ...roh, tiefe: tiefe(roh.tiefe), bisDahin: tiefe(roh.bisDahin), ab: um(Number(roh.ab) || 0) };
+  for (const n of [2, 3]) delete neu[`s${n}`];
+  for (const n of [2, 3]) if (roh[`s${n}`] === true) neu[`s${um(n)}`] = true;
+  return neu;
+}
 
 // Gilt ein Bildschirm als gesehen? Er muss wirklich im Bild gestanden
 // haben, nicht nur mit einer Kante: mindestens 40 % des Fensters - oder,
@@ -71,6 +89,7 @@ export function landingLesen(sitzung) {
   if (!roh || typeof roh !== "object" || !Number(roh.v)) {
     return { gemessen: false, gesehen: [], tiefe: 0, weg: "", ab: 0, bisDahin: 0 };
   }
+  if (Number(roh.v) === 1) return landingLesen({ timings: { landing: { ...ausV1(roh), v: LANDING_VERSION } } });
   const gesehen = LANDING_SCHIRME.filter((s) => roh[`s${s.nr}`] === true).map((s) => s.nr);
   const tiefe = Math.max(Number(roh.tiefe) || 0, ...gesehen, 0);
   const weg = roh.weg === "scroll" || roh.weg === "direkt" ? roh.weg : "";
