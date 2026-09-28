@@ -513,6 +513,12 @@ export function bindHeartEvents({
       await operations.lifeskinKommentar?.(target.getAttribute("data-was"), target.getAttribute("data-medium"), target.getAttribute("data-id"));
       return;
     }
+    // Das Titelbild des Ladens. Ohne await: Die Dateiwahl muss im Griff
+    // des Fingers aufgehen.
+    if (action === "lifeskin-shophero-waehlen") { operations.shopHeroWaehlen?.(); return; }
+    if (action === "lifeskin-shophero-zu") { operations.shopHeroZu?.(); return; }
+    if (action === "lifeskin-shophero-speichern") { await operations.shopHeroSpeichern?.(); return; }
+    if (action === "lifeskin-shophero-weg") { await operations.shopHeroWeg?.(); return; }
     // Die Sets des Ladens (heart-lifeskin-shopsets.js).
     if (action === "lifeskin-shopset") { operations.openShopSet?.(target.getAttribute("data-id")); return; }
     if (action === "lifeskin-shopset-neu") { operations.neuesShopSet?.(); return; }

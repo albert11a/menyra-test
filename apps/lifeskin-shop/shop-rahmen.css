@@ -40,6 +40,11 @@ body:has(#ls-einstieg[data-aktiv="ja"]) { font-size: 16px; line-height: normal; 
   transform: translate(-50%, -100%);
 }
 
+/* Das Titelbild aus Heart ist schon auf 7:5 zugeschnitten: Der Rahmen
+   nimmt genau dieses Verhaeltnis, damit nichts mehr abgeschnitten wird. */
+#ls-einstieg .hero-photo[data-eigen] { height: auto; aspect-ratio: 7 / 5; }
+#ls-einstieg .hero-photo[data-eigen] > img { object-position: 50% 50%; }
+
 /* ── Die Faelle zum Wischen ─────────────────────────────────────────── */
 #ls-einstieg .proof-bahn {
   display: flex;

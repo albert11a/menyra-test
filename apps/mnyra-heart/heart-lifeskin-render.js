@@ -36,7 +36,7 @@ import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 import { renderRaste, renderRastiEditor, renderBefundRasteAuswahl, rasteListe } from "./heart-lifeskin-raste.js";
 import { klappAttr, alsKlapp } from "./heart-lifeskin-klapp.js";
 import { nachWeg, baueLs2Weg, baueShopWeg, dauerText as ls2Dauer } from "./heart-lifeskin-weg.js";
-import { renderShopSetet, renderShopSetEditor } from "./heart-lifeskin-shopsets.js";
+import { renderShopSetet, renderShopSetEditor, renderShopHero, renderShopHeroEditor } from "./heart-lifeskin-shopsets.js";
 import { wegGueltig } from "../../shared/lifeskin-weg.js";
 import { entwurfLesen, promptGemacht } from "./heart-lifeskin-entwurf.js";
 import { mitFingerabdruck } from "./heart-morph.js";
@@ -3249,6 +3249,10 @@ export function renderLifeskin(zustand) {
     return `<div class="heart-lifeskin">${renderRastiEditor(zustand, produkte || [])}</div>`;
   }
 
+  if (zustand.shopHeroRoh) {
+    return `<div class="heart-lifeskin">${renderShopHeroEditor(zustand)}</div>`;
+  }
+
   if (zustand.shopSetOffen) {
     return `<div class="heart-lifeskin">${renderShopSetEditor(zustand, produkte || [])}</div>`;
   }
@@ -3339,6 +3343,7 @@ export function renderLifeskin(zustand) {
           ${renderStillLinks(zustandWeg)}
           ${alsKlapp(renderHerkunft(baueHerkunft(imBlick)), "herkunft", { standard: false })}
           ${alsKlapp(renderProdukte(produkte), "produkte", { standard: false })}
+          ${weg === "lifeskinshop" ? renderShopHero(zustand) : ""}
           ${weg === "lifeskinshop" ? renderShopSetet(zustand, produkte || []) : ""}
           ${renderRaste(zustand)}
           ${renderMedien(zustand)}

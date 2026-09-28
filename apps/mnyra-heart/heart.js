@@ -59,12 +59,13 @@ import { ladeLifeskin, ladeLifeskinSeit, horcheLive, ladeFotos, ladeErstesFoto, 
   ladeBericht, setzeVersand, speichereAnbieter,
   ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX,
   speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder,
-  speichereShopSetet, ladeShopSetFoto, speichereShopSetFoto, loescheShopSetFoto,
+  speichereShopSetet, ladeShopSetFoto, speichereShopSetFoto, loescheShopSetFoto, speichereShopHero, loescheShopHero,
   ladeMedien, speichereMedien, speichereMedium, loescheMedium, ladeKommentare, setzeKommentarVerborgen, loescheKommentar, schreibeKommentare } from "./heart-lifeskin-adapter.js";
 import { medienListe, mediumNormalisieren, neueMediumId } from "../../shared/lifeskin-medien.js";
 import { kommentarVorschauSetzen } from "./heart-lifeskin-medien.js";
 import { rasteListe, klappSetzen, klappOffen, rastiDom } from "./heart-lifeskin-raste.js";
 import { shopSetetListe } from "./heart-lifeskin-shopsets.js";
+import { schnittHoeren, schnittErgebnis, schnittZurueck } from "./heart-lifeskin-schnitt.js";
 import { setetNormalisieren, setNormalisieren, neueSetId, SET_PRODUKTE_MAX } from "../../shared/lifeskin-shop-sets.js";
 import { entwurfSchreiben, entwurfLoeschen, entwurfAusBogen, promptMerken } from "./heart-lifeskin-entwurf.js";
 import { befundStandAuffrischen, befundFelderAnpassen } from "./heart-lifeskin-befundstand.js";
@@ -2509,6 +2510,63 @@ async function shopSetSchieben(id, richtung) {
   await shopSetetSchreiben(liste, "");
 }
 
+// ══ DAS TITELBILD DES LADENS - waehlen, zuschneiden, speichern ════════
+// Zuschneiden: heart-lifeskin-schnitt.js (reines DOM, ohne Neuzeichnen).
+function shopHeroWaehlen() {
+  schnittHoeren();
+  oeffneDateiwahl(false, async (dateien) => {
+    try {
+      // Gross genug zum Zoomen, klein genug fuer den Speicher des Telefons.
+      const roh = await produktfotoLesen(dateien[0], 2400, 6000000);
+      schnittZurueck();
+      actions.patchLifeskin({ shopHeroRoh: roh, shopHeroStatus: "" });
+    } catch (fehler) {
+      setToast("Shop-Titelbild", fehler?.message || "Das Bild liess sich nicht lesen.", "danger");
+    }
+  });
+}
+
+function shopHeroZu() {
+  schnittZurueck();
+  klappSetzen("mehr", true);
+  klappSetzen("shophero", true);
+  actions.patchLifeskin({ shopHeroRoh: "", shopHeroStatus: "" });
+}
+
+async function shopHeroSpeichern() {
+  const stand = store.getState().lifeskin || {};
+  if (!stand.shopHeroRoh || stand.shopHeroStatus) return;
+  let foto;
+  try { foto = schnittErgebnis(1400, 450000); }
+  catch (fehler) { setToast("Shop-Titelbild", fehler?.message || "Zuschneiden fehlgeschlagen.", "danger"); return; }
+  actions.patchLifeskin({ shopHeroStatus: "laeuft" });
+  try {
+    await speichereShopHero(foto);
+    schnittZurueck();
+    klappSetzen("mehr", true);
+    klappSetzen("shophero", true);
+    actions.patchLifeskin({ shopHero: foto, shopHeroRoh: "", shopHeroStatus: "" });
+    setToast("Shop-Titelbild", "Gespeichert – steht jetzt oben im Shop.", "success");
+  } catch (fehler) {
+    actions.patchLifeskin({ shopHeroStatus: "" });
+    setToast("Shop-Titelbild", fehler?.message || "Speichern fehlgeschlagen.", "danger");
+  }
+}
+
+async function shopHeroWeg() {
+  const stand = store.getState().lifeskin || {};
+  if (stand.shopHeroStatus) return;
+  actions.patchLifeskin({ shopHeroStatus: "laeuft" });
+  try {
+    await loescheShopHero();
+    actions.patchLifeskin({ shopHero: "", shopHeroStatus: "" });
+    setToast("Shop-Titelbild", "Wieder das Standardbild.", "success");
+  } catch (fehler) {
+    actions.patchLifeskin({ shopHeroStatus: "" });
+    setToast("Shop-Titelbild", fehler?.message || "Fehlgeschlagen.", "danger");
+  }
+}
+
 async function lifeskinRastiSchieben(id, richtung) {
   const stand = store.getState().lifeskin || {};
   if (stand.rasteStatus) return;
@@ -3884,6 +3942,10 @@ const operations = {
   openLifeskinRasti(id) { oeffneLifeskinRasti(id); },
   // Die Sets des Ladens (/lifeskinshop).
   openShopSet(id) { oeffneShopSet(id); },
+  shopHeroWaehlen() { shopHeroWaehlen(); },
+  shopHeroZu() { shopHeroZu(); },
+  shopHeroSpeichern() { return shopHeroSpeichern(); },
+  shopHeroWeg() { return shopHeroWeg(); },
   neuesShopSet() {
     actions.patchLifeskin({ shopSetOffen: "__neu", shopSetEntwurf: null, shopSetLoeschen: false, shopSetStatus: "", shopSetBildStatus: "" });
   },
