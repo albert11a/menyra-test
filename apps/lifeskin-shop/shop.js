@@ -106,6 +106,11 @@ async function holeDok(name, holen = fetch) {
   return karte(d.fields || {});
 }
 
+export function einzelAusSets(mittel, setet) {
+  const imSet = new Set((setet || []).flatMap((s) => s.produkte || []));
+  return imSet.size ? (mittel || []).filter((m) => imSet.has(m.id)) : (mittel || []);
+}
+
 export class Dyqan {
   constructor({ dokument = document, speicher = globalThis.sessionStorage, holen, trichter } = {}) {
     this.dok = dokument;
@@ -231,10 +236,17 @@ export class Dyqan {
     if (preis) preis.textContent = `${preisFuer(erstes.produkte.length)} €`;
   }
 
+  // Einzeln verkauft wird, was in einem Set steht, das im Shop ist (Wunsch
+  // 28.09.: vorerst nur LF ACNE und LF MOISTUR). Schaltet Heart ein Set ein,
+  // kommen seine Mittel hier dazu. Ohne Sets: alle Mittel.
+  einzelMittel() {
+    return einzelAusSets(this.mittel, this.setet);
+  }
+
   #zeichneMittel() {
     const raster = $("#single-grid", this.dok);
     if (!raster) return;
-    raster.innerHTML = this.mittel.map((m) => `<article class="single-card"><button type="button" class="single-card__bild" data-mjeti="${e(m.id)}" aria-label="Shihni ${e(m.name)}"><img src="${e(m.fotot[0])}" alt="${e(m.name)}" width="300" height="375" loading="lazy"></button><h3>${e(m.name)}</h3><p>${e(MITTEL_NENTITUJ[m.id] || m.kurztext || m.nenName || "")}${m.inhalt ? ` · ${e(m.inhalt)}` : ""}</p><button type="button" data-single="${e(m.id)}" aria-label="Shtoni ${e(m.name)}, ${preisFuer(1)} euro">${preisFuer(1)} € ${ikone("Plus")}</button></article>`).join("");
+    raster.innerHTML = this.einzelMittel().map((m) => `<article class="single-card"><button type="button" class="single-card__bild" data-mjeti="${e(m.id)}" aria-label="Shihni ${e(m.name)}"><img src="${e(m.fotot[0])}" alt="${e(m.name)}" width="300" height="375" loading="lazy"></button><h3>${e(m.name)}</h3><p>${e(MITTEL_NENTITUJ[m.id] || m.kurztext || m.nenName || "")}${m.inhalt ? ` · ${e(m.inhalt)}` : ""}</p><button type="button" data-single="${e(m.id)}" aria-label="Shtoni ${e(m.name)}, ${preisFuer(1)} euro">${preisFuer(1)} € ${ikone("Plus")}</button></article>`).join("");
   }
 
   #zeichneFaelle(faelle) {
@@ -356,7 +368,7 @@ export class Dyqan {
   }
 
   mittelLegen(id) {
-    if (!this.mittelVon(id)) return;
+    if (!this.einzelMittel().some((m) => m.id === id)) return;
     if (!this.korb.ids.includes(id)) this.korb.ids.push(id);
     this.korb.set = "";
     this.#nachLegen();
