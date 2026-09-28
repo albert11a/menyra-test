@@ -174,10 +174,10 @@ test("Heart: die Tabs trennen die Faelle - der Shop steht nicht im alten Tab", a
   assert.deepEqual(mitWegFaellen(zustand, "").ndjekja.faelle.map((f) => f.kennung), ["a", "ohne"]);
 });
 
-test("vorerst nur das Akne-Set im Shop; die anderen schaltet Heart ein", async () => {
+test("Acne-Duo-Kampagne mit kompaktem Produktnutzen statt grosser Setkarte", async () => {
   const { setetOderStandard, aktiveSetet } = await import("../shared/lifeskin-shop-sets.js");
   assert.deepEqual(aktiveSetet(setetOderStandard(null)).map((s) => s.id), ["acne"]);
-  assert.equal((HTML.match(/class="set-card"/g) || []).length, 1, "der Aufbau zeigt nur das Akne-Set");
+  assert.equal((HTML.match(/class="duo-card"/g) || []).length, 1, "der Aufbau zeigt nur das Akne-Set");
   assert.doesNotMatch(HTML + SHOP, /thellesi/, "'Seti në detaje' ist auf Wunsch weg");
 });
 
@@ -233,4 +233,21 @@ test("Titelbild: in Heart zuschneiden (7:5), der Shop nimmt es aus config/shopHe
   await new Dyqan({ dokument: { querySelector: () => rahmen2, defaultView: {} }, speicher: null, holen: async () => ({ ok: false, status: 404 }) }).titelbild();
   assert.equal(leer.src, "alt", "ohne eigenes Bild bleibt das Standardbild");
   assert.match(lies("apps/lifeskin-shop/shop-rahmen.css"), /\.hero-photo\[data-eigen\] \{ height: auto; aspect-ratio: 7 \/ 5; \}/);
+});
+
+
+test("Acne-Duo-Kampagne laesst keine weiteren Sets oder halben Koerbe zu", async () => {
+  const { acneDuoSets, acneDuoCart, duoCard } = await import("../apps/lifeskin-shop/shop.js");
+  const duo={id:"custom-acne",produkte:["lf-moistur","lf-acne"]};
+  const sets=acneDuoSets([{id:"other",produkte:["lf-pigment","lf-moistur"]},duo,{id:"extra",produkte:["lf-acne","lf-moistur","lf-pore"]}]);
+  assert.deepEqual(sets,[duo]);
+  assert.deepEqual(acneDuoCart({ids:["lf-acne"],set:""},sets),{ids:[],set:""});
+  assert.deepEqual(acneDuoCart({ids:["lf-acne","lf-moistur"],set:"old"},sets),{ids:duo.produkte,set:duo.id});
+  assert.deepEqual(acneDuoCart({ids:duo.produkte},[]),{ids:[],set:""});
+  const card=duoCard(duo,[]);
+  assert.equal((card.match(/<details/g)||[]).length,2);
+  assert.match(card,/Për vetëm 10 € më shumë/);
+  assert.match(card,/data-set="custom-acne"/);
+  assert.doesNotMatch(card,/data-single|<img/);
+  assert.doesNotMatch(HTML,/class="singles"|data-filter|data-single/);
 });

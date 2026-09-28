@@ -111,6 +111,24 @@ export function einzelAusSets(mittel, setet) {
   return imSet.size ? (mittel || []).filter((m) => imSet.has(m.id)) : (mittel || []);
 }
 
+// Current campaign sells only this complete duo; Heart still owns its title and images.
+export function acneDuoSets(sets) {
+  return (sets || []).filter(s => s.produkte?.length === 2 && s.produkte.includes('lf-acne') && s.produkte.includes('lf-moistur')).slice(0, 1);
+}
+export function acneDuoCart(cart, sets) {
+  const duo=sets[0];
+  const complete=duo && cart.ids?.length===2 && duo.produkte.every(id=>cart.ids.includes(id));
+  return complete ? {ids:[...duo.produkte],set:duo.id} : {ids:[],set:''};
+}
+export function duoCard(s, mittel) {
+  const price=preisFuer(2), extra=price-preisFuer(1), saving=2*preisFuer(1)-price;
+  const roles=[['lf-acne','Target','01','Kujdesi për aknet','Kujdes i përqendruar për lëkurën me akne.'],['lf-moistur','Droplets','02','Hidratimi që e plotëson','Kujdes për hidratimin dhe barrierën e lëkurës.']];
+  return `<article class="duo-card"><div class="duo-products">${roles.map(([id,icon,n,title,description])=>{
+    const m=mittel.find(m=>m.id===id);
+    return `<details class="duo-product"><summary><span class="duo-product-icon">${ikone(icon)}</span><span class="duo-product-label"><small>${n} · ${e(m?.name || id.toUpperCase().replace('LF-','LF '))}</small><strong>${title}</strong></span>${ikone('Plus')}</summary><div class="duo-product-body"><p>${description}</p><dl><div><dt>Përmbajtja</dt><dd>${e(m?.inhalt || '30 ml')}</dd></div><div><dt>Në set</dt><dd>1 produkt</dd></div></dl><p class="duo-use">Ndiqni udhëzimet e produktit dhe rekomandimin për lëkurën tuaj.</p></div></details>`;
+  }).join('')}</div><div class="duo-value"><span class="duo-value-label">PSE T'I MERRNI SË BASHKU?</span><p>LF ACNE veçmas kushton ${preisFuer(1)} €. <strong>Për vetëm ${extra} € më shumë, merrni edhe LF MOISTUR.</strong></p><div class="duo-total"><span>Seti i plotë · 2 × 30 ml<small>Veçmas ${2*preisFuer(1)} € · Kurseni ${saving} €</small></span><strong>${price} €</strong></div></div><button type="button" class="primary" data-set="${e(s.id)}">Porosit setin e plotë · ${price} € ${ikone('ArrowUpRight')}</button><p class="duo-payment">Dërgesa e përfshirë · Paguani kur merrni pakon</p></article>`;
+}
+
 export class Dyqan {
   constructor({ dokument = document, speicher = globalThis.sessionStorage, holen, trichter } = {}) {
     this.dok = dokument;
@@ -121,7 +139,9 @@ export class Dyqan {
     this.trichterFn = trichter || (() => globalThis.__lifeskinTrichter);
     this.korb = korbLesen(this.speicher);
     this.mittel = mittelBauen([], this.#standardFotos(new Map()));
-    this.setet = aktiveSetet(setetNormalisieren(SETET_STANDARD));
+    this.setet = acneDuoSets(aktiveSetet(setetNormalisieren(SETET_STANDARD)));
+    this.korb = acneDuoCart(this.korb, this.setet);
+    korbSchreiben(this.speicher, this.korb);
     this.setFotos = new Map();
     this.gemerkt = new Set();
     this.filter = "all";
@@ -198,9 +218,9 @@ export class Dyqan {
 
     // Die Sets: aus Heart, nur mit Mitteln, die es zu kaufen gibt.
     const da = new Set(this.mittel.map((m) => m.id));
-    this.setet = aktiveSetet(setetOderStandard(setDok))
+    this.setet = acneDuoSets(aktiveSetet(setetOderStandard(setDok)))
       .map((s) => ({ ...s, produkte: s.produkte.filter((id) => da.has(id)) }))
-      .filter((s) => s.produkte.length > 0);
+      .filter((s) => s.produkte.length === 2);
     await Promise.all(this.setet.filter((s) => s.bild).map(async (s) => {
       try {
         const d = await holeDok(`${SET_FOTO_PRAEFIX}${s.id}`, this.holen);
@@ -208,7 +228,8 @@ export class Dyqan {
       } catch { /* dann das Bild des ersten Mittels */ }
     }));
     // Der Korb darf nur Mittel tragen, die es noch gibt.
-    this.korb.ids = this.korb.ids.filter((id) => da.has(id));
+    this.korb = acneDuoCart(this.korb, this.setet);
+    korbSchreiben(this.speicher, this.korb);
     this.#zeichneSetet();
     this.#zeichneMittel();
     this.#korbZahl();
@@ -232,12 +253,11 @@ export class Dyqan {
   // ── Zeichnen ──────────────────────────────────────────────────────
   #zeichneSetet() {
     const raster = $("#set-grid", this.dok);
-    if (!raster || !this.setet.length) return;
-    const kurz = (s) => s.produkte.map((id) => this.mittelVon(id)?.name || id);
-    raster.innerHTML = this.setet.map((s) => {
-      const preis = preisFuer(s.produkte.length);
-      return `<article class="set-card" data-concern="${e(nevojaKennung(s.nevoja))}"><div class="set-photo"><img src="${e(this.#setBild(s))}" width="600" height="750" alt="${e(s.titulli)}" loading="lazy">${s.etiketa ? `<span class="tag">${e(s.etiketa)}</span>` : ""}<button type="button" class="photo-detail" data-detail="${e(s.id)}" aria-label="Shihni detajet: ${e(s.titulli)}">${ikone("Plus")}</button></div><div class="set-body"><div class="card-heading"><h3>${e(s.titulli)}</h3><strong>${preis} €</strong></div>${s.teksti ? `<p>${e(s.teksti)}</p>` : ""}<div class="included">${kurz(s).map((n) => `<span>${e(n)}</span>`).join("")}<small>${s.produkte.length} × 30 ml</small></div><button type="button" class="secondary" data-set="${e(s.id)}">Zgjidh këtë set ${ikone("ArrowUpRight")}</button></div></article>`;
-    }).join("");
+    if (!raster) return;
+    const available = this.setet.length > 0;
+    for (const button of this.dok.querySelectorAll('.hero [data-set], #sticky-buy')) button.disabled = !available;
+    if (!available) { raster.innerHTML = '<p class="section-intro">Seti nuk është aktualisht i disponueshëm.</p>'; return; }
+    raster.innerHTML = this.setet.map(s => duoCard(s, this.mittel)).join('');
     const numri = $("#set-numri", this.dok);
     if (numri) numri.textContent = `01 — ${String(this.setet.length).padStart(2, "0")}`;
     // Die Filter: ein Knopf je Bedarf, "Të gjitha" vorn.
@@ -267,8 +287,7 @@ export class Dyqan {
 
   #zeichneMittel() {
     const raster = $("#single-grid", this.dok);
-    if (!raster) return;
-    raster.innerHTML = this.einzelMittel().map((m) => `<article class="single-card"><button type="button" class="single-card__bild" data-mjeti="${e(m.id)}" aria-label="Shihni ${e(m.name)}"><img src="${e(m.fotot[0])}" alt="${e(m.name)}" width="300" height="375" loading="lazy"></button><h3>${e(m.name)}</h3><p>${e(MITTEL_NENTITUJ[m.id] || m.kurztext || m.nenName || "")}${m.inhalt ? ` · ${e(m.inhalt)}` : ""}</p><button type="button" data-single="${e(m.id)}" aria-label="Shtoni ${e(m.name)}, ${preisFuer(1)} euro">${preisFuer(1)} € ${ikone("Plus")}</button></article>`).join("");
+    if (raster) { raster.innerHTML = ''; raster.closest('.singles')?.setAttribute('hidden',''); }
   }
 
   #zeichneFaelle(faelle) {
@@ -333,10 +352,10 @@ export class Dyqan {
   }
 
   #korbZeilen() {
-    return this.korb.ids.map((id) => {
+    return this.korb.ids.map((id, index) => {
       const m = this.mittelVon(id);
       if (!m) return "";
-      return `<div class="basket-row"><img src="${e(m.fotot[0])}" alt="${e(m.name)}" width="62" height="78"><div><h3>${e(m.name)}</h3><p>${e(MITTEL_NENTITUJ[m.id] || m.kurztext || m.nenName || "")}${m.inhalt ? ` · ${e(m.inhalt)}` : ""}</p></div><button type="button" class="remove" data-remove="${e(id)}" aria-label="Hiqni ${e(m.name)}">${ikone("Trash2")}</button></div>`;
+      return `<div class="basket-row"><img src="${e(m.fotot[0])}" alt="${e(m.name)}" width="62" height="78"><div><h3>${e(m.name)}</h3><p>${e(MITTEL_NENTITUJ[m.id] || m.kurztext || m.nenName || "")}${m.inhalt ? ` · ${e(m.inhalt)}` : ""}</p></div>${index === 0 ? `<button type="button" class="remove" data-remove="${e(id)}" aria-label="Hiqni setin e plotë" title="Hiqni setin e plotë">${ikone("Trash2")}</button>` : ''}</div>`;
     }).join("");
   }
 
@@ -362,7 +381,7 @@ export class Dyqan {
   #mittelDetail(m) {
     this.#merke({ produkteGesehen: true }, "produkteGesehen");
     const perdorimi = [m.perdorimi?.koha, m.perdorimi?.si].filter(Boolean).join(" ");
-    this.#blatt(`<img class="detail-image" src="${e(m.fotot[0])}" alt="${e(m.name)}" width="600" height="440"><h2 id="sheet-title">${e(m.name)}</h2><p>${e(m.synimi || m.kurztext || "")}</p>${m.veprimi?.length ? `<ul class="detail-veprimi">${m.veprimi.map((v) => `<li>${e(v)}</li>`).join("")}</ul>` : ""}${perdorimi ? `<p class="template-note">${e(perdorimi)}</p>` : ""}<div class="total"><span>${e(m.inhalt || "1 produkt")}</span><strong>${preisFuer(1)} €</strong></div><button type="button" class="primary" data-single="${e(m.id)}">Shto në shportë · ${preisFuer(1)} € ${ikone("Plus")}</button>`, "PRODUKTI");
+    this.#blatt(`<img class="detail-image" src="${e(m.fotot[0])}" alt="${e(m.name)}" width="600" height="440"><h2 id="sheet-title">${e(m.name)}</h2><p>${e(m.synimi || m.kurztext || "")}</p>${m.veprimi?.length ? `<ul class="detail-veprimi">${m.veprimi.map((v) => `<li>${e(v)}</li>`).join("")}</ul>` : ""}${perdorimi ? `<p class="template-note">${e(perdorimi)}</p>` : ""}<div class="total"><span>Seti LF ACNE + LF MOISTUR</span><strong>${preisFuer(2)} €</strong></div><button type="button" class="primary" data-single="${e(m.id)}">Porosit setin · ${preisFuer(2)} € ${ikone("Plus")}</button>`, "PRODUKTI");
   }
 
   // ── Legen und Nehmen ──────────────────────────────────────────────
@@ -390,15 +409,12 @@ export class Dyqan {
   }
 
   mittelLegen(id) {
-    if (!this.einzelMittel().some((m) => m.id === id)) return;
-    if (!this.korb.ids.includes(id)) this.korb.ids.push(id);
-    this.korb.set = "";
-    this.#nachLegen();
-    this.#korbBlatt();
+    const duo = this.setet[0];
+    if (duo?.produkte.includes(id)) this.setLegen(duo.id);
   }
 
   mittelNehmen(id) {
-    this.korb.ids = this.korb.ids.filter((k) => k !== id);
+    this.korb.ids = [];
     this.korb.set = "";
     korbSchreiben(this.speicher, this.korb);
     this.#korbZahl();

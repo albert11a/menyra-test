@@ -130,3 +130,35 @@ body:has(#ls-einstieg[data-aktiv="ja"]) { font-size: 16px; line-height: normal; 
 #ls-einstieg .single-card .single-card__bild img { aspect-ratio: 4/5; border-radius: 8px; background: var(--wash); }
 #ls-einstieg .detail-veprimi { margin: 0 0 16px; padding: 0 0 0 18px; list-style: disc; font-size: 14px; color: var(--muted); line-height: 1.5; }
 
+
+/* Acne Duo campaign: useful product detail without a second full-height image. */
+#ls-einstieg #setet h2{margin-top:12px;font-size:30px;line-height:1.13}
+#ls-einstieg #set-grid{margin-top:22px;display:block}
+#ls-einstieg .duo-card{border:1px solid var(--line);border-radius:14px;padding:0 16px 16px;background:white}
+#ls-einstieg .duo-product+ .duo-product{border-top:1px solid var(--line)}
+#ls-einstieg .duo-product summary{display:flex;align-items:center;gap:11px;min-height:80px;cursor:pointer;list-style:none;padding:14px 0}
+#ls-einstieg .duo-product summary::-webkit-details-marker{display:none}
+#ls-einstieg .duo-product summary>.icon{width:17px;height:17px}
+#ls-einstieg .duo-product[open] summary>.icon{transform:rotate(45deg)}
+#ls-einstieg .duo-product-icon{display:grid;place-items:center;background:var(--wash);border-radius:12px;width:40px;height:44px;flex-shrink:0}
+#ls-einstieg .duo-product-label{flex:1;min-width:0}
+#ls-einstieg .duo-product-label small{display:block;font-size:10px;letter-spacing:.8px;color:var(--muted);margin-bottom:5px}
+#ls-einstieg .duo-product-label strong{display:block;font-size:14px;line-height:1.35;font-weight:600}
+#ls-einstieg .duo-product-body{padding:0 0 16px 51px}
+#ls-einstieg .duo-product-body p{font-size:13px;color:var(--muted);line-height:1.5}
+#ls-einstieg .duo-product-body dl{display:flex;gap:22px;margin:13px 0}
+#ls-einstieg .duo-product-body dt{font-size:10px;color:var(--muted)}
+#ls-einstieg .duo-product-body dd{font-size:12px;margin:4px 0 0;font-weight:600}
+#ls-einstieg .duo-product-body .duo-use{font-size:11px}
+#ls-einstieg .duo-value{background:var(--wash);border-radius:9px;padding:16px;margin:3px 0 15px}
+#ls-einstieg .duo-value-label{font-size:10px;letter-spacing:.8px;font-weight:700}
+#ls-einstieg .duo-value>p{font-size:14px;line-height:1.5;margin-top:10px}
+#ls-einstieg .duo-value>p strong{font-weight:600}
+#ls-einstieg .duo-total{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:15px;border-top:1px solid var(--line);padding-top:14px}
+#ls-einstieg .duo-total>span{font-size:12px}
+#ls-einstieg .duo-total small{display:block;font-size:10px;color:var(--muted);margin-top:5px}
+#ls-einstieg .duo-total>strong{font-size:27px;white-space:nowrap;letter-spacing:-1px}
+#ls-einstieg .duo-card>.primary{font-size:14px}
+#ls-einstieg .duo-payment{text-align:center;font-size:10px;color:var(--muted);margin-top:12px;line-height:1.5}
+#ls-einstieg .duo-next{padding:30px 24px}
+#ls-einstieg .duo-next>p+p{font-size:15px;line-height:1.6;margin-top:12px}

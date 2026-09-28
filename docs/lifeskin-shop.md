@@ -9,6 +9,29 @@ Wegen (getrennt gezaehlt, gleiche Funktionen), Pixel fuer alles Relevante,
 Sets/Einzelmittel/Vorher-Nachher aus Heart pflegbar, eigenes Dashboard in
 Heart.
 
+## Aktuelle Kampagne: nur Acne Duo (28.09., nachmittags)
+
+Der Shop verkauft vorerst ausschliesslich das vollstaendige Set aus LF ACNE
+und LF MOISTUR. Der markierte Auswahlblock wurde durch eine kompakte
+Nutzen-/Wert-Erklaerung ersetzt: zwei aufklappbare Produktrollen, Inhalt und
+Anwendungshinweis, 29 EUR Einzelpreis als Vergleich, 10 EUR Aufpreis fuer
+das zweite Produkt im 39-EUR-Set und 19 EUR Gesamtersparnis. Keine neue
+Wirkgarantie oder behauptete Conversion-Steigerung.
+
+Heart bleibt fuer Hero-Bild und Set-Konfiguration zustaendig. Der Shop filtert
+zusaetzlich auf genau diese zwei Produkt-IDs; andere Sets bleiben in Heart
+bestehen. Einzelkauf ist hier nicht mehr sichtbar oder ausloesbar. Alte
+Teil-/Fremdkoerbe werden geleert, vollstaendige Duo-Koerbe bleiben erhalten.
+Entfernen eines Bestandteils entfernt das Set statt einen Einzelkauf zu erlauben.
+Der doppelte grosse Produktblock und die Einzelprodukt-Karten entfallen.
+Checkout, Analyse und Pixel-Aufrufzeilen bleiben unveraendert.
+
+Pruefung: Shop-/Pixel-Sperrtests und npm run build; Bundle-Dateien unveraendert.
+Kein echter mobiler In-App-Test und keine Produktionsbestellung.
+
+Die folgende Ablaufbeschreibung dokumentiert auch den allgemeinen,
+fuer spaetere Sortimentserweiterung erhaltenen Unterbau.
+
 ## Ablauf fuer den Kunden
 
 1. **Laden** `/lifeskinshop`: Hero-Set, Vorher/Nachher (aus Heart, Ort
