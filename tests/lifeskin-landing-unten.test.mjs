@@ -85,3 +85,15 @@ test("die Leiste haengt oben und ist ein Fenster hoch - nicht an bottom", () => 
   assert.match(still, /"top:calc\(100dvh - 8px\)",\s*"transform:translateY\(-100%\)"/);
   assert.doesNotMatch(still, /"left:8px", "bottom:8px"/);
 });
+
+// ══ 28.09., DRITTE MELDUNG: SAFARI-LEISTE BLIEB GRUEN ═════════════════
+// Safari 26 faerbt seine Leiste nach dem festen Element am unteren Rand.
+// Blieb der Kasten nach dem Weggleiten unsichtbar stehen, blieb auch die
+// Farbe. Jetzt ist er danach ganz weg (display: none).
+test("nach dem Weggleiten ist die Leiste ganz weg - Safari faerbt sonst weiter", () => {
+  assert.match(CSS, /\.dock\[data-weg="ja"\] \{ display: none; \}/);
+  const js = lies("apps/lifeskin-landing/landing.js");
+  assert.match(js, /dockZeigen\(offen === 0\)/);
+  assert.match(js, /dock\.removeAttribute\("data-weg"\);\s*void dock\.offsetHeight;/, "ohne Berechnen dazwischen gleitet die Leiste nicht herein");
+  assert.match(js, /if \(dock\.getAttribute\("data-sichtbar"\) !== "ja"\) dock\.setAttribute\("data-weg", "ja"\)/);
+});

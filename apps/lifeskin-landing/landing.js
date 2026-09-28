@@ -383,11 +383,43 @@
           offen -= 1;
         }
       });
-      dock.setAttribute("data-sichtbar", offen > 0 ? "nein" : "ja");
+      dockZeigen(offen === 0);
     }, { threshold: 0 });
 
+    /* VERSTECKT HEISST NACH DEM WEGGLEITEN: GAR NICHT DA (data-weg ->
+     * display: none).
+     *
+     * GEMELDET 28.09. (iPhone, Safari 26): Safari faerbt seine eigene
+     * Leiste unten nach dem festen Element, das am unteren Rand liegt.
+     * Solange die Leiste zu sehen ist, ist das richtig. Glitt sie weg,
+     * blieb ihr Kasten aber unsichtbar im Dokument stehen, und Safari
+     * behielt die gruene Faerbung - obwohl unten nichts mehr war. Ein
+     * Element mit display: none gibt es fuer Safari nicht; dann nimmt die
+     * Leiste wieder die Farbe der Seite an.
+     *
+     * Zum Zeigen erst wieder da sein, einmal berechnen lassen, dann
+     * einblenden - sonst liefe das Hereingleiten nicht. */
+    var dockWegZeit = null;
+    function dockZeigen(an) {
+      clearTimeout(dockWegZeit);
+      if (an) {
+        if (dock.hasAttribute("data-weg")) {
+          dock.removeAttribute("data-weg");
+          void dock.offsetHeight;
+        }
+        dock.setAttribute("data-sichtbar", "ja");
+        return;
+      }
+      var warGezeigt = dock.getAttribute("data-sichtbar") === "ja";
+      dock.setAttribute("data-sichtbar", "nein");
+      if (!warGezeigt) { dock.setAttribute("data-weg", "ja"); return; }
+      dockWegZeit = setTimeout(function () {
+        if (dock.getAttribute("data-sichtbar") !== "ja") dock.setAttribute("data-weg", "ja");
+      }, 420);
+    }
+
     for (var d = 0; d < konkurrenz.length; d++) dockWaechter.observe(konkurrenz[d]);
-    dock.setAttribute("data-sichtbar", "nein");
+    dockZeigen(false);
   }
 
   /* ── 6. Die Punkte unter den Faellen ─────────────────────────────

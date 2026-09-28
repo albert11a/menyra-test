@@ -1951,6 +1951,9 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
    Therapieseite; das Gleiten bleibt (visibility schaltet erst danach). */
 .dock__leib { transition: transform 0.36s var(--kurve), visibility 0s linear 0.36s; }
 .dock:not([data-sichtbar="ja"]) .dock__leib { visibility: hidden; }
+/* Nach dem Weggleiten ganz weg - sonst behielt Safari 26 seine Leiste
+   unten in der Farbe dieser Leiste (landing.js, dockZeigen). */
+.dock[data-weg="ja"] { display: none; }
 .dock[data-sichtbar="ja"] .dock__leib { visibility: visible; transition: transform 0.36s var(--kurve), visibility 0s linear 0s; }
 .dock__klein {
   margin-top: 6px;
