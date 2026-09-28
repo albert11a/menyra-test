@@ -180,3 +180,12 @@ test("vorerst nur das Akne-Set im Shop; die anderen schaltet Heart ein", async (
   assert.equal((HTML.match(/class="set-card"/g) || []).length, 1, "der Aufbau zeigt nur das Akne-Set");
   assert.doesNotMatch(HTML + SHOP, /thellesi/, "'Seti në detaje' ist auf Wunsch weg");
 });
+
+test("einzeln nur die Mittel der Sets im Shop - vorerst LF ACNE und LF MOISTUR", async () => {
+  const { einzelAusSets } = await import("../apps/lifeskin-shop/shop.js");
+  const { setetOderStandard, aktiveSetet } = await import("../shared/lifeskin-shop-sets.js");
+  const mittel = ["lf-acne", "lf-moistur", "lf-pigment", "lf-pore"].map((id) => ({ id }));
+  assert.deepEqual(einzelAusSets(mittel, aktiveSetet(setetOderStandard(null))).map((m) => m.id), ["lf-acne", "lf-moistur"]);
+  assert.deepEqual(einzelAusSets(mittel, setetOderStandard(null)).map((m) => m.id), ["lf-acne", "lf-moistur", "lf-pigment", "lf-pore"]);
+  assert.equal(einzelAusSets(mittel, []).length, 4, "ohne Sets alle Mittel");
+});
