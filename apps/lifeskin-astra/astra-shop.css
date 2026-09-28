@@ -1,0 +1,24 @@
+/* DIE WARTESEITE IM KLEID DES LADENS (/lifeskinshop).
+ *
+ * Auftrag 28.09. (docs/lifeskin-shop-perputhja.md): Wer ueber den Laden
+ * kam, sieht zwischen Trichter und Ergebnis dieselben Farben wie davor und
+ * danach. NUR FARBEN: Aufbau, Masse und der eine Bildschirm, der ohne
+ * Scrollen passen muss, bleiben unberuehrt - und die Warnfarbe der Sperre
+ * (--orange) bleibt die Warnfarbe.
+ *
+ * Jede Regel beginnt mit html[data-weg="lifeskinshop"]; das Merkmal setzt
+ * astra.js (#kleid), und nur fuer diesen Weg. */
+
+html[data-weg="lifeskinshop"] {
+  --paper: #fff;
+  --white: #fff;
+  --ink: #123b3e;
+  --muted: #596869;
+  --green: #123b3e;
+  --green-soft: #f2f6f5;
+  --line: #dce5e3;
+  background: #fff;
+}
+html[data-weg="lifeskinshop"] body { background: #fff; }
+html[data-weg="lifeskinshop"] .wait-brand { letter-spacing: 1.7px; font-weight: 750; }
+html[data-weg="lifeskinshop"] .wordmark { color: var(--ink); }

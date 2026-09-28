@@ -87,6 +87,7 @@ import { baueTerapi, ausAnalyse } from "../../shared/lifeskin-terapia.js";
 import { ohneSeite } from "../../shared/lifeskin-ohne-seite.js";
 import { findeSitzung } from "./heart-lifeskin-berechnung.js";
 import { preisFuer, preisFuerFall, istPreisVorschlag } from "../../shared/lifeskin-preise.js";
+import { perputhjaGueltig } from "../../shared/lifeskin-perputhja.js";
 import { texteSaeubern } from "../lifeskin-astra/astra-texte-plan.js";
 import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 import {
@@ -2909,6 +2910,18 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff: nurStaffGewaehlt = 
     return;
   }
 
+  // DIE PËRPUTHJA BEIM LADEN. Das Feld steht nur bei Faellen aus
+  // /lifeskinshop; die Zahl setzt Dr. Gashi, und der Kunde sieht sie gross
+  // oben auf seiner Seite. Ohne sie fehlt der Seite ihr Kern - freigeben
+  // und "Bereit" gehen erst mit Zahl, eine Vorschau auch ohne.
+  const perputhjaFeld = document.querySelector("#lifeskin-perputhja");
+  const perputhja = perputhjaFeld ? perputhjaGueltig(perputhjaFeld.value) : null;
+  if (perputhjaFeld && produkte.length && !nurStaffGewaehlt && perputhja === null) {
+    setToast("Befund", "Die Përputhja % fehlt (1–100). Beim Lifeskin Shop steht sie groß oben auf der Seite des Kunden.", "danger");
+    perputhjaFeld.focus?.();
+    return;
+  }
+
   // GEMESSEN, NICHT GESCHAETZT: Ein Bericht ohne diese Angaben ergibt eine
   // Seite mit Befundtext und Preis - ohne Zonen, Messwerte, Diagnose und
   // Prognose. Genau so ist ein Bericht schon einmal beim Patienten
@@ -2963,6 +2976,8 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff: nurStaffGewaehlt = 
     antworten: findeSitzung(store.getState().lifeskin || {}, id)?.anamnese || null,
     // Ueber welche Landingpage er kam - LifeSkin 2 zeigt oben das Urteil.
     weg: wegDerSitzung(findeSitzung(store.getState().lifeskin || {}, id)),
+    // Beim Laden: die Përputhja %, die Dr. Gashi gesetzt hat (sonst null).
+    perputhja,
     // Die Vorher/Nachher-Faelle dieser Seite, in der gewaehlten Reihenfolge.
     raste: [...new Set([...document.querySelectorAll("[data-befund-rasti]")]
       .filter((w) => w.type !== "checkbox" || w.checked).map((w) => String(w.value || "")).filter(Boolean))],

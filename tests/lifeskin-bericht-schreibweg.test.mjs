@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 import { raportLesen } from "../shared/lifeskin-analyse.js";
 import { antwortenFuerBericht } from "../shared/lifeskin-antworten.js";
 import { wegGueltig } from "../shared/lifeskin-weg.js";
+import { perputhjaGueltig } from "../shared/lifeskin-perputhja.js";
 
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
 const adapter = readFileSync(join(wurzel, "apps/mnyra-heart/heart-lifeskin-adapter.js"), "utf8");
@@ -51,12 +52,15 @@ function dokumentBauen(werte) {
   // antwortenFuerBericht (shared/lifeskin-antworten.js).
   // weg: ueber welche Landingpage er kam, gefiltert durch wegGueltig
   // (shared/lifeskin-weg.js) - "lifeskin2" oder "".
+  // perputhja: die Zahl, die Dr. Gashi beim Laden (/lifeskinshop) setzt,
+  // gefiltert durch perputhjaGueltig (shared/lifeskin-perputhja.js).
   const bauen = new Function("befund", "produkte", "preis", "schwere", "analyse", "raport", "texte", "nurStaff", "ohneBild", "raste", "klientet", "bereit",
-    "antworten", "antwortenFuerBericht", "weg", "wegGueltig",
+    "antworten", "antwortenFuerBericht", "weg", "wegGueltig", "perputhja", "perputhjaGueltig",
     `return (${literal});`);
   return bauen(werte.befund, werte.produkte, werte.preis, werte.schwere, werte.analyse, werte.raport,
     werte.texte || {}, false, false, werte.raste || [], werte.klientet || [], false,
-    werte.antworten || null, antwortenFuerBericht, werte.weg || "", wegGueltig);
+    werte.antworten || null, antwortenFuerBericht, werte.weg || "", wegGueltig,
+    werte.perputhja ?? null, perputhjaGueltig);
 }
 
 const raport = raportLesen(
@@ -108,4 +112,28 @@ test("ohne Bericht wird das Feld leer geschrieben, nicht ausgelassen", () => {
   });
   assert.ok("raport" in ohne, "Das Feld fehlt ganz - der alte Bericht bliebe stehen");
   assert.equal(ohne.raport, null);
+});
+
+test("die Përputhja steht so im Bericht, wie Dr. Gashi sie gesetzt hat", () => {
+  // Die Zahl kommt aus Heart, nicht aus einer Rechnung: Was ankommt, wird
+  // nur geprueft, nicht veraendert.
+  const mit = dokumentBauen({
+    befund: "Text", produkte: [], preis: 39, schwere: "", analyse: {}, raport: null,
+    weg: "lifeskinshop", perputhja: "92"
+  });
+  assert.equal(mit.perputhja, 92);
+  assert.equal(mit.weg, "lifeskinshop");
+  // Ohne Zahl: null, nicht ausgelassen - sonst bliebe bei einer zweiten
+  // Freigabe die alte Zahl stehen (geschrieben wird mit merge).
+  const ohne = dokumentBauen({
+    befund: "Text", produkte: [], preis: 39, schwere: "", analyse: {}, raport: null
+  });
+  assert.ok("perputhja" in ohne);
+  assert.equal(ohne.perputhja, null);
+  for (const falsch of ["", "abc", 0, 101, -5, "150%"]) {
+    const doc = dokumentBauen({
+      befund: "Text", produkte: [], preis: 39, schwere: "", analyse: {}, raport: null, perputhja: falsch
+    });
+    assert.equal(doc.perputhja, null, `${JSON.stringify(falsch)} kam als Zahl durch`);
+  }
 });

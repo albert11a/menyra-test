@@ -39,6 +39,7 @@ import { telefonPruefen } from "../../shared/lifeskin-telefon.js";
 import { beispielKarte, ikone } from "./ndjekja-teile.js";
 import { antwortenSpiegel } from "../../shared/lifeskin-antworten.js";
 import { wegAusSuche, wegGueltig } from "../../shared/lifeskin-weg.js";
+import { perputhjaGueltig, perputhjaStufe } from "../../shared/lifeskin-perputhja.js";
 
 const $ = (wahl) => document.querySelector(wahl);
 const $$ = (wahl) => Array.from(document.querySelectorAll(wahl));
@@ -179,6 +180,34 @@ export function ohneWochenversprechen(text, pruefer = NDJEKJA.pruefer) {
     .replace(/Dr\.? Gashi ju ndjek/g, "ju ndjekim");
 }
 
+// DIE WORTE ZUR PËRPUTHJA (nur Laden). Sie folgen der Zahl, die Dr. Gashi
+// gesetzt hat (shared/lifeskin-perputhja.js) - sie ersetzen sie nicht.
+export const PERPUTHJA_STUFEN = Object.freeze({
+  larte: Object.freeze({
+    niveli: "Përputhje shumë e lartë",
+    titulli: (name) => (name ? `${name}, kjo terapi i përshtatet shumë mirë lëkurës suaj.` : "Kjo terapi i përshtatet shumë mirë lëkurës suaj.")
+  }),
+  mire: Object.freeze({
+    niveli: "Përputhje e mirë",
+    titulli: (name) => (name ? `${name}, kjo terapi i përshtatet mirë lëkurës suaj.` : "Kjo terapi i përshtatet mirë lëkurës suaj.")
+  }),
+  pjesshme: Object.freeze({
+    niveli: "Përputhje e pjesshme",
+    titulli: (name) => (name ? `${name}, ja çfarë mund të bëjë kjo terapi për lëkurën tuaj.` : "Ja çfarë mund të bëjë kjo terapi për lëkurën tuaj.")
+  })
+});
+
+// Was beim Teilen verschickt wird: seine Zahl als Satz und der allgemeine
+// Link zum Laden - nie sein eigener Link (dort stehen Befund und Fotos).
+export function ndajeMesazhi(perputhja, basis = "https://www.mnyra.com") {
+  const p = perputhjaGueltig(perputhja);
+  const url = `${String(basis || "https://www.mnyra.com").replace(/\/+$/, "")}/lifeskinshop?utm_source=ndaje&utm_campaign=perputhja`;
+  const text = p === null
+    ? "Dr. Gashi të tregon me përqindje sa të përshtatet terapia LifeSkin. Provoje, pa detyrim:"
+    : `Dr. Gashi ma tregoi me përqindje sa më përshtatet terapia LifeSkin: ${p}%. Sa të përshtatet ty? Provoje, pa detyrim:`;
+  return { text, url };
+}
+
 export function faqNdryshimi(problemet, wochen = 4) {
   const liste = [...new Set((problemet || [])
     .map((p) => [p?.gjetja, p?.ku].map((x) => String(x || "").trim()).filter(Boolean).join(" "))
@@ -212,9 +241,17 @@ export class Terapia {
   // Gashi "passt" gesagt. Die Seite beginnt dann mit dieser Antwort, und
   // der Knopf reserviert das Set, statt eine Therapie "anzufangen".
   get mitUrteil() { return this.weg === "lifeskin2" && this.produkte.length > 0; }
+  // DER LADEN (/lifeskinshop): dieselbe Seite im Kleid des Ladens
+  // (terapia-shop.css), und oben die Përputhja - die Zahl, die Dr. Gashi
+  // in Heart gesetzt hat. Ohne Zahl oder ohne Mittel kein Block.
+  get shop() { return this.weg === "lifeskinshop"; }
+  get perputhja() {
+    return this.shop && this.produkte.length > 0 ? perputhjaGueltig(this.daten?.perputhja) : null;
+  }
   // Das Wort auf jedem Kaufknopf.
   kaufWort(betrag = this.preis) {
-    return this.mitUrteil ? `Rezervo setin tim — ${euro(betrag)}` : `Fillo terapinë — ${euro(betrag)}`;
+    if (this.mitUrteil) return `Rezervo setin tim — ${euro(betrag)}`;
+    return this.perputhja !== null ? `Filloj rutinën time — ${euro(betrag)}` : `Fillo terapinë — ${euro(betrag)}`;
   }
   // Die neue Fassung (Begleitung, Angebot, Kasse) - siehe oben.
   get neu() { return this.variante === KAUFWEG_VERSION.ndjekja; }
@@ -232,12 +269,14 @@ export class Terapia {
   }
 
   async starte() {
+    this.#kleid();
     if (!this.kennung) { this.#weg(); return; }
     this.daten = await this.quelle.bericht();
     if (!this.daten) { this.#weg(); return; }
     // Nie "links" oder "rechts" (gespiegelte Fotos) - auch nicht in
     // Befunden, die vor dieser Regel freigegeben wurden.
     this.daten = ohneSeiteTief(this.daten);
+    this.#kleid();
 
     // Noch nicht freigegeben: Die Warteseite steht auf der Analyseseite.
     // Die Vorschau nur mit ?vorschau=1 - sonst sieht der Patient seine
@@ -391,6 +430,20 @@ export class Terapia {
     zeigen($("#t-weg"), true);
   }
 
+  // DAS KLEID DES LADENS: terapia-shop.css greift nur unter
+  // html[data-weg="lifeskinshop"]. Zuerst nach der Adresse (?weg=, die
+  // Warteseite reicht sie weiter), damit schon der Ladesatz passt; nach
+  // dem Laden nach dem Bericht - Heart schreibt den Weg hinein.
+  #kleid() {
+    const wurzel = globalThis.document?.documentElement;
+    if (!wurzel?.dataset) return;
+    if (this.shop) wurzel.dataset.weg = "lifeskinshop";
+    else delete wurzel.dataset.weg;
+    if (!this.shop) return;
+    schreibe($("#t-laedt"), "Po hapet faqja juaj…");
+    schreibe($("#t-weg h1"), "Kjo faqe nuk u gjet.");
+  }
+
   // ---------- Zeichnen ----------
 
   #zeichnen() {
@@ -409,8 +462,12 @@ export class Terapia {
     // bleibt der alte Satz.
     const syri = $("#t-syri");
     syri?.classList.toggle("syri--status", Boolean(d.code));
-    schreibe(syri, d.code ? `${this.weg === "lifeskin2" ? "Kontrolli" : "Analiza"} ${d.code}`
-      : (mitProdukten ? "Terapia juaj është gati" : "Analiza juaj është gati"));
+    // Der Laden sagt "Rasti" statt "Analiza" - er hat nie eine Analyse
+    // versprochen, sondern die Zahl von Dr. Gashi.
+    const fallWort = this.weg === "lifeskin2" ? "Kontrolli" : this.shop ? "Rasti" : "Analiza";
+    const fertigWort = this.shop ? "Vlerësimi" : "Analiza";
+    schreibe(syri, d.code ? `${fallWort} ${d.code}`
+      : (mitProdukten ? "Terapia juaj është gati" : `${fertigWort} juaj është gati`));
     // LifeSkin 2: zuerst die Antwort auf die Frage, mit der er gekommen ist.
     zeigen($("#t-urteil"), this.mitUrteil);
     if (this.mitUrteil) {
@@ -418,11 +475,16 @@ export class Terapia {
         ? `Po, ${name}, lëkura juaj i përshtatet terapisë.`
         : "Po, lëkura juaj i përshtatet terapisë.");
     }
-    schreibe($("#t-titulli"), this.mitUrteil
+    // Der Laden: zuerst seine Zahl, darunter der Titel in ihren Worten.
+    this.#perputhjaZeigen();
+    const stufe = this.perputhja !== null ? PERPUTHJA_STUFEN[perputhjaStufe(this.perputhja)] : null;
+    schreibe($("#t-titulli"), stufe
+      ? stufe.titulli(name)
+      : this.mitUrteil
       ? `Seti që Dr. Gashi zgjodhi për ju — ${WOCHEN} javë.`
       : mitProdukten
         ? (name ? `${name}, kjo është terapia juaj për ${WOCHEN} javë.` : `Terapia juaj për ${WOCHEN} javë është gati.`)
-        : (name ? `${name}, analiza juaj është gati.` : "Analiza juaj është gati."));
+        : (name ? `${name}, ${fertigWort.toLowerCase()} juaj është gati.` : `${fertigWort} juaj është gati.`));
     this.#mjeku();
     // Fielen Karten weg, weil ihr Produkt nicht im Set ist, nennt der Satz
     // der Analyse Probleme, die diese Therapie nicht behandelt. Dann wird
@@ -474,7 +536,7 @@ export class Terapia {
       ? "Plani bazohet në përshkrimin tuaj. "
       : (diagnoza ? `Vlerësimi: ${diagnoza.replace(/;\s*/g, " · ")}. ` : "");
 
-    const link = element("a", null, "Analiza e plotë ↓");
+    const link = element("a", null, this.shop ? "Vlerësimi i plotë ↓" : "Analiza e plotë ↓");
     link.href = "#analiza";
     vleresimi.append(link);
 
@@ -501,6 +563,90 @@ export class Terapia {
     // 8. Die ganze Analyse.
     this.#analiza();
     if (this.neu) this.#neueWorte();
+    // Der Laden: seine Zahl auch in der ersten Frage, und die Karte zum
+    // Teilen - beides nur mit Zahl.
+    this.#perputhjaWorte();
+    this.#ndaje();
+    if (this.shop && !this.ohneFoto) schreibe($("#t-analizasyri"), "Vlerësimi i plotë");
+  }
+
+  // DIE PËRPUTHJA (nur Laden, nur mit Zahl): der Ring mit der Zahl von
+  // Dr. Gashi, die Stufe in Worten darunter. Die Zahl steht vom ersten
+  // Moment an im Vorlesetext (aria-label); der Ring fuellt sich einmal.
+  #perputhjaZeigen() {
+    const block = $("#t-perputhja");
+    const p = this.perputhja;
+    zeigen(block, p !== null);
+    if (!block || p === null) return;
+    schreibe($("#t-perputhjaniveli"), PERPUTHJA_STUFEN[perputhjaStufe(p)].niveli);
+    $("#t-perputhjaunaza")?.setAttribute("aria-label", `Përputhja me lëkurën tuaj: ${p} për qind, vlerësuar nga Dr. Violeta Gashi`);
+    this.#perputhjaRrotullo(p);
+  }
+
+  // Von 0 bis zu ihrer Zahl in gut einer Sekunde, langsam auslaufend. Wer
+  // weniger Bewegung eingestellt hat, sieht die Zahl sofort - ebenso beim
+  // Neuzeichnen nach der Bestellung.
+  #perputhjaRrotullo(p) {
+    const unaza = $("#t-perputhjaunaza");
+    const numri = $("#t-perputhjanumri");
+    if (!unaza || !numri) return;
+    const setze = (wert) => {
+      unaza.style.setProperty("--perputhja-p", String(Math.round(wert * 100) / 100));
+      schreibe(numri, String(Math.round(wert)));
+    };
+    const ruhig = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
+    if (ruhig || typeof requestAnimationFrame !== "function" || unaza.dataset.gedreht === String(p)) {
+      unaza.dataset.gedreht = String(p);
+      setze(p);
+      return;
+    }
+    unaza.dataset.gedreht = String(p);
+    const dauer = 1300;
+    let anfang = 0;
+    const schritt = (jetzt) => {
+      if (!anfang) anfang = jetzt;
+      const t = Math.min(1, (jetzt - anfang) / dauer);
+      setze(p * (1 - Math.pow(1 - t, 3)));
+      if (t < 1) requestAnimationFrame(schritt);
+    };
+    setze(0);
+    requestAnimationFrame(schritt);
+  }
+
+  // "A është kjo terapi e përshtatshme për mua?" - beim Laden mit ihrer
+  // Zahl. Nach #analiza, das die Antwort ohne Foto sonst ueberschreibt.
+  // Und dort, wo er entscheidet, noch einmal ihre Zahl - ab einer guten
+  // Përputhja; eine teilweise wird dort nicht wiederholt.
+  #perputhjaWorte() {
+    const p = this.perputhja;
+    if (p === null) return;
+    if (perputhjaStufe(p) !== "pjesshme") schreibe($("#vendimi h2"), `Përputhje ${p}% – terapia juaj për ${WOCHEN} javë.`);
+    schreibe($("#t-faq1"), this.ohneFoto
+      ? `Dr. Gashi e vlerësoi përputhjen me ${p}%, sipas përshkrimit dhe përgjigjeve tuaja. Terapinë e zgjodhi për problemet që na treguat.`
+      : `Dr. Gashi e vlerësoi përputhjen me ${p}%, sipas fotove dhe përgjigjeve tuaja. Terapinë e zgjodhi për problemet që pa te lëkura juaj.`);
+  }
+
+  // TEILEN (nur Laden, nur mit Zahl). Die Karte zeigt vorher genau, was
+  // verschickt wird. Mit der Teilen-Funktion des Telefons, sonst WhatsApp.
+  #ndaje() {
+    const abschnitt = $("#ndaje");
+    const p = this.perputhja;
+    zeigen(abschnitt, p !== null);
+    if (!abschnitt || p === null) return;
+    const { text, url } = ndajeMesazhi(p, globalThis.location?.origin);
+    schreibe($("#t-ndajenumri"), `${p}%`);
+    schreibe($("#t-ndajetext"), `„${text.replace(/ Provoje, pa detyrim:$/, "")}“`);
+    const knopf = $("#t-ndaje");
+    if (!knopf || knopf.dataset.gebunden) return;
+    knopf.dataset.gebunden = "1";
+    knopf.addEventListener("click", () => {
+      const nav = globalThis.navigator;
+      if (typeof nav?.share === "function") {
+        nav.share({ title: "LifeSkin", text, url }).catch(() => {});
+        return;
+      }
+      globalThis.open?.(`https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`, "_blank", "noopener");
+    });
   }
 
   // "ÇFARË NA THATË" - SEINE ANTWORTEN AUS DEM TRICHTER.
@@ -1199,7 +1345,9 @@ export class Terapia {
   }
 
   #waLink() {
-    const gruss = String(LIFESKIN_WHATSAPP_TEXT?.sq || "");
+    // Der Laden hat keine Analyse versprochen, sondern die Kontrolle.
+    const roh = String(LIFESKIN_WHATSAPP_TEXT?.sq || "");
+    const gruss = this.shop ? roh.replace("Bëra analizën.", "Bëra kontrollin e përputhjes.") : roh;
     const code = String(this.daten?.code || "");
     const text = gruss.includes("{code}") ? gruss.replace("{code}", code) : `${gruss}${code ? ` (${code})` : ""}`;
     return `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(text)}`;

@@ -1127,6 +1127,25 @@ export const FRAGEN = Object.freeze([
           pasi: { sq: "Po, kur ta shoh cilin set më duhet", de: "Ja, wenn ich sehe, welches Set ich brauche" },
           analiza: { sq: "Së pari dua të di nëse më përshtatet", de: "Zuerst will ich wissen, ob es passt" }
         }
+      },
+      // DER LADEN (/lifeskinshop): Dort wartet der Kunde auf eine Zahl -
+      // Dr. Gashi sagt ihm in Prozent, wie gut das Set zu seiner Haut
+      // passt (docs/lifeskin-shop-perputhja.md). "Analyse" kommt ihm auch
+      // hier nicht vor; die Kennungen bleiben.
+      lifeskinshop: {
+        titel: {
+          sq: "Nëse përputhja është e lartë, a doni ta filloni rutinën 4-javore?",
+          de: "Wenn die Übereinstimmung hoch ist, möchten Sie die 4-Wochen-Routine beginnen?"
+        },
+        unter: {
+          sq: "Pa detyrim. Porositni vetëm nëse ju bind përqindja.",
+          de: "Unverbindlich. Sie bestellen nur, wenn die Prozentzahl Sie überzeugt."
+        },
+        antworten: {
+          tani: { sq: "Po, dua ta filloj sa më shpejt", de: "Ja, so bald wie möglich" },
+          pasi: { sq: "Po, kur ta shoh përqindjen", de: "Ja, wenn ich die Prozentzahl sehe" },
+          analiza: { sq: "Së pari dua të shoh vetëm përqindjen", de: "Zuerst will ich nur die Prozentzahl sehen" }
+        }
       }
     }
   },
@@ -1183,6 +1202,51 @@ export const OBERFLAECHE_WEGE = Object.freeze({
       de: "Dr. Violeta Gashi prüft, ob die Therapie zu Ihnen passt, und schreibt Ihnen heute."
     },
     fotoAnalyseAkte: { sq: "Rasti po i dërgohet Dr. Gashit për kontroll", de: "Der Fall geht zur Prüfung an Dr. Gashi" }
+  }),
+  // DER LADEN (/lifeskinshop, docs/lifeskin-shop-perputhja.md). Das Wort
+  // "Analyse" zieht Leute an, die nur etwas umsonst wollen - hier heisst es
+  // Kontrolle, und versprochen wird die Zahl, die Dr. Gashi in Heart setzt:
+  // wie viel Prozent das Set zu seiner Haut passt. Kein "falas" als
+  // Versprechen; der Knopf auf dem Nummernschirm holt genau diese Zahl.
+  lifeskinshop: Object.freeze({
+    langPunktFalas: { sq: "Pa detyrim", de: "Unverbindlich" },
+    menyraTitel: { sq: "Si ta kontrollojmë lëkurën tuaj?", de: "Wie sollen wir Ihre Haut prüfen?" },
+    menyraUnter: {
+      sq: "Zgjidhni një mënyrë. Dr. Gashi ju tregon me përqindje sa ju përshtatet Acne Duo.",
+      de: "Wählen Sie einen Weg. Dr. Gashi sagt Ihnen in Prozent, wie gut das Acne Duo zu Ihnen passt."
+    },
+    wahlScanText: {
+      sq: "Rrotulloni kokën para kamerës – fotot bëhen vetë. Vlerësimi më i plotë i lëkurës.",
+      de: "Den Kopf vor der Kamera drehen – die Aufnahmen entstehen von selbst. Die vollständigste Beurteilung."
+    },
+    wahlScanPunkt: { sq: "60 sekonda", de: "60 Sekunden" },
+    wahlFotoPunkt: { sq: "Një foto · 30 sekonda", de: "Ein Foto · 30 Sekunden" },
+    alterGrund: {
+      sq: "Që Dr. Gashi ta vlerësojë lëkurën tuaj sipas moshës.",
+      de: "Damit Dr. Gashi Ihre Haut nach Ihrem Alter beurteilt."
+    },
+    fotoAnalyseVergleich: { sq: "Mosha {gruppe} u shënua për Dr. Gashin", de: "Altersgruppe {gruppe} für Dr. Gashi vermerkt" },
+    telGesichertUnter: {
+      sq: "Dr. Violeta Gashi e shqyrton vetë dhe ju dërgon përqindjen e përputhjes.",
+      de: "Dr. Violeta Gashi prüft es selbst und schickt Ihnen die Prozentzahl der Übereinstimmung."
+    },
+    telKnopf: { sq: "Merrni përqindjen në WhatsApp", de: "Prozentzahl per WhatsApp erhalten" },
+    telKnopfViber: { sq: "Merrni përqindjen në Viber", de: "Prozentzahl per Viber erhalten" }
+  })
+});
+
+// DIE SAETZE UEBER DEN FRAGEN IN DEN WORTEN DES WEGS - dieselbe Idee wie
+// OBERFLAECHE_WEGE, fuer FRAGEN_TEXTE. Nur, was sich unterscheidet.
+export const FRAGEN_TEXTE_WEGE = Object.freeze({
+  lifeskinshop: Object.freeze({
+    einleitungNachScan: {
+      sq: "Skanimi mbaroi ✓ 4 pyetje të shkurtra, vetëm me prekje – që Dr. Gashi ta vlerësojë më saktë përputhjen tuaj.",
+      de: "Der Scan ist fertig ✓ 4 kurze Fragen, nur antippen – damit Dr. Gashi Ihre Übereinstimmung genauer beurteilt."
+    },
+    einleitungNachFoto: {
+      sq: "Fotoja u ruajt ✓ 4 pyetje të shkurtra, vetëm me prekje – që Dr. Gashi ta vlerësojë më saktë përputhjen tuaj.",
+      de: "Das Foto ist gespeichert ✓ 4 kurze Fragen, nur antippen – damit Dr. Gashi Ihre Übereinstimmung genauer beurteilt."
+    }
   })
 });
 

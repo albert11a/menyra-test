@@ -38,6 +38,7 @@ import { klappAttr, alsKlapp } from "./heart-lifeskin-klapp.js";
 import { nachWeg, baueLs2Weg, baueShopWeg, dauerText as ls2Dauer } from "./heart-lifeskin-weg.js";
 import { renderShopSetet, renderShopSetEditor, renderShopHero, renderShopHeroEditor } from "./heart-lifeskin-shopsets.js";
 import { wegGueltig } from "../../shared/lifeskin-weg.js";
+import { perputhjaGueltig } from "../../shared/lifeskin-perputhja.js";
 import { entwurfLesen, promptGemacht } from "./heart-lifeskin-entwurf.js";
 import { mitFingerabdruck } from "./heart-morph.js";
 import { renderMedien, renderMediumEditor, renderMedienReaktionen, renderBefundMedienAuswahl } from "./heart-lifeskin-medien.js";
@@ -1656,6 +1657,18 @@ export function whatsappNachricht(sitzung, bericht) {
       "Nëse doni ta filloni, e rezervoni direkt në faqe (paguani te dera), ose më shkruani këtu dhe e rregullojmë bashkë."
     ].join("\n\n");
   }
+  // DER LADEN (/lifeskinshop): Er wartet auf seine Zahl - also beginnt die
+  // Nachricht mit ihr. Gesetzt hat sie Dr. Gashi im Befund (perputhja);
+  // ohne Zahl oder ohne Produkte bleibt die Nachricht die gewohnte.
+  const perputhja = perputhjaGueltig(bericht?.perputhja);
+  if (wegGueltig(sitzung?.source?.weg) === "lifeskinshop" && perputhja !== null && (bericht?.produkte || []).length) {
+    return [
+      `Përshëndetje${name ? ` ${name}` : ""}, e shikova vetë lëkurën tuaj: terapia LifeSkin ju përshtatet ${perputhja}%.`,
+      text,
+      `Këtu e shihni përqindjen tuaj, setin që zgjodha për ju dhe çmimin: ${link}`,
+      "Nëse doni ta filloni, e porositni direkt në faqe (paguani te dera), ose më shkruani këtu dhe e rregullojmë bashkë."
+    ].join("\n\n");
+  }
   // Anrede, der Text der Analyse, der Link - und dass man direkt
   // bestellen kann, ohne zu draengen.
   return [
@@ -1735,10 +1748,16 @@ export function nachfassNachricht(sitzung, bericht, art) {
         : "Kam një plan të qartë për lëkurën tuaj.";
     // LifeSkin 2 mit Produkten: zuerst die Antwort auf seine Frage.
     const ls2 = wegGueltig(sitzung?.source?.weg) === "lifeskin2" && (bericht?.produkte || []).length > 0;
+    // Der Laden mit Produkten und Zahl: zuerst die Përputhja von Dr. Gashi.
+    const perputhja = perputhjaGueltig(bericht?.perputhja);
+    const shop = wegGueltig(sitzung?.source?.weg) === "lifeskinshop" && (bericht?.produkte || []).length > 0
+      && perputhja !== null;
     return [
       gruss,
       ls2
         ? `E kontrollova personalisht lëkurën tuaj: terapia LifeSkin ju përshtatet ✓ ${plan}`
+        : shop
+        ? `E shikova personalisht lëkurën tuaj: terapia LifeSkin ju përshtatet ${perputhja}%. ${plan}`
         : `Analiza e lëkurës suaj është gati – e bëra personalisht. ${plan}`,
       `E keni këtu, ju merr vetëm 2 minuta: ${link}`,
       "Më tregoni çfarë mendoni."
@@ -2354,6 +2373,15 @@ export function vorabNachricht(sitzung, zeit = "1h") {
       "Kontrolli është falas. A jua dërgoj përgjigjen këtu?"
     ].join("\n\n");
   }
+  // DER LADEN (/lifeskinshop): Er wartet auf die Përputhja - die Zahl, wie
+  // sehr die Therapie zu seiner Haut passt. Die setzt Dr. Gashi selbst.
+  if (wegGueltig(sitzung?.source?.weg) === "lifeskinshop") {
+    return [
+      `Përshëndetje${name ? ` ${name}` : ""}, jam Dr. Violeta Gashi nga LifeSkin.`,
+      `Po e shikoj personalisht lëkurën tuaj dhe ju tregoj me përqindje sa ju përshtatet terapia LifeSkin. Përgjigjen e keni ${wann}.`,
+      "Pa detyrim. A jua dërgoj përqindjen këtu?"
+    ].join("\n\n");
+  }
   return [
     `Përshëndetje${name ? ` ${name}` : ""}, jam Dr. Violeta Gashi nga LifeSkin.`,
     `Po e bëj analizën e lëkurës suaj personalisht, që t'ju gjejmë terapinë LifeSkin që i përshtatet lëkurës suaj dhe ju sjell rezultate të dukshme. Analiza do të jetë gati ${wann}.`,
@@ -2484,6 +2512,12 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({}), 
   // Ohne Entwurf und ohne Befund: der Preis fuer die Zahl der gewaehlten
   // Produkte - fuer Faelle von vor dem Umstieg der alte (lifeskin-preise.js).
   const preis = entwurf?.preis || bericht?.preis || preisFuerFall(gewaehlt.size || 2, sitzung.createdAt);
+  // DIE PËRPUTHJA SETZT DR. GASHI - nur bei Faellen aus dem Laden
+  // (/lifeskinshop). Wie sehr die Therapie zu dieser Haut passt, in
+  // Prozent; der Kunde sieht die Zahl gross oben auf seiner Seite. Heart
+  // schlaegt keine vor (shared/lifeskin-perputhja.js).
+  const shopFall = wegGueltig(sitzung?.source?.weg) === "lifeskinshop";
+  const perputhja = entwurf?.perputhja || perputhjaGueltig(bericht?.perputhja) || "";
 
   const marke = {
     wartet: ["heart-lifeskin-marke--offen", "wartet auf Befund"],
@@ -2644,7 +2678,14 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({}), 
                      data-angelegt="${escapeHtml(String(sitzung.createdAt || ""))}"
                      value="${escapeHtml(String(preis))}" />
             </label>
-          </div>`)}
+          </div>${shopFall ? `
+          <label class="heart-lifeskin-feld heart-befund__perputhja">
+            <span>Përputhja % · Lifeskin Shop</span>
+            <input class="heart-lifeskin-eingabe" id="lifeskin-perputhja" type="number" inputmode="numeric"
+                   min="1" max="100" step="1" placeholder="1–100"
+                   value="${escapeHtml(String(perputhja))}" />
+            <small>Wie sehr die Therapie zu dieser Haut passt. Der Kunde sieht die Zahl groß oben auf seiner Seite.</small>
+          </label>` : ""}`)}
         ${schritt(2, "Prompt kopieren", `
           <button type="button" class="heart-befund__knopf heart-befund__knopf--haupt" data-action="lifeskin-prompt-kopieren">Prompt für diesen Fall kopieren</button>
           <textarea class="heart-lifeskin-eingabe" id="lifeskin-prompt-ausgabe" hidden readonly rows="5" aria-label="Vollständiger Prompt für diesen Fall"></textarea>`)}

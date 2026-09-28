@@ -1,0 +1,188 @@
+/* DIE THERAPIESEITE IM KLEID DES LADENS (/lifeskinshop).
+ *
+ * Auftrag 28.09. (docs/lifeskin-shop-perputhja.md): Wer ueber den Laden
+ * kam, landet nach der Freigabe auf einer Seite, die aussieht wie der
+ * Laden - dieselbe Tinte, dieselbe Schrift, dieselben Knoepfe mit Pfeil -,
+ * und oben steht die Përputhja: die Zahl, die Dr. Gashi in Heart gesetzt
+ * hat. Auf der Landingpage stand an dieser Stelle "?%".
+ *
+ * NUR FUER DEN LADEN. Jede Regel beginnt mit html[data-weg="lifeskinshop"];
+ * das Merkmal setzt terapia.js (#kleid), und nur fuer diesen Weg. /lifeskin
+ * und /lifeskin2 sehen ihre Seite unveraendert (tests/lifeskin-shop-weg.test.mjs).
+ *
+ * WAS SICH NICHT AENDERT: Aufbau, Reihenfolge und Inhalt der Abschnitte,
+ * die Kasse und jede Zaehlung. Hier stehen nur Farben, Masse und die
+ * Gestalt des Blocks mit der Zahl und der Karte zum Teilen. */
+
+/* ── Die Farben des Ladens (shop.css #ls-einstieg) ─────────────────── */
+html[data-weg="lifeskinshop"] {
+  --paper: #fff;
+  --white: #fff;
+  --ink: #123b3e;
+  --muted: #596869;
+  --green: #123b3e;
+  --green-soft: #f2f6f5;
+  --line: #dce5e3;
+  --orange: #123b3e;
+  --orange-dark: #0c2c2f;
+  --wash: #f2f6f5;
+  --accent: #c8eadc;
+  --shop-pfeil: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 17 17 7'/%3E%3Cpath d='M7 7h10v10'/%3E%3C/svg%3E");
+  --shop-teilen: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3v13'/%3E%3Cpath d='m7 8 5-5 5 5'/%3E%3Cpath d='M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6'/%3E%3C/svg%3E");
+  background: #fff;
+}
+html[data-weg="lifeskinshop"] body { background: #fff; }
+
+/* ── Kopf und Fuss: die Wortmarke des Ladens ─────────────────────── */
+html[data-weg="lifeskinshop"] .kopf { min-height: 60px; padding: 10px 20px; }
+html[data-weg="lifeskinshop"] .marke {
+  color: var(--ink); font-size: 19px; letter-spacing: 1.7px; font-weight: 750; line-height: 1;
+}
+html[data-weg="lifeskinshop"] .kopf .marke::after,
+html[data-weg="lifeskinshop"] .fundi .marke::after {
+  content: "DERMATOLOGY SKINCARE"; display: block; margin-top: 6px;
+  font-size: 7px; letter-spacing: 1.35px; font-weight: 500;
+}
+html[data-weg="lifeskinshop"] .fundi .marke small { display: none; }
+html[data-weg="lifeskinshop"] .kopf__pyetje--wa { border-color: var(--line); color: var(--ink); }
+
+/* ── Schrift: Augenbrauen und Ueberschriften wie im Laden ──────────── */
+html[data-weg="lifeskinshop"] .syri {
+  font-size: 11px; letter-spacing: 1.6px; font-weight: 700; color: var(--ink);
+}
+html[data-weg="lifeskinshop"] h1 {
+  font-size: 30px; line-height: 1.12; letter-spacing: -1px; font-weight: 600;
+}
+html[data-weg="lifeskinshop"] h2 {
+  font-size: 28px; line-height: 1.12; letter-spacing: -1px; font-weight: 600;
+}
+html[data-weg="lifeskinshop"] .mjetet__kopf h2 { font-size: 18px; letter-spacing: -.4px; }
+html[data-weg="lifeskinshop"] .porosi-statusi h2 { font-size: 21px; letter-spacing: -.5px; }
+html[data-weg="lifeskinshop"] summary { color: var(--ink); }
+html[data-weg="lifeskinshop"] a { color: var(--ink); }
+
+/* ── Karten: Linie statt Schatten, wie die Karten im Laden ───────────── */
+html[data-weg="lifeskinshop"] .hero__karte,
+html[data-weg="lifeskinshop"] .seti,
+html[data-weg="lifeskinshop"] .mjeti,
+html[data-weg="lifeskinshop"] .thate,
+html[data-weg="lifeskinshop"] .gjetjet li,
+html[data-weg="lifeskinshop"] .produkt,
+html[data-weg="lifeskinshop"] .rutina,
+html[data-weg="lifeskinshop"] .porosi-statusi,
+html[data-weg="lifeskinshop"] .porosia__shporta {
+  border-color: var(--line); border-radius: 14px; box-shadow: none;
+}
+html[data-weg="lifeskinshop"] #rezultate .rasti { border-color: var(--line); border-radius: 14px; box-shadow: none; }
+html[data-weg="lifeskinshop"] .mjeti__bahn,
+html[data-weg="lifeskinshop"] .mjeti__bahn--pret { background: var(--wash); }
+html[data-weg="lifeskinshop"] .mjeti__nr { background: #123b3eeb; }
+html[data-weg="lifeskinshop"] .cmimi { background: var(--wash); border-radius: 10px; }
+html[data-weg="lifeskinshop"] #t-cmimi1 { background: none; border-radius: 0; }
+html[data-weg="lifeskinshop"] .cmimi span { color: var(--muted); font-weight: 600; }
+html[data-weg="lifeskinshop"] .seti__ikona { border-radius: 10px; }
+html[data-weg="lifeskinshop"] .seti__cipa li,
+html[data-weg="lifeskinshop"] .perdorimi,
+html[data-weg="lifeskinshop"] .mjeti__koha { border-radius: 4px; }
+html[data-weg="lifeskinshop"] .rasti__mittel i { border-color: var(--line); border-radius: 4px; }
+html[data-weg="lifeskinshop"] .shigjeta { color: var(--ink); }
+html[data-weg="lifeskinshop"] .gati,
+html[data-weg="lifeskinshop"] .shqetesimi { color: var(--ink); }
+html[data-weg="lifeskinshop"] .rruga li > span { border-color: var(--line); }
+html[data-weg="lifeskinshop"] .rruga li:not(:last-child)::after { border-left-color: var(--line); }
+html[data-weg="lifeskinshop"] .rutina__tabs { background: var(--wash); }
+html[data-weg="lifeskinshop"] .keshilla { background: var(--wash); }
+
+/* ── Die Knoepfe des Ladens: Tinte, 8 px, Text links, Pfeil rechts ───── */
+html[data-weg="lifeskinshop"] .knopf {
+  justify-content: space-between; gap: 12px; min-height: 56px; padding: 15px 18px;
+  border-radius: 8px; box-shadow: none; font-size: 16px; font-weight: 600; text-align: left;
+}
+html[data-weg="lifeskinshop"] .knopf::after {
+  content: ""; flex: none; width: 20px; height: 20px; background: currentColor;
+  -webkit-mask: var(--shop-pfeil) center / contain no-repeat;
+  mask: var(--shop-pfeil) center / contain no-repeat;
+}
+html[data-weg="lifeskinshop"] .knopf:active { background: #24575a; }
+html[data-weg="lifeskinshop"] .knopf--wa { background: #1f8f55; }
+html[data-weg="lifeskinshop"] .porosia__forma input { border-color: #7d938f; border-radius: 8px; }
+html[data-weg="lifeskinshop"] .porosia__forma input:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
+html[data-weg="lifeskinshop"] .leiste { background: #fff; box-shadow: 0 -4px 22px #123b3e0d; }
+
+/* ── DIE PËRPUTHJA: der Ring mit der Zahl von Dr. Gashi ─────────────── */
+/* Wie der Abschnitt "Kontrolli i përputhjes" im Laden: Tinte, Minze und
+   derselbe gestrichelte Ring - dort mit "?%", hier mit seiner Zahl. Den
+   Ring fuellt terapia.js (#perputhjaRrotullo) ueber --perputhja-p. */
+html[data-weg="lifeskinshop"] .perputhja {
+  display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 18px; align-items: center;
+  margin: 2px 0 20px; padding: 20px 18px; border-radius: 18px;
+  background: var(--ink); color: #fff;
+}
+html[data-weg="lifeskinshop"] .perputhja__unaza {
+  --perputhja-p: 0;
+  position: relative; width: 112px; aspect-ratio: 1; border-radius: 50%;
+  display: grid; place-items: center;
+  background:
+    conic-gradient(var(--accent) calc(var(--perputhja-p) * 1%), transparent 0),
+    repeating-conic-gradient(#ffffff38 0 7deg, transparent 7deg 12deg);
+}
+html[data-weg="lifeskinshop"] .perputhja__unaza::before {
+  content: ""; position: absolute; inset: 9px; border-radius: 50%; background: var(--ink);
+}
+html[data-weg="lifeskinshop"] .perputhja__unaza strong {
+  position: relative; display: flex; align-items: flex-start;
+  font-size: 38px; line-height: 1; font-weight: 700; letter-spacing: -1.5px;
+  font-variant-numeric: tabular-nums;
+}
+html[data-weg="lifeskinshop"] .perputhja__unaza small {
+  font-size: 15px; letter-spacing: 0; margin: 4px 0 0 2px; color: var(--accent);
+}
+html[data-weg="lifeskinshop"] .perputhja__syri {
+  font-size: 11px; letter-spacing: 1.6px; font-weight: 700; line-height: 1.4;
+  text-transform: uppercase; color: #c3dfd4;
+}
+html[data-weg="lifeskinshop"] .perputhja__niveli {
+  margin: 7px 0 8px; font-size: 21px; line-height: 1.2; font-weight: 600; letter-spacing: -.5px; color: #fff;
+  animation: perputhja-rein .5s ease 1.1s both;
+}
+html[data-weg="lifeskinshop"] .perputhja__nga { font-size: 12px; line-height: 1.4; color: #b9d2cd; }
+html[data-weg="lifeskinshop"] .perputhja__nga b { color: #fff; font-weight: 700; }
+@keyframes perputhja-rein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ── TEILEN: die Kontrolle fuer jemanden, den er kennt ──────────────── */
+html[data-weg="lifeskinshop"] .ndaje {
+  margin: 0 -8px; padding: 30px 22px; border-bottom: 0; border-radius: 18px; background: var(--wash);
+}
+html[data-weg="lifeskinshop"] .ndaje h2 { margin: 12px 0 10px; }
+html[data-weg="lifeskinshop"] .ndaje > p:not(.syri) { font-size: 15px; color: var(--muted); }
+html[data-weg="lifeskinshop"] .ndaje__karte {
+  display: flex; align-items: center; gap: 14px; margin: 20px 0 16px;
+  padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: #fff;
+}
+html[data-weg="lifeskinshop"] .ndaje__karte strong {
+  flex: none; display: grid; place-items: center; width: 54px; height: 54px; border-radius: 50%;
+  background: var(--ink); color: var(--accent); font-size: 17px; font-weight: 700; letter-spacing: -.5px;
+}
+html[data-weg="lifeskinshop"] .ndaje__karte span { font-size: 14px; line-height: 1.45; color: var(--ink); }
+html[data-weg="lifeskinshop"] .ndaje .knopf { background: #fff; color: var(--ink); border: 1px solid #bbc9c7; }
+html[data-weg="lifeskinshop"] .ndaje .knopf::after {
+  -webkit-mask-image: var(--shop-teilen); mask-image: var(--shop-teilen);
+}
+html[data-weg="lifeskinshop"] .ndaje .knopf:active { background: var(--wash); }
+html[data-weg="lifeskinshop"] .ndaje__shenim { margin-top: 12px; font-size: 12px; color: var(--muted); text-align: center; }
+
+/* ── Kleine Telefone ─────────────────────────────────────────────── */
+@media (max-width: 360px) {
+  html[data-weg="lifeskinshop"] h1 { font-size: 26px; }
+  html[data-weg="lifeskinshop"] h2 { font-size: 25px; }
+  html[data-weg="lifeskinshop"] .perputhja { grid-template-columns: 96px minmax(0, 1fr); gap: 14px; padding: 18px 15px; }
+  html[data-weg="lifeskinshop"] .perputhja__unaza { width: 96px; }
+  html[data-weg="lifeskinshop"] .perputhja__unaza::before { inset: 8px; }
+  html[data-weg="lifeskinshop"] .perputhja__unaza strong { font-size: 32px; }
+  html[data-weg="lifeskinshop"] .perputhja__niveli { font-size: 18px; }
+}
+
+/* ── Weniger Bewegung: die Zahl steht sofort da ────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  html[data-weg="lifeskinshop"] .perputhja__niveli { animation: none; }
+}

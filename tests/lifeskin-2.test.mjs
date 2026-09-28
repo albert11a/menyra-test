@@ -92,7 +92,15 @@ test("der Weg: nur bekannte Namen, sonst der bisherige", () => {
   assert.equal(wegDerSitzung({ source: { weg: "lifeskin2" } }), "lifeskin2");
   assert.equal(wegDerSitzung({ source: {} }), "");
   // Der Trichter liest ihn ohne Import (Sandbox-Tests) - dieselbe Liste.
-  assert.match(APP, /export function wegLesen\(wurzel\) \{\n\s+return wurzel\?\.dataset\?\.lsLanding === "lifeskin2" \? "lifeskin2" : "";/);
+  assert.match(APP, /export function wegLesen\(wurzel\) \{\n\s+const weg = wurzel\?\.dataset\?\.lsLanding;\n\s+return weg === "lifeskin2" \|\| weg === "lifeskinshop" \? weg : "";/);
+});
+
+test("der Trichter kennt dieselben Wege wie shared/lifeskin-weg.js", async () => {
+  const { wegLesen } = await import("../apps/lifeskin/lifeskin-app.js");
+  for (const weg of LIFESKIN_WEGE) assert.equal(wegLesen({ dataset: { lsLanding: weg } }), weg);
+  assert.equal(wegLesen({ dataset: { lsLanding: "anders" } }), "");
+  assert.equal(wegLesen({ dataset: {} }), "");
+  assert.equal(wegLesen(null), "");
 });
 
 test("die Sitzung merkt sich den Weg in source und die Warteseite bekommt ihn in der Adresse", () => {

@@ -52,16 +52,21 @@ fuer spaetere Sortimentserweiterung erhaltenen Unterbau.
    keine Scroll-Sperre - sonst verrutscht die Seite auf dem iPhone nach der
    Tastatur): Zeilen, Summe nach Staffel, Name/Telefon/Adresse/Stadt,
    "Porositni" → Bestaetigung mit Bestellnummer. Bezahlt an der Tuer.
-4. **"Gjeni setin për lëkurën tuaj"** (`#ls-start`) → dieselbe Analyse wie
+4. **"Zbuloni nëse seti ju përshtatet"** (`#ls-start`) → dieselbe Strecke wie
    /lifeskin: Wahl (Scan/Foto/Trup-Pytje), Aufnahme, Fragen, Name, Nummer
-   (Lead), Warteseite `/analiza/<id>?weg=lifeskinshop`.
+   (Lead), Warteseite `/analiza/<id>?weg=lifeskinshop` - im Kleid des
+   Ladens, mit Tipps und der Përputhja von Dr. Gashi auf der Therapieseite
+   (`docs/lifeskin-shop-perputhja.md`).
 
 ## Technik
 
 - **Weg** `lifeskinshop` in `shared/lifeskin-weg.js`; die Seite traegt
   `<html data-ls-landing="lifeskinshop">`, die Sitzung `source.weg`.
-  Keine Regel-Aenderung, kein Regel-Deploy. Warteseite, Therapieseite und
-  Fragen fallen fuer diesen Weg auf die Standardtexte zurueck (wie /lifeskin).
+  Keine Regel-Aenderung, kein Regel-Deploy. Seit dem 28.09. (abends)
+  sprechen Trichter, Warteseite und Therapieseite fuer diesen Weg in
+  eigenen Worten und im Kleid des Ladens, und die Therapieseite zeigt die
+  Përputhja, die Dr. Gashi in Heart setzt - siehe
+  `docs/lifeskin-shop-perputhja.md`.
 - **Seite** `apps/lifeskin-shop/index.html`: der Laden als `#ls-einstieg`,
   darunter die Bildschirme der Analyse (kopiert aus
   `apps/lifeskin-landing/index.html`), `lifeskin-app.js` + `shop.js`.

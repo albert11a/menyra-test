@@ -285,6 +285,7 @@ export class Analiza {
 
   async starte() {
     ikonenSetzen();
+    this.#kleid();
     schreibe($("#an-kopftitel"), this.text("analizaJuaj"));
     schreibe($("#an-laedttext"), this.text("laedt"));
     this.#zeige("laedt");
@@ -292,6 +293,7 @@ export class Analiza {
 
     this.daten = await this.quelle.bericht();
     if (!this.daten) { this.#wegZeigen(); return; }
+    this.#kleid();
     // DIE MELDUNG AN DR. GASHI - von hier, der Warteseite. Der Trichter
     // springt direkt nach dem Speichern hierher, und sein eigener Anstoss
     // kam oft nicht mehr hinaus. Doppelt schadet nicht: Die Funktion
@@ -362,6 +364,16 @@ export class Analiza {
   #suche(name) {
     try { return new URLSearchParams(this.ort?.search || "").get(name); }
     catch { return null; }
+  }
+
+  // DIE FARBEN DES LADENS (astra-shop.css, nur unter
+  // html[data-weg="lifeskinshop"]). Zuerst nach der Adresse, die der
+  // Trichter mitgibt, nach dem Laden auch nach dem Bericht.
+  #kleid() {
+    const wurzel = globalThis.document?.documentElement;
+    if (!wurzel?.dataset) return;
+    if (this.weg === "lifeskinshop") wurzel.dataset.weg = "lifeskinshop";
+    else delete wurzel.dataset.weg;
   }
 
   #zeige(name) {
@@ -485,11 +497,24 @@ export class Analiza {
     const knopf = $("#an-whatsapp");
     if (!knopf) return;
     if (!LIFESKIN_WHATSAPP) { knopf.hidden = true; return; }
-    const gruss = t(LIFESKIN_WHATSAPP_TEXT, this.sprache) || "";
-    const code = this.daten?.code ? ` (${this.daten.code})` : "";
-    knopf.href = `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(gruss + code)}`;
+    knopf.href = `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(this.#waGruss())}`;
     knopf.hidden = false;
     schreibe($("#an-whatsapptext"), this.text("ndihmaWhatsapp"));
+  }
+
+  // Die vorbefuellte Nachricht an Dr. Gashi - mit der Fallnummer AN DER
+  // STELLE von {code}. Vorher stand sie dahinter, und in der Nachricht
+  // blieb "Kodi im: {code} (LS-…)" stehen. Der Laden (/lifeskinshop) hat
+  // keine Analyse versprochen, sondern die Kontrolle - dort sagt er es so.
+  #waGruss() {
+    let gruss = t(LIFESKIN_WHATSAPP_TEXT, this.sprache) || "";
+    if (this.weg === "lifeskinshop") {
+      gruss = gruss.replace("Bëra analizën.", "Bëra kontrollin e përputhjes.")
+        .replace("Ich habe die Analyse gemacht.", "Ich habe die Passungsprüfung gemacht.");
+    }
+    const code = String(this.daten?.code || "").trim();
+    if (!gruss.includes("{code}")) return `${gruss}${code ? ` (${code})` : ""}`;
+    return code ? gruss.replace("{code}", code) : gruss.replace(/\s*[^.!?]*\{code\}/, "");
   }
 
   #wegZeigen() {
@@ -979,9 +1004,7 @@ export class Analiza {
     const knopf = $("#an-pritwa");
     if (!knopf) return;
     if (!LIFESKIN_WHATSAPP) { knopf.hidden = true; return; }
-    const gruss = t(LIFESKIN_WHATSAPP_TEXT, this.sprache) || "";
-    const code = this.daten?.code ? ` (${this.daten.code})` : "";
-    knopf.href = `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(gruss + code)}`;
+    knopf.href = `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(this.#waGruss())}`;
     knopf.hidden = false;
     schreibe($("#an-pritwatext"), this.text("pritWaKnopf"));
   }

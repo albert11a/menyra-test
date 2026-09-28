@@ -5781,6 +5781,8 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
 .heart-befund__produkte { display: flex; flex-direction: column; gap: 10px; }
 .heart-befund__reihe { display: grid; grid-template-columns: 1fr 110px; gap: 12px; }
 .heart-befund__preis input { text-align: right; }
+/* Nur beim Laden: die Zahl, die Dr. Gashi setzt (shared/lifeskin-perputhja.js). */
+.heart-befund__perputhja input { max-width: 110px; text-align: right; font-weight: 700; }
 
 /* Knoepfe: gross genug fuer den Daumen, der wichtigste voll breit. */
 .heart-befund__knopf {

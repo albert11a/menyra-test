@@ -8,6 +8,8 @@
 // Aus dem DOM, nicht aus dem Zustand: Der Bogen lebt im DOM, bis
 // freigegeben wird (data-bewahren).
 
+import { perputhjaGueltig } from "../../shared/lifeskin-perputhja.js";
+
 // DIE ZEICHEN RECHTS IM KOPF: vollstaendig (✓) oder fehlt noch etwas (!).
 //
 // Aus dem DOM gelesen, nicht aus dem Zustand - der Bogen lebt im DOM, bis
@@ -19,7 +21,9 @@ export function befundStandAuffrischen(wurzel = document) {
   const wert = (wahl) => String(bogen.querySelector(wahl)?.value || "").trim();
   const angehakt = [...bogen.querySelectorAll("[data-produkt-wahl]:checked")].map((k) => String(k.value));
   const ohneFoto = wert("[data-bogen-art]") === "pa-foto";
-  const vorbereitung = angehakt.length > 0 && Number(wert("#lifeskin-preis")) > 0;
+  // Beim Laden gehoert die Përputhja % dazu - das Feld steht nur dort.
+  const perputhjaOk = !bogen.querySelector("#lifeskin-perputhja") || perputhjaGueltig(wert("#lifeskin-perputhja")) !== null;
+  const vorbereitung = angehakt.length > 0 && Number(wert("#lifeskin-preis")) > 0 && perputhjaOk;
   const punkteVoll = angehakt.length > 0 && angehakt.every((id) =>
     [...bogen.querySelectorAll(`[data-shitja-punkt="${CSS.escape(id)}"]`)].filter((f) => String(f.value || "").trim()).length >= 3);
   const seite = Boolean(wert('[data-shitja="hyrja"]')) && punkteVoll && Boolean(wert('[data-shitja-problem="0"][data-teil="gjetja"]'));

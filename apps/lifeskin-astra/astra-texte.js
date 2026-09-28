@@ -600,6 +600,52 @@ export const TEXTE_WEGE = Object.freeze({
     },
     pritHapi3: { sq: "Tani: Dr. Gashi kontrollon", de: "Jetzt: Dr. Gashi prüft" },
     pritHapi4: { sq: "Përgjigja: a ju përshtatet", de: "Die Antwort: passt es?" }
+  }),
+  // DER LADEN (/lifeskinshop, docs/lifeskin-shop-perputhja.md). Er wartet
+  // nicht auf eine Analyse, sondern auf seine Zahl: wie sehr die Therapie
+  // zu seiner Haut passt, in Prozent. Die setzt Dr. Gashi selbst in Heart -
+  // hier steht nichts, was eine Maschine errechnet haette.
+  lifeskinshop: Object.freeze({
+    laedt: { sq: "Po hapet faqja juaj…", de: "Ihre Seite wird geöffnet…" },
+    wegTitel: { sq: "Ky rast nuk u gjet.", de: "Dieser Fall wurde nicht gefunden." },
+    faqjaTitull: { sq: "Rasti juaj · LifeSkin", de: "Ihr Fall · LifeSkin" },
+    analizaJuaj: { sq: "RASTI JUAJ", de: "IHR FALL" },
+    pritTitel: {
+      sq: "Dr. Gashi po vlerëson sa ju përshtatet terapia, {name}.",
+      de: "Dr. Gashi beurteilt, wie gut die Therapie zu Ihnen passt, {name}."
+    },
+    pritTitelOhne: {
+      sq: "Dr. Gashi po vlerëson sa ju përshtatet terapia.",
+      de: "Dr. Gashi beurteilt, wie gut die Therapie zu Ihnen passt."
+    },
+    // Trup und Pytje: Die Zahl kommt auf WhatsApp.
+    pritTitelWa: {
+      sq: "Dr. Gashi ju shkruan në WhatsApp sa ju përshtatet terapia, {name}.",
+      de: "Dr. Gashi schreibt Ihnen auf WhatsApp, wie gut die Therapie passt, {name}."
+    },
+    pritTitelWaOhne: {
+      sq: "Dr. Gashi ju shkruan në WhatsApp sa ju përshtatet terapia.",
+      de: "Dr. Gashi schreibt Ihnen auf WhatsApp, wie gut die Therapie passt."
+    },
+    pritWarum: {
+      sq: "Përqindjen e vendos vetë Dr. Gashi, pasi e shikon lëkurën tuaj – jo një makinë.",
+      de: "Die Prozentzahl legt Dr. Gashi selbst fest, nachdem sie Ihre Haut gesehen hat – keine Maschine."
+    },
+    pritNumri: { sq: "Numri i rastit", de: "Nummer des Falls" },
+    pritSperre: {
+      sq: "Përqindja nuk mund t'ju dërgohet pa një mënyrë kontakti.",
+      de: "Ohne einen Weg zu Ihnen kann die Prozentzahl nicht zugestellt werden."
+    },
+    pritFrei: {
+      sq: "Përgjigja vjen në WhatsApp: sa për qind ju përshtatet terapia, cilin set ju duhet dhe sa kushton.",
+      de: "Die Antwort kommt per WhatsApp: zu wie viel Prozent die Therapie passt, welches Set Sie brauchen und was es kostet."
+    },
+    pritHapi3: { sq: "Tani: Dr. Gashi vlerëson", de: "Jetzt: Dr. Gashi beurteilt" },
+    pritHapi4: { sq: "Përqindja juaj", de: "Ihre Prozentzahl" },
+    pritSiText: {
+      sq: "WhatsApp hapet me mesazhin tuaj gati. Ju e dërgoni — dhe Dr. Gashi ju njofton sapo përqindja juaj të jetë gati. Pa pagesë. Ju mund të bllokoni bisedën në çdo moment.",
+      de: "WhatsApp öffnet sich mit Ihrer fertigen Nachricht. Sie senden sie — und Dr. Gashi gibt Ihnen Bescheid, sobald Ihre Prozentzahl feststeht. Kostenlos. Sie können das Gespräch jederzeit beenden."
+    }
   })
 });
 

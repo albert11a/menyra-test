@@ -19,6 +19,10 @@
   <meta property="og:image" content="https://www.mnyra.com/apps/lifeskin/share-analiza.jpg">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/apps/lifeskin-verkauf/verkauf.css">
+  <!-- Das Kleid des Ladens (/lifeskinshop). Greift nur unter
+       html[data-weg="lifeskinshop"], das terapia.js fuer diesen Weg setzt -
+       alle anderen Wege sehen die Seite wie bisher. -->
+  <link rel="stylesheet" href="/apps/lifeskin-verkauf/terapia-shop.css">
   <script type="module" src="/apps/lifeskin-verkauf/terapia.js"></script>
 </head>
 <body>
@@ -51,6 +55,21 @@
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m8 12.5 2.8 2.8L16.5 9.5"/></svg>
           <span id="t-urteiltext">Po, lëkura juaj i përshtatet terapisë.</span>
         </p>
+        <!-- DER LADEN (/lifeskinshop): DIE PËRPUTHJA ZUERST. Die Zahl hat
+             Dr. Gashi in Heart gesetzt (reports/{id}.perputhja) - die Seite
+             rechnet nichts, sie zeigt sie. Auf der Landingpage stand an
+             dieser Stelle "?%", hier steht seine Zahl. Nur mit Zahl und
+             freigegebenen Produkten (docs/lifeskin-shop-perputhja.md). -->
+        <div class="perputhja" id="t-perputhja" hidden>
+          <div class="perputhja__unaza" id="t-perputhjaunaza" role="img" aria-label="Përputhja">
+            <strong aria-hidden="true"><span id="t-perputhjanumri">0</span><small>%</small></strong>
+          </div>
+          <div class="perputhja__tekst">
+            <p class="perputhja__syri">Përputhja me lëkurën tuaj</p>
+            <p class="perputhja__niveli" id="t-perputhjaniveli"></p>
+            <p class="perputhja__nga">Vlerësuar personalisht nga <b>Dr. Violeta Gashi</b></p>
+          </div>
+        </div>
         <h1 id="t-titulli"></h1>
         <!-- ÄRZTIN, FOTOS UND BEFUND IN EINER KARTE. Die Fotos aus dem Scan
              stehen als kleiner Stapel neben der Aerztin - nur zum Ansehen,
@@ -266,6 +285,24 @@
           <dl class="zonat" id="t-pakujdes"></dl></details>
         <details id="t-metodablock"><summary>Si vlerësohet?<i aria-hidden="true">+</i></summary>
           <p id="t-metoda">Vlerësim i pamjes së lëkurës nga foto. Nga një fotografi nuk vlerësohen dot thellësia e lezioneve, dhimbja apo faktorët hormonalë; drita dhe kamera mund ta ndryshojnë pamjen e skuqjes. Historia dhe produktet që përdorni e plotësojnë planin.</p></details>
+      </section>
+
+      <!-- 8b. TEILEN (nur Laden, nur mit Zahl). Er schickt die Kontrolle an
+           jemanden, den er kennt: seine Zahl als Satz und der allgemeine
+           Link zum Laden - nie sein eigener Link (dort stehen sein Befund
+           und seine Fotos). Was geschickt wird, steht vorher in der Karte.
+           terapia.js #ndaje; ohne Teilen-Funktion des Telefons oeffnet
+           WhatsApp mit dem Text. -->
+      <section class="pjese ndaje" id="ndaje" data-pfad="Teilen" hidden>
+        <p class="syri">Për dikë që e njihni</p>
+        <h2>Kush tjetër ka të njëjtin shqetësim?</h2>
+        <p>Dërgojani kontrollin. Pa detyrim: Dr. Gashi e shikon edhe lëkurën e tyre dhe u tregon me përqindje sa u përshtatet terapia.</p>
+        <div class="ndaje__karte" aria-hidden="true">
+          <strong id="t-ndajenumri"></strong>
+          <span id="t-ndajetext"></span>
+        </div>
+        <button class="knopf" type="button" id="t-ndaje">Dërgojani linkun</button>
+        <p class="ndaje__shenim">Dërgohet vetëm ky mesazh me linkun e kontrollit – asnjë foto, asnjë e dhënë tjetër.</p>
       </section>
 
       <!-- 9. INSTAGRAM - ganz unten, wo fast alle ankommen. Immer sichtbar.

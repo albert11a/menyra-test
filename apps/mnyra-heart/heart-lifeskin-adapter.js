@@ -17,6 +17,7 @@
 
 import { antwortenFuerBericht } from "../../shared/lifeskin-antworten.js";
 import { wegGueltig } from "../../shared/lifeskin-weg.js";
+import { perputhjaGueltig } from "../../shared/lifeskin-perputhja.js";
 import { db } from "/shared/firebase-config.js";
 import {
   TRICHTER_STUFEN,
@@ -581,7 +582,7 @@ export async function ladeBericht(sitzungId) {
   return schnappschuss.exists() ? { id: schnappschuss.id, ...(schnappschuss.data() || {}) } : null;
 }
 
-export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport, texte, ohneBild = false, raste = [], klientet = [], nurStaff = false, bereit = false, antworten = null, weg = "" }) {
+export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport, texte, ohneBild = false, raste = [], klientet = [], nurStaff = false, bereit = false, perputhja = null, antworten = null, weg = "" }) {
   if (!sitzungId) throw new Error("Bericht ohne Kennung");
   await setDoc(doc(db, "lifeskin", TENANT, "reports", sitzungId), {
     status: nurStaff || bereit ? "vorschau" : "fertig",
@@ -640,6 +641,11 @@ export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwe
     // përshtatet"). Der Patient darf den Bericht nur anlegen, nicht
     // erweitern; deshalb schreibt es Heart hier (shared/lifeskin-weg.js).
     weg: wegGueltig(weg),
+    // Wie sehr die Therapie zu seiner Haut passt, in Prozent - beim Laden
+    // (/lifeskinshop) setzt Dr. Gashi die Zahl im Befund. Hier wird nur
+    // geprueft, dass es eine von 1 bis 100 ist (shared/lifeskin-perputhja.js),
+    // sonst null: Die Therapieseite laesst den Block dann weg.
+    perputhja: perputhjaGueltig(perputhja),
     // Welche Vorher/Nachher-Faelle die Seite zeigt, in dieser Reihenfolge.
     raste: (Array.isArray(raste) ? raste : []).map((x) => String(x || "").slice(0, 40)).filter(Boolean).slice(0, 12),
     // Die Kundenbilder ("Nga klientët tanë"), die Heart gewaehlt hat.

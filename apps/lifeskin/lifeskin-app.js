@@ -35,7 +35,7 @@ import { netzVorladen, netzHolen, netzStand, netzArt, netzFehlerFolge, messeNetz
 import { STANDARD_KONFIG, ALTERSGRUPPEN } from "./lifeskin-catalog.js";
 import { OBERFLAECHE, EINSTIEG_HINWEIS, EINSTIEG_KARTEN, ARZT_BILD, ARZT_NAME,
   FRAGEN, FRAGEN_NACH_SCAN, FRAGEN_NACH_AUFNAHME, FRAGEN_PA_SKANIM, FRAGEN_PA_SKANIM_NUMRI,
-  FRAGEN_TEXTE, OBERFLAECHE_WEGE, frageFuerWeg, t, fuelle } from "./lifeskin-content.js";
+  FRAGEN_TEXTE, FRAGEN_TEXTE_WEGE, OBERFLAECHE_WEGE, frageFuerWeg, t, fuelle } from "./lifeskin-content.js";
 import { besteGuete, Flaechenkamera, beiFreigabe, KAMERA_HAENGT_MS, BILD_GRENZE_MS, ausDatei as fotoAusDatei } from "./lifeskin-foto.js";
 import { Sitzung } from "./lifeskin-session.js";
 import { starteKlickpfad } from "../../shared/lifeskin-klickpfad.js";
@@ -500,9 +500,12 @@ export function varianteLesen(wurzel) {
 // machte das aus jedem Tipp auf der Seite einen gewaehlten Weg (Start
 // sprang ueber die Wahl in die Scan-Anleitung, gefunden am 27.09.).
 // Dieselbe Liste wie shared/lifeskin-weg.js - tests/lifeskin-2.test.mjs
-// haelt beide gleich.
+// haelt beide gleich. Der Laden (/lifeskinshop) spricht seit dem 28.09.
+// ebenfalls in eigenen Worten (OBERFLAECHE_WEGE, frage.wege) - sonst
+// aendert this.weg nichts am Trichter.
 export function wegLesen(wurzel) {
-  return wurzel?.dataset?.lsLanding === "lifeskin2" ? "lifeskin2" : "";
+  const weg = wurzel?.dataset?.lsLanding;
+  return weg === "lifeskin2" || weg === "lifeskinshop" ? weg : "";
 }
 
 // DER BROWSER IN EINER APP AUF ANDROID - dort gibt es womoeglich keine
@@ -4309,7 +4312,7 @@ export class Trichter {
       // falsch - "Skanimi mbaroi" vor einer Frage, die kein Scan je
       // gesehen hat, ist die schlechteste Sorte Satz: eine, die der
       // Besucher als Fehler liest.
-      const eigener = FRAGEN_TEXTE[this.fragen.einleitung];
+      const eigener = FRAGEN_TEXTE_WEGE[this.weg]?.[this.fragen.einleitung] || FRAGEN_TEXTE[this.fragen.einleitung];
       const satz = this.fragen.i !== 0
         ? ""
         : t(eigener || (knapp ? FRAGEN_TEXTE.einleitungEinzeln : FRAGEN_TEXTE.einleitung), this.sprache);

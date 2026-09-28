@@ -942,6 +942,13 @@ export function bindHeartEvents({
       operations.lifeskinEntwurfMerken?.();
       return;
     }
+    // Die Përputhja % (nur Laden): ebenso merken, und das Zeichen im Kopf
+    // zieht nach - ohne Zahl ist die Vorbereitung nicht vollstaendig.
+    if (event.target?.matches?.("#lifeskin-perputhja")) {
+      operations.lifeskinEntwurfMerken?.();
+      operations.lifeskinBefundStand?.();
+      return;
+    }
 
     const landingNextSearch = event.target?.closest?.("[data-landing-next-search]");
     if (landingNextSearch) {

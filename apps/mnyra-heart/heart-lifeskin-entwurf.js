@@ -10,6 +10,10 @@
 // Preis sofort hierher (localStorage, je Fall). Beim Zeichnen eines noch
 // nicht freigegebenen Falls steht die gemerkte Auswahl wieder da. Nach der
 // Freigabe gilt der gespeicherte Befund, und der Entwurf wird geloescht.
+// Beim Laden (/lifeskinshop) auch die Përputhja %, die Dr. Gashi eintippt
+// (shared/lifeskin-perputhja.js).
+
+import { perputhjaGueltig } from "../../shared/lifeskin-perputhja.js";
 
 const PRAEFIX = "heart.lifeskin.entwurf.";
 const HALTBAR_MS = 14 * 24 * 60 * 60 * 1000;
@@ -30,7 +34,8 @@ export function entwurfLesen(fallId) {
       zweck: roh.zweck && typeof roh.zweck === "object" ? roh.zweck : {},
       art: roh.art === "pa-foto" ? "pa-foto" : roh.art === "foto" ? "foto" : "",
       weg: ["skanim", "foto", "trup", "pytje"].includes(roh.weg) ? roh.weg : "",
-      preis: Number(roh.preis) > 0 ? Number(roh.preis) : 0
+      preis: Number(roh.preis) > 0 ? Number(roh.preis) : 0,
+      perputhja: perputhjaGueltig(roh.perputhja) || 0
     };
   } catch {
     return null;
@@ -62,7 +67,8 @@ export function entwurfAusBogen(wurzel = globalThis.document) {
     zweck,
     art: wurzel.querySelector("[data-bogen-art]")?.value || "",
     weg: wurzel.querySelector("[data-bogen-weg]")?.value || "",
-    preis: Number(wurzel.querySelector("#lifeskin-preis")?.value) || 0
+    preis: Number(wurzel.querySelector("#lifeskin-preis")?.value) || 0,
+    perputhja: perputhjaGueltig(wurzel.querySelector("#lifeskin-perputhja")?.value) || 0
   };
 }
 
