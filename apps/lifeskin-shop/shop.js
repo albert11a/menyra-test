@@ -29,7 +29,7 @@ import { pixelKennungen } from "../lifeskin/lifeskin-pixel.js";
 import { preisFuer } from "../../shared/lifeskin-preise.js";
 import { ansichtOeffnen, ansichtSchliessen } from "../../shared/lifeskin-ansicht.js";
 import { mittelBauen, holeSammlung, FOTO_PRAEFIX } from "../lifeskin-landing/shop.js";
-import { rasteLaden, rasteFuer, rasteMitBildern, rastiProdukteText } from "../../shared/lifeskin-raste.js";
+import { rasteLaden, rasteFuer, rasteMitBildern } from "../../shared/lifeskin-raste.js";
 import {
   SETET_DOK, SET_FOTO_PRAEFIX, SETET_STANDARD, MITTEL_FOTOS_STANDARD, MITTEL_NENTITUJ,
   setetOderStandard, setetNormalisieren, aktiveSetet, nevojaKennung
@@ -241,7 +241,7 @@ export class Dyqan {
     const bahn = $("#proof-bahn", this.dok);
     if (!bahn) return;
     const bild = (src, alt) => `<img src="${e(src)}" width="600" height="800" alt="${e(alt)}" loading="lazy">`;
-    bahn.innerHTML = faelle.map((r) => `<article class="proof-rast"><div class="proof-pair"><figure>${bild(r.para, `Para: ${r.gjetja || ""}`)}<figcaption>PARA <span>Në fillim</span></figcaption></figure><figure>${bild(r.pas, `Pas 28 ditësh: ${r.gjetja || ""}`)}<figcaption>PAS <span>Pas 4 javësh</span></figcaption></figure></div><p class="proof-rast__fjale">${r.emri ? `<strong>${e(r.emri)}</strong>` : ""}${e([r.gjetja, r.produkte.length ? rastiProdukteText(r) : "", r.cmimi ? `${r.cmimi} €` : ""].filter(Boolean).join(" · "))}</p></article>`).join("");
+    bahn.innerHTML = faelle.map((r) => `<article class="proof-rast"><div class="proof-pair"><figure>${bild(r.para, `Para: ${r.gjetja || ""}`)}<figcaption>PARA <span>Në fillim</span></figcaption></figure><figure>${bild(r.pas, `Pas 28 ditësh: ${r.gjetja || ""}`)}<figcaption>PAS <span>Pas 4 javësh</span></figcaption></figure></div></article>`).join("");
     bahn.scrollLeft = 0;
     let pikat = $("#proof-pikat", this.dok);
     if (faelle.length < 2) { pikat?.remove(); return; }
