@@ -219,6 +219,16 @@ sessionStorage-Eintrag, gesetzt von `berichtAnlegen()`); der Kunde sieht
 wieder den Laden. Pixel: keine Zeile geaendert, Sperrtest gruen - aber wer
 nach dem Kauf neu laedt, meldet jetzt wie jeder Landing-Besuch PageView +
 lifeskin_landing_view (die kaputte Warteseite meldete gar nichts).
+Erlaubt vom Inhaber (Albert) am 28.09.2026 - erst danach auf main.
+
+**Entscheidungen des Inhabers (28.09. spaet):**
+
+- Kein Deploy von `lifeskinCapiPurchase`: Die Aenderung aus 985e6d4
+  (Bestellungen aus dem stillen Modus nicht an Meta) steht im Code, laeuft
+  in Firebase aber noch in der alten Fassung. Eine Testbestellung im
+  stillen Modus ginge dort weiter als Kauf an Meta.
+- Kein automatischer erweiterter Abgleich im Events Manager und keine
+  Kundendaten (Telefon, Name, Stadt) in der Conversions API.
 
 **Offen (nicht geaendert):**
 
