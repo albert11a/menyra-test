@@ -89,8 +89,8 @@ export function bestellZeilen(korb, mittel) {
 }
 
 // ── Firestore lesen, ohne die Firebase-App (REST, wie der ganze Trichter) ──
-async function holeDok(name, holen = fetch) {
-  const antwort = await holen(`${BASIS}/${encodeURIComponent(name)}`);
+async function holeDok(name, holen = fetch, suche = "") {
+  const antwort = await holen(`${BASIS}/${encodeURIComponent(name)}${suche}`);
   if (antwort.status === 404) return null;
   if (!antwort.ok) throw new Error(`Firestore ${antwort.status}`);
   const d = await antwort.json();
@@ -137,8 +137,17 @@ export function kundenGalerie(roh) {
     <figcaption><span>${m.art === 'video' ? 'VIDEO' : 'FOTO'} · LIFESKIN</span>${m.produkt ? `<strong>${e(m.produkt)}</strong>` : ''}${m.text ? `<p>${e(m.text)}</p>` : ''}</figcaption></figure>`).join('');
 }
 
-// Das Titelbild aus Heart, auf dem Geraet gemerkt (#titelbild).
+const pause = (ms) => new Promise((fertig) => setTimeout(fertig, ms));
+
+// Das Titelbild aus Heart, auf dem Geraet gemerkt (#titelbild) - mit dem
+// Stempel, den Heart beim Speichern setzt (config/shopHero.updatedAt).
 const HERO_SCHLUESSEL = "lifeskin:shopHero";
+const HERO_STAND_SCHLUESSEL = "lifeskin:shopHeroStand";
+// Nur der Stempel, ohne das Bild: ein paar Bytes statt ~400 KB.
+export const HERO_NUR_STAND = "?mask.fieldPaths=updatedAt";
+// Die Adresse, die der Kopf von index.html schon abfragt - beide muessen
+// gleich sein (tests/lifeskin-shop-weg.test.mjs).
+export const HERO_ADRESSE = `${BASIS}/${SHOP_HERO_DOK}`;
 
 export class Dyqan {
   constructor({ dokument = document, speicher = globalThis.sessionStorage, holen, trichter,
@@ -170,7 +179,8 @@ export class Dyqan {
     this.#korbZahl();
     this.#ereignisse();
     this.#beobachten();
-    this.titelbild();
+    // Das Titelbild zuerst: Die grossen Daten in laden() warten darauf.
+    this.titelbildFertig = this.titelbild();
     this.laden();
   }
 
@@ -189,27 +199,61 @@ export class Dyqan {
     const img = rahmen?.querySelector(":scope > img");
     const standard = img?.src || "";
     let gemerkt = "";
-    try { gemerkt = String(this.dauer?.getItem?.(HERO_SCHLUESSEL) || ""); } catch { gemerkt = ""; }
+    let stand = "";
+    try {
+      gemerkt = String(this.dauer?.getItem?.(HERO_SCHLUESSEL) || "");
+      stand = String(this.dauer?.getItem?.(HERO_STAND_SCHLUESSEL) || "");
+    } catch { gemerkt = ""; stand = ""; }
     if (img && gemerkt.startsWith("data:image/")) {
       img.src = gemerkt;
       rahmen.setAttribute("data-eigen", "");
     } else gemerkt = "";
+    const vergessen = () => {
+      try { this.dauer?.removeItem?.(HERO_SCHLUESSEL); this.dauer?.removeItem?.(HERO_STAND_SCHLUESSEL); } catch { /* egal */ }
+    };
+    // DIE ANFRAGE AUS DEM KOPF DER SEITE (index.html, window.__lsTitelbild):
+    // Sie laeuft schon, waehrend der Trichter noch laedt - einmal benutzt,
+    // danach gilt wieder this.holen. Die Seite waehlt dort dieselbe Adresse
+    // wie hier: mit gemerktem Bild nur den Stempel, sonst das ganze Bild.
+    const vorab = globalThis.__lsTitelbild || null;
+    const holen = (url) => {
+      if (vorab?.antwort && vorab.url === url) {
+        const antwort = vorab.antwort;
+        vorab.antwort = null;
+        return antwort;
+      }
+      return this.holen(url);
+    };
     try {
-      const d = await holeDok(SHOP_HERO_DOK, this.holen);
+      // Gemerkt und mit Stempel: nur nachsehen, ob Heart ein neues hat.
+      if (gemerkt && stand) {
+        const kurz = await holeDok(SHOP_HERO_DOK, holen, HERO_NUR_STAND);
+        if (kurz && String(kurz.updatedAt || "") === stand) return;
+        if (!kurz) {
+          // In Heart entfernt (404): das Standardbild zurueck.
+          vergessen();
+          if (img) { img.src = standard; rahmen.removeAttribute?.("data-eigen"); }
+          return;
+        }
+      }
+      const d = await holeDok(SHOP_HERO_DOK, holen);
       const foto = typeof d?.foto === "string" && d.foto.startsWith("data:image/") ? d.foto : "";
       if (!img) return;
       if (!foto) {
         // Heart hat kein eigenes Bild mehr (404 -> null). Fehlt nur das
         // Netz, wirft holeDok, und das gemerkte Bild bleibt stehen.
         if (gemerkt) {
-          try { this.dauer?.removeItem?.(HERO_SCHLUESSEL); } catch { /* egal */ }
+          vergessen();
           img.src = standard;
           rahmen.removeAttribute?.("data-eigen");
         }
         return;
       }
+      try {
+        this.dauer?.setItem?.(HERO_SCHLUESSEL, foto);
+        this.dauer?.setItem?.(HERO_STAND_SCHLUESSEL, String(d.updatedAt || ""));
+      } catch { /* voll - dann eben ohne */ }
       if (foto === gemerkt) return;
-      try { this.dauer?.setItem?.(HERO_SCHLUESSEL, foto); } catch { /* voll - dann eben ohne */ }
       const Bild = this.dok.defaultView?.Image || globalThis.Image;
       if (Bild) {
         const probe = new Bild();
@@ -251,11 +295,33 @@ export class Dyqan {
         rail.querySelectorAll("video").forEach(video => { if (video !== event.target) video.pause(); });
       }, true);
     }).catch(() => { /* keep the same standard photos as the therapy page */ });
-    const [produkte, konfig, setDok, raste] = await Promise.all([
-      holeSammlung("products", this.holen).catch(() => []),
-      holeSammlung("config", this.holen, "fotot").catch(() => []),
+    // ZUERST, WAS OBEN STEHT UND KLEIN IST - dann die grossen Daten.
+    //
+    // Gemessen am 28.09. (Pruefstand, 1,6 Mbit/s, Erstbesuch): Produkte
+    // (~0,9 MB) und Landing-Fotos (~1 MB) liefen gleichzeitig mit allem
+    // anderen los. Das Set-Foto und die Vorher/Nachher-Bilder - direkt unter
+    // dem Titelbild - kamen erst nach ueber 13 s. Jetzt: Set und Faelle
+    // (klein), dann ihre Bilder, zuletzt Mittel und ihre Fotos, die erst im
+    // Blatt und weiter unten gebraucht werden. Bis dahin stehen die Bilder
+    // aus dem Aufbau da; kaufen laesst sich von Anfang an.
+    const [setDok, raste] = await Promise.all([
       holeDok(SETET_DOK, this.holen).catch(() => null),
       rasteLaden(BASIS).catch(() => null)
+    ]);
+    // Bilder erst nach dem Titelbild: Es steht oben und bekommt die Leitung
+    // fuer sich (hoechstens 6 s gewartet - haengt es, geht es trotzdem weiter).
+    await Promise.race([this.titelbildFertig, pause(6000)]);
+    // Die Faelle mit Ort "Shop" - sie zeichnen sich, sobald ihre Bilder da sind.
+    const faelle = raste
+      ? rasteMitBildern(rasteFuer(raste, "shop"), BASIS)
+        .then((liste) => { if (liste.length) this.#zeichneFaelle(liste); })
+        .catch(() => { /* dann bleibt der Fall aus dem Aufbau stehen */ })
+      : Promise.resolve();
+    await this.#setetUebernehmen(setDok);
+
+    const [produkte, konfig] = await Promise.all([
+      holeSammlung("products", this.holen).catch(() => []),
+      holeSammlung("config", this.holen, "fotot").catch(() => [])
     ]);
     // Die Einzelmittel: Heart-Produkte mit ihren Bildern (Produkte ->
     // Bilder der Landingpage), sonst die Aufnahmen dieser Seite.
@@ -266,13 +332,20 @@ export class Dyqan {
       fotos.set(doku.id.slice(FOTO_PRAEFIX.length), liste.filter((f) => typeof f === "string" && f.startsWith("data:image/")));
     }
     this.mittel = mittelBauen(produkte || [], this.#standardFotos(fotos));
+    // Noch einmal, jetzt mit den Mitteln aus Heart: nur Sets mit Mitteln,
+    // die es zu kaufen gibt.
+    await this.#setetUebernehmen(setDok);
+    await faelle;
+  }
 
-    // Die Sets: aus Heart, nur mit Mitteln, die es zu kaufen gibt.
+  // Die Sets aus Heart, nur mit Mitteln, die es zu kaufen gibt - mit ihrem
+  // Foto (einmal geholt, danach aus this.setFotos) - und neu gezeichnet.
+  async #setetUebernehmen(setDok) {
     const da = new Set(this.mittel.map((m) => m.id));
     this.setet = acneDuoSets(aktiveSetet(setetOderStandard(setDok)))
       .map((s) => ({ ...s, produkte: s.produkte.filter((id) => da.has(id)) }))
       .filter((s) => s.produkte.length === 2);
-    await Promise.all(this.setet.filter((s) => s.bild).map(async (s) => {
+    await Promise.all(this.setet.filter((s) => s.bild && !this.setFotos.has(s.id)).map(async (s) => {
       try {
         const d = await holeDok(`${SET_FOTO_PRAEFIX}${s.id}`, this.holen);
         if (typeof d?.foto === "string" && d.foto.startsWith("data:image/")) this.setFotos.set(s.id, d.foto);
@@ -284,14 +357,6 @@ export class Dyqan {
     this.#zeichneSetet();
     this.#zeichneMittel();
     this.#korbZahl();
-
-    // Die Faelle mit Ort "Shop".
-    if (raste) {
-      try {
-        const faelle = await rasteMitBildern(rasteFuer(raste, "shop"), BASIS);
-        if (faelle.length) this.#zeichneFaelle(faelle);
-      } catch { /* dann bleibt der Fall aus dem Aufbau stehen */ }
-    }
   }
 
   mittelVon(id) { return this.mittel.find((m) => m.id === id); }

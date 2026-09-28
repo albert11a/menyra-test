@@ -20,6 +20,26 @@
   <meta charset="utf-8" />
   <!-- Vor allem anderen: der stille Modus (?still=1) sperrt jede Zaehlung. -->
   <script src="/shared/lifeskin-still.js"></script>
+  <!-- WER SCHON EINMAL DA WAR, SIEHT SEIN TITELBILD SOFORT (shop.js
+       #titelbild): Es liegt auf dem Geraet, und hier wird nur nachgefragt, ob
+       Heart ein neues hat - der Stempel (updatedAt), ein paar Bytes, schon
+       waehrend der Trichter noch laedt. Beim ersten Besuch fragt hier nichts:
+       Gemessen am 28.09. (Pruefstand, 1,6 Mbit/s) nahm das ganze Bild (~400
+       KB) so frueh dem Trichter die Leitung - er war 0,4 s spaeter bereit.
+       Dieselbe Adresse wie HERO_ADRESSE in shop.js (tests/lifeskin-shop-weg.test.mjs).
+       Das gemerkte Bild selbst setzt der Einzeiler direkt hinter dem Bild
+       (.hero-photo) - so steht es schon beim ersten Zeichnen da. -->
+  <script>
+    (function () {
+      try {
+        if (!localStorage.getItem("lifeskin:shopHero") || !localStorage.getItem("lifeskin:shopHeroStand")) return;
+        var url = "https://firestore.googleapis.com/v1/projects/menyra-c0e68/databases/(default)/documents/lifeskin/lifeskin/config/shopHero?mask.fieldPaths=updatedAt";
+        var antwort = fetch(url);
+        antwort.catch(function () {});
+        window.__lsTitelbild = { url: url, antwort: antwort };
+      } catch (e) { /* dann fragt shop.js selbst */ }
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#ffffff" />
   <title>LifeSkin — Rutina juaj fillon këtu</title>
@@ -96,7 +116,7 @@
 <main id="main">
 <section class="hero" aria-labelledby="hero-title">
 <div class="hero-heading"><p class="eyebrow">KUJDES QË FILLON ME JU</p><h1 id="hero-title" class="hero-title"><span class="sr-only">Lëkura juaj. Rutina juaj.</span><span class="hero-words" aria-hidden="true"><span class="hero-line hero-line-first">Lëkura</span><span class="hero-line hero-line-next">Rutina</span></span><span class="hero-fixed" aria-hidden="true">juaj.</span></h1><p>Dy produkte që plotësojnë njëri-tjetrin.<br>Një rutinë me një qëllim të qartë.</p></div>
-<div class="hero-photo"><img src="/apps/lifeskin-shop/assets/lf-acne-2.jpg" width="750" height="1000" alt="Produkti LifeSkin LF ACNE në dorë" fetchpriority="high"><span class="photo-label">THE ACNE DUO<span>01 / LIFESKIN</span></span><div class="photo-caption">Për lëkurën<br>që meriton kujdes.</div></div>
+<div class="hero-photo"><img src="/apps/lifeskin-shop/assets/lf-acne-2.jpg" width="750" height="1000" alt="Produkti LifeSkin LF ACNE në dorë" fetchpriority="high"><script>(function(){try{var bild=localStorage.getItem("lifeskin:shopHero");if(bild&&bild.indexOf("data:image/")===0){var rahmen=document.currentScript.parentNode;rahmen.querySelector("img").src=bild;rahmen.setAttribute("data-eigen","")}}catch(e){}})()</script><span class="photo-label">THE ACNE DUO<span>01 / LIFESKIN</span></span><div class="photo-caption">Për lëkurën<br>që meriton kujdes.</div></div>
 <div class="hero-offer"><div><p class="eyebrow">SETI KUNDËR AKNEVE</p><h2>LF ACNE + LF MOISTUR</h2><span class="meta">2 produkte · 30 ml secili</span></div><div class="price"><strong>39 €</strong><span>Veçmas 58 €</span></div></div>
 <button type="button" class="primary" data-set="acne">Porosit setin — 39 € <svg class="icon" aria-hidden="true"><use href="/apps/lifeskin-shop/icons.svg#ArrowUpRight"></use></svg></button>
 <p class="delivery"><svg class="icon" aria-hidden="true"><use href="/apps/lifeskin-shop/icons.svg#Truck"></use></svg> Dërgesa e përfshirë <span>·</span> Pagesa në dorëzim</p>

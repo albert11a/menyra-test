@@ -383,3 +383,17 @@ test("eine Bestellung aus dem stillen Modus zaehlt in Heart als Test, nicht als 
   // Live sieht dieselbe Pruefung.
   assert.match(lies("apps/mnyra-heart/heart-lifeskin-live.js"), /istTest\(/);
 });
+
+test("der Kopf der Seite fragt den Stempel unter derselben Adresse ab wie shop.js", async () => {
+  const { HERO_ADRESSE, HERO_NUR_STAND } = await import("../apps/lifeskin-shop/shop.js");
+  const html = lies("apps/lifeskin-shop/index.html");
+  // Nur mit gemerktem Bild UND Stempel - sonst fragt shop.js selbst.
+  assert.match(html, /if \(!localStorage\.getItem\("lifeskin:shopHero"\) \|\| !localStorage\.getItem\("lifeskin:shopHeroStand"\)\) return;/);
+  assert.equal(html.match(/var url = "([^"]+)";/)?.[1], HERO_ADRESSE + HERO_NUR_STAND,
+    "shop.js wuerde die Antwort aus dem Kopf nicht benutzen und ein zweites Mal fragen");
+  // Das gemerkte Bild setzt der Einzeiler im Rahmen, bevor gezeichnet wird -
+  // nur ein Bild (data:image/), und ohne globale Namen.
+  const rahmen = html.slice(html.indexOf('<div class="hero-photo">'), html.indexOf("</div>", html.indexOf('<div class="hero-photo">')));
+  assert.match(rahmen, /<script>\(function\(\)\{try\{var bild=localStorage\.getItem\("lifeskin:shopHero"\);if\(bild&&bild\.indexOf\("data:image\/"\)===0\)/);
+  assert.match(rahmen, /setAttribute\("data-eigen",""\)\}\}catch\(e\)\{\}\}\)\(\)<\/script>/);
+});

@@ -144,3 +144,83 @@ breit, höchstens ~450 KB). Der Shop (`Dyqan.titelbild()`) tauscht das Bild
 nach dem Dekodieren und gibt dem Rahmen `data-eigen` (aspect-ratio 7/5).
 "Standardbild" löscht das Dokument, dann gilt wieder `lf-acne-2.jpg`.
 Zuschneiden: `apps/mnyra-heart/heart-lifeskin-schnitt.js`.
+
+## Ladezeit und Pruefung aller Wege (28.09. spaet)
+
+Auftrag: alle Wege von /lifeskinshop pruefen (keine Fehler) und so schnell
+wie /lifeskin.
+
+**Ladereihenfolge (`Dyqan.laden()`).** Vorher liefen Produkte (~0,9 MB) und
+Landing-Fotos (~1 MB) gleichzeitig mit allem anderen; Set-Foto und
+Vorher/Nachher direkt unter dem Titelbild kamen auf 1,6 Mbit/s erst nach
+ueber 13 s. Jetzt: Kundenmedien sofort, dann Set-Dokument und Faelle
+(klein), dann das Titelbild (hoechstens 6 s gewartet), dann Set-Fotos und
+Fallbilder, zuletzt Produkte und Landing-Fotos. Die Sets werden zweimal
+gezeichnet (erst mit dem Katalog, dann mit den Mitteln aus Heart); kaufen
+laesst sich von Anfang an.
+
+**Titelbild.** Beim zweiten Besuch steht das gemerkte Bild schon beim ersten
+Zeichnen da (Einzeiler im Rahmen `.hero-photo`, `localStorage`
+"lifeskin:shopHero"). Nachgefragt wird nur der Stempel
+`config/shopHero?mask.fieldPaths=updatedAt` (ein paar Bytes statt ~400 KB),
+und das schon im Kopf der Seite (`window.__lsTitelbild`, gleiche Adresse wie
+`HERO_ADRESSE + HERO_NUR_STAND`, geprueft in
+`tests/lifeskin-shop-weg.test.mjs`). Neuer Stempel -> ganzes Bild, tauschen,
+merken; 404 -> Standardbild. Den Stempel setzt Heart beim Speichern
+(`speichereShopHero`); ein Bild ohne Stempel wird wie bisher ganz geholt.
+Beim ersten Besuch fragt der Kopf nichts: Das ganze Bild so frueh nahm dem
+Trichter die Leitung.
+
+**Gemessen** (Pruefstand: gebauter Stand wie auf Vercel, Firestore-Attrappe
+mit echt grossen Bildern, Headless-Chromium 390x844, 150 ms / 1,6 Mbit/s /
+CPU 4x gedrosselt, ohne Cache, Median aus 3):
+
+| | /lifeskin | /lifeskinshop |
+|---|---|---|
+| Erstes Bild (FCP) | 1,95 s | 0,71 s |
+| Groesstes Bild (LCP) | 2,49 s | 1,90 s |
+| Trichter bereit | 1,95 s | 2,00 s |
+| Start -> Wahl | 66 ms | 54 ms |
+| Titelbild aus Heart | - | 4,2 s (vorher 7,9 s) |
+| Layout-Sprung (CLS) | 0 | 0 |
+| Zweiter Besuch FCP / LCP | 1,9 s / 2,45 s | 0,64 s / 0,67 s (Heart-Bild sofort) |
+
+**Durchgespielt** (gleicher Pruefstand, Pixel nur in `fbq.queue`, nichts an
+Meta; Kamera ist das Testbild von Chromium):
+
+- Direktkauf: PageView + lifeskin_landing_view, Set -> AddToCart(39), Kasse
+  -> InitiateCheckout(39), Porositni -> Purchase(39) und `order` in der
+  Sitzung; Danke-Text.
+- Foto: Anleitung, Kamera, Ausloeser, Foto uebernehmen, die vier Fragen mit
+  Tipps, Name/Alter, Nummer (Lead), Uebergabe, Warteseite im Kleid des
+  Ladens mit WhatsApp-Text "kontrollin e përputhjes"; zurueck in den Laden
+  im selben Tab -> wieder die Warteseite.
+- Trup: Name/Alter, Anliegen, Nummer (Lead), Warteseite wie oben.
+- Scan: bis zur Kamera (braucht ein echtes Gesicht und MediaPipe von
+  jsdelivr, im Pruefstand gesperrt).
+- Freigabe nachgespielt (Bericht `fertig`, `perputhja` 92): Die Warteseite
+  springt selbst auf die Therapieseite, Block mit 92 %, AddToCart bei Sicht
+  des Preises, InitiateCheckout, Purchase.
+- Zurueck-Taste des Handys und Zurueck-Knopf im Trichter: Wahl -> Einstieg,
+  Foto-Anleitung -> Wahl, Name -> Wahl, Einstieg -> verlaesst die Seite.
+- Alle stillen Links aus Heart (Tab Lifeskin Shop, 19 Stueck): richtiger
+  Bildschirm, kein Schreibvorgang, kein Pixel, kein Beacon; `?still=0`
+  schaltet aus.
+- Dasselbe auf /lifeskin zum Vergleich: gleiche Ablaeufe, keine Fehler.
+- Keine JS-Fehler. Kein Playwright-Testlauf; nicht geprueft: echtes
+  iPhone/Android, Instagram-Fenster, echte Bestellung in Firestore.
+
+**Offen (nicht geaendert):**
+
+- Mehrere Bestellungen im selben Tab stehen in EINER Sitzung: Jede weitere
+  ueberschreibt `order` der vorigen (auch auf /lifeskin), und Purchase/CAPI
+  und die Meldung kommen nur fuer die erste. Loesung waere eine eigene
+  Sitzung je Bestellung - das aendert Purchase/CAPI und braucht die
+  Erlaubnis des Inhabers (Meta-Pixel-Sperre).
+- Zurueck-Taste mit offenem Set-Blatt oder offener Kasse verlaesst die
+  Seite, statt nur zu schliessen - auf /lifeskin (Produktblatt, Korb)
+  genauso.
+- Die WhatsApp-Vorschau (`og:title`) von /analiza und /terapia heisst fuer
+  alle Wege "Analiza juaj e lëkurës · LifeSkin"; der Seitentitel selbst ist
+  neutral ("Rasti juaj", "Terapia juaj"). Eine Aenderung traefe auch
+  /lifeskin.
