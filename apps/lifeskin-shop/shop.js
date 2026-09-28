@@ -106,6 +106,49 @@ async function holeDok(name, holen = fetch) {
   return karte(d.fields || {});
 }
 
+// Die Detailansicht eines Sets (reines HTML, ohne DOM - testbar).
+export function setThellesi(s, mittel) {
+  const preis = preisFuer(mittel.length);
+  const vecmas = mittel.length * preisFuer(1);
+  const hat = (m, wort) => String(m.perdorimi?.koha || "").includes(wort);
+  // Morgens alles mit "mëngjes"; abends zuerst, was NUR abends gilt (die
+  // Wirkstoffe), danach die Pflege.
+  const mengjes = mittel.filter((m) => hat(m, "mëngjes"));
+  const mbremje = [...mittel.filter((m) => hat(m, "mbrëmje") && !hat(m, "mëngjes")),
+    ...mittel.filter((m) => hat(m, "mbrëmje") && hat(m, "mëngjes"))];
+  const hap = (m, i) => `<li><span class="thellesi__nr">${i + 1}</span><div><strong>${e(m.name)}</strong>${m.perdorimi?.sasia ? `<small>${e(m.perdorimi.sasia)}</small>` : ""}</div></li>`;
+  const rutina = (titull, lista) => (lista.length ? `<div class="thellesi__koha"><p class="eyebrow">${titull}</p><ol>${lista.map(hap).join("")}</ol></div>` : "");
+  const kujdes = mittel.map((m) => m.perdorimi?.kujdes).filter(Boolean);
+  const si = mittel.map((m) => (m.perdorimi?.si ? `<p><strong>${e(m.name)}:</strong> ${e(m.perdorimi.si)}</p>` : "")).join("");
+  return `
+<div class="thellesi">
+  <p class="eyebrow">SETI NË DETAJE</p>
+  <h3 class="thellesi__titull">Çfarë merrni me ${e(s.titulli.charAt(0).toLowerCase() + s.titulli.slice(1))}</h3>
+  ${s.detaje ? `<p class="thellesi__hyrje">${e(s.detaje)}</p>` : ""}
+  <div class="thellesi__mjetet">${mittel.map((m) => `
+    <article class="thellesi__mjet">
+      <img src="${e(m.fotot[0])}" alt="${e(m.name)}" width="120" height="150" loading="lazy">
+      <div>
+        <h4>${e(m.name)}${m.inhalt ? ` <span>${e(m.inhalt)}</span>` : ""}</h4>
+        ${m.kurztext ? `<p class="thellesi__kurz">${e(m.kurztext)}</p>` : ""}
+        ${m.veprimi?.length ? `<ul>${m.veprimi.map((v) => `<li>${e(v)}</li>`).join("")}</ul>` : ""}
+        ${m.synimi ? `<p class="thellesi__synim"><strong>Qëllimi:</strong> ${e(m.synimi)}</p>` : ""}
+      </div>
+    </article>`).join("")}
+  </div>
+  <p class="eyebrow thellesi__nen">SI PËRDORET</p>
+  <div class="thellesi__rutina">${rutina("MËNGJES", mengjes)}${rutina("MBRËMJE", mbremje)}</div>
+  ${si ? `<div class="thellesi__si">${si}</div>` : ""}
+  ${kujdes.length ? `<p class="thellesi__kujdes"><strong>Kujdes:</strong> ${kujdes.map(e).join(" ")}</p>` : ""}
+  <ul class="thellesi__fakte">
+    <li>${mittel.length} × ${e(mittel[0].inhalt || "30 ml")}</li>
+    ${vecmas > preis ? `<li>Veçmas <s>${vecmas} €</s> · së bashku ${preis} €</li>` : ""}
+    <li>Dërgesa falas · pagesa te dera</li>
+  </ul>
+  <button type="button" class="primary" data-set="${e(s.id)}">Zgjidh këtë set · ${preis} € ${ikone("ArrowUpRight")}</button>
+</div>`;
+}
+
 export class Dyqan {
   constructor({ dokument = document, speicher = globalThis.sessionStorage, holen, trichter } = {}) {
     this.dok = dokument;
@@ -211,6 +254,7 @@ export class Dyqan {
       const preis = preisFuer(s.produkte.length);
       return `<article class="set-card" data-concern="${e(nevojaKennung(s.nevoja))}"><div class="set-photo"><img src="${e(this.#setBild(s))}" width="600" height="750" alt="${e(s.titulli)}" loading="lazy">${s.etiketa ? `<span class="tag">${e(s.etiketa)}</span>` : ""}<button type="button" class="photo-detail" data-detail="${e(s.id)}" aria-label="Shihni detajet: ${e(s.titulli)}">${ikone("Plus")}</button></div><div class="set-body"><div class="card-heading"><h3>${e(s.titulli)}</h3><strong>${preis} €</strong></div>${s.teksti ? `<p>${e(s.teksti)}</p>` : ""}<div class="included">${kurz(s).map((n) => `<span>${e(n)}</span>`).join("")}<small>${s.produkte.length} × 30 ml</small></div><button type="button" class="secondary" data-set="${e(s.id)}">Zgjidh këtë set ${ikone("ArrowUpRight")}</button></div></article>`;
     }).join("");
+    this.#zeichneThellesi();
     const numri = $("#set-numri", this.dok);
     if (numri) numri.textContent = `01 — ${String(this.setet.length).padStart(2, "0")}`;
     // Die Filter: ein Knopf je Bedarf, "Të gjitha" vorn.
@@ -229,6 +273,19 @@ export class Dyqan {
     if (label) label.textContent = erstes.titulli;
     const preis = $("#sticky-price", this.dok);
     if (preis) preis.textContent = `${preisFuer(erstes.produkte.length)} €`;
+  }
+
+  // EIN SET IM SHOP -> ES STEHT IM DETAIL DA (Wunsch 28.09.). Was drin
+  // ist, was jedes Mittel tut, wann und wie viel - aus dem Katalog (dieselben
+  // Worte wie im Befund) bzw. aus Heart (Name, Preis, Sichtbarkeit).
+  #zeichneThellesi() {
+    const kasten = $("#set-thellesi", this.dok);
+    if (!kasten) return;
+    const s = this.setet.length === 1 ? this.setet[0] : null;
+    const mittel = s ? s.produkte.map((id) => this.mittelVon(id)).filter(Boolean) : [];
+    if (!s || !mittel.length) { kasten.hidden = true; kasten.innerHTML = ""; return; }
+    kasten.innerHTML = setThellesi(s, mittel);
+    kasten.hidden = false;
   }
 
   #zeichneMittel() {

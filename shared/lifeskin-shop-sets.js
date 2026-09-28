@@ -12,9 +12,10 @@
 // je Set in einem eigenen Dokument: Ein Dokument darf 1 MiB, mehrere Bilder
 // in der Liste wuerden die Grenze sprengen.
 //
-// Ohne gespeicherte Liste gelten die drei Sets, die heute auf der Seite
-// stehen (SETET_STANDARD) - Heart zeigt sie, und die erste Aenderung
-// speichert sie.
+// Ohne gespeicherte Liste gelten die drei Sets aus SETET_STANDARD - und
+// davon steht nur das Akne-Set im Shop (Wunsch 28.09.: der Laden verkauft
+// vorerst nur dieses Set). Njolla und Pore liegen ausgeblendet bereit;
+// Heart schaltet sie mit "Im Shop" ein, die erste Aenderung speichert.
 
 export const SETET_DOK = "shopSetet";
 export const SET_FOTO_PRAEFIX = "shopSetFoto-";
@@ -34,13 +35,13 @@ export const SETET_STANDARD = Object.freeze([
     id: "pigment", titulli: "Seti për njollat", nevoja: "Njolla", etiketa: "NJOLLA + HIDRATIM",
     teksti: "Një rutinë për tonin e pabarabartë, me kujdes shtesë për hidratimin.",
     detaje: "LF PIGMENT për kujdesin e tonit të pabarabartë. LF MOISTUR për hidratimin e përditshëm.",
-    produkte: Object.freeze(["lf-pigment", "lf-moistur"]), foto: `${ASSETS}lf-pigment.jpg`, bild: false, aktiv: true
+    produkte: Object.freeze(["lf-pigment", "lf-moistur"]), foto: `${ASSETS}lf-pigment.jpg`, bild: false, aktiv: false
   }),
   Object.freeze({
     id: "pore", titulli: "Seti për poret", nevoja: "Pore", etiketa: "PORE + HIDRATIM",
     teksti: "Kujdes për pamjen e poreve dhe teksturën, së bashku me hidratimin.",
     detaje: "LF PORE për kujdesin e pamjes së poreve. LF MOISTUR për hidratimin dhe barrierën e lëkurës.",
-    produkte: Object.freeze(["lf-pore", "lf-moistur"]), foto: `${ASSETS}lf-pore.jpg`, bild: false, aktiv: true
+    produkte: Object.freeze(["lf-pore", "lf-moistur"]), foto: `${ASSETS}lf-pore.jpg`, bild: false, aktiv: false
   })
 ]);
 
