@@ -110,3 +110,73 @@ export function baueLs2Weg(sitzungen, berichte = {}) {
     kaufProLead: leads ? kaeufe / leads : 0
   };
 }
+
+// ══ LIFESKIN SHOP (/lifeskinshop) ═══════════════════════════════════════
+//
+// Zwei Wege auf einer Seite: direkt kaufen (Set oder Einzelmittel) und
+// "Gjeni setin" in die Analyse (Lead bei der Nummer). Beide stehen hier in
+// einer Reihe, dazu Umsatz, Bestellwert und was gekauft wird.
+const istShopKauf = (s) => s?.hatBestellt === true;
+const imKorbS = (s) => s?.imKorb === true || s?.kasseGeoeffnet === true || istShopKauf(s);
+
+export const SHOP_STUFEN = Object.freeze([
+  { id: "besuch", label: "Shop geöffnet", gilt: () => true },
+  { id: "produkte", label: "Sets / Produkte angesehen", gilt: (s) => s?.produkteGesehen === true || imKorbS(s) },
+  { id: "korb", label: "In den Warenkorb (AddToCart)", gilt: imKorbS },
+  { id: "kasse", label: "Kasse geöffnet (InitiateCheckout)", gilt: (s) => s?.kasseGeoeffnet === true || istShopKauf(s) },
+  { id: "anschrift", label: "Anschrift begonnen", gilt: (s) => s?.adresseBegonnen === true || istShopKauf(s) },
+  { id: "bestellt", label: "Bestellt (Purchase)", gilt: istShopKauf }
+]);
+
+// Die Analyse ueber "Gjeni setin". Ein Kauf im Laden schreibt auch eine
+// Nummer (Kasse) und den Schritt "ordered" - er zaehlt hier nur, wenn
+// wirklich ein Weg der Analyse gewaehlt wurde (typ) oder die Sitzung ohne
+// Ladenkauf im Trichter steht.
+const inAnalyse = (s) => Boolean(s?.typ) || (!s?.shopKauf && stufenIndex(s?.step) >= stufenIndex("wahl"));
+export const SHOP_ANALYSE_STUFEN = Object.freeze([
+  { id: "start", label: "„Gjeni setin“ gestartet", gilt: inAnalyse },
+  { id: "nummer", label: "Nummer (Lead)", gilt: (s) => inAnalyse(s) && (Boolean(s?.phone) || stufenIndex(s?.step) >= stufenIndex("numri")) },
+  { id: "abgabe", label: "Analyse abgegeben", gilt: (s) => inAnalyse(s) && istPatient(s) }
+]);
+
+function stufenZaehlen(liste, stufen) {
+  const erreicht = liste.map((s) => {
+    let weiteste = -1;
+    stufen.forEach((stufe, i) => { if (stufe.gilt(s)) weiteste = i; });
+    return weiteste;
+  });
+  const raus = stufen.map((stufe, i) => ({ id: stufe.id, label: stufe.label, anzahl: erreicht.filter((w) => w >= i).length }));
+  raus.forEach((stufe, i) => {
+    const vorher = i ? raus[i - 1].anzahl : stufe.anzahl;
+    stufe.verlust = i && vorher ? (vorher - stufe.anzahl) / vorher : 0;
+  });
+  return raus;
+}
+
+export function baueShopWeg(sitzungen) {
+  const liste = Array.isArray(sitzungen) ? sitzungen : [];
+  const stufen = stufenZaehlen(liste, SHOP_STUFEN);
+  const kaeufe = liste.filter(istShopKauf);
+  const umsatz = kaeufe.reduce((summe, s) => summe + (Number(s?.order?.total) || 0), 0);
+  // Was gekauft wurde: je Set, und Einzelmittel ohne Set.
+  const nachSet = new Map();
+  for (const s of kaeufe) {
+    const name = s?.order?.set?.titulli || (s?.order?.kind === "shop" ? "Einzelmittel" : "Über die Analyse");
+    nachSet.set(name, (nachSet.get(name) || 0) + 1);
+  }
+  const analyse = stufenZaehlen(liste, SHOP_ANALYSE_STUFEN);
+  const koerbe = liste.filter(imKorbS);
+  return {
+    stufen,
+    analyse,
+    besuche: liste.length,
+    kaeufe: kaeufe.length,
+    umsatz,
+    bestellwert: kaeufe.length ? Math.round((umsatz / kaeufe.length) * 100) / 100 : 0,
+    korbwert: koerbe.length
+      ? Math.round((koerbe.reduce((summe, s) => summe + (Number(s?.korbWert) || 0), 0) / koerbe.length) * 100) / 100
+      : 0,
+    kaufquote: liste.length ? kaeufe.length / liste.length : 0,
+    nachSet: [...nachSet.entries()].sort((a, b) => b[1] - a[1])
+  };
+}

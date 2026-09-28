@@ -35,7 +35,8 @@ import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 // Aufklappen, das ein Neuzeichnen ueberlebt.
 import { renderRaste, renderRastiEditor, renderBefundRasteAuswahl, rasteListe } from "./heart-lifeskin-raste.js";
 import { klappAttr, alsKlapp } from "./heart-lifeskin-klapp.js";
-import { nachWeg, baueLs2Weg, dauerText as ls2Dauer } from "./heart-lifeskin-weg.js";
+import { nachWeg, baueLs2Weg, baueShopWeg, dauerText as ls2Dauer } from "./heart-lifeskin-weg.js";
+import { renderShopSetet, renderShopSetEditor } from "./heart-lifeskin-shopsets.js";
 import { wegGueltig } from "../../shared/lifeskin-weg.js";
 import { entwurfLesen, promptGemacht } from "./heart-lifeskin-entwurf.js";
 import { mitFingerabdruck } from "./heart-morph.js";
@@ -593,6 +594,27 @@ function renderLs2Weg(weg, zeitraum = "") {
       <p class="heart-lifeskin-block__fuss">Antwort von Dr. Gashi: Median <b>${escapeHtml(ls2Dauer(weg.antwortMedian))}</b> · ${escapeHtml(unterStunde)}${
         weg.wartend ? ` · <b>${weg.wartend}</b> warten gerade` : ""}</p>
     </section>`, "ls2weg", { zahl: `${weg.stufen.at(-1)?.anzahl || 0} Käufe` });
+}
+
+// LIFESKIN SHOP: vom Besuch bis zum Kauf, daneben die Analyse ueber
+// "Gjeni setin" (Lead) und was gekauft wird. Die Pixel-Namen stehen an den
+// Stufen, damit Heart und Meta nebeneinander gelesen werden koennen.
+function renderShopWeg(weg, zeitraum = "") {
+  const wort = ZEITRAEUME.find((z) => z.id === (zeitraum || "heute"))?.label || "";
+  const was = weg.nachSet.length
+    ? weg.nachSet.map(([name, n]) => `${escapeHtml(name)}: <b>${n}</b>`).join(" · ")
+    : "noch kein Kauf";
+  return alsKlapp(`
+    <section class="heart-lifeskin-block">
+      <h3 class="heart-lifeskin-block__titel">Shop · vom Besuch bis zum Kauf${wort ? ` · ${escapeHtml(wort)}` : ""}</h3>
+      <div class="heart-lifeskin-trichter">${renderStufen(weg.stufen)}</div>
+      <p class="heart-lifeskin-block__fuss">Umsatz <b>${escapeHtml(euro(weg.umsatz) || "0 €")}</b> · ${weg.kaeufe} ${weg.kaeufe === 1 ? "Bestellung" : "Bestellungen"}
+        · Ø Bestellung <b>${escapeHtml(euro(weg.bestellwert) || "—")}</b> · Ø Warenkorb <b>${escapeHtml(euro(weg.korbwert) || "—")}</b>
+        · Kauf je Besuch <b>${prozent(weg.kaufquote)}</b></p>
+      <p class="heart-lifeskin-block__fuss">Gekauft: ${was}</p>
+      <h3 class="heart-lifeskin-block__titel">„Gjeni setin për lëkurën tuaj“ · Analyse</h3>
+      <div class="heart-lifeskin-trichter">${renderStufen(weg.analyse)}</div>
+    </section>`, "shopweg", { zahl: `${weg.kaeufe} Käufe` });
 }
 
 // Die Bestellungen haben einen eigenen Zeitraum.
@@ -3164,8 +3186,12 @@ function renderAnbieter(anbieter, status) {
 // diesem Weg. Begleitfaelle haengen ueber ihre Kennung an der Sitzung; im
 // alten Tab bleibt alles, was nicht ausdruecklich Lifeskin 2 ist.
 export function mitWegFaellen(zustand, weg, sitzungen = nachWeg(zustand?.sitzungen, weg)) {
-  const ls2 = new Set(nachWeg(zustand?.sitzungen, "lifeskin2").map((s) => s.id));
-  const gehoert = (id) => (weg === "lifeskin2" ? ls2.has(id) : !ls2.has(id));
+  // Jeder Weg sieht nur seine eigenen Begleitfaelle; im alten Tab bleibt,
+  // was keinem anderen Weg gehoert (auch Faelle ohne Sitzung).
+  const eigene = new Set((sitzungen || []).map((s) => s.id));
+  const fremde = new Set((Array.isArray(zustand?.sitzungen) ? zustand.sitzungen : [])
+    .filter((s) => !eigene.has(s.id)).map((s) => s.id));
+  const gehoert = (id) => (weg ? eigene.has(id) : !fremde.has(id));
   const n = zustand?.ndjekja;
   return {
     ...zustand,
@@ -3223,6 +3249,10 @@ export function renderLifeskin(zustand) {
     return `<div class="heart-lifeskin">${renderRastiEditor(zustand, produkte || [])}</div>`;
   }
 
+  if (zustand.shopSetOffen) {
+    return `<div class="heart-lifeskin">${renderShopSetEditor(zustand, produkte || [])}</div>`;
+  }
+
   if (zustand.medienOffen) {
     return `<div class="heart-lifeskin">${renderMediumEditor(zustand, produkte || [])}</div>`;
   }
@@ -3278,6 +3308,7 @@ export function renderLifeskin(zustand) {
           auf <b>mnyra.com/${weg ? escapeHtml(weg) : "lifeskin"}</b>.
         </p>` : ""}
       ${weg === "lifeskin2" ? renderLs2Weg(baueLs2Weg(imBlick, zustand.berichte || {}), zeitraum) : ""}
+      ${weg === "lifeskinshop" ? renderShopWeg(baueShopWeg(imBlick), zeitraum) : ""}
       ${renderKacheln(zahlen, zeitraum)}
       ${zustand.liveFehler
         ? leererBlock("Live", "Verbindung unterbrochen — Live-Zahlen nicht verfuegbar.")
@@ -3308,6 +3339,7 @@ export function renderLifeskin(zustand) {
           ${renderStillLinks(zustandWeg)}
           ${alsKlapp(renderHerkunft(baueHerkunft(imBlick)), "herkunft", { standard: false })}
           ${alsKlapp(renderProdukte(produkte), "produkte", { standard: false })}
+          ${weg === "lifeskinshop" ? renderShopSetet(zustand, produkte || []) : ""}
           ${renderRaste(zustand)}
           ${renderMedien(zustand)}
           ${alsKlapp(renderVerteilung(baueVerteilung(imBlick)), "verteilung", { standard: false })}

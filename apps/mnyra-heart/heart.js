@@ -59,10 +59,13 @@ import { ladeLifeskin, ladeLifeskinSeit, horcheLive, ladeFotos, ladeErstesFoto, 
   ladeBericht, setzeVersand, speichereAnbieter,
   ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX,
   speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder,
+  speichereShopSetet, ladeShopSetFoto, speichereShopSetFoto, loescheShopSetFoto,
   ladeMedien, speichereMedien, speichereMedium, loescheMedium, ladeKommentare, setzeKommentarVerborgen, loescheKommentar, schreibeKommentare } from "./heart-lifeskin-adapter.js";
 import { medienListe, mediumNormalisieren, neueMediumId } from "../../shared/lifeskin-medien.js";
 import { kommentarVorschauSetzen } from "./heart-lifeskin-medien.js";
 import { rasteListe, klappSetzen, klappOffen, rastiDom } from "./heart-lifeskin-raste.js";
+import { shopSetetListe } from "./heart-lifeskin-shopsets.js";
+import { setetNormalisieren, setNormalisieren, neueSetId, SET_PRODUKTE_MAX } from "../../shared/lifeskin-shop-sets.js";
 import { entwurfSchreiben, entwurfLoeschen, entwurfAusBogen, promptMerken } from "./heart-lifeskin-entwurf.js";
 import { befundStandAuffrischen, befundFelderAnpassen } from "./heart-lifeskin-befundstand.js";
 import { bogenMerken, bogenVergessen, bogenWiederherstellen } from "./heart-lifeskin-bogenspeicher.js";
@@ -128,6 +131,8 @@ const initialRouteView = resolveHeartRouteView();
 actions.setActiveView(initialRouteView || "lifeskin");
 // #lifeskin2 in der Adresse: der Tab Lifeskin 2 (Faelle von /lifeskin2).
 if (/^#lifeskin2$/i.test(String(globalThis.location?.hash || ""))) actions.patchLifeskin({ weg: "lifeskin2" });
+// #lifeskinshop: der Tab Lifeskin Shop (Faelle von /lifeskinshop).
+if (/^#lifeskinshop$/i.test(String(globalThis.location?.hash || ""))) actions.patchLifeskin({ weg: "lifeskinshop" });
 const authController = createHeartAuthController({ store });
 const runtimeConfig = globalThis.__MNYRA_HEART_CONFIG__ || {};
 const apiClient = createHeartApiClient({
@@ -2286,6 +2291,7 @@ async function speichereLifeskinRasti() {
     landing: e.landing ?? alt?.landing ?? true,
     oben: e.oben ?? alt?.oben ?? true,
     analiza: e.analiza ?? alt?.analiza ?? true,
+    shop: e.shop ?? alt?.shop ?? true,
     // Eine Datei der Seite bleibt im Index; ein neues Bild geht in sein
     // eigenes Dokument.
     para: para.startsWith("data:") ? "" : para,
@@ -2337,7 +2343,7 @@ async function loescheLifeskinRasti() {
 }
 
 async function lifeskinRastiOrt(id, ort) {
-  if (!["landing", "oben", "analiza"].includes(ort)) return;
+  if (!["landing", "oben", "analiza", "shop"].includes(ort)) return;
   const stand = store.getState().lifeskin || {};
   if (stand.rasteStatus) return;
   const liste = rasteListe(stand);
@@ -2345,9 +2351,162 @@ async function lifeskinRastiOrt(id, ort) {
   if (!fall) return;
   if (ort === "oben" && !fall.landing) return;
   const an = ort === "oben" ? fall.oben === false : !fall[ort];
-  const wo = { landing: "der Landingpage", oben: "oben auf der Landingpage", analiza: "der Analyseseite" }[ort];
+  const wo = { landing: "der Landingpage", oben: "oben auf der Landingpage", analiza: "der Analyseseite", shop: "dem Shop" }[ort];
   await rasteSchreiben(liste.map((r) => (r.id === id ? { ...r, [ort]: an } : r)),
     `${fall.emri || "Ergebnis"}: ${an ? "erscheint jetzt auf" : "nicht mehr auf"} ${wo}.`);
+}
+
+// ══ DIE SETS DES LADENS (/lifeskinshop) ═════════════════════════════
+// Daten: shared/lifeskin-shop-sets.js. Ansicht: heart-lifeskin-shopsets.js.
+// Wie bei den Ergebnissen: die Liste immer ganz, das Bild je Set in seinem
+// eigenen Dokument.
+function shopSetEntwurfLesen(zusatz = {}) {
+  const stand = store.getState().lifeskin || {};
+  const entwurf = { ...(stand.shopSetEntwurf || {}) };
+  if (document.querySelector("[data-shopsetfeld]")) {
+    for (const feld of document.querySelectorAll("[data-shopsetfeld]")) entwurf[feld.dataset.shopsetfeld] = String(feld.value ?? "");
+    for (const feld of document.querySelectorAll("[data-shopsetfeld-an]")) entwurf[feld.dataset.shopsetfeldAn] = feld.checked;
+    entwurf.produkte = [...document.querySelectorAll("[data-shopset-produkt]")].filter((w) => w.checked).map((w) => String(w.value || ""));
+  }
+  return { ...entwurf, ...zusatz };
+}
+
+async function shopSetetSchreiben(neu, meldung) {
+  const stand = store.getState().lifeskin || {};
+  const vorher = stand.shopSetet;
+  const sauber = setetNormalisieren(neu);
+  actions.patchLifeskin({ shopSetet: sauber, shopSetetStatus: "laeuft" });
+  try {
+    await speichereShopSetet(sauber);
+    actions.patchLifeskin({ shopSetetStatus: "" });
+    if (meldung) setToast("Shop-Sets", meldung, "success");
+    return true;
+  } catch (fehler) {
+    actions.patchLifeskin({ shopSetet: vorher, shopSetetStatus: "" });
+    setToast("Shop-Sets", fehler?.message || "Speichern fehlgeschlagen.", "danger");
+    return false;
+  }
+}
+
+async function shopSetBilderLaden(nur = null) {
+  const stand = store.getState().lifeskin || {};
+  const schon = stand.shopSetBilder || {};
+  const fehlend = shopSetetListe(stand).filter((x) => x.bild && !schon[x.id] && (!nur || x.id === nur));
+  if (!fehlend.length) return;
+  const geladen = await Promise.all(fehlend.map(async (x) => {
+    try { return [x.id, await ladeShopSetFoto(x.id)]; } catch { return null; }
+  }));
+  const jetzt = store.getState().lifeskin || {};
+  actions.patchLifeskin({ shopSetBilder: { ...(jetzt.shopSetBilder || {}), ...Object.fromEntries(geladen.filter(Boolean)) } });
+}
+
+function oeffneShopSet(id) {
+  const kennung = String(id || "").trim();
+  if (!kennung) return;
+  const stand = store.getState().lifeskin || {};
+  const set = shopSetetListe(stand).find((x) => x.id === kennung);
+  const brauchtBild = Boolean(set?.bild && !(stand.shopSetBilder || {})[kennung]);
+  actions.patchLifeskin({ shopSetOffen: kennung, shopSetEntwurf: null, shopSetLoeschen: false, shopSetStatus: "",
+    shopSetBildStatus: brauchtBild ? "laeuft" : "" });
+  if (brauchtBild) shopSetBilderLaden(kennung).finally(() => actions.patchLifeskin({ shopSetBildStatus: "" }));
+}
+
+function shopSetZu() {
+  klappSetzen("mehr", true);
+  klappSetzen("shopsetet", true);
+  actions.patchLifeskin({ shopSetOffen: "", shopSetEntwurf: null, shopSetLoeschen: false, shopSetStatus: "" });
+}
+
+function shopSetFoto() {
+  oeffneDateiwahl(false, async (dateien) => {
+    try {
+      // 1000 Punkte Kante, hoechstens 400 KB: ein Bild je Dokument.
+      const jpeg = await produktfotoLesen(dateien[0], LANDING_KANTE, 400000);
+      if (!store.getState().lifeskin?.shopSetOffen) return;
+      actions.patchLifeskin({ shopSetEntwurf: shopSetEntwurfLesen({ foto: jpeg, bildNeu: true }) });
+    } catch (fehler) {
+      setToast("Shop-Set", fehler?.message || "Das Foto liess sich nicht uebernehmen.", "danger");
+    }
+  });
+}
+
+async function speichereShopSet() {
+  const stand = store.getState().lifeskin || {};
+  const offen = stand.shopSetOffen;
+  if (!offen || stand.shopSetStatus) return;
+  const liste = shopSetetListe(stand);
+  const alt = offen === "__neu" ? null : liste.find((x) => x.id === offen);
+  if (offen !== "__neu" && !alt) return;
+  const e = shopSetEntwurfLesen();
+  const titulli = String(e.titulli ?? alt?.titulli ?? "").trim();
+  const produkte = [...new Set(e.produkte ?? alt?.produkte ?? [])].slice(0, SET_PRODUKTE_MAX);
+  if (!titulli) { setToast("Shop-Set", "Bitte einen Namen für das Set eintragen.", "danger"); return; }
+  if (!produkte.length) { setToast("Shop-Set", "Bitte mindestens ein Produkt wählen.", "danger"); return; }
+  const id = alt?.id || neueSetId();
+  const neuesBild = typeof e.foto === "string" && e.foto.startsWith("data:") && e.bildNeu;
+  const set = setNormalisieren({
+    ...(alt || {}),
+    id,
+    titulli,
+    nevoja: e.nevoja ?? alt?.nevoja,
+    etiketa: e.etiketa ?? alt?.etiketa,
+    teksti: e.teksti ?? alt?.teksti,
+    detaje: e.detaje ?? alt?.detaje,
+    produkte,
+    aktiv: e.aktiv ?? alt?.aktiv ?? true,
+    foto: neuesBild ? "" : alt?.foto,
+    bild: neuesBild || alt?.bild === true
+  });
+  actions.patchLifeskin({ shopSetEntwurf: e, shopSetStatus: "laeuft" });
+  try {
+    if (neuesBild) {
+      await speichereShopSetFoto(id, e.foto);
+      const jetzt = store.getState().lifeskin || {};
+      actions.patchLifeskin({ shopSetBilder: { ...(jetzt.shopSetBilder || {}), [id]: e.foto } });
+    }
+    const neu = alt ? liste.map((x) => (x.id === id ? set : x)) : [...liste, set];
+    const gut = await shopSetetSchreiben(neu, `${titulli}: gespeichert.`);
+    if (!gut) { actions.patchLifeskin({ shopSetStatus: "" }); return; }
+    shopSetZu();
+  } catch (fehler) {
+    actions.patchLifeskin({ shopSetStatus: "" });
+    setToast("Shop-Set", fehler?.message || "Speichern fehlgeschlagen.", "danger");
+  }
+}
+
+async function loescheShopSet() {
+  const stand = store.getState().lifeskin || {};
+  const id = stand.shopSetOffen;
+  if (!id || id === "__neu" || stand.shopSetStatus) return;
+  if (!stand.shopSetLoeschen) { actions.patchLifeskin({ shopSetLoeschen: true }); return; }
+  const liste = shopSetetListe(stand);
+  const set = liste.find((x) => x.id === id);
+  actions.patchLifeskin({ shopSetStatus: "laeuft" });
+  const gut = await shopSetetSchreiben(liste.filter((x) => x.id !== id), "Set gelöscht.");
+  if (gut && set?.bild) loescheShopSetFoto(id).catch(() => {});
+  if (gut) shopSetZu();
+  else actions.patchLifeskin({ shopSetStatus: "", shopSetLoeschen: false });
+}
+
+async function shopSetAktiv(id) {
+  const stand = store.getState().lifeskin || {};
+  if (stand.shopSetetStatus) return;
+  const liste = shopSetetListe(stand);
+  const set = liste.find((x) => x.id === id);
+  if (!set) return;
+  await shopSetetSchreiben(liste.map((x) => (x.id === id ? { ...x, aktiv: !x.aktiv } : x)),
+    `${set.titulli}: ${set.aktiv ? "nicht mehr im Shop" : "steht jetzt im Shop"}.`);
+}
+
+async function shopSetSchieben(id, richtung) {
+  const stand = store.getState().lifeskin || {};
+  if (stand.shopSetetStatus) return;
+  const liste = shopSetetListe(stand);
+  const index = liste.findIndex((x) => x.id === id);
+  const ziel = richtung === "hoch" ? index - 1 : index + 1;
+  if (index < 0 || ziel < 0 || ziel >= liste.length) return;
+  [liste[index], liste[ziel]] = [liste[ziel], liste[index]];
+  await shopSetetSchreiben(liste, "");
 }
 
 async function lifeskinRastiSchieben(id, richtung) {
@@ -3719,9 +3878,21 @@ const operations = {
     // Die Chips ueber Trichter und Faellen verschwinden mit ihrer Karte -
     // das macht das Stilblatt (:has). Hier nichts neu zeichnen.
     if (name === "raste" && offen) lifeskinRasteBilderLaden();
+    if (name === "shopsetet" && offen) shopSetBilderLaden();
     if (name === "reaktionen" && offen) medienKommentareLaden();
   },
   openLifeskinRasti(id) { oeffneLifeskinRasti(id); },
+  // Die Sets des Ladens (/lifeskinshop).
+  openShopSet(id) { oeffneShopSet(id); },
+  neuesShopSet() {
+    actions.patchLifeskin({ shopSetOffen: "__neu", shopSetEntwurf: null, shopSetLoeschen: false, shopSetStatus: "", shopSetBildStatus: "" });
+  },
+  closeShopSet() { shopSetZu(); },
+  shopSetFoto() { shopSetFoto(); },
+  speichereShopSet() { return speichereShopSet(); },
+  loescheShopSet() { return loescheShopSet(); },
+  shopSetAktiv(id) { return shopSetAktiv(id); },
+  shopSetSchieben(id, richtung) { return shopSetSchieben(id, richtung); },
   neuesLifeskinRasti() {
     actions.patchLifeskin({ rastOffen: "__neu", rastEntwurf: null, rastLoeschen: false, rastStatus: "", rastBilderStatus: "" });
   },
@@ -3785,8 +3956,8 @@ const operations = {
     // (shared/lifeskin-weg.js). Der Wechsel zwischen beiden schliesst einen
     // offenen Fall und rechnet Live neu - sonst stuende oben noch der Fall
     // oder die Live-Reihe des anderen Wegs.
-    if (safeViewKey === "lifeskin" || safeViewKey === "lifeskin2") {
-      const weg = safeViewKey === "lifeskin2" ? "lifeskin2" : "";
+    if (safeViewKey === "lifeskin" || safeViewKey === "lifeskin2" || safeViewKey === "lifeskinshop") {
+      const weg = safeViewKey === "lifeskin" ? "" : safeViewKey;
       safeViewKey = "lifeskin";
       if (String(store.getState().lifeskin?.weg || "") !== weg) {
         actions.patchLifeskin({ weg, offen: "" });
@@ -4553,7 +4724,8 @@ function syncViewInAddress(state) {
   const view = state?.shell?.activeView || "";
   if (!canRestoreHeartView(view)) return;
   // Lifeskin 2 behaelt seine Adresse, damit ein Neuladen dort bleibt.
-  const gewuenscht = view === "lifeskin" && state?.lifeskin?.weg === "lifeskin2" ? "#lifeskin2" : `#${view}`;
+  const lsWeg = String(state?.lifeskin?.weg || "");
+  const gewuenscht = view === "lifeskin" && ["lifeskin2", "lifeskinshop"].includes(lsWeg) ? `#${lsWeg}` : `#${view}`;
   if (window.location.hash === gewuenscht) return;
   try {
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${gewuenscht}`);

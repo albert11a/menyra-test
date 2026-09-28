@@ -52,6 +52,10 @@ const NON_SOCIAL_NAVIGATION_PREFIXES = [
   // gegenueber '/lifeskin' weder gleich noch ein Unterpfad.
   '/lifeskin2',
   '/apps/lifeskin-2',
+  // Der Laden unter /lifeskinshop - dieselbe Begruendung: Bei einem
+  // Netz-Aussetzer lieferte der Service Worker sonst die Social-Shell aus.
+  '/lifeskinshop',
+  '/apps/lifeskin-shop',
   // Die kurze Fassung des Trichters, zum Ausprobieren unter einer eigenen
   // Adresse. Sie braucht ihren eigenen Eintrag: Geprueft wird auf genaue
   // Gleichheit oder auf den Pfad mit Schraegstrich, und

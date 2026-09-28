@@ -513,6 +513,19 @@ export function bindHeartEvents({
       await operations.lifeskinKommentar?.(target.getAttribute("data-was"), target.getAttribute("data-medium"), target.getAttribute("data-id"));
       return;
     }
+    // Die Sets des Ladens (heart-lifeskin-shopsets.js).
+    if (action === "lifeskin-shopset") { operations.openShopSet?.(target.getAttribute("data-id")); return; }
+    if (action === "lifeskin-shopset-neu") { operations.neuesShopSet?.(); return; }
+    if (action === "lifeskin-shopset-zu") { operations.closeShopSet?.(); return; }
+    // Ohne await davor: Die Dateiwahl muss im Griff des Fingers aufgehen.
+    if (action === "lifeskin-shopset-foto") { operations.shopSetFoto?.(); return; }
+    if (action === "lifeskin-shopset-speichern") { await operations.speichereShopSet?.(); return; }
+    if (action === "lifeskin-shopset-loeschen") { await operations.loescheShopSet?.(); return; }
+    if (action === "lifeskin-shopset-aktiv") { await operations.shopSetAktiv?.(target.getAttribute("data-id")); return; }
+    if (action === "lifeskin-shopset-schieben") {
+      await operations.shopSetSchieben?.(target.getAttribute("data-id"), target.getAttribute("data-richtung"));
+      return;
+    }
     // Die Vorher/Nachher-Faelle (heart-lifeskin-raste.js).
     if (action === "lifeskin-rasti") {
       operations.openLifeskinRasti?.(target.getAttribute("data-id"));

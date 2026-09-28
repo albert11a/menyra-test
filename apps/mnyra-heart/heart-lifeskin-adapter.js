@@ -49,6 +49,7 @@ import {
 } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import { LIVE_FENSTER_MS, ohnePfad } from "./heart-lifeskin-live.js";
 import { mediumNormalisieren } from "../../shared/lifeskin-medien.js";
+import { SETET_DOK, SET_FOTO_PRAEFIX } from "../../shared/lifeskin-shop-sets.js";
 
 const TENANT = "lifeskin";
 const SITZUNG_GRENZE = 3000;
@@ -190,9 +191,13 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
   // Feld zurueck, ihre Bilder werden erst geladen, wenn jemand die Karte
   // aufklappt.
   const rasteDok = konfigDocs.find((d) => d.id === RASTE_DOK_ID)?.data() || null;
+  // Die Sets des Ladens (/lifeskinshop): eigene Liste, Bilder je Set in
+  // eigenen Dokumenten - beides nicht in die Konfiguration einruehren.
+  const setetDok = konfigDocs.find((d) => d.id === SETET_DOK)?.data() || null;
   const konfig = konfigDocs
     .filter((d) => !String(d.id).startsWith(LANDING_FOTOT_PRAEFIX) && !String(d.id).startsWith(ANALYSE_FOTOT_PRAEFIX))
     .filter((d) => d.id !== RASTE_DOK_ID && !String(d.id).startsWith(RASTI_BILD_ID))
+    .filter((d) => d.id !== SETET_DOK && !String(d.id).startsWith(SET_FOTO_PRAEFIX))
     .reduce((zusammen, d) => ({ ...zusammen, ...(d.data() || {}) }), {});
   const setPreis = Number.isFinite(Number(konfig.setPreis)) && Number(konfig.setPreis) > 0
     ? Number(konfig.setPreis)
@@ -242,6 +247,8 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     konfig,
     // null: in Heart noch nie gespeichert - es gelten die Standardfaelle.
     raste: Array.isArray(rasteDok?.lista) ? rasteDok.lista : null,
+    // null: noch nie gespeichert - es gelten die drei Sets der Seite.
+    shopSetet: Array.isArray(setetDok?.lista) ? setetDok.lista : null,
     // Leer: noch nie gespeichert - es gelten die vier Standardfotos.
     medien: medienDocs.map((d) => mediumNormalisieren(d.data() || {}, d.id)),
     kennzahlen: baueKennzahlen(sitzungen, { setPreis }),
@@ -499,6 +506,32 @@ export async function speichereRastiBilder(id, { para, pas }) {
 export async function loescheRastiBilder(id) {
   if (!id) return;
   await deleteDoc(doc(db, "lifeskin", TENANT, "config", `${RASTI_BILD_ID}${id}`));
+}
+
+// ══ DIE SETS DES LADENS (/lifeskinshop) ═══════════════════════════════
+// Aufbau: shared/lifeskin-shop-sets.js. Die Liste als ein Dokument, das
+// Bild je Set in einem eigenen.
+export async function speichereShopSetet(lista) {
+  await setDoc(doc(db, "lifeskin", TENANT, "config", SETET_DOK),
+    { lista: Array.isArray(lista) ? lista : [], ndryshuarAt: new Date().toISOString() });
+}
+
+export async function ladeShopSetFoto(id) {
+  if (!id) return "";
+  const schnapp = await getDoc(doc(db, "lifeskin", TENANT, "config", `${SET_FOTO_PRAEFIX}${id}`));
+  const foto = schnapp.exists() ? schnapp.data()?.foto : "";
+  return typeof foto === "string" && foto.startsWith("data:image/") ? foto : "";
+}
+
+export async function speichereShopSetFoto(id, foto) {
+  if (!id) throw new Error("Set ohne Kennung");
+  await setDoc(doc(db, "lifeskin", TENANT, "config", `${SET_FOTO_PRAEFIX}${id}`),
+    { foto: String(foto || ""), updatedAt: new Date().toISOString() });
+}
+
+export async function loescheShopSetFoto(id) {
+  if (!id) return;
+  await deleteDoc(doc(db, "lifeskin", TENANT, "config", `${SET_FOTO_PRAEFIX}${id}`));
 }
 
 export async function speichereProdukt(produkt) {

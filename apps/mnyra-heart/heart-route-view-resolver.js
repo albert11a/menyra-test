@@ -32,6 +32,7 @@ const EXPLICIT_VIEW_ALIASES = Object.freeze({
   // LifeSkin 2 ist die Lifeskin-Ansicht mit den Faellen von /lifeskin2
   // (heart.js setzt dazu state.lifeskin.weg).
   lifeskin2: "lifeskin",
+  lifeskinshop: "lifeskin",
   analytics: "analytics",
   analytic: "analytics",
   mnyrago: "mnyraGo",

@@ -96,7 +96,10 @@ export function rastiNormalisieren(roh = {}) {
     // dem Knopf). Nur wo er auf der Landing steht, und ohne Angabe ja -
     // Faelle von vorher bleiben damit, wo sie waren.
     oben: roh.oben !== false,
-    analiza: roh.analiza === true
+    analiza: roh.analiza === true,
+    // SHOP = auf /lifeskinshop (Laden). Ohne Angabe wie auf der Landing -
+    // der Laden startet so mit denselben Faellen, Heart schaltet je Fall.
+    shop: roh.shop === undefined ? roh.landing === true : roh.shop === true
   };
 }
 
@@ -121,7 +124,8 @@ export function rasteOderStandard(dok) {
 export function rasteFuer(liste, ort) {
   return (liste || []).filter((r) => (
     ort === "oben" ? r.landing && r.oben !== false
-      : ort === "landing" ? r.landing : r.analiza));
+      : ort === "landing" ? r.landing
+        : ort === "shop" ? r.shop : r.analiza));
 }
 
 // Der Standardfall einer Analyse: der Fall mit den meisten gleichen
