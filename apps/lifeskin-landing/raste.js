@@ -26,8 +26,11 @@ export function rastiBild(src, alt) {
   return `<picture><source srcset="${e(String(src).replace(/\.jpg$/, ".webp"))}" type="image/webp" />${bild}</picture>`;
 }
 
-export function rastiKarte(r) {
+// i: die Stelle in der Bahn. Die zwei vorderen Karten laden sofort - auf
+// /lifeskin stehen sie gleich unter dem ersten Knopf, also im ersten Bild.
+export function rastiKarte(r, i = 99) {
   const n = r.produkte.length;
+  const bild = (src, alt) => (i < 2 ? rastiBild(src, alt).replace(' loading="lazy"', "") : rastiBild(src, alt));
   const cmim = r.cmimi
     ? `<p class="rasti__cmim"><span class="rasti__cmim__fjala">Terapia 28-ditore</span><strong>${e(r.cmimi)} €</strong><span class="rasti__cmim__nen">Me ${n} ${n === 1 ? "produkt" : "produkte"} · dërgesa e përfshirë</span></p>`
     : "";
@@ -35,11 +38,11 @@ export function rastiKarte(r) {
           <article class="rasti" data-rasti="${e(r.id)}" data-produkte="${n}" data-cmim="${e(r.cmimi)}">
             <div class="rasti__palet">
               <figure class="gjysma">
-                ${rastiBild(r.para, `Para: ${r.gjetja || ""}`)}
+                ${bild(r.para, `Para: ${r.gjetja || ""}`)}
                 <figcaption class="etiket">PARA</figcaption>
               </figure>
               <figure class="gjysma gjysma--fund">
-                ${rastiBild(r.pas, `Pas 28 ditësh: ${r.gjetja || ""}`)}
+                ${bild(r.pas, `Pas 28 ditësh: ${r.gjetja || ""}`)}
                 <figcaption class="etiket etiket--fund">PAS</figcaption>
               </figure>
             </div>
@@ -84,9 +87,17 @@ function vorladen(src) {
 
 // Die zwei vorderen Faelle der Reihe sind fertig - oder es ist genug
 // gewartet. Ein Bild, das nicht kommt, haelt die anderen nicht auf.
-function bilderFertig(blick) {
-  const bilder = [...blick.querySelectorAll(".blick__fall")].slice(0, 2).flatMap((f) => [...f.querySelectorAll("img")]);
+function bilderFertig(behaelter, wahl = ".blick__fall") {
+  const bilder = [...behaelter.querySelectorAll(wahl)].slice(0, 2).flatMap((f) => [...f.querySelectorAll("img")]);
   return Promise.race([Promise.all(bilder.map((b) => b.decode().catch(() => {}))), warten(1500)]);
+}
+
+// OBEN ZUERST. Auf /lifeskin gibt es die Reihe im ersten Blick nicht mehr
+// (die Faelle stehen selbst gleich unter dem Knopf); was in Heart "Oben"
+// traegt, steht dort deshalb vorn in der Bahn. Sonst bleibt die
+// Reihenfolge aus Heart.
+export function obenZuerst(faelle, obenIds) {
+  return [...faelle.filter((r) => obenIds.has(r.id)), ...faelle.filter((r) => !obenIds.has(r.id))];
 }
 
 async function start() {
@@ -94,7 +105,15 @@ async function start() {
   if (!bahn) return;
   const blick = document.getElementById("blick");
   const reihe = blick?.closest(".blick");
+  // DIE BAHN SELBST WARTET, wo sie im ersten Bild steht (/lifeskin,
+  // data-wartet an #rastet): dieselbe Regel wie fuer die Reihe.
+  const bahnZeigen = async () => {
+    if (!bahn.hasAttribute("data-wartet")) return;
+    await bilderFertig(bahn, ".rasti");
+    bahn.removeAttribute("data-wartet");
+  };
   const zeigen = async () => {
+    bahnZeigen();
     if (!reihe?.hasAttribute("data-wartet")) return;
     await bilderFertig(blick);
     reihe.removeAttribute("data-wartet");
@@ -112,6 +131,7 @@ async function start() {
       // Reihenfolge, mit denselben (schon geladenen) Bildern.
       const obenIds = new Set(rasteFuer(liste, "oben").map((r) => r.id));
       oben = faelle.filter((r) => obenIds.has(r.id));
+      if (!blick) faelle = obenZuerst(faelle, obenIds);
     }
   } catch {
     faelle = null;
@@ -126,6 +146,11 @@ async function start() {
   if (!faelle.length) {
     if (abschnitt) abschnitt.hidden = true;
     return;
+  }
+  // Wartet die Bahn noch (erstes Bild), werden die zwei vorderen Karten
+  // erst fertig geladen und dann in einem Zug getauscht.
+  if (bahn.hasAttribute("data-wartet") && !wieImHtml(faelle)) {
+    await Promise.race([Promise.all(faelle.slice(0, 2).flatMap((r) => [vorladen(r.para), vorladen(r.pas)])), warten(2500)]);
   }
   bahn.innerHTML = faelle.map(rastiKarte).join("");
   bahn.scrollLeft = 0;

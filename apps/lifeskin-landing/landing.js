@@ -450,9 +450,12 @@
     /* Die Reihe wartet auf raste.js (data-wartet), bevor ihre Bilder
        einblenden. Kommt das Modul nie an, zeigt sie nach vier Sekunden
        die Faelle aus dem HTML - leer bleibt sie nie. */
+    /* Dasselbe fuer die Bahn selbst, wo sie im ersten Bild steht
+       (/lifeskin: #rastet data-wartet). */
     setTimeout(function () {
       var reihe = document.querySelector(".blick[data-wartet]");
       if (reihe) reihe.removeAttribute("data-wartet");
+      if (bahn.hasAttribute("data-wartet")) bahn.removeAttribute("data-wartet");
     }, 4000);
 
     document.addEventListener("click", function (ereignis) {

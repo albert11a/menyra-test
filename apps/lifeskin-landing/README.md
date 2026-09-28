@@ -12,6 +12,34 @@ Browser von Instagram auf Mobilfunk sind das Sekunden, in denen nichts
 passiert. Jeder Bildschirm und jeder Ladevorgang dazwischen kostet
 Besucher, und zwar mehr, als jede Gestaltung zurueckholt.
 
+## Umbau 28.09.: Faelle einmal, gleich unter dem Knopf
+
+**Reihenfolge jetzt:** `#held` -> `#rezultatet` (Faelle mit Produkten und
+Preis) -> `#pse` (Si funksionon) -> `#produktet` -> ...
+
+- **Die Reihe "RASTE REALE · PARA DHE PAS" im ersten Blick ist weg.** Sie
+  zeigte dieselben Aufnahmen wie "RASTE TË DOKUMENTUARA" zwei Abschnitte
+  tiefer - auf dem Telefon doppelt und schwer. Die dokumentierten Faelle
+  stehen jetzt selbst an ihrer Stelle. Was in Heart "Oben" traegt, steht in
+  der Bahn vorn (`obenZuerst` in `raste.js`). Die zwei vorderen Karten laden
+  sofort; `data-wartet` an `#rastet` verhindert, dass beim Tausch gegen die
+  Heart-Faelle ein Bild aufblitzt. `/lifeskin2` behaelt die Reihe - Stilblatt
+  und Skripte dafuer bleiben.
+- **Texte neu:** "Si funksionon" mit Lucide-Zeichen (scan-face, stethoscope,
+  calendar-check) statt Nummern und drei Zusagen (Dërgesa falas, Paguani te
+  dera, 45 ditë garanci). "Mjetet me të cilat punojmë" heisst jetzt
+  "Produktet pas këtyre rezultateve".
+- **Landing-Messung, Version 2:** Die Nummern folgen der Seite (2 = Faelle,
+  3 = Si funksionon). Messungen der Version 1 liest `landingLesen()` um.
+- **Die feste Leiste unten stand nach der Kasse mitten im Bild** (iPhone) -
+  derselbe Fehler wie am 26.09. auf der Therapieseite. Kasse und Mittel-Blatt
+  sind jetzt eigene Ansichten an der Stelle der Seite
+  (`shared/lifeskin-ansicht.js`) statt fester Fenster mit Scroll-Sperre; die
+  versteckte Leiste ist unsichtbar statt nur geschoben; das Nachrechnen fuer
+  iOS (`shared/lifeskin-unten.js`) scrollt sofort statt sanft und laeuft auch
+  nach der Rueckkehr aus einer anderen App und beim Zurueck auf die
+  Landingpage.
+
 ## Eine Entscheidung, nicht zwei
 
 Die vier Karten auf der Landingpage fuehren **unmittelbar in ihren
