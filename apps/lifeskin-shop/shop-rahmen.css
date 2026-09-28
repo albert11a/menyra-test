@@ -9,6 +9,16 @@ html:has(#ls-einstieg[data-aktiv="ja"]),
 body:has(#ls-einstieg[data-aktiv="ja"]) { background: #fff; }
 html:has(#ls-einstieg[data-aktiv="ja"]) { scroll-padding-top: 72px; }
 
+/* WIE DAS TEMPLATE SCROLLEN (gemeldet 28.09.): lifeskin-styles.css schaltet
+   fuer die Bildschirme der Analyse das Nachfedern am Rand ab und setzt eine
+   eigene Schrift an body; der Einstieg blendete beim Laden ein. Solange der
+   Laden der aktive Bildschirm ist, gilt wieder das Verhalten des Templates:
+   Federn wie jede Seite, keine Einblendung, Grundschrift des Browsers. */
+html:has(#ls-einstieg[data-aktiv="ja"]),
+body:has(#ls-einstieg[data-aktiv="ja"]) { overscroll-behavior-y: auto; }
+body:has(#ls-einstieg[data-aktiv="ja"]) { font-size: 16px; line-height: normal; min-height: 0; }
+#ls-einstieg[data-aktiv="ja"] { animation: none; }
+
 /* Ein Block und keine Flex-Spalte: Kaesten mit margin: auto (Leiste oben,
    .page) schrumpften darin auf ihren Inhalt. */
 #ls-einstieg[data-aktiv="ja"] { display: block; }
@@ -39,8 +49,8 @@ html:has(#ls-einstieg[data-aktiv="ja"]) { scroll-padding-top: 72px; }
   overscroll-behavior-x: contain;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  margin: 20px -20px 0;
-  padding: 0 20px 4px;
+  margin: 22px -20px 0;
+  padding: 0 20px;
   scroll-padding-inline-start: 20px;
 }
 #ls-einstieg .proof-bahn::-webkit-scrollbar { display: none; }
@@ -111,7 +121,7 @@ html:has(#ls-einstieg[data-aktiv="ja"]) { scroll-padding-top: 72px; }
 
 /* Das Bild eines Einzelmittels oeffnet seine Details. */
 /* Staerker als "#ls-einstieg .single-card button" (der Preis-Knopf). */
-#ls-einstieg .single-card button.single-card__bild { display: block; width: 100%; padding: 0; margin: 0; border: 0; border-radius: 8px; background: none; min-height: 0; }
+#ls-einstieg .single-card button.single-card__bild { display: block; width: 100%; padding: 0; margin: 0; border: 0; border-radius: 8px; background: none; min-height: 0; line-height: 0; font-size: 0; }
 #ls-einstieg .single-card .single-card__bild img { aspect-ratio: 4/5; border-radius: 8px; background: var(--wash); }
 #ls-einstieg .detail-veprimi { margin: 0 0 16px; padding: 0 0 0 18px; list-style: disc; font-size: 14px; color: var(--muted); line-height: 1.5; }
 
