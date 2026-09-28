@@ -3226,7 +3226,7 @@ function renderAnbieter(anbieter, status) {
 // Der Zustand eines Tabs: Faelle, eigene Tests und Begleitfaelle nur aus
 // diesem Weg. Begleitfaelle haengen ueber ihre Kennung an der Sitzung; im
 // alten Tab bleibt alles, was nicht ausdruecklich Lifeskin 2 ist.
-export function mitWegFaellen(zustand, weg, sitzungen = nachWeg(zustand?.sitzungen, weg)) {
+export function mitWegFaellen(zustand, weg, sitzungen = nachWeg(zustand?.sitzungen, weg), { alle = false } = {}) {
   // Jeder Weg sieht nur seine eigenen Begleitfaelle; im alten Tab bleibt,
   // was keinem anderen Weg gehoert (auch Faelle ohne Sitzung).
   const eigene = new Set((sitzungen || []).map((s) => s.id));
@@ -3238,7 +3238,7 @@ export function mitWegFaellen(zustand, weg, sitzungen = nachWeg(zustand?.sitzung
     ...zustand,
     weg,
     sitzungen,
-    tests: nachWeg(zustand?.tests, weg),
+    tests: nachWeg(zustand?.tests, weg, { alle }),
     ...(n && Array.isArray(n.faelle) ? { ndjekja: { ...n, faelle: n.faelle.filter((f) => gehoert(f?.kennung)) } } : {})
   };
 }
@@ -3257,8 +3257,8 @@ export function renderZaehlbeginn(sitzungen, weg) {
   return `
       <p class="heart-lifeskin-block__fuss heart-zaehlbeginn">
         Gezählt ab ${escapeHtml(wann)} (auf 0 gestellt)${anzahl
-          ? ` · ${anzahl} ${anzahl === 1 ? "älterer Besuch" : "ältere Besuche"} ausgeblendet, nicht gelöscht${bestellt ? `, davon ${bestellt} mit Bestellung` : ""}`
-          : ""}.
+          ? ` · ${anzahl} ${anzahl === 1 ? "älterer Besuch" : "ältere Besuche"} nicht mitgezählt${bestellt ? `, davon ${bestellt} mit Bestellung` : ""}`
+          : ""}. Fälle, Bestellungen und Tests stehen unten vollständig.
       </p>`;
 }
 
@@ -3292,11 +3292,21 @@ export function renderLifeskin(zustand) {
   // den Faellen dieses Wegs, damit die beiden Wege sich vergleichen lassen.
   const weg = wegGueltig(zustand.weg);
   const sitzungen = nachWeg(zustand.sitzungen, weg);
+  // DER ZAEHLBEGINN GILT FUER DIE ZAHLEN, NICHT FUER DIE ARBEIT.
+  //
+  // "Stats auf 0" (WEG_ZAEHLT_AB) blendete im Laden auch Faelle,
+  // Bestellungen und Tests von davor aus - ein Fall, der vor dem
+  // Zaehlbeginn abgegeben wurde, stand nirgends mehr, auch wenn ihn
+  // Dr. Gashi noch beantworten musste (28.09.: "bei Faelle ist sie nicht
+  // angekommen"). Kacheln, Trichter und Live zaehlen weiter ab dem
+  // Zaehlbeginn; Faelle, Bestellungen, Betreuung und Tests zeigen alles
+  // aus diesem Weg.
+  const alleDesWegs = nachWeg(zustand.sitzungen, weg, { alle: true });
   const { produkte } = zustand;
   // Derselbe Zustand, nur mit den Faellen dieses Wegs - fuer alles, was
   // selbst in zustand.sitzungen, zustand.tests oder die Begleitung greift
   // (Links ohne Stats, eigene Tests, Betreuung).
-  const zustandWeg = mitWegFaellen(zustand, weg, sitzungen);
+  const zustandWeg = mitWegFaellen(zustand, weg, alleDesWegs, { alle: true });
 
   // Noch kein einziger Besucher. Ein Block aus lauter Nullen sieht aus wie
   // ein Fehler; ein Satz sagt, dass es keiner ist. Die Kacheln bleiben
@@ -3379,10 +3389,10 @@ export function renderLifeskin(zustand) {
         ? leererBlock("Live", "Verbindung unterbrochen — Live-Zahlen nicht verfuegbar.")
         : renderLive(zustand.live)}
       ${renderTrichter(trichterListe, zustand.trichterOffen || "main")}
-      ${renderAnalysen(sitzungen, zustand.berichte || {}, zustand.fach || "alle", "Fälle", "",
+      ${renderAnalysen(alleDesWegs, zustand.berichte || {}, zustand.fach || "alle", "Fälle", "",
         zustand.vorschau || {}, { auswahl: zustand.auswahl ?? null, auswahlLoeschen: !!zustand.auswahlLoeschen })}
       ${renderBetreuung(zustandWeg)}
-      ${renderBestellungen(sitzungen, zustand.bestellZeitraum || "heute")}
+      ${renderBestellungen(alleDesWegs, zustand.bestellZeitraum || "heute")}
       ${renderNachfassen(zahlen)}
       ${renderMedienReaktionen(zustand)}
 

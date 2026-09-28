@@ -314,10 +314,35 @@ test("der Laden zaehlt in Heart ab dem Zaehlbeginn - aeltere Besuche ausgeblende
   assert.deepEqual(vorDemZaehlbeginn(sitzungen, "lifeskinshop"), { anzahl: 2, bestellt: 1 });
   const { renderZaehlbeginn } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
   const hinweis = renderZaehlbeginn(sitzungen, "lifeskinshop");
-  assert.match(hinweis, /Gezählt ab .*auf 0 gestellt.*2 ältere Besuche ausgeblendet, nicht gelöscht, davon 1 mit Bestellung/s);
+  assert.match(hinweis, /Gezählt ab .*auf 0 gestellt.*2 ältere Besuche nicht mitgezählt, davon 1 mit Bestellung\. Fälle, Bestellungen und Tests stehen unten vollständig\./s);
   assert.equal(renderZaehlbeginn(sitzungen, "lifeskin2"), "");
   // Live zaehlt ab demselben Zeitpunkt.
   assert.match(lies("apps/mnyra-heart/heart.js"), /wegDerSitzung\(s\) === weg && zaehltImWeg\(s, weg\)/);
+});
+
+test("der Zaehlbeginn blendet keinen Fall aus: Faelle zeigen auch die von davor, die Kacheln zaehlen ab dann", async () => {
+  const { WEG_ZAEHLT_AB } = await import("../shared/lifeskin-weg.js");
+  const b = await import("../apps/mnyra-heart/heart-lifeskin-berechnung.js");
+  const { renderLifeskin } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
+  const ab = Date.parse(WEG_ZAEHLT_AB.lifeskinshop);
+  const fall = (id, am, extra = {}) => ({ id, createdAt: new Date(am).toISOString(), updatedAt: new Date(am).toISOString(),
+    step: "result", name: id, code: `LS-${id}`, photos: ["zona"], source: { weg: "lifeskinshop" }, device: {},
+    hatBestellt: false, hatAnschrift: false, hatTelefon: true, ...extra });
+  const alt = fall("AltVorDemBeginn", ab - 3600000);
+  const neu = fall("NeuNachDemBeginn", Math.max(ab + 60000, Date.now() - 60000));
+  const test = fall("EigenerTestVorher", ab - 7200000, { source: { weg: "lifeskinshop", utmCampaign: "test" } });
+  const html = renderLifeskin({
+    status: "ready", loadedFrom: "network", weg: "lifeskinshop", sitzungen: [alt, neu], tests: [test],
+    berichte: { [alt.id]: { status: "wartet" }, [neu.id]: { status: "wartet" } },
+    produkte: [], abdeckung: [], kennzahlen: b.baueKennzahlen([]), trichter: b.baueTrichter([]),
+    lesetiefe: b.baueLesetiefe([]), herkunft: b.baueHerkunft([]), verteilung: b.baueVerteilung([]), verlauf: [],
+    offen: "", fotos: {}, fotosStatus: "", zeitraum: "", fach: "alle"
+  });
+  const faelle = html.slice(html.indexOf('data-klapp="faelle"'));
+  assert.ok(faelle.includes("AltVorDemBeginn"), "Der Fall von vor dem Zaehlbeginn fehlt in Faelle");
+  assert.ok(faelle.includes("NeuNachDemBeginn"));
+  assert.ok(html.includes("EigenerTestVorher"), "Der eigene Test von davor fehlt bei Tests");
+  assert.match(html, /1 älterer Besuch nicht mitgezählt/);
 });
 
 test("stille Links: kein Sprung auf einen Fall, den es im stillen Modus nicht gibt", () => {
