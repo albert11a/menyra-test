@@ -397,3 +397,25 @@ test("der Kopf der Seite fragt den Stempel unter derselben Adresse ab wie shop.j
   assert.match(rahmen, /<script>\(function\(\)\{try\{var bild=localStorage\.getItem\("lifeskin:shopHero"\);if\(bild&&bild\.indexOf\("data:image\/"\)===0\)/);
   assert.match(rahmen, /setAttribute\("data-eigen",""\)\}\}catch\(e\)\{\}\}\)\(\)<\/script>/);
 });
+
+test("nach einem Kauf im Laden fuehrt Neuladen nicht auf eine Warteseite ohne Fall", async () => {
+  const { Sitzung } = await import("../apps/lifeskin/lifeskin-session.js");
+  const lager = new Map();
+  const speicher = { getItem: (k) => lager.get(k) ?? null, setItem: (k, v) => lager.set(k, String(v)), removeItem: (k) => lager.delete(k) };
+  const fetchFn = async () => ({ ok: true, status: 200, json: async () => ({}) });
+  // Direkt im Laden gekauft: "ordered", aber nie ein Bericht.
+  const kauf = new Sitzung({ fetchFn, speicher });
+  await kauf.starte({ sprache: "sq" });
+  await kauf.schritt("ordered", { order: { total: 39 } });
+  assert.equal(new Sitzung({ fetchFn, speicher }).fortsetzbar(), null,
+    "Neuladen nach dem Kauf fuehrt auf /analiza/<id> - \"Ky rast nuk u gjet\"");
+  // Mit abgegebenem Bericht geht es wie bisher auf die eigene Seite -
+  // auch wenn danach bestellt wurde.
+  lager.clear();
+  const fall = new Sitzung({ fetchFn, speicher });
+  await fall.starte({ sprache: "sq" });
+  assert.equal(await fall.berichtAnlegen({ name: "Arta" }), true);
+  await fall.schritt("result");
+  await fall.schritt("ordered", { order: { total: 39 } });
+  assert.ok(new Sitzung({ fetchFn, speicher }).fortsetzbar(), "Wer seinen Fall hat, faengt wieder vorne an");
+});

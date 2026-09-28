@@ -210,6 +210,16 @@ Meta; Kamera ist das Testbild von Chromium):
 - Keine JS-Fehler. Kein Playwright-Testlauf; nicht geprueft: echtes
   iPhone/Android, Instagram-Fenster, echte Bestellung in Firestore.
 
+**Neuladen nach einem Kauf im Laden** (auch auf /lifeskin): Der Laden setzt
+"ordered", ohne dass es einen Bericht gibt. Wer danach im selben Tab neu
+lud, zurueckging oder aus Instagram zurueckkam, sprang auf `/analiza/<id>`
+und sah "Ky rast nuk u gjet". Jetzt fuehrt nach einer Bestellung nur ein
+angelegter Bericht dorthin (`Sitzung.fortsetzbar()`, Marke `bericht` im
+sessionStorage-Eintrag, gesetzt von `berichtAnlegen()`); der Kunde sieht
+wieder den Laden. Pixel: keine Zeile geaendert, Sperrtest gruen - aber wer
+nach dem Kauf neu laedt, meldet jetzt wie jeder Landing-Besuch PageView +
+lifeskin_landing_view (die kaputte Warteseite meldete gar nichts).
+
 **Offen (nicht geaendert):**
 
 - Mehrere Bestellungen im selben Tab stehen in EINER Sitzung: Jede weitere

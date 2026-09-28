@@ -437,7 +437,7 @@ export class Sitzung {
     this.code = codeAus(this.id, this.createdAt);
     this.angelegt = false;
     // Der Stand beginnt dort, wo der letzte Aufruf aufgehoert hat.
-    this.stand = gemerkt ? { step: gemerkt.step, name: gemerkt.name, views: gemerkt.views } : {};
+    this.stand = gemerkt ? { step: gemerkt.step, name: gemerkt.name, views: gemerkt.views, bericht: gemerkt.bericht } : {};
     this.#merkeStand();
     // Schreibvorgaenge laufen hintereinander, nicht durcheinander: Sonst
     // ueberholt die Ergaenzung das Anlegen und Firestore legt zwei Dokumente
@@ -485,7 +485,8 @@ export class Sitzung {
         step: SCHRITTE.includes(stand.step) ? stand.step : "opened",
         createdAt: stand.createdAt,
         name: typeof stand.name === "string" ? stand.name : "",
-        views: Number(stand.views) || 0
+        views: Number(stand.views) || 0,
+        bericht: stand.bericht === true
       };
     } catch {
       // Privates Fenster, gesperrter Speicher, kaputter Eintrag: dann eben
@@ -504,7 +505,9 @@ export class Sitzung {
         // Rueckkehr dort weitermachen kann, wo der Besucher war - siehe
         // fortsetzbar().
         name: this.stand.name || "",
-        views: Number(this.stand.views) || 0
+        views: Number(this.stand.views) || 0,
+        // Ob es zu diesem Besuch einen Bericht gibt - siehe fortsetzbar().
+        bericht: this.stand.bericht === true
       }));
     } catch { /* egal */ }
   }
@@ -520,9 +523,19 @@ export class Sitzung {
   // Fortgesetzt wird erst ab dem Ergebnis. Wer bei "Kamera" neu laedt, muss
   // die Aufnahme ohnehin wiederholen; wer beim Ergebnis war, hat alles
   // hinter sich.
+  //
+  // EIN KAUF IM LADEN IST KEIN ERGEBNIS. Der Laden (/lifeskinshop und der
+  // auf /lifeskin) setzt "ordered", ohne dass es einen Bericht gibt. Wer
+  // danach im selben Tab neu lud, zurueckging oder aus dem Fenster von
+  // Instagram zurueckkam, landete auf /analiza/<id> vor "Ky rast nuk u
+  // gjet" - einer Warteseite fuer einen Fall, den es nicht gibt. Nach
+  // einer Bestellung fuehrt deshalb nur ein angelegter Bericht dorthin.
+  // "result" allein bleibt, wie es war: Es wird erst gesetzt, wenn der
+  // Bericht steht.
   fortsetzbar() {
     if (!this.fortgesetzt) return null;
     if (SCHRITTE.indexOf(this.stand.step || "opened") < SCHRITTE.indexOf("result")) return null;
+    if (this.stand.step === "ordered" && this.stand.bericht !== true) return null;
     return { name: this.stand.name || "", views: this.stand.views || 0, code: this.code };
   }
 
@@ -1024,7 +1037,14 @@ export class Sitzung {
         if (globalThis.console) console.warn("[lifeskin] Bericht nicht angelegt:", fehler?.message);
         return false;
       }
-    }));
+    })).then((ok) => {
+      // Gemerkt fuer fortsetzbar(): Ab hier gibt es eine Warteseite.
+      if (ok === true) {
+        this.stand.bericht = true;
+        this.#merkeStand();
+      }
+      return ok;
+    });
     return vorgang;
   }
 
