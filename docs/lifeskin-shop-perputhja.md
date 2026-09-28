@@ -100,10 +100,14 @@ sich daran nichts.
 
 - **Shop-Statistik auf 0**: `WEG_ZAEHLT_AB.lifeskinshop` in
   `shared/lifeskin-weg.js`. Heart zaehlt im Tab "Lifeskin Shop" (Kacheln,
-  Trichter, Live, Faelle, Bestellungen, Tests) nur Besuche ab diesem
-  Zeitpunkt und sagt oben, wie viele aeltere ausgeblendet sind (und wie
-  viele davon eine Bestellung tragen). **Nichts geloescht**; die anderen
-  Tabs unveraendert. Zurueck: Eintrag entfernen.
+  Trichter, Live) nur Besuche ab diesem Zeitpunkt und sagt oben, wie viele
+  aeltere nicht mitgezaehlt sind (und wie viele davon eine Bestellung
+  tragen). **Nichts geloescht**; die anderen Tabs unveraendert. Zurueck:
+  Eintrag entfernen.
+  Korrektur 28.09. spaet: Faelle, Bestellungen, Betreuung und Tests zeigen
+  wieder alles aus dem Laden, auch von vor dem Zaehlbeginn. Vorher waren sie
+  mit ausgeblendet - ein Fall von davor stand nirgends, auch wenn Dr. Gashi
+  ihn noch beantworten musste.
 - **Stille Links**: Wer im selben Tab einmal still bis zur Nummer ging,
   landete danach mit jedem stillen Link auf "Ky rast nuk u gjet" (im
   stillen Modus wird kein Bericht angelegt, der Trichter sprang trotzdem
