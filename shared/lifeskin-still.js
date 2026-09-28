@@ -111,8 +111,14 @@
     knopf.href = location.pathname + "?still=0";
     knopf.title = "Tippen, um den stillen Modus auf diesem Geraet zu beenden";
     knopf.textContent = "Still · 0 Stats";
+    // Oben verankert, ein Fenster tief (100dvh) und um die eigene Hoehe
+    // zurueck - nicht "bottom:8px". An "bottom" stand die Pille auf dem
+    // iPhone nach der Tastatur mitten im Bild (dieselbe Falle wie die
+    // Leiste der Landingpage, landing.css .dock); dvh folgt der Tastatur
+    // nicht. vh zuerst fuer Browser ohne dvh.
     knopf.setAttribute("style", [
-      "position:fixed", "left:8px", "bottom:8px", "z-index:2147483647",
+      "position:fixed", "left:8px", "top:calc(100vh - 8px)", "top:calc(100dvh - 8px)",
+      "transform:translateY(-100%)", "z-index:2147483647",
       "padding:4px 9px", "border-radius:999px", "background:rgba(20,20,20,.82)",
       "color:#9ff0c4", "font:600 11px/1.3 system-ui,sans-serif",
       "text-decoration:none", "pointer-events:auto", "opacity:.85"
