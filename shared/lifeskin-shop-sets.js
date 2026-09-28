@@ -54,6 +54,15 @@ export const MITTEL_FOTOS_STANDARD = Object.freeze({
   "lf-pore": `${ASSETS}lf-pore.jpg`
 });
 
+// Die kurze Zeile unter einem Einzelmittel - wortgleich zum Template.
+// Mittel, die hier fehlen, nehmen ihre Kurzzeile aus dem Katalog.
+export const MITTEL_NENTITUJ = Object.freeze({
+  "lf-acne": "Kujdes për aknet",
+  "lf-moistur": "Hidratim i përditshëm",
+  "lf-pigment": "Kujdes për njollat",
+  "lf-pore": "Kujdes për poret"
+});
+
 function text(w, max) {
   return String(w ?? "").replace(/\s+/g, " ").trim().slice(0, max);
 }

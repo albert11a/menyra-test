@@ -31,7 +31,7 @@ import { ansichtOeffnen, ansichtSchliessen } from "../../shared/lifeskin-ansicht
 import { mittelBauen, holeSammlung, FOTO_PRAEFIX } from "../lifeskin-landing/shop.js";
 import { rasteLaden, rasteFuer, rasteMitBildern, rastiProdukteText } from "../../shared/lifeskin-raste.js";
 import {
-  SETET_DOK, SET_FOTO_PRAEFIX, SETET_STANDARD, MITTEL_FOTOS_STANDARD,
+  SETET_DOK, SET_FOTO_PRAEFIX, SETET_STANDARD, MITTEL_FOTOS_STANDARD, MITTEL_NENTITUJ,
   setetOderStandard, setetNormalisieren, aktiveSetet, nevojaKennung
 } from "../../shared/lifeskin-shop-sets.js";
 
@@ -234,7 +234,7 @@ export class Dyqan {
   #zeichneMittel() {
     const raster = $("#single-grid", this.dok);
     if (!raster) return;
-    raster.innerHTML = this.mittel.map((m) => `<article class="single-card"><button type="button" class="single-card__bild" data-mjeti="${e(m.id)}" aria-label="Shihni ${e(m.name)}"><img src="${e(m.fotot[0])}" alt="${e(m.name)}" width="300" height="375" loading="lazy"></button><h3>${e(m.name)}</h3><p>${e(m.kurztext || m.nenName || "")}${m.inhalt ? ` · ${e(m.inhalt)}` : ""}</p><button type="button" data-single="${e(m.id)}" aria-label="Shtoni ${e(m.name)}, ${preisFuer(1)} euro">${preisFuer(1)} € ${ikone("Plus")}</button></article>`).join("");
+    raster.innerHTML = this.mittel.map((m) => `<article class="single-card"><button type="button" class="single-card__bild" data-mjeti="${e(m.id)}" aria-label="Shihni ${e(m.name)}"><img src="${e(m.fotot[0])}" alt="${e(m.name)}" width="300" height="375" loading="lazy"></button><h3>${e(m.name)}</h3><p>${e(MITTEL_NENTITUJ[m.id] || m.kurztext || m.nenName || "")}${m.inhalt ? ` · ${e(m.inhalt)}` : ""}</p><button type="button" data-single="${e(m.id)}" aria-label="Shtoni ${e(m.name)}, ${preisFuer(1)} euro">${preisFuer(1)} € ${ikone("Plus")}</button></article>`).join("");
   }
 
   #zeichneFaelle(faelle) {
@@ -302,7 +302,7 @@ export class Dyqan {
     return this.korb.ids.map((id) => {
       const m = this.mittelVon(id);
       if (!m) return "";
-      return `<div class="basket-row"><img src="${e(m.fotot[0])}" alt="${e(m.name)}" width="62" height="78"><div><h3>${e(m.name)}</h3><p>${e(m.kurztext || m.nenName || "")}${m.inhalt ? ` · ${e(m.inhalt)}` : ""}</p></div><button type="button" class="remove" data-remove="${e(id)}" aria-label="Hiqni ${e(m.name)}">${ikone("Trash2")}</button></div>`;
+      return `<div class="basket-row"><img src="${e(m.fotot[0])}" alt="${e(m.name)}" width="62" height="78"><div><h3>${e(m.name)}</h3><p>${e(MITTEL_NENTITUJ[m.id] || m.kurztext || m.nenName || "")}${m.inhalt ? ` · ${e(m.inhalt)}` : ""}</p></div><button type="button" class="remove" data-remove="${e(id)}" aria-label="Hiqni ${e(m.name)}">${ikone("Trash2")}</button></div>`;
     }).join("");
   }
 
@@ -321,7 +321,7 @@ export class Dyqan {
     this.#merke({ produkteGesehen: true }, "produkteGesehen");
     const preis = preisFuer(s.produkte.length);
     const figuren = s.produkte.map((id) => this.mittelVon(id)).filter(Boolean)
-      .map((m) => `<figure><img src="${e(m.fotot[0])}" alt="${e(m.name)}" width="300" height="375"><figcaption><strong>${e(m.name)}</strong>${e(m.kurztext || m.nenName || "")}</figcaption></figure>`).join("");
+      .map((m) => `<figure><img src="${e(m.fotot[0])}" alt="${e(m.name)}" width="300" height="375"><figcaption><strong>${e(m.name)}</strong>${e(MITTEL_NENTITUJ[m.id] || m.kurztext || m.nenName || "")}</figcaption></figure>`).join("");
     this.#blatt(`<h2 id="sheet-title">${e(s.titulli)}</h2><p>${e(s.detaje || s.teksti)}</p><div class="detail-products">${figuren}</div><div class="total"><span>Seti me ${s.produkte.length} produkte</span><strong>${preis} €</strong></div><button type="button" class="primary" data-set="${e(s.id)}">Zgjidh këtë set ${ikone("ArrowUpRight")}</button>`, "SETI");
   }
 
