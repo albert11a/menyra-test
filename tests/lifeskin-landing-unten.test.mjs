@@ -66,3 +66,22 @@ test("das Nachrechnen scrollt sofort und ruft sich auch nach der Rueckkehr auf",
   assert.match(unten, /attributeFilter: \["data-aktiv"\]/, "beim Zurueck auf die Landingpage wird nicht nachgerechnet");
   assert.match(lies("apps/lifeskin/lifeskin-app.js"), /untenNachziehenStarten\(\);/);
 });
+
+// ══ 28.09., ZWEITE MELDUNG: AUCH OHNE KASSE MITTEN IM BILD ════════════
+// Leiste und Still-Pille standen um dieselbe Strecke zu hoch - beide an
+// "bottom". iOS merkt sich nach der Tastatur (auch aus dem Trichter im
+// selben Dokument) eine zu kleine Hoehe fuer alles Feste. Jetzt haengen
+// beide oben und reichen 100dvh tief; dvh folgt der Tastatur nicht.
+test("die Leiste haengt oben und ist ein Fenster hoch - nicht an bottom", () => {
+  const dock = regel(".dock");
+  assert.match(dock, /top: 0;/);
+  assert.match(dock, /height: 100dvh;/);
+  assert.match(dock, /justify-content: flex-end;/);
+  assert.doesNotMatch(dock, /bottom: 0/, "die Leiste haengt wieder an der Hoehe, die iOS falsch behaelt");
+  // Ein Kasten ueber das ganze Fenster darf keine Tipps abfangen.
+  assert.match(CSS, /\.dock\[data-sichtbar="ja"\] \{ pointer-events: none; \}/);
+  assert.match(CSS, /\.dock\[data-sichtbar="ja"\] \.dock__leib \{ pointer-events: auto; \}/);
+  const still = lies("shared/lifeskin-still.js");
+  assert.match(still, /"top:calc\(100dvh - 8px\)",\s*"transform:translateY\(-100%\)"/);
+  assert.doesNotMatch(still, /"left:8px", "bottom:8px"/);
+});

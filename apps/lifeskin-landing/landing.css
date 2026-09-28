@@ -1888,11 +1888,34 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
  * Also: aussen fest, im Bild, ohne Farbe, abschneidend - innen die
  * Leiste, die sich bewegt. Das Dokument ist jetzt genau so hoch wie
  * sein Inhalt. */
+/* OBEN VERANKERT UND EIN FENSTER HOCH - NICHT "bottom: 0".
+ *
+ * GEMELDET 28.09. (iPhone, auch nach der Kasse als Ansicht): Leiste und
+ * Still-Pille standen um genau dieselbe Strecke zu hoch, rund eine
+ * Tastaturhoehe. Beide hingen an "bottom: 0". iOS (Safari, Instagram,
+ * Facebook) behaelt nach der Tastatur - auf der Landingpage auch aus dem
+ * Trichter (Name, Nummer), der im selben Dokument laeuft - eine zu
+ * kleine Hoehe fuer alles Feste; "unten" liegt dann mitten im Bild, bis
+ * jemand weiterwischt. Nachrechnen per Skript (Scroll um einen Punkt)
+ * greift dort nicht verlaesslich.
+ *
+ * DESHALB HAENGT DIE LEISTE NICHT MEHR AN DIESER HOEHE: Der Kasten steht
+ * oben (top: 0) und ist 100dvh hoch; die Leiste sitzt an SEINEM Boden.
+ * dvh folgt der Browserleiste, aber nicht der Tastatur - die Unterkante
+ * ist damit immer die des Bildschirms, egal, was iOS sich fuer "unten"
+ * gemerkt hat. Der Kasten faengt keine Tipps ab (pointer-events: none)
+ * und ist nie hoeher als das Fenster, verlaengert das Dokument also
+ * nicht. */
 .dock {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
   z-index: 55;
   overflow: hidden;
   /* Solange nichts darin steht, faengt er keine Tipps ab - er liegt
@@ -1916,7 +1939,10 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   transition: transform 0.36s var(--kurve);
 }
 .dock .knopf { min-height: 54px; }
-.dock[data-sichtbar="ja"] { pointer-events: auto; }
+/* Der Kasten ist ein ganzes Fenster hoch - Tipps faengt nur die Leiste,
+   und nur, wenn sie zu sehen ist. */
+.dock[data-sichtbar="ja"] { pointer-events: none; }
+.dock[data-sichtbar="ja"] .dock__leib { pointer-events: auto; }
 .dock[data-sichtbar="ja"] .dock__leib { transform: none; }
 /* VERSTECKT HEISST UNSICHTBAR - nicht nur "unter den Rand geschoben".
    Rechnet iOS "unten" nach Tastatur, Ueberscrollen oder der Rueckkehr
