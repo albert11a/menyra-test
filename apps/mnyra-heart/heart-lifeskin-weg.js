@@ -10,14 +10,25 @@
 // kommt das Urteil, dann der Kauf. Genau diese Strecke entscheidet, ob der
 // neue Weg besser verkauft - also steht sie hier in einer Reihe, mit der
 // Zeit bis zur Antwort daneben.
-import { wegDerSitzung } from "../../shared/lifeskin-weg.js";
+import { wegDerSitzung, zaehltImWeg } from "../../shared/lifeskin-weg.js";
 import { stufenIndex, istPatient } from "./heart-lifeskin-berechnung.js";
 
 // Nur die Faelle eines Wegs. "" ist der bisherige Weg (/lifeskin) - dort
 // bleiben alle Faelle ohne Merkmal, also auch jeder von vorher.
-export function nachWeg(sitzungen, weg = "") {
+// Und nur ab dem Zaehlbeginn des Wegs (WEG_ZAEHLT_AB in
+// shared/lifeskin-weg.js) - mit { alle: true } auch die davor.
+export function nachWeg(sitzungen, weg = "", { alle = false } = {}) {
   const w = String(weg || "");
-  return (Array.isArray(sitzungen) ? sitzungen : []).filter((s) => wegDerSitzung(s) === w);
+  return (Array.isArray(sitzungen) ? sitzungen : [])
+    .filter((s) => wegDerSitzung(s) === w && (alle || zaehltImWeg(s, w)));
+}
+
+// Wie viele Besuche des Wegs vor dem Zaehlbeginn liegen - und wie viele
+// davon eine Bestellung tragen. Heart sagt es, damit nichts still
+// verschwindet.
+export function vorDemZaehlbeginn(sitzungen, weg = "") {
+  const alt = nachWeg(sitzungen, weg, { alle: true }).filter((s) => !zaehltImWeg(s, weg));
+  return { anzahl: alt.length, bestellt: alt.filter((s) => s?.order || s?.hatBestellt === true || s?.bestelltAt).length };
 }
 
 const FREI = ["fertig", "bestellt", "versandt", "zugestellt"];

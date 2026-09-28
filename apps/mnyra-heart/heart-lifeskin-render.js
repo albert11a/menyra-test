@@ -35,9 +35,9 @@ import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 // Aufklappen, das ein Neuzeichnen ueberlebt.
 import { renderRaste, renderRastiEditor, renderBefundRasteAuswahl, rasteListe } from "./heart-lifeskin-raste.js";
 import { klappAttr, alsKlapp } from "./heart-lifeskin-klapp.js";
-import { nachWeg, baueLs2Weg, baueShopWeg, dauerText as ls2Dauer } from "./heart-lifeskin-weg.js";
+import { nachWeg, vorDemZaehlbeginn, baueLs2Weg, baueShopWeg, dauerText as ls2Dauer } from "./heart-lifeskin-weg.js";
 import { renderShopSetet, renderShopSetEditor, renderShopHero, renderShopHeroEditor } from "./heart-lifeskin-shopsets.js";
-import { wegGueltig } from "../../shared/lifeskin-weg.js";
+import { wegGueltig, WEG_ZAEHLT_AB } from "../../shared/lifeskin-weg.js";
 import { perputhjaGueltig } from "../../shared/lifeskin-perputhja.js";
 import { entwurfLesen, promptGemacht } from "./heart-lifeskin-entwurf.js";
 import { mitFingerabdruck } from "./heart-morph.js";
@@ -3243,6 +3243,25 @@ export function mitWegFaellen(zustand, weg, sitzungen = nachWeg(zustand?.sitzung
   };
 }
 
+// DER ZAEHLBEGINN EINES WEGS (WEG_ZAEHLT_AB, shared/lifeskin-weg.js).
+// Ausgeblendet ist nicht geloescht - und das steht hier, mit Zahl, damit
+// kein Fall still verschwindet. Bestellungen davor werden eigens genannt.
+export function renderZaehlbeginn(sitzungen, weg) {
+  const ab = WEG_ZAEHLT_AB[wegGueltig(weg)];
+  if (!ab) return "";
+  const { anzahl, bestellt } = vorDemZaehlbeginn(sitzungen, weg);
+  const d = new Date(ab);
+  const zwei = (n) => String(n).padStart(2, "0");
+  const wann = Number.isNaN(d.getTime()) ? ab
+    : `${zwei(d.getDate())}.${zwei(d.getMonth() + 1)}.${d.getFullYear()}, ${zwei(d.getHours())}:${zwei(d.getMinutes())}`;
+  return `
+      <p class="heart-lifeskin-block__fuss heart-zaehlbeginn">
+        Gezählt ab ${escapeHtml(wann)} (auf 0 gestellt)${anzahl
+          ? ` · ${anzahl} ${anzahl === 1 ? "älterer Besuch" : "ältere Besuche"} ausgeblendet, nicht gelöscht${bestellt ? `, davon ${bestellt} mit Bestellung` : ""}`
+          : ""}.
+      </p>`;
+}
+
 export function renderLifeskin(zustand) {
   if (zustand?.status === "error") {
     return `<p class="heart-lifeskin-leer">Die Zahlen liessen sich nicht laden. ${escapeHtml(zustand.fehler || "")}</p>`;
@@ -3353,6 +3372,7 @@ export function renderLifeskin(zustand) {
           auf <b>mnyra.com/${weg ? escapeHtml(weg) : "lifeskin"}</b>.
         </p>` : ""}
       ${weg === "lifeskin2" ? renderLs2Weg(baueLs2Weg(imBlick, zustand.berichte || {}), zeitraum) : ""}
+      ${renderZaehlbeginn(zustand.sitzungen, weg)}
       ${weg === "lifeskinshop" ? renderShopWeg(baueShopWeg(imBlick), zeitraum) : ""}
       ${renderKacheln(zahlen, zeitraum)}
       ${zustand.liveFehler

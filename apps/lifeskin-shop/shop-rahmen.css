@@ -43,6 +43,13 @@ body:has(#ls-einstieg[data-aktiv="ja"]) { font-size: 16px; line-height: normal; 
 /* Das Titelbild aus Heart ist schon auf 7:5 zugeschnitten: Der Rahmen
    nimmt genau dieses Verhaeltnis, damit nichts mehr abgeschnitten wird. */
 #ls-einstieg .hero-photo[data-eigen] { height: auto; aspect-ratio: 7 / 5; }
+/* UND ZWAR VON ANFANG AN, auch mit dem Standardbild. Vorher stand der
+   Rahmen zuerst auf der festen Hoehe aus shop.css (250 px, auf kurzen
+   Telefonen 205 px, breiten 285 px) und sprang auf 7:5, sobald das Bild
+   aus Heart ankam - die Seite rutschte beim Oeffnen und bei jedem
+   Neuladen (28.09., Inhaber). Jetzt steht die Hoehe fest, bevor ein Bild
+   da ist; getauscht wird nur noch der Inhalt. */
+#ls-einstieg .hero-photo { height: auto; aspect-ratio: 7 / 5; }
 #ls-einstieg .hero-photo[data-eigen] > img { object-position: 50% 50%; }
 
 /* ── Die Faelle zum Wischen ─────────────────────────────────────────── */

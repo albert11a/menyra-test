@@ -11,8 +11,8 @@
  * <html> - /lifeskin und /lifeskin2 laden die Datei nicht, und selbst wenn
  * sie es taeten, griffe hier nichts (tests/lifeskin-shop-weg.test.mjs).
  * Der Laden selbst (#ls-einstieg) hat seine eigenen Regeln in shop.css und
- * wird hier nicht beruehrt - ausser dem Abschnitt "Kontrolli i
- * përputhjes" ganz unten, der neu dazukam.
+ * wird hier nicht beruehrt (der Abschnitt #zgjedhja steht wieder wie vor
+ * dem 28.09. abends - Wunsch Inhaber).
  *
  * DIE KAMERA RECHNET IHR QUADRAT SELBST (lifeskin-app.js #kameraGroesse):
  * Kopf, Hinweis und Fuss werden abgezogen, was bleibt, bekommt das Bild.
@@ -385,86 +385,4 @@ html[data-ls-landing="lifeskinshop"] #ls-fragetipp { margin-top: auto; animation
 }
 @media (prefers-reduced-motion: reduce) {
   html[data-ls-landing="lifeskinshop"] #ls-fragetipp { animation: none; }
-}
-
-/* ══ IM LADEN: "KONTROLLI I PËRPUTHJES" (#zgjedhja) ═══════════════════
- *
- * Der Abschnitt, der in die Kontrolle fuehrt, zeigt vorher, was am Ende
- * steht: eine Zahl von Dr. Gashi. Der Ring ist leer ("?") - er fuellt
- * sich erst mit ihrer Antwort. Drei Schritte darunter sagen, was es kostet:
- * eine Minute, keine Anmeldung, kein Kauf. */
-html[data-ls-landing="lifeskinshop"] #ls-einstieg .kontrolli {
-  display: grid;
-  grid-template-columns: 92px 1fr;
-  gap: 16px;
-  align-items: center;
-  margin: 22px 0 4px;
-  padding: 16px;
-  border: 1px solid #ffffff2a;
-  border-radius: 14px;
-  background: #ffffff0d;
-}
-html[data-ls-landing="lifeskinshop"] #ls-einstieg .kontrolli__unaza {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 92px;
-  height: 92px;
-  border-radius: 50%;
-  /* Eine Skala ohne Zeiger: Die Zahl setzt erst Dr. Gashi. */
-  background: repeating-conic-gradient(#c8eadc 0 7deg, #ffffff24 7deg 12deg);
-}
-html[data-ls-landing="lifeskinshop"] #ls-einstieg .kontrolli__unaza::before {
-  content: "";
-  position: absolute;
-  inset: 7px;
-  border-radius: 50%;
-  background: var(--ink);
-}
-html[data-ls-landing="lifeskinshop"] #ls-einstieg .kontrolli__unaza strong {
-  position: relative;
-  font-size: 26px;
-  font-weight: 600;
-  letter-spacing: -1px;
-  color: #fff;
-}
-html[data-ls-landing="lifeskinshop"] #ls-einstieg .kontrolli__unaza small {
-  font-size: 13px;
-  font-weight: 600;
-  margin-left: 1px;
-}
-html[data-ls-landing="lifeskinshop"] #ls-einstieg .kontrolli ol {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  counter-reset: kontrolli;
-}
-html[data-ls-landing="lifeskinshop"] #ls-einstieg .kontrolli li {
-  display: grid;
-  grid-template-columns: 20px 1fr;
-  gap: 8px;
-  font-size: 13px;
-  line-height: 1.4;
-  color: #d1e0dd;
-  counter-increment: kontrolli;
-}
-html[data-ls-landing="lifeskinshop"] #ls-einstieg .kontrolli li::before {
-  content: counter(kontrolli);
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #c8eadc;
-  color: var(--ink);
-  font-size: 11px;
-  font-weight: 700;
-}
-html[data-ls-landing="lifeskinshop"] #ls-einstieg .kontrolli li strong { color: #fff; font-weight: 600; }
-@media (max-width: 360px) {
-  html[data-ls-landing="lifeskinshop"] #ls-einstieg .kontrolli { grid-template-columns: 76px 1fr; gap: 12px; padding: 14px 12px; }
-  html[data-ls-landing="lifeskinshop"] #ls-einstieg .kontrolli__unaza { width: 76px; height: 76px; }
-  html[data-ls-landing="lifeskinshop"] #ls-einstieg .kontrolli__unaza strong { font-size: 22px; }
 }

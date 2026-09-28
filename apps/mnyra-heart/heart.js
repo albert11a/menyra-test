@@ -1,4 +1,4 @@
-import { wegDerSitzung } from "../../shared/lifeskin-weg.js";
+import { wegDerSitzung, zaehltImWeg } from "../../shared/lifeskin-weg.js";
 import { pruefeRaportV3, reportToWire } from "../../shared/lifeskin-raport-v3.js";
 import { shitjaLesen } from "../../shared/lifeskin-shitja.js";
 // Was in die Promptvorlage eingesetzt wird - Name, Altersgruppe und die
@@ -960,7 +960,8 @@ function liveRechnen() {
   const jetzt = Date.now();
   // Nur die Besucher des Wegs, dessen Tab offen ist (Lifeskin / Lifeskin 2).
   const weg = String(store.getState().lifeskin?.weg || "");
-  const stand = baueLive(liveSitzungen.filter((s) => wegDerSitzung(s) === weg), jetzt, undefined,
+  // Ab dem Zaehlbeginn des Wegs (shared/lifeskin-weg.js), wie die Kacheln.
+  const stand = baueLive(liveSitzungen.filter((s) => wegDerSitzung(s) === weg && zaehltImWeg(s, weg)), jetzt, undefined,
     store.getState().lifeskin?.berichte || {});
   const vorher = store.getState().lifeskin?.live;
   // Nur schreiben, wenn sich etwas geaendert hat: Ein Zustandswechsel je

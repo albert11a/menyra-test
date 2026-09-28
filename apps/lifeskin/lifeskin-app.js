@@ -934,7 +934,12 @@ export class Trichter {
     // sondern auf seine Seite. Das trifft jeden, der aus dem Fenster von
     // Instagram oder TikTok zurueckkommt: Dort ersetzt der WhatsApp-Link
     // unsere Seite, und "Zurueck" laedt sie neu.
-    if (this.sitzung.fortsetzbar()) {
+    //
+    // NICHT IM STILLEN MODUS: Dort wird kein Bericht angelegt (die Seite
+    // schreibt nichts). Wer einmal still bis zur Nummer gegangen war,
+    // landete danach mit JEDEM stillen Link im selben Tab auf "Ky rast nuk
+    // u gjet" - die stillen Links taten scheinbar nichts mehr.
+    if (this.sitzung.fortsetzbar() && globalThis.__mnyraStill !== true) {
       globalThis.location.replace(this.sitzung.berichtPfad);
       return;
     }

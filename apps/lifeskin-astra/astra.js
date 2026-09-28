@@ -519,7 +519,11 @@ export class Analiza {
 
   #wegZeigen() {
     schreibe($("#an-wegtitel"), this.text("wegTitel"));
-    schreibe($("#an-wegtext"), this.text("wegText"));
+    // IM STILLEN MODUS legt der Trichter keinen Fall an - wer still bis zur
+    // Nummer ging, kommt hier an und soll wissen, warum (nur fuer uns).
+    schreibe($("#an-wegtext"), globalThis.__mnyraStill === true
+      ? "Stiller Modus: Es wird kein Fall angelegt, deshalb gibt es diese Seite nicht. Warteseite und Ergebnis eines echten Falls: Heart → „Seiten ohne Stats“ → „Nach dem Weg“."
+      : this.text("wegText"));
     this.#zeige("weg");
   }
 

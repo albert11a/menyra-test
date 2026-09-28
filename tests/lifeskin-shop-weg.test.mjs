@@ -292,3 +292,81 @@ test("der Block mit der Zahl steht oben, das Teilen weit unten - die Zaehlmarken
   const js = lies("apps/lifeskin-verkauf/terapia.js");
   assert.match(js, /const marken = \[\["#pse", "sahSchnitt"\], \["#merrni", "sahTherapie"\], \["#t-cmimi1", "sahPreis"\]\];/);
 });
+
+// ---------- Nachtrag 28.09. abends (Wunsch Inhaber) ----------
+
+test("der Laden zaehlt in Heart ab dem Zaehlbeginn - aeltere Besuche ausgeblendet, nicht geloescht", async () => {
+  const { WEG_ZAEHLT_AB, zaehltImWeg } = await import("../shared/lifeskin-weg.js");
+  const { nachWeg, vorDemZaehlbeginn } = await import("../apps/mnyra-heart/heart-lifeskin-weg.js");
+  const ab = Date.parse(WEG_ZAEHLT_AB.lifeskinshop);
+  assert.ok(Number.isFinite(ab), "kein Zaehlbeginn fuer den Laden");
+  const vor = new Date(ab - 60000).toISOString();
+  const nach = new Date(ab + 60000).toISOString();
+  const s = (id, weg, createdAt, extra = {}) => ({ id, createdAt, source: weg ? { weg } : {}, ...extra });
+  const sitzungen = [s("alt", "lifeskinshop", vor), s("altKauf", "lifeskinshop", vor, { order: { total: 39 } }),
+    s("neu", "lifeskinshop", nach), s("ohneZeit", "lifeskinshop", ""), s("ls1", "", vor), s("ls2", "lifeskin2", vor)];
+  assert.deepEqual(nachWeg(sitzungen, "lifeskinshop").map((x) => x.id), ["neu", "ohneZeit"]);
+  assert.deepEqual(nachWeg(sitzungen, "lifeskinshop", { alle: true }).length, 4);
+  // Die anderen Wege zaehlen weiter alles.
+  assert.deepEqual(nachWeg(sitzungen, "").map((x) => x.id), ["ls1"]);
+  assert.deepEqual(nachWeg(sitzungen, "lifeskin2").map((x) => x.id), ["ls2"]);
+  assert.equal(zaehltImWeg(s("x", "", vor), ""), true);
+  assert.deepEqual(vorDemZaehlbeginn(sitzungen, "lifeskinshop"), { anzahl: 2, bestellt: 1 });
+  const { renderZaehlbeginn } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
+  const hinweis = renderZaehlbeginn(sitzungen, "lifeskinshop");
+  assert.match(hinweis, /Gezählt ab .*auf 0 gestellt.*2 ältere Besuche ausgeblendet, nicht gelöscht, davon 1 mit Bestellung/s);
+  assert.equal(renderZaehlbeginn(sitzungen, "lifeskin2"), "");
+  // Live zaehlt ab demselben Zeitpunkt.
+  assert.match(lies("apps/mnyra-heart/heart.js"), /wegDerSitzung\(s\) === weg && zaehltImWeg\(s, weg\)/);
+});
+
+test("stille Links: kein Sprung auf einen Fall, den es im stillen Modus nicht gibt", () => {
+  const app = lies("apps/lifeskin/lifeskin-app.js");
+  assert.match(app, /if \(this\.sitzung\.fortsetzbar\(\) && globalThis\.__mnyraStill !== true\) \{\s*globalThis\.location\.replace\(this\.sitzung\.berichtPfad\);/);
+  assert.match(lies("apps/lifeskin-astra/astra.js"), /globalThis\.__mnyraStill === true\s*\? "Stiller Modus: Es wird kein Fall angelegt/);
+});
+
+test("das Titelbild springt nicht: Rahmen von Anfang an 7:5, das eigene Bild kommt vom Geraet", async () => {
+  assert.match(lies("apps/lifeskin-shop/shop-rahmen.css"), /\n#ls-einstieg \.hero-photo \{ height: auto; aspect-ratio: 7 \/ 5; \}/);
+  const { Dyqan } = await import("../apps/lifeskin-shop/shop.js");
+  const lager = new Map();
+  const dauer = { getItem: (k) => lager.get(k) ?? null, setItem: (k, v) => lager.set(k, v), removeItem: (k) => lager.delete(k) };
+  const baue = () => {
+    const img = { src: "/apps/lifeskin-shop/assets/lf-acne-2.jpg" };
+    const attr = {};
+    const rahmen = { querySelector: () => img, setAttribute: (k, v) => { attr[k] = v; }, removeAttribute: (k) => { delete attr[k]; } };
+    return { img, attr, dokument: { querySelector: (w) => (w.includes("hero-photo") ? rahmen : null), defaultView: {} } };
+  };
+  const foto = "data:image/jpeg;base64,AA";
+  const mitBild = async (url) => (url.endsWith("/shopHero")
+    ? { ok: true, status: 200, json: async () => ({ fields: { foto: { stringValue: foto } } }) } : { ok: false, status: 404 });
+  const erst = baue();
+  await new Dyqan({ dokument: erst.dokument, speicher: null, holen: mitBild, dauerSpeicher: dauer }).titelbild();
+  assert.equal(lager.get("lifeskin:shopHero"), foto, "das Bild wird nicht gemerkt");
+  // Beim naechsten Oeffnen steht es sofort da - vor jeder Antwort.
+  const zweit = baue();
+  let offen;
+  const langsam = () => new Promise((r) => { offen = r; });
+  const lauf = new Dyqan({ dokument: zweit.dokument, speicher: null, holen: langsam, dauerSpeicher: dauer }).titelbild();
+  assert.equal(zweit.img.src, foto);
+  assert.ok("data-eigen" in zweit.attr);
+  offen({ ok: false, status: 503 });
+  await lauf;
+  assert.equal(zweit.img.src, foto, "ohne Netz bleibt das gemerkte Bild");
+  // In Heart entfernt (404): zurueck zum Standardbild, nichts mehr gemerkt.
+  const dritt = baue();
+  await new Dyqan({ dokument: dritt.dokument, speicher: null, holen: async () => ({ ok: false, status: 404 }), dauerSpeicher: dauer }).titelbild();
+  assert.equal(dritt.img.src, "/apps/lifeskin-shop/assets/lf-acne-2.jpg");
+  assert.ok(!("data-eigen" in dritt.attr));
+  assert.equal(lager.has("lifeskin:shopHero"), false);
+});
+
+test("der Abschnitt #zgjedhja steht wieder wie vor dem 28.09. abends", () => {
+  const html = lies("apps/lifeskin-shop/index.html");
+  const abschnitt = html.slice(html.indexOf('id="zgjedhja"'), html.indexOf("</section>", html.indexOf('id="zgjedhja"')));
+  assert.match(abschnitt, /ZGJEDHJE PERSONALE/);
+  assert.match(abschnitt, /A është ky set për ju\?<br><span>Qartë para porosisë\.<\/span>/);
+  assert.match(abschnitt, /<p class="selection-note">LF ACNE \+ LF MOISTUR · 39 €<\/p>/);
+  assert.doesNotMatch(abschnitt, /kontrolli|përqindje/);
+  assert.doesNotMatch(lies("apps/lifeskin-shop/shop-weg.css"), /kontrolli/);
+});

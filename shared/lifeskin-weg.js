@@ -37,5 +37,23 @@ export function wegDerSitzung(sitzung) {
   return wegGueltig(sitzung?.source?.weg);
 }
 
+// AB WANN EIN WEG IN HEART ZAEHLT - Zuruecksetzen ohne Loeschen, wie beim
+// Zuruecksetzen eines Lokals (heart-landing-adapter.js).
+//
+// Der Laden (/lifeskinshop) steht seit dem 28.09. abends auf 0 (Wunsch
+// Inhaber): Was davor lag, waren eigene Probelaeufe. Geloescht wird
+// nichts - Heart blendet die aelteren Besuche im Tab "Lifeskin Shop" aus
+// und sagt, wie viele es sind. Zurueck: den Eintrag hier entfernen.
+// Ohne lesbaren Anlegezeitpunkt zaehlt ein Besuch (lieber einer zu viel
+// als einer, der still verschwindet).
+export const WEG_ZAEHLT_AB = Object.freeze({ lifeskinshop: "2026-09-28T18:00:00.000Z" });
+
+export function zaehltImWeg(sitzung, weg = "") {
+  const ab = Date.parse(WEG_ZAEHLT_AB[wegGueltig(weg)] || "");
+  if (!Number.isFinite(ab)) return true;
+  const am = Date.parse(String(sitzung?.createdAt || ""));
+  return !Number.isFinite(am) || am >= ab;
+}
+
 // Name fuer Heart und Berichte.
 export const WEG_NAMEN = Object.freeze({ "": "Lifeskin", lifeskin2: "Lifeskin 2", lifeskinshop: "Lifeskin Shop" });

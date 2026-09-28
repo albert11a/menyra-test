@@ -137,10 +137,17 @@ export function kundenGalerie(roh) {
     <figcaption><span>${m.art === 'video' ? 'VIDEO' : 'FOTO'} · LIFESKIN</span>${m.produkt ? `<strong>${e(m.produkt)}</strong>` : ''}${m.text ? `<p>${e(m.text)}</p>` : ''}</figcaption></figure>`).join('');
 }
 
+// Das Titelbild aus Heart, auf dem Geraet gemerkt (#titelbild).
+const HERO_SCHLUESSEL = "lifeskin:shopHero";
+
 export class Dyqan {
-  constructor({ dokument = document, speicher = globalThis.sessionStorage, holen, trichter } = {}) {
+  constructor({ dokument = document, speicher = globalThis.sessionStorage, holen, trichter,
+    dauerSpeicher = (() => { try { return globalThis.localStorage || null; } catch { return null; } })() } = {}) {
     this.dok = dokument;
     this.speicher = speicher;
+    // Fuer das Titelbild aus Heart: auf dem Geraet gemerkt, damit es beim
+    // naechsten Oeffnen sofort dasteht (#titelbild).
+    this.dauer = dauerSpeicher;
     this.holen = holen || ((...a) => fetch(...a));
     // Der Trichter wird bei Bedarf geholt: dieses Modul laeuft, bevor
     // lifeskin-app.js seine Instanz gesetzt hat.
@@ -170,13 +177,39 @@ export class Dyqan {
   // ── Das Titelbild aus Heart (zugeschnitten 7:5) ─────────────────────
   // Eine eigene Anfrage, damit es nicht auf Produkte und Faelle wartet. Das
   // neue Bild wird erst dekodiert, dann getauscht - kein leerer Rahmen.
+  //
+  // ZUERST DAS GEMERKTE BILD, OHNE ZU WARTEN. Beim letzten Besuch kam es
+  // aus Heart und steht auf dem Geraet (HERO_SCHLUESSEL) - so gibt es beim
+  // Neuladen keinen Wechsel vom Standardbild auf das eigene mehr. Die
+  // Hoehe des Rahmens haengt ohnehin nicht mehr daran (shop-rahmen.css).
+  // Danach wird nachgefragt: neues Bild -> tauschen und merken; keines
+  // mehr in Heart -> das Standardbild zurueck.
   async titelbild() {
+    const rahmen = $("#ls-einstieg .hero-photo", this.dok);
+    const img = rahmen?.querySelector(":scope > img");
+    const standard = img?.src || "";
+    let gemerkt = "";
+    try { gemerkt = String(this.dauer?.getItem?.(HERO_SCHLUESSEL) || ""); } catch { gemerkt = ""; }
+    if (img && gemerkt.startsWith("data:image/")) {
+      img.src = gemerkt;
+      rahmen.setAttribute("data-eigen", "");
+    } else gemerkt = "";
     try {
       const d = await holeDok(SHOP_HERO_DOK, this.holen);
       const foto = typeof d?.foto === "string" && d.foto.startsWith("data:image/") ? d.foto : "";
-      const rahmen = $("#ls-einstieg .hero-photo", this.dok);
-      const img = rahmen?.querySelector(":scope > img");
-      if (!foto || !img) return;
+      if (!img) return;
+      if (!foto) {
+        // Heart hat kein eigenes Bild mehr (404 -> null). Fehlt nur das
+        // Netz, wirft holeDok, und das gemerkte Bild bleibt stehen.
+        if (gemerkt) {
+          try { this.dauer?.removeItem?.(HERO_SCHLUESSEL); } catch { /* egal */ }
+          img.src = standard;
+          rahmen.removeAttribute?.("data-eigen");
+        }
+        return;
+      }
+      if (foto === gemerkt) return;
+      try { this.dauer?.setItem?.(HERO_SCHLUESSEL, foto); } catch { /* voll - dann eben ohne */ }
       const Bild = this.dok.defaultView?.Image || globalThis.Image;
       if (Bild) {
         const probe = new Bild();

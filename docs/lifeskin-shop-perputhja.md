@@ -17,10 +17,9 @@ ein. Keine Software errechnet, schaetzt oder schlaegt sie vor
 
 ## Ablauf fuer den Kunden
 
-1. **Laden** `/lifeskinshop`, Abschnitt "Kontrolli i përputhjes": "Sa ju
-   përshtatet Acne Duo? Dr. Gashi jua thotë me përqindje." - ein Ring mit
-   "?%" und drei Schritte (Foto/Scan · 4 Fragen · Prozentzahl per WhatsApp).
-   Knopf `#ls-start` unveraendert ("Zbuloni nëse seti ju përshtatet").
+1. **Laden** `/lifeskinshop`, Abschnitt `#zgjedhja` ("Zgjedhje personale",
+   Knopf "Zbuloni nëse seti ju përshtatet") - seit dem 28.09. abends wieder
+   im alten Wortlaut (Wunsch Inhaber); der Ring mit "?%" ist entfernt.
 2. **Wahl, Anleitung, Kamera/Foto, Fragen, Name, Nummer** - derselbe
    Trichter wie /lifeskin, im Kleid des Ladens (`shop-weg.css`) und mit
    eigenen Worten (`OBERFLAECHE_WEGE.lifeskinshop`,
@@ -96,6 +95,24 @@ sich daran nichts.
   Kein Playwright-Testlauf.
 - Nicht geprueft: echtes iPhone/Instagram, Heart im Browser (Anmeldung),
   echte Freigabe in Firestore.
+
+## Nachtrag 28.09. abends
+
+- **Shop-Statistik auf 0**: `WEG_ZAEHLT_AB.lifeskinshop` in
+  `shared/lifeskin-weg.js`. Heart zaehlt im Tab "Lifeskin Shop" (Kacheln,
+  Trichter, Live, Faelle, Bestellungen, Tests) nur Besuche ab diesem
+  Zeitpunkt und sagt oben, wie viele aeltere ausgeblendet sind (und wie
+  viele davon eine Bestellung tragen). **Nichts geloescht**; die anderen
+  Tabs unveraendert. Zurueck: Eintrag entfernen.
+- **Stille Links**: Wer im selben Tab einmal still bis zur Nummer ging,
+  landete danach mit jedem stillen Link auf "Ky rast nuk u gjet" (im
+  stillen Modus wird kein Bericht angelegt, der Trichter sprang trotzdem
+  zum Fall). Im stillen Modus springt er nicht mehr; die Warteseite sagt
+  im stillen Modus, warum es keinen Fall gibt.
+- **Titelbild**: Der Rahmen hat von Anfang an 7:5 (vorher feste Hoehe,
+  dann Sprung auf 7:5, sobald das Bild aus Heart kam). Das Bild aus Heart
+  wird auf dem Geraet gemerkt (`localStorage` "lifeskin:shopHero") und
+  steht beim naechsten Oeffnen sofort da; in Heart entfernt -> Standardbild.
 
 ## Rueckweg
 
