@@ -64,8 +64,8 @@ export function renderMedien(zustand = {}) {
         <span class="heart-klapp__zahl">${fotos} ${fotos === 1 ? "Foto" : "Fotos"} · ${videos} ${videos === 1 ? "Video" : "Videos"}</span>
       </summary>
       <p class="heart-lifeskin-block__fuss">
-        Kundinnen mit den Produkten – auf der Analyseseite unter dem Preis („Nga klientët tanë“).
-        Welche eine einzelne Seite zeigt, wählst du im Befund des Falls.
+        Kundinnen mit den Produkten – auf der Analyseseite und im LifeSkin Shop unter der Beratungskarte („Nga klientët tanë“).
+        Der Shop zeigt alle aktiven Medien in dieser Reihenfolge. Die Auswahl für eine einzelne Analyseseite legst du im Befund fest.
       </p>
       ${standard ? `<p class="heart-rasti-hinweis">Das sind die vier Fotos, die jetzt auf den Seiten stehen. Mit der ersten Änderung werden sie hier gespeichert.</p>` : ""}
       ${status ? `<p class="heart-rasti-hinweis">Wird gespeichert …</p>` : ""}

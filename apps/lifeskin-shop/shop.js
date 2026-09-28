@@ -35,6 +35,8 @@ import {
   setetOderStandard, setetNormalisieren, aktiveSetet, nevojaKennung
 } from "../../shared/lifeskin-shop-sets.js";
 
+import { medienListe } from "../../shared/lifeskin-medien.js";
+
 const BASIS = `${LIFESKIN_FIRESTORE_BASE}/lifeskin/${LIFESKIN_TENANT}/config`;
 const IKONAT = "/apps/lifeskin-shop/icons.svg";
 const KORB_SCHLUESSEL = "lifeskinshop.shporta";
@@ -125,8 +127,14 @@ export function duoCard(s, mittel) {
   const roles=[['lf-acne','Target','01','Kujdesi për aknet','Kujdes i përqendruar për lëkurën me akne.'],['lf-moistur','Droplets','02','Hidratimi që e plotëson','Kujdes për hidratimin dhe barrierën e lëkurës.']];
   return `<article class="duo-card"><div class="duo-products">${roles.map(([id,icon,n,title,description])=>{
     const m=mittel.find(m=>m.id===id);
-    return `<details class="duo-product"><summary><span class="duo-product-icon">${ikone(icon)}</span><span class="duo-product-label"><small>${n} · ${e(m?.name || id.toUpperCase().replace('LF-','LF '))}</small><strong>${title}</strong></span>${ikone('Plus')}</summary><div class="duo-product-body"><p>${description}</p><dl><div><dt>Përmbajtja</dt><dd>${e(m?.inhalt || '30 ml')}</dd></div><div><dt>Në set</dt><dd>1 produkt</dd></div></dl><p class="duo-use">Ndiqni udhëzimet e produktit dhe rekomandimin për lëkurën tuaj.</p></div></details>`;
+    return `<details class="duo-product"><summary><span class="duo-product-icon">${ikone(icon)}</span><span class="duo-product-label"><small>${n} · ${e(m?.name || id.toUpperCase().replace('LF-','LF '))}</small><strong>${title}</strong></span>${ikone('Plus')}</summary><div class="duo-product-body"><p>${description}</p><p class="duo-origin">Kujdes dermatologjik i zhvilluar në Gjermani.</p><dl><div><dt>Përmbajtja</dt><dd>${e(m?.inhalt || '30 ml')}</dd></div><div><dt>Në set</dt><dd>1 produkt</dd></div></dl><p class="duo-use">Ndiqni udhëzimet e produktit dhe rekomandimin për lëkurën tuaj.</p></div></details>`;
   }).join('')}</div><div class="duo-value"><span class="duo-value-label">PSE T'I MERRNI SË BASHKU?</span><p>LF ACNE veçmas kushton ${preisFuer(1)} €. <strong>Për vetëm ${extra} € më shumë, merrni edhe LF MOISTUR.</strong></p><div class="duo-total"><span>Seti i plotë · 2 × 30 ml<small>Veçmas ${2*preisFuer(1)} € · Kurseni ${saving} €</small></span><strong>${price} €</strong></div></div><button type="button" class="primary" data-set="${e(s.id)}">Porosit setin e plotë · ${price} € ${ikone('ArrowUpRight')}</button><p class="duo-payment">Dërgesa e përfshirë · Paguani kur merrni pakon</p></article>`;
+}
+
+export function kundenGalerie(roh) {
+  return medienListe(roh).filter(m => m.aktiv && (m.art === 'video' ? m.video : m.bild)).map(m => `<figure class="customer-card">
+    ${m.art === 'video' ? `<video src="${e(m.video)}"${m.bild ? ` poster="${e(m.bild)}"` : ''} controls playsinline preload="none" aria-label="${e(m.produkt || 'Video LifeSkin')}"></video>` : `<img src="${e(m.bild)}" alt="${e(m.produkt || 'LifeSkin')}" loading="lazy" decoding="async" width="480" height="600">`}
+    <figcaption><span>${m.art === 'video' ? 'VIDEO' : 'FOTO'} · LIFESKIN</span>${m.produkt ? `<strong>${e(m.produkt)}</strong>` : ''}${m.text ? `<p>${e(m.text)}</p>` : ''}</figcaption></figure>`).join('');
 }
 
 export class Dyqan {
@@ -200,6 +208,16 @@ export class Dyqan {
   }
 
   async laden() {
+    // Independent of checkout/product loading; reuse Heart's existing media editor.
+    void holeSammlung("medien", this.holen).then(medien => {
+      const rail = $("#customer-media", this.dok);
+      if (!rail) return;
+      rail.innerHTML = kundenGalerie(medien);
+      $("#klientet", this.dok)?.toggleAttribute("hidden", !rail.children.length);
+      rail.addEventListener("play", event => {
+        rail.querySelectorAll("video").forEach(video => { if (video !== event.target) video.pause(); });
+      }, true);
+    }).catch(() => { /* keep the same standard photos as the therapy page */ });
     const [produkte, konfig, setDok, raste] = await Promise.all([
       holeSammlung("products", this.holen).catch(() => []),
       holeSammlung("config", this.holen, "fotot").catch(() => []),

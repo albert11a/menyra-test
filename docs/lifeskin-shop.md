@@ -9,6 +9,15 @@ Wegen (getrennt gezaehlt, gleiche Funktionen), Pixel fuer alles Relevante,
 Sets/Einzelmittel/Vorher-Nachher aus Heart pflegbar, eigenes Dashboard in
 Heart.
 
+## Feinschliff und Kundenmedien (28.09.)
+
+Auftrag: Einleitung und aufgeklappte Produktdetails linksbuendig, gleiche
+20-px-Seitenraender fuer die Beratungskarte, knapper Eignungstext vor Kauf.
+Entwicklungshinweis Deutschland gemaess Inhaber, keine Herstellungsangabe.
+Darunter Kundenfotos/-videos aus derselben Heart-Verwaltung wie Therapie:
+aktiv, Reihenfolge, Produkt und Text werden uebernommen; Videos mit nativen
+Controls, playsinline und preload none. Keine neuen Pixel-Ereignisse.
+
 ## Aktuelle Kampagne: nur Acne Duo (28.09., nachmittags)
 
 Der Shop verkauft vorerst ausschliesslich das vollstaendige Set aus LF ACNE

@@ -25,7 +25,7 @@ test("die Seite: Laden als Einstieg, darunter die Bildschirme der Analyse", () =
   assert.match(HTML, /<html lang="sq" data-ls-variante="kurz" data-ls-landing="lifeskinshop">/);
   assert.match(HTML, /<script src="\/shared\/lifeskin-still\.js"><\/script>/, "ohne stillen Modus zaehlen eigene Tests");
   assert.equal((HTML.match(/id="ls-start"/g) || []).length, 1, "genau ein Startknopf fuer den Trichter");
-  assert.match(HTML, /id="ls-start" data-ls-start data-ls-quelle="shop">Gjeni setin për lëkurën tuaj/);
+  assert.match(HTML, /id="ls-start" data-ls-start data-ls-quelle="shop">Zbuloni nëse seti ju përshtatet/);
   for (const id of ["ls-einstieg", "ls-wahl", "ls-vorbereitung", "ls-kamera", "ls-fotopara", "ls-foto", "ls-name", "ls-tel", "ls-fragen", "ls-analyse"]) {
     assert.ok(HTML.includes(`id="${id}"`), `#${id} fehlt`);
   }
@@ -250,4 +250,20 @@ test("Acne-Duo-Kampagne laesst keine weiteren Sets oder halben Koerbe zu", async
   assert.match(card,/data-set="custom-acne"/);
   assert.doesNotMatch(card,/data-single|<img/);
   assert.doesNotMatch(HTML,/class="singles"|data-filter|data-single/);
+});
+
+
+test("customer gallery follows Heart visibility and order, escapes content and defers video", async () => {
+  const { kundenGalerie } = await import("../apps/lifeskin-shop/shop.js");
+  const html = kundenGalerie([
+    {id:'hidden',aktiv:false,bild:'/hidden.jpg'},
+    {id:'photo',bild:'/photo.jpg',reihe:2,produkt:'<b>ACNE</b>'},
+    {id:'movie',art:'video',video:'https://media.example/video.mp4',bild:'/poster.jpg',reihe:1},
+    {id:'unsafe',bild:'javascript:alert(1)'}
+  ]);
+  assert.ok(html.indexOf('<video') < html.indexOf('<img'));
+  assert.match(html, /controls playsinline preload="none"/);
+  assert.match(html, /&lt;b&gt;ACNE&lt;\/b&gt;/);
+  assert.doesNotMatch(html, /hidden.jpg|javascript:|autoplay/);
+  assert.equal(kundenGalerie([{id:'off',aktiv:false,bild:'/off.jpg'}]), '');
 });
