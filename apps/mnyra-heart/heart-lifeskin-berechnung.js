@@ -989,9 +989,16 @@ export function findeSitzung(zustand, kennung) {
 //           abgebrochener Lauf markiert ist.
 //   NACHHER in Heart antippen. Das setzt eine Marke am Bericht und geht
 //           nur bei Laeufen, die bis zum Befund gekommen sind.
+// AUCH DIE BESTELLUNG AUS DEM STILLEN MODUS IST EIN TEST. Der stille
+// Modus laesst Bestellungen absichtlich durch (shared/lifeskin-still.js -
+// ein echter Kunde mit einem weitergeleiteten ?still=1-Link darf seinen
+// Kauf nicht verlieren) und markiert sie mit order.still. Gezaehlt wurden
+// sie trotzdem: Jede stille Probebestellung stand als Besuch, Kauf und
+// Umsatz in den Kacheln. Jetzt liegt sie bei "Tests" - sichtbar, nicht
+// gezaehlt.
 export function istTest(sitzung, bericht = null) {
   const kampagne = String(sitzung?.source?.utmCampaign || "").trim().toLowerCase();
-  return kampagne === "test" || bericht?.test === true;
+  return kampagne === "test" || bericht?.test === true || sitzung?.order?.still === true;
 }
 
 export function teileTests(sitzungen, berichte = {}) {

@@ -370,3 +370,16 @@ test("der Abschnitt #zgjedhja steht wieder wie vor dem 28.09. abends", () => {
   assert.doesNotMatch(abschnitt, /kontrolli|përqindje/);
   assert.doesNotMatch(lies("apps/lifeskin-shop/shop-weg.css"), /kontrolli/);
 });
+
+test("eine Bestellung aus dem stillen Modus zaehlt in Heart als Test, nicht als Kauf", async () => {
+  const { istTest, teileTests } = await import("../apps/mnyra-heart/heart-lifeskin-berechnung.js");
+  const still = { id: "s", order: { total: 39, still: true }, step: "ordered" };
+  const echt = { id: "e", order: { total: 39 }, step: "ordered" };
+  assert.equal(istTest(still), true);
+  assert.equal(istTest(echt), false);
+  const { echte, tests } = teileTests([still, echt]);
+  assert.deepEqual(echte.map((x) => x.id), ["e"]);
+  assert.deepEqual(tests.map((x) => x.id), ["s"]);
+  // Live sieht dieselbe Pruefung.
+  assert.match(lies("apps/mnyra-heart/heart-lifeskin-live.js"), /istTest\(/);
+});
