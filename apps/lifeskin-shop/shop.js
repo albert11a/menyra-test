@@ -1,4 +1,6 @@
-/* UI-only storefront template. No analytics, patient data, or order writes. */
+/* Storefront selection with same-tab handoff to the existing checkout. */
+import { preisFuer } from '../../shared/lifeskin-preise.js';
+import { prepareCheckout } from './checkout-handoff.js';
 (() => {
   'use strict';
   const root = '/apps/lifeskin-shop/assets/';
@@ -20,7 +22,7 @@
   let cart = [];
   const key = 'lifeskinshop.template.cart.v1';
   try { const value = JSON.parse(sessionStorage.getItem(key) || '[]'); if (Array.isArray(value)) cart = [...new Set(value.filter(k => Object.hasOwn(products, k)))]; } catch {}
-  const amount = () => cart.length ? 29 + (cart.length - 1) * 10 : 0;
+  const amount = () => preisFuer(cart.length);
   function refresh() {
     try { sessionStorage.setItem(key, JSON.stringify(cart)); } catch {}
     $('#bag-count').textContent = String(cart.length);
@@ -46,11 +48,11 @@
       const p = products[k];
       return `<div class="basket-row"><img src="${root + p.image}" alt="${p.name}" width="62" height="78"><div><h3>${p.name}</h3><p>${p.subtitle} · 30 ml</p></div><button class="remove" data-remove="${k}" aria-label="Hiqni ${p.name}">${icon('Trash2')}</button></div>`;
     }).join('');
-    open(`<h2 id="sheet-title">${cart.length ? 'Rutina që zgjodhët.' : 'Shporta juaj.'}</h2><p>${cart.length ? 'Produktet tuaja, në një vend.' : 'Zgjidhni një set ose produkt për të filluar.'}</p>${rows}${cart.length ? `<div class="total"><span>Gjithsej · dërgesa e përfshirë</span><strong>${amount()} €</strong></div><p class="template-note">Kjo është një pamje paraprake e dyqanit. Nga kjo faqe nuk dërgohet porosi dhe nuk kryhet pagesë.</p>` : ''}<div class="sheet-actions"><button class="primary" data-continue>Zgjidhni ${cart.length ? 'produkte të tjera' : 'setin tuaj'} ${icon('ArrowRight')}</button><a class="secondary" href="/lifeskin2?still=1#produktet">Hapni dyqanin aktual ${icon('ArrowUpRight')}</a></div>`);
+    open(`<h2 id="sheet-title">${cart.length ? 'Zgjedhja juaj.' : 'Shporta juaj.'}</h2><p>${cart.length ? 'Kontrolloni produktet përpara se të vazhdoni.' : 'Zgjidhni një set ose produkt për të filluar.'}</p>${rows}${cart.length ? `<div class="total"><span>Gjithsej · dërgesa e përfshirë</span><strong>${amount()} €</strong></div>${cart.length > 1 ? `<p class="cart-saving">Veçmas ${cart.length * 29} € · Kurseni ${cart.length * 29 - amount()} € së bashku.</p>` : ''}<div class="order-steps"><span>1. Produktet</span><span>2. Adresa</span><span>3. Pagesa në dorëzim</span></div><p class="checkout-note">Produktet kalojnë në dyqanin LifeSkin. Atje hapni shportën për të plotësuar adresën dhe për të konfirmuar porosinë.</p><p id="checkout-error" class="checkout-error" role="alert" hidden></p>` : ''}<div class="sheet-actions">${cart.length ? `<button class="primary" data-checkout>Vazhdo me porosinë · ${amount()} € ${icon('ArrowRight')}</button>` : ''}<button class="secondary" data-continue>${cart.length ? 'Vazhdo blerjet' : 'Zgjidhni setin tuaj'} ${icon('ArrowUpRight')}</button></div>`);
   }
   function addSet(k) {
     if (!Object.hasOwn(sets, k)) return;
-    // Selecting a routine replaces the preview selection explicitly; this is not an order.
+    // One routine at a time: avoid combining unrelated active products by accident.
     cart = [...sets[k].keys]; refresh(); basket();
     $('#status').textContent = `${sets[k].title} u shtua në shportë.`;
   }
@@ -60,6 +62,17 @@
     if (!button) return;
     if (button.hasAttribute('data-set')) addSet(button.dataset.set);
     if (button.hasAttribute('data-cart')) basket();
+    if (button.hasAttribute('data-checkout')) {
+      let result;
+      try { result = prepareCheckout(sessionStorage, cart.map(k => products[k].id), location.search); }
+      catch { result = { ok: false }; }
+      if (result.ok) location.assign(result.href);
+      else {
+        const message = $('#checkout-error');
+        message.textContent = 'Shporta nuk u ruajt. Ju lutemi lejoni ruajtjen në shfletues dhe provoni përsëri.';
+        message.hidden = false;
+      }
+    }
     if (button.hasAttribute('data-single')) {
       const k = button.dataset.single;
       if (!cart.includes(k)) cart.push(k);
@@ -71,7 +84,7 @@
     if (button.hasAttribute('data-continue')) { close(); $('#setet').scrollIntoView({ behavior: 'smooth' }); }
     if (button.hasAttribute('data-detail')) {
       const k = button.dataset.detail; const s = sets[k];
-      open(`<img class="detail-image" src="${root + products[k].image}" alt="${products[k].name}"><h2 id="sheet-title">${s.title}</h2><p>${s.text}</p><div class="included"><span>${products[k].name}</span><span>LF MOISTUR</span><small>2 × 30 ml</small></div><div class="total"><span>Seti me dy produkte</span><strong>39 €</strong></div><button class="primary" data-set="${k}">Zgjidh këtë set ${icon('ArrowUpRight')}</button>`);
+      open(`<h2 id="sheet-title">${s.title}</h2><p>${s.text}</p><div class="detail-products">${s.keys.map(key => `<figure><img src="${root + products[key].image}" alt="${products[key].name}" width="300" height="375"><figcaption><strong>${products[key].name}</strong>${products[key].subtitle} · 30 ml</figcaption></figure>`).join('')}</div><div class="included"><span>${products[k].name}</span><span>LF MOISTUR</span><small>2 × 30 ml</small></div><div class="total"><span>Seti me dy produkte</span><strong>39 €</strong></div><button class="primary" data-set="${k}">Zgjidh këtë set ${icon('ArrowUpRight')}</button>`);
     }
     if (button.hasAttribute('data-filter')) {
       const filter = button.dataset.filter;
