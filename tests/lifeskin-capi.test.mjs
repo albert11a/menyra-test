@@ -127,6 +127,8 @@ test("gemeldet wird der Uebergang, nicht der Zustand", () => {
   assert.equal(capi.istKauf({ step: "opened" }, { step: "offer" }), false);
   // Ein "ordered" ohne Bestellung waere ein Kauf ohne Inhalt.
   assert.equal(capi.istKauf({ step: "opened" }, { step: "ordered" }), false);
+  // Stiller Modus (order.still): eigener Probelauf, geht nicht an Meta.
+  assert.equal(capi.istKauf({ step: "address" }, { step: "ordered", order: { ...order, still: true } }), false);
 });
 
 // ══ DER ZEITSTEMPEL ══════════════════════════════════════════════════

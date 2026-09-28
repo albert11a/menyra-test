@@ -88,6 +88,10 @@ function baueKauf(sitzung, { quelleUrl = "https://mnyra.com/lifeskin" } = {}) {
 function istKauf(davor, danach) {
   if (text(danach?.step) !== SCHRITT_KAUF) return false;
   if (text(davor?.step) === SCHRITT_KAUF) return false;
+  // Bestellungen aus dem stillen Modus (order.still, shared/lifeskin-still.js)
+  // sind eigene Probelaeufe - Meta bekommt sie nicht. Erlaubt von Albert
+  // (Inhaber) am 28.09.2026.
+  if (danach?.order?.still === true) return false;
   return Boolean(danach?.order);
 }
 

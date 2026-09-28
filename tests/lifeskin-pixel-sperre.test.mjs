@@ -29,7 +29,9 @@ const HINWEIS = "Meta-Pixel/Conversions API geaendert. Das ist gesperrt: nur mit
 // 1. DIE PIXEL-DATEIEN - ganz.
 const DATEIEN = Object.freeze({
   "apps/lifeskin/lifeskin-pixel.js": "f4417efb88a10033",
-  "functions/lifeskin-capi-payload.js": "3414df45c420990c",
+  // Pixel-Aenderung erlaubt von Albert (albert11a, Inhaber) am 28.09.2026:
+  // Bestellungen aus dem stillen Modus (order.still) gehen nicht an die CAPI.
+  "functions/lifeskin-capi-payload.js": "32e9729e169c59fb",
   "functions/lifeskin-capi.js": "808f94b1b50256b7"
 });
 
