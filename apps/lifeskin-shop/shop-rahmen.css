@@ -114,3 +114,29 @@ html:has(#ls-einstieg[data-aktiv="ja"]) { scroll-padding-top: 72px; }
 #ls-einstieg .single-card button.single-card__bild { display: block; width: 100%; padding: 0; margin: 0; border: 0; border-radius: 8px; background: none; min-height: 0; }
 #ls-einstieg .single-card .single-card__bild img { aspect-ratio: 4/5; border-radius: 8px; background: var(--wash); }
 #ls-einstieg .detail-veprimi { margin: 0 0 16px; padding: 0 0 0 18px; list-style: disc; font-size: 14px; color: var(--muted); line-height: 1.5; }
+
+/* ── Ein Set im Detail (nur wenn genau eines im Shop steht) ─────────── */
+#ls-einstieg .set-thellesi { margin-top: 22px; }
+#ls-einstieg .thellesi { border: 1px solid var(--line); border-radius: 14px; padding: 22px 18px; background: #fff; }
+#ls-einstieg .thellesi__titull { font-size: 22px; letter-spacing: -.5px; line-height: 1.2; margin: 10px 0 8px; }
+#ls-einstieg .thellesi__hyrje { font-size: 14px; color: var(--muted); line-height: 1.5; margin-bottom: 6px; }
+#ls-einstieg .thellesi__mjetet { display: grid; gap: 14px; margin: 16px 0 22px; }
+#ls-einstieg .thellesi__mjet { display: grid; grid-template-columns: 92px 1fr; gap: 14px; align-items: start; padding-top: 14px; border-top: 1px solid var(--line); }
+#ls-einstieg .thellesi__mjet img { width: 92px; height: 115px; border-radius: 8px; object-fit: cover; background: var(--wash); }
+#ls-einstieg .thellesi__mjet h4 { margin: 0 0 4px; font-size: 15px; letter-spacing: .4px; }
+#ls-einstieg .thellesi__mjet h4 span { font-weight: 500; font-size: 12px; color: var(--muted); letter-spacing: 0; }
+#ls-einstieg .thellesi__kurz { font-size: 13px; color: var(--ink); font-weight: 600; margin-bottom: 6px; line-height: 1.4; }
+#ls-einstieg .thellesi__mjet ul { margin: 0 0 8px; padding: 0 0 0 16px; list-style: disc; font-size: 13px; color: var(--muted); line-height: 1.45; }
+#ls-einstieg .thellesi__synim { font-size: 12.5px; color: var(--muted); line-height: 1.45; background: var(--wash); padding: 9px 10px; border-radius: 7px; }
+#ls-einstieg .thellesi__nen { margin-bottom: 10px; }
+#ls-einstieg .thellesi__rutina { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#ls-einstieg .thellesi__koha { background: var(--wash); border-radius: 10px; padding: 12px; }
+#ls-einstieg .thellesi__koha ol { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+#ls-einstieg .thellesi__koha li { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; }
+#ls-einstieg .thellesi__koha small { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.35; }
+#ls-einstieg .thellesi__nr { flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 11px; display: grid; place-items: center; }
+#ls-einstieg .thellesi__si { margin-top: 14px; display: grid; gap: 8px; }
+#ls-einstieg .thellesi__si p, #ls-einstieg .thellesi__kujdes { font-size: 13px; color: var(--muted); line-height: 1.5; }
+#ls-einstieg .thellesi__kujdes { margin-top: 10px; }
+#ls-einstieg .thellesi__fakte { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0; padding: 0; list-style: none; }
+#ls-einstieg .thellesi__fakte li { font-size: 11.5px; font-weight: 600; background: var(--wash); padding: 7px 9px; border-radius: 5px; }

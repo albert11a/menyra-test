@@ -173,3 +173,19 @@ test("Heart: die Tabs trennen die Faelle - der Shop steht nicht im alten Tab", a
   assert.deepEqual(mitWegFaellen(zustand, "lifeskinshop").ndjekja.faelle.map((f) => f.kennung), ["c"]);
   assert.deepEqual(mitWegFaellen(zustand, "").ndjekja.faelle.map((f) => f.kennung), ["a", "ohne"]);
 });
+
+test("vorerst nur das Akne-Set im Shop - im Detail; die anderen schaltet Heart ein", async () => {
+  const { setetOderStandard, aktiveSetet } = await import("../shared/lifeskin-shop-sets.js");
+  assert.deepEqual(aktiveSetet(setetOderStandard(null)).map((s) => s.id), ["acne"]);
+  assert.equal((HTML.match(/class="set-card"/g) || []).length, 1, "der Aufbau zeigt nur das Akne-Set");
+  assert.match(HTML, /<div class="set-thellesi" id="set-thellesi" hidden><\/div>/);
+  const { setThellesi } = await import("../apps/lifeskin-shop/shop.js");
+  const { mittelBauen } = await import("../apps/lifeskin-landing/shop.js");
+  const fotos = new Map([["lf-acne", ["/a.jpg"]], ["lf-moistur", ["/b.jpg"]]]);
+  const mittel = mittelBauen([], fotos).filter((m) => ["lf-acne", "lf-moistur"].includes(m.id));
+  const html = setThellesi(setetOderStandard(null)[0], mittel);
+  assert.match(html, /SETI NË DETAJE/);
+  assert.match(html, /MËNGJES[\s\S]*LF MOISTUR[\s\S]*MBRËMJE[\s\S]*LF ACNE[\s\S]*LF MOISTUR/, "abends zuerst der Wirkstoff, dann die Pflege");
+  assert.match(html, /Veçmas <s>58 €<\/s> · së bashku 39 €/);
+  assert.match(html, /data-set="acne">Zgjidh këtë set · 39 €/);
+});
