@@ -568,7 +568,11 @@ test("die Karte: Kreis mit Nummer, Name, Balken, Zahl - 1 bis 13, der Kauf abges
   // Das Aussehen: kleiner Kreis, feste Namensspalte, damit jeder Balken gleich beginnt.
   const css = lies("apps/mnyra-heart/heart.css");
   assert.match(css, /\.heart-shopschritt \{\s*display: grid;\s*grid-template-columns: 18px 7\.2rem 1fr 2\.2rem;/);
-  assert.match(css, /\.heart-shopschritt__nr \{\s*width: 18px; height: 18px; border-radius: 50%;/);
+  // Der Kreis bleibt 18 px; kompakt ist nur die Zahl darin: klein, ohne Tabellenbreite.
+  const kreis = css.match(/\.heart-shopschritt__nr \{[^}]*\}/)[0];
+  assert.match(kreis, /width: 18px; height: 18px; border-radius: 50%;\s*border: 1\.25px solid #00796a;/);
+  assert.match(kreis, /font-size: 7\.5px;/);
+  assert.doesNotMatch(kreis, /tabular-nums/);
 });
 
 test("der Laden misst die Abschnitte - erst nach dem Anlegen der Sitzung, ohne Pixel", async () => {
@@ -605,9 +609,14 @@ test("die Karte Shop hat oben vier Chips, je 13 Punkte - unten nur noch Kauf und
   const nummern = (html) => [...html.matchAll(/heart-shopschritt__nr">(\d+)</g)].map((m) => Number(m[1]));
   const html = grund("lifeskinshop", "shop");
   assert.deepEqual([...html.matchAll(/data-action="lifeskin-shopchip" data-wert="([a-z]+)"/g)].map((m) => m[1]), ["shop", "scan", "foto", "analyse"]);
-  // Alle vier in einer Reihe auf dem Telefon: eigene, schmalere Spielart.
-  assert.match(html, /<div class="heart-lifeskin-chips heart-lifeskin-chips--shop" role="group">\s*<button[^>]*data-action="lifeskin-shopchip"/);
-  assert.match(lies("apps/mnyra-heart/heart.css"), /\.heart-lifeskin-chips--shop \.heart-lifeskin-chip \{ flex: 1 0 auto; padding: 8px 10px; \}/);
+  // Alle vier IN der Karte, ganz oben an Stelle des Titels, in einer kompakten Reihe.
+  assert.match(html, /<section class="heart-lifeskin-block heart-lifeskin-block--shopweg"\s+aria-label="Shop · vom Besuch bis zum Kauf · Heute">\s*<div class="heart-lifeskin-chips heart-lifeskin-chips--shop" role="group">\s*<button[^>]*data-action="lifeskin-shopchip"/);
+  const shopKarte = html.slice(html.indexOf("heart-lifeskin-block--shopweg"), html.indexOf("</section>", html.indexOf("heart-lifeskin-block--shopweg")));
+  assert.doesNotMatch(shopKarte, /heart-lifeskin-block__titel|<summary/, "kein Titel mehr in der Karte");
+  assert.doesNotMatch(html, /data-klapp="shopweg"/);
+  const chipCss = lies("apps/mnyra-heart/heart.css");
+  assert.match(chipCss, /\.heart-lifeskin-chips--shop \.heart-lifeskin-chip \{\s*flex: 1 0 auto; min-height: 32px; padding: 0 7px;\s*border-radius: 6px; font-size: 12px;\s*\}/);
+  assert.match(chipCss, /\.heart-lifeskin-chips--shop \.heart-lifeskin-chip--an \{\s*background: #00796a;/);
   assert.doesNotMatch(grund("lifeskinshop", "shop"), /heart-lifeskin-chips--shop[^>]*>\s*<button[^>]*data-action="lifeskin-trichter"/);
   assert.deepEqual([...html.matchAll(/data-action="lifeskin-trichter" data-wert="([a-z]+)"/g)].map((m) => m[1]), ["kauf", "bericht"]);
   const scan = grund("lifeskinshop", "scan");

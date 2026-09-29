@@ -292,11 +292,18 @@ eine eigene Karte; bis dahin steht dort der bisherige Block
 
 ## Chips der Karte "Shop": Shop, Scan, Foto, Analyse (29.09.)
 
-Wunsch Inhaber: oben an der Karte vier Chips (wie beim Trichter), je Chip
-ein Weg Bildschirm fuer Bildschirm im selben Aufbau (Kreis mit Nummer,
-Name, Balken, Zahl - die Nummern im Kreis kompakter, die Namensspalte fuer
-alle Chips gleich breit). Am Chip die Zahl bei Punkt 1. Gezaehlt "bis
-hierher"; Balken am Punkt 1 des Chips.
+Wunsch Inhaber: vier Chips, je Chip ein Weg Bildschirm fuer Bildschirm im
+selben Aufbau (Kreis mit Nummer, Name, Balken, Zahl - der Kreis 18 px, nur
+die Ziffern darin klein und schmal; die Namensspalte fuer alle Chips gleich
+breit). Am Chip die Zahl bei Punkt 1. Gezaehlt "bis hierher"; Balken am
+Punkt 1 des Chips.
+
+Die Chips stehen IN der Karte, ganz oben; einen Titel hat die Karte nicht
+mehr (er steht nur noch als `aria-label` fuer Vorleseprogramme). Deshalb
+laesst sie sich nicht zuklappen - `alsKlapp` braucht den Titel als Kopf.
+Die Chips: eine Reihe, 32 px hoch, Ecken 6 px, der gewaehlte gruen wie
+Kreise und Balken (das Grau der anderen Chip-Reihen verschwaende auf dem
+Grund der Karte). Wird eine Zahl lang, rollt die Reihe.
 
 **Scan** (nur wer Scan gewaehlt hat, ohne Laden-Kaeufe - deren Schritt steht
 auf "ordered"): 1 Anleitung (named) · 2 Scan akzeptiert (kameraOk) ·

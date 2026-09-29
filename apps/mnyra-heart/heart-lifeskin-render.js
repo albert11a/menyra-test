@@ -655,12 +655,16 @@ function renderShopWeg(weg, zeitraum = "", chip = "shop") {
     const w = weg.chips[offen.id];
     inhalt = `<div class="heart-shopschritte">${renderShopSchritte(w.stufen, w.basis)}</div>`;
   }
-  return alsKlapp(`
-    ${chips}
-    <section class="heart-lifeskin-block">
-      <h3 class="heart-lifeskin-block__titel">${escapeHtml(offen.titel)}${wort ? ` · ${escapeHtml(wort)}` : ""}</h3>
+  // DIE CHIPS SIND DER KOPF DER KARTE, einen Titel gibt es nicht (Wunsch
+  // Inhaber 29.09.): Der Chip sagt, was darunter steht. Ohne Titel ist die
+  // Karte auch nicht zum Zuklappen (alsKlapp braucht ihn als Kopf). Was
+  // der Titel sagte, steht fuer Vorleseprogramme im aria-label.
+  return `
+    <section class="heart-lifeskin-block heart-lifeskin-block--shopweg"
+             aria-label="${escapeHtml(offen.titel)}${wort ? ` · ${escapeHtml(wort)}` : ""}">
+      ${chips}
       ${inhalt}
-    </section>`, "shopweg", { zahl: `${weg.kaeufe} Käufe` });
+    </section>`;
 }
 
 // DIE KONTROLLE (spaeter 14-16) - vorerst in einer eigenen Karte mit dem

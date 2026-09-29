@@ -4392,7 +4392,9 @@ der Balken zeigt es. */
 }
 /* Die Namensspalte ist fuer alle Chips gleich breit (die laengsten Namen
    stehen bei Scan und Foto) - beim Umschalten springt kein Balken. Die
-   Nummern im Kreis kompakt, auch zweistellig (29.09.). */
+   Nummern im Kreis kompakt, auch zweistellig (29.09., zweimal gewuenscht):
+   Der Kreis bleibt, wie er ist - nur die Ziffern darin sind kleiner und
+   schmal, ohne Tabellenbreite (eine "1" braucht nur ihren eigenen Platz). */
 .heart-shopschritt {
   display: grid;
   grid-template-columns: 18px 7.2rem 1fr 2.2rem;
@@ -4403,8 +4405,7 @@ der Balken zeigt es. */
   width: 18px; height: 18px; border-radius: 50%;
   border: 1.25px solid #00796a;
   display: grid; place-items: center;
-  font-size: 9px; font-weight: 700; line-height: 1; letter-spacing: -0.4px;
-  font-variant-numeric: tabular-nums;
+  font-size: 7.5px; font-weight: 700; line-height: 1; letter-spacing: -0.4px;
 }
 .heart-shopschritt__name { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .heart-shopschritt__spur { height: 14px; }
@@ -5756,13 +5757,23 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
 }
 .heart-lifeskin-chips::-webkit-scrollbar { display: none; }
 .heart-lifeskin-chip { flex: none; white-space: nowrap; scroll-snap-align: start; }
-/* DIE VIER CHIPS DER KARTE "SHOP" (Shop, Scan, Foto, Analyse) stehen auf
-   dem Telefon ganz in einer Reihe (390 px): schmaler gepolstert, der Rest
-   gleich verteilt. Wird eine Zahl lang (Zeitraum "Monat"), rollt die Reihe
-   wie jede andere. */
-.heart-lifeskin-chips--shop { gap: 6px; }
-.heart-lifeskin-chips--shop .heart-lifeskin-chip { flex: 1 0 auto; padding: 8px 10px; }
-.heart-lifeskin-chips--shop .heart-lifeskin-chip span { margin-left: 4px; }
+/* DIE VIER CHIPS DER KARTE "SHOP" (Shop, Scan, Foto, Analyse) stehen IN
+   der Karte, ganz oben an Stelle des Titels, und auf dem Telefon ganz in
+   einer Reihe (Wunsch Inhaber 29.09.): kompakt, kaum gerundet, der Rest
+   gleich verteilt. 32 px hoch wie ein Segment-Schalter auf dem iPhone. Der
+   gewaehlte Chip in Gruen wie Kreise und Balken - das Grau der anderen
+   Reihen verschwaende auf dem Grund der Karte. Wird eine Zahl lang
+   (Zeitraum "Monat"), rollt die Reihe wie jede andere. */
+.heart-lifeskin-chips--shop { gap: 5px; margin: 0; }
+.heart-lifeskin-chips--shop .heart-lifeskin-chip {
+  flex: 1 0 auto; min-height: 32px; padding: 0 7px;
+  border-radius: 6px; font-size: 12px;
+}
+.heart-lifeskin-chips--shop .heart-lifeskin-chip span { margin-left: 3px; }
+.heart-lifeskin-chips--shop .heart-lifeskin-chip--an {
+  background: #00796a; border-color: #00796a; color: #ffffff;
+}
+.heart-lifeskin-chips--shop .heart-lifeskin-chip--an span { opacity: 0.85; }
 
 /* Chips ueber einer zugeklappten Karte verschwinden mit ihr. */
 .heart-lifeskin-chips:has(+ .heart-klapp:not([open])) { display: none; }
