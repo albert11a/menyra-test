@@ -10304,3 +10304,23 @@ html:where([data-heart-theme="tag"]),
 :where(html[data-heart-theme="tag"]) .heart-ndj-kw__leer {
   color: var(--heart-text-muted);
 }
+
+/* Shop live rows share the five funnel columns: 1, 2, 4, 5. */
+.heart-live__reihe:is([data-art="shop"], [data-art="trichter"], [data-art="analyse"]) {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.heart-live__reihe:is([data-art="shop"], [data-art="analyse"]) .heart-live__halt:nth-child(3) { grid-column: 4; }
+.heart-live__reihe:is([data-art="shop"], [data-art="analyse"]) .heart-live__halt:nth-child(4) { grid-column: 5; }
+.heart-live__reihe:is([data-art="shop"], [data-art="analyse"]) .heart-live__halt:nth-child(3)::before { left: calc(-150% + 21px); }
+/* Swipe whole groups, keeping the selected report and live scroll position. */
+.heart-shopchip-pages {
+  display: flex; flex-wrap: nowrap; gap: 0; margin: 0; min-width: 0;
+  overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain;
+}
+.heart-shopchip-page {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  flex: 0 0 100%; min-width: 0; scroll-snap-align: start; scroll-snap-stop: always;
+}
+.heart-shopchip-page .heart-lifeskin-chip { min-width: 0; padding-inline: 4px; }
+
+.heart-shopchip-page:last-child { grid-template-columns: repeat(2, minmax(0, 1fr)); }

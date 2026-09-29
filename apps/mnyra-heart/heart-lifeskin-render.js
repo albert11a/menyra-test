@@ -634,13 +634,13 @@ function renderLs2Weg(weg, zeitraum = "") {
 // an derselben Zahl: den Shop-Besuchern (1).
 function renderShopSchritte(stufen, basis) {
   return stufen.map((stufe) => {
-    const breite = stufe.anzahl && basis ? Math.max(0.6, (stufe.anzahl / basis) * 100) : 0;
+    const breite = stufe.anzahl ? Math.max(0.6, (stufe.anteil ?? (basis ? stufe.anzahl / basis : 0)) * 100) : 0;
     return `
       <div class="heart-shopschritt">
         <span class="heart-shopschritt__nr">${escapeHtml(stufe.nr)}</span>
         <span class="heart-shopschritt__name">${escapeHtml(stufe.label)}</span>
         <span class="heart-shopschritt__spur"><span class="heart-shopschritt__balken" style="width:${Math.min(100, breite).toFixed(1)}%"></span></span>
-        <b class="heart-shopschritt__zahl">${stufe.anzahl}</b>
+        <b class="heart-shopschritt__zahl">${stufe.anzahl}${stufe.geschaetzt ? "*" : ""}</b>
       </div>`;
   }).join("");
 }
@@ -652,11 +652,15 @@ export const SHOP_CHIPS = Object.freeze([
   { id: "shop", label: "Shop", titel: "Shop · vom Besuch bis zum Kauf" },
   { id: "scan", label: "Scan", titel: "Scan · Bildschirm für Bildschirm" },
   { id: "foto", label: "Foto", titel: "Foto · Bildschirm für Bildschirm" },
-  { id: "analyse", label: "Analyse", titel: "Analyseseite · vom Öffnen bis zum Kauf" }
+  { id: "analyse", label: "Analyse", titel: "Analyseseite · vom Öffnen bis zum Kauf" },
+  { id: "kauf", label: "Kauf", titel: "Kauf" },
+  { id: "bericht", label: "Bericht", titel: "Bericht" }
 ].map((chip) => Object.freeze(chip)));
 
 // Was unter einem Chip steht (ohne die Chips).
-function renderShopAnsicht(weg, id) {
+function renderShopAnsicht(weg, id, trichter = []) {
+  const zusatz = trichter.find((t) => t.id === id);
+  if (zusatz) return `<div class="heart-shopschritte">${renderShopSchritte(zusatz.stufen.map((s, i) => ({ ...s, nr: i + 1 })), zusatz.stufen[0]?.anzahl || 0)}</div>${zusatz.extra || ""}${zusatz.fuss ? `<p class="heart-lifeskin-block__fuss">${escapeHtml(zusatz.fuss)}</p>` : ""}`;
   if (id === "shop") {
     const was = weg.nachSet.length
       ? weg.nachSet.map(([name, n]) => `${escapeHtml(name)}: <b>${n}</b>`).join(" · ")
@@ -679,19 +683,22 @@ function renderShopAnsicht(weg, id) {
   return `<div class="heart-shopschritte">${renderShopSchritte(w.stufen, w.basis)}</div>`;
 }
 
-function renderShopWeg(weg, zeitraum = "", chip = "shop") {
+function renderShopWeg(weg, zeitraum = "", chip = "shop", trichter = []) {
   const wort = ZEITRAEUME.find((z) => z.id === (zeitraum || "heute"))?.label || "";
   const offen = SHOP_CHIPS.find((c) => c.id === chip) || SHOP_CHIPS[0];
-  const anzahl = (c) => (c.id === "shop" ? weg.besucher : weg.chips[c.id].basis);
-  const chips = renderChips(SHOP_CHIPS.map((c) => ({ id: c.id, label: c.label, anzahl: anzahl(c) })),
-    offen.id, "lifeskin-shopchip", "shop");
-  // ALLE VIER GLEICH HOCH (Wunsch Inhaber 29.09.): Die vier Ansichten
+  const anzahl = (c) => {
+    const t = trichter.find((t) => t.id === c.id);
+    if (t) return (t.chipStufe === undefined ? t.stufen.at(-1) : t.stufen[t.chipStufe])?.anzahl ?? 0;
+    return c.id === "shop" ? weg.besucher : weg.chips[c.id]?.basis || 0;
+  };
+  const chips = `<div class="heart-lifeskin-chips heart-shopchip-pages" role="group" aria-label="Auswertungen – seitenweise wischen">${[SHOP_CHIPS.slice(0, 4), SHOP_CHIPS.slice(4)].map((seite) => renderChips(seite.map((c) => ({ ...c, anzahl: anzahl(c) })), offen.id, "lifeskin-shopchip", "shop").replace('heart-lifeskin-chips heart-lifeskin-chips--shop', 'heart-shopchip-page heart-lifeskin-chips--shop')).join("")}</div>`;
+  // ALLE ANSICHTEN GLEICH HOCH: Die sechs Ansichten
   // liegen uebereinander in derselben Zelle (heart.css .heart-shopansichten),
   // sichtbar ist nur die gewaehlte. Die Karte ist so hoch wie die laengste,
   // und beim Umschalten springt nichts.
   const ansichten = SHOP_CHIPS.map((c) => `
       <div class="heart-shopansicht" data-ansicht="${c.id}" data-an="${c.id === offen.id ? "ja" : "nein"}"${c.id === offen.id ? "" : ' aria-hidden="true"'}>
-        ${renderShopAnsicht(weg, c.id)}
+        ${renderShopAnsicht(weg, c.id, trichter)}
       </div>`).join("");
   const zu = SHOP_CHIPS.map((c) => `${c.label} ${anzahl(c)}`).join(" · ");
   // DIE CHIPS SIND DER KOPF DER KARTE, einen Titel gibt es nicht (Wunsch
@@ -3469,7 +3476,7 @@ export function renderLifeskin(zustand) {
   const zahlen = zeitraum
     ? baueKennzahlen(sitzungen || [], { setPreis: zustand.konfig?.setPreis, zeitraum })
     : baueKennzahlen(sitzungen || [], { setPreis: zustand.konfig?.setPreis });
-  // IM LADEN UNTEN NUR NOCH KAUF UND BERICHT (29.09., Wunsch Inhaber):
+  // IM LADEN KAUF UND BERICHT IN DER GEMEINSAMEN SHOP-KARTE:
   // Main, Skanim, Foto, Trup/Pytje und Landing stehen jetzt als Chips in
   // der Karte "Shop"; Gati hing an Frage 4, die es im Laden nicht mehr gibt.
   const trichterListe = baueTrichterListe(sitzungen, imBlick, zeitraum)
@@ -3492,12 +3499,11 @@ export function renderLifeskin(zustand) {
           auf <b>mnyra.com/${weg ? escapeHtml(weg) : "lifeskin"}</b>.
         </p>` : ""}
       ${weg === "lifeskin2" ? renderLs2Weg(baueLs2Weg(imBlick, zustand.berichte || {}), zeitraum) : ""}
-      ${weg === "lifeskinshop" ? renderShopWeg(shopWeg, zeitraum, zustand.shopChip || "shop") + renderShopKontrolle(shopWeg, zeitraum) : ""}
       ${renderKacheln(zahlen, zeitraum)}
       ${zustand.liveFehler
         ? leererBlock("Live", "Verbindung unterbrochen — Live-Zahlen nicht verfuegbar.")
         : renderLive(zustand.live)}
-      ${renderTrichter(trichterListe, zustand.trichterOffen || "main")}
+      ${weg === "lifeskinshop" ? renderShopWeg(shopWeg, zeitraum, zustand.shopChip || "shop", trichterListe) + renderShopKontrolle(shopWeg, zeitraum) : renderTrichter(trichterListe, zustand.trichterOffen || "main")}
       ${renderAnalysen(alleDesWegs, zustand.berichte || {}, zustand.fach || "alle", "Fälle", "",
         zustand.vorschau || {}, { auswahl: zustand.auswahl ?? null, auswahlLoeschen: !!zustand.auswahlLoeschen })}
       ${renderBetreuung(zustandWeg)}
