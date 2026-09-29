@@ -256,8 +256,8 @@ test("Meta: AddToCart beim Warenkorb, einmal, nie in der Vorschau, nie nach dem 
   assert.ok(korb.indexOf("if (this.nurVorschau) return;") < korb.indexOf("this.pixel.meldeKorb"), "in der Vorschau kein AddToCart");
   // Genau eine Stelle meldet AddToCart auf der Ergebnisseite.
   assert.equal((js.match(/pixel\.meldeKorb\(/g) || []).length, 1);
-  // Live: im Korb steht er bei N'shport.
-  assert.match(korb, /this\.quelle\.merken\(\{ timings: \{ live: "porosia" \} \}\)/);
+  // Live: im Korb steht er bei N'shport - "shporta", die Kasse schreibt "porosia".
+  assert.match(korb, /this\.quelle\.merken\(\{ timings: \{ live: "shporta" \} \}\)/);
 });
 
 test("Heart: der Warenkorb der Ergebnisseite zaehlt als Warenkorb, Shport und Wert", async () => {
@@ -313,7 +313,9 @@ test("beide Laeden schreiben den Live-Stand bei Korb, Kasse und Anschrift - ohne
     const quelle = lies(pfad);
     assert.match(quelle, /#live\(wert\) \{\s*try \{ this\.trichterFn\(\)\?\.sitzung\?\.liveMerken\?\.\(wert\); \}/, pfad);
     assert.match(quelle, /this\.#merke\(\{ imKorb: true \}, "imKorb"\);\s*this\.#live\("offer"\);/, `${pfad}: Korb`);
-    assert.match(quelle, /"kasseGeoeffnet"\);\s*this\.#live\("offer"\);/, `${pfad}: Kasse`);
-    assert.match(quelle, /this\.#merke\(\{ adresseBegonnen: true \}, "adresseBegonnen"\);\s*this\.#live\("address"\);/, `${pfad}: Anschrift`);
+    // Kasse und Anschrift: "kasa" - ein Name, den keine andere Seite schreibt
+    // (Heart trennt daran Live · Shop von Live · Analyse).
+    assert.match(quelle, /"kasseGeoeffnet"\);\s*this\.#live\("kasa"\);/, `${pfad}: Kasse`);
+    assert.match(quelle, /this\.#merke\(\{ adresseBegonnen: true \}, "adresseBegonnen"\);\s*this\.#live\("kasa"\);/, `${pfad}: Anschrift`);
   }
 });

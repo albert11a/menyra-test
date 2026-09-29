@@ -347,7 +347,25 @@ me porosinë", kein "Vazhdo blerjet"), erst dieser Knopf die Kasse.
 Meta: AddToCart beim Knopf, InitiateCheckout bei der Kasse, Purchase nach
 dem Speichern. Heart: der Knopf (`timings.kauf.knopf`, auch in der
 klassischen Fassung) zaehlt in der Kachel "Warenkoerbe" (Setpreis), als
-Punkt 10 "Shport" und in "Live · Kauf - N'shport"; Arka erst mit der Kasse.
+Punkt 10 "Shport" und in Live bei N'shport; Arka erst mit der Kasse.
+
+**Live im Tab Lifeskin Shop: drei Reihen** (29.09., Wunsch Inhaber - "so
+haben wir kein Mismatch"). Die anderen Tabs behalten Live · Analyse und
+Live · Kauf.
+
+- **Live · Shop:** Landing · N'shport (Korb im Laden) · Adresa (Kasse des
+  Ladens, offen oder beim Tippen) · Gotat (im Laden bestellt).
+- **Live · Trichter:** Mënyra · Fotot · Pyetjet · Nummri · Patient.
+- **Live · Analyse:** Analyse (liest die Ergebnisseite) · N'shport
+  (Warenkorb der Ergebnisseite) · Adresa (Kasse dort) · Gotat (dort bestellt).
+
+Jede Seite schreibt ihren eigenen Live-Stand (`timings.live`), daran steht
+jeder in genau einem Punkt: Laden `offer` / `kasa` / `ordered` mit
+`order.kind "shop"`; Trichter seine Schritte; Ergebnisseite `fertig` /
+`shporta` / `porosia` / `address` / `ordered`. Ohne Stand: Landing, oder bei
+Besuchen von vorher die Marken des Ladens. Rechnung:
+`heart-lifeskin-live.js` (`liveOrtShop`, `baueLiveShop`). Der Rand blinkt,
+sobald jemand bei N'shport, Adresa oder Gotat steht.
 Bis 29.09. mittags stand Punkt 10 kurz auf "Preis gesehen" (erst "Shport",
 dann "Çmimi"). Pruefbericht: docs/lifeskin-kaufwege-pruefung-2026-09-29.md.
 

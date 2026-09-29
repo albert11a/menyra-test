@@ -440,3 +440,70 @@ test("wer die Fragen beantwortet, steht bei Pyetjet - nicht bei Nummri", () => {
     assert.equal(live.analysen.gesamt, 1);
   }
 });
+
+// ---------- Der Laden: drei Reihen (29.09., Wunsch Inhaber) ----------
+//
+// "Live Shop: Landing - N'shport - Adresa - Gotat. Live Trichter: Mënyra -
+// Foto - Pytjet - Nummri - Patient. Live Analyse: Analyse - N'shport -
+// Adresa - Gotat. So haben wir keinen Mismatch."
+
+test("Lifeskin Shop: drei Reihen mit genau den Punkten des Inhabers", async () => {
+  const { baueLiveShop } = await import("../apps/mnyra-heart/heart-lifeskin-live.js");
+  const live = baueLiveShop([], JETZT);
+  assert.deepEqual(live.shop.punkte.map((p) => p.label), ["Landing", "N'shport", "Adresa", "Gotat"]);
+  assert.deepEqual(live.trichter.punkte.map((p) => p.label), ["Mënyra", "Fotot", "Pyetjet", "Nummri", "Patient"]);
+  assert.deepEqual(live.analyse.punkte.map((p) => p.label), ["Analyse", "N'shport", "Adresa", "Gotat"]);
+});
+
+test("Lifeskin Shop: jeder steht in genau einem Punkt genau einer Reihe", async () => {
+  const { baueLiveShop } = await import("../apps/mnyra-heart/heart-lifeskin-live.js");
+  const wo = (daten) => {
+    const live = baueLiveShop([sitzung(daten.step || "opened", daten)], JETZT);
+    const treffer = ["shop", "trichter", "analyse"].flatMap((r) => live[r].punkte.filter((p) => p.anzahl).map((p) => `${r}:${p.label}`));
+    assert.ok(treffer.length <= 1, `an zwei Stellen: ${treffer.join(", ")}`);
+    return treffer[0] || "";
+  };
+  // Der Laden: Landing, Korb, Kasse, Anschrift, bestellt.
+  assert.equal(wo({ step: "opened" }), "shop:Landing");
+  assert.equal(wo({ imKorb: true, timings: { live: "offer" } }), "shop:N'shport");
+  assert.equal(wo({ imKorb: true, kasseGeoeffnet: true, timings: { live: "kasa" } }), "shop:Adresa");
+  assert.equal(wo({ step: "ordered", shopKauf: true, order: { kind: "shop", total: 39 }, timings: { live: "ordered" } }), "shop:Gotat");
+  // Wer vorher die Analyse angetippt hatte und dann in den Korb legt: Laden.
+  assert.equal(wo({ step: "wahl", imKorb: true, timings: { live: "offer" } }), "shop:N'shport");
+  // Der Trichter - ohne Landing.
+  assert.equal(wo({ step: "wahl", timings: { live: "wahl" } }), "trichter:Mënyra");
+  assert.equal(wo({ step: "camera", timings: { live: "camera" } }), "trichter:Fotot");
+  assert.equal(wo({ step: "pyetja2", timings: { live: "pyetja2" } }), "trichter:Pyetjet");
+  assert.equal(wo({ step: "numri", timings: { live: "numri" } }), "trichter:Nummri");
+  assert.equal(wo({ step: "result", timings: { live: "prit" } }), "trichter:Patient");
+  // Die Ergebnisseite: liest, Warenkorb, Kasse, Anschrift, bestellt.
+  const befund = { step: "result", berichtGeoeffnet: true };
+  assert.equal(wo({ ...befund, timings: { live: "fertig" } }), "analyse:Analyse");
+  assert.equal(wo({ ...befund, timings: { live: "shporta", kauf: { knopf: "x" } } }), "analyse:N'shport");
+  assert.equal(wo({ ...befund, kasseGeoeffnet: true, timings: { live: "porosia" } }), "analyse:Adresa");
+  assert.equal(wo({ ...befund, kasseGeoeffnet: true, timings: { live: "address" } }), "analyse:Adresa");
+  assert.equal(wo({ ...befund, step: "ordered", order: { total: 39, orderId: "LS-1" }, timings: { live: "ordered" } }), "analyse:Gotat");
+  // Besuche von vor den eigenen Namen: die Marken des Ladens.
+  assert.equal(wo({ imKorb: true }), "shop:N'shport");
+  assert.equal(wo({ imKorb: true, adresseBegonnen: true }), "shop:Adresa");
+});
+
+test("Lifeskin Shop: Gotat heisst gerade bestellt, nicht gestern", async () => {
+  const { baueLiveShop } = await import("../apps/mnyra-heart/heart-lifeskin-live.js");
+  const gestern = new Date(JETZT - 26 * 3600000).toISOString();
+  const live = baueLiveShop([sitzung("ordered", {
+    order: { total: 39, orderId: "LS-1" }, timings: { live: "ordered", ereignisse: { "2026-09-17": { hatBestellt: gestern } } }
+  })], JETZT);
+  assert.equal(live.analyse.gesamt, 0);
+});
+
+test("Lifeskin Shop: Heart zeichnet die drei Karten, die anderen Tabs ihre zwei", () => {
+  const render = lies("apps/mnyra-heart/heart-lifeskin-render.js");
+  assert.match(render, /if \(live\?\.shop\) return renderLiveLaden\(live\);/);
+  const laden = render.slice(render.indexOf("function renderLiveLaden(live"), render.indexOf("function renderLive(live"));
+  assert.match(laden, /renderLiveKarte\(live\.shop, "shop", "Live · Shop"\)/);
+  assert.match(laden, /renderLiveKarte\(live\.trichter, "trichter", "Live · Trichter"\)/);
+  assert.match(laden, /renderLiveKarte\(live\.analyse, "analyse", "Live · Analyse"\)/);
+  const heart = lies("apps/mnyra-heart/heart.js");
+  assert.match(heart, /const bauen = weg === "lifeskinshop" \? baueLiveShop : baueLive;/);
+});

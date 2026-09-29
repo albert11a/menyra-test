@@ -280,8 +280,10 @@ export class Dyqan {
   }
 
   // Wo der Besucher im Laden gerade ist - fuer Live in Heart (timings.live,
-  // Sitzung.liveMerken): Korb und Kasse "offer" (N'shport), Anschrift
-  // "address" (Adresa). Die letzte Handlung zaehlt, auch wenn vorher ein
+  // Sitzung.liveMerken): Korb "offer" (N'shport), Kasse und Anschrift "kasa"
+  // (Adresa). Eigene Namen, die keine andere Seite schreibt - daran trennt
+  // Heart "Live · Shop" von "Live · Analyse" (heart-lifeskin-live.js
+  // liveOrtShop). Die letzte Handlung zaehlt, auch wenn vorher ein
   // Analyse-Schritt stand. Kein Schritt, kein Pixel.
   #live(wert) {
     try { this.trichterFn()?.sitzung?.liveMerken?.(wert); }
@@ -566,7 +568,7 @@ export class Dyqan {
       // auf /lifeskin (Laden#oeffnen).
       this.trichterFn()?.pixel?.meldeKasse?.(summe(this.korb));
       this.#merke({ kasseGeoeffnet: true, kasseGeoeffnetAt: new Date().toISOString() }, "kasseGeoeffnet");
-      this.#live("offer");
+      this.#live("kasa");
     }
   }
 
@@ -738,7 +740,7 @@ export class Dyqan {
       // Wer anfaengt, seine Anschrift zu schreiben - die Stufe zwischen
       // Kasse und Kauf, wie auf /lifeskin.
       this.#merke({ adresseBegonnen: true }, "adresseBegonnen");
-      this.#live("address");
+      this.#live("kasa");
     });
   }
 

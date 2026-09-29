@@ -75,7 +75,7 @@ import { bogenMerken, bogenVergessen, bogenWiederherstellen } from "./heart-life
 import { vorschauAuffrischen } from "./heart-lifeskin-vorschau.js";
 import { rasteNormalisieren, rastiNormalisieren, neueRastiId, RASTI_PRODUKTE_MAX } from "../../shared/lifeskin-raste.js";
 import { aktualisiereLifeskinSitzungen } from "./heart-lifeskin-berechnung.js";
-import { baueLive } from "./heart-lifeskin-live.js";
+import { baueLive, baueLiveShop } from "./heart-lifeskin-live.js";
 import { jsonLesen, raportLesen, siehtNachJson } from "../../shared/lifeskin-analyse.js";
 // Wie viele Messwerte der Bogen fasst. Aus dem Bogen selbst, nicht als
 // zweite Zahl daneben: Zwei Zahlen an zwei Stellen sind frueher oder
@@ -963,7 +963,9 @@ function liveRechnen() {
   // Nur die Besucher des Wegs, dessen Tab offen ist (Lifeskin / Lifeskin 2).
   const weg = String(store.getState().lifeskin?.weg || "");
   // Ab dem Zaehlbeginn des Wegs (shared/lifeskin-weg.js), wie die Kacheln.
-  const stand = baueLive(liveSitzungen.filter((s) => wegDerSitzung(s) === weg && zaehltImWeg(s, weg)), jetzt, undefined,
+  // Im Tab "Lifeskin Shop" drei Reihen - Laden, Trichter, Analyse (29.09.).
+  const bauen = weg === "lifeskinshop" ? baueLiveShop : baueLive;
+  const stand = bauen(liveSitzungen.filter((s) => wegDerSitzung(s) === weg && zaehltImWeg(s, weg)), jetzt, undefined,
     store.getState().lifeskin?.berichte || {});
   const vorher = store.getState().lifeskin?.live;
   // Nur schreiben, wenn sich etwas geaendert hat: Ein Zustandswechsel je
@@ -974,13 +976,13 @@ function liveRechnen() {
   // selben Augenblick ein anderer, bleibt die Zahl gleich - der Name
   // darunter aber nicht.
   const wer = (reihe) => (reihe?.leute || []).map((l) => `${l.id}:${l.punkt}:${l.name}`).join("|");
-  const gleich = vorher
-    && vorher.analysen?.gesamt === stand.analysen.gesamt
-    && vorher.bestellungen?.gesamt === stand.bestellungen.gesamt
-    && vorher.analysen?.punkte?.every((p, i) => p.anzahl === stand.analysen.punkte[i].anzahl)
-    && vorher.bestellungen?.punkte?.every((p, i) => p.anzahl === stand.bestellungen.punkte[i].anzahl)
-    && wer(vorher.analysen) === wer(stand.analysen)
-    && wer(vorher.bestellungen) === wer(stand.bestellungen);
+  // Je Reihe, die dieser Tab hat (zwei, im Laden drei). Wechselt der Tab,
+  // fehlen vorher die Reihen - dann wird gezeichnet.
+  const reihen = ["analysen", "bestellungen", "shop", "trichter", "analyse"].filter((k) => stand[k]);
+  const gleich = vorher && reihen.every((k) => vorher[k]
+    && vorher[k].gesamt === stand[k].gesamt
+    && vorher[k].punkte?.every((p, i) => p.anzahl === stand[k].punkte[i]?.anzahl)
+    && wer(vorher[k]) === wer(stand[k]));
   if (gleich) return;
   actions.patchLifeskin({ live: stand });
 }

@@ -328,8 +328,9 @@ export class Laden {
   }
 
   /* WO DER BESUCHER IM LADEN GERADE IST - fuer Live in Heart
-   * (timings.live, Sitzung.liveMerken). Korb und Kasse "offer" (N'shport),
-   * Anschrift "address" (Adresa). Kein Schritt und kein Pixel, aus dem
+   * (timings.live, Sitzung.liveMerken). Korb "offer" (N'shport), Kasse und
+   * Anschrift "kasa" (Adresa) - eigene Namen, die keine andere Seite
+   * schreibt (heart-lifeskin-live.js liveOrtShop). Kein Schritt und kein Pixel, aus dem
    * Grund oben: Die Warteseite bleibt, wo sie ist. Aber die letzte
    * Handlung zaehlt - wer vorher einen Analyse-Schritt hatte und dann in
    * den Korb legt, steht in Live beim Korb (29.09.). */
@@ -821,7 +822,7 @@ export class Laden {
       /* Dieselbe Marke wie auf der Therapieseite - Heart zaehlt sie, und
          die Meldung "An der Kasse" haengt daran. Einmal je Besuch. */
       this.#merke({ kasseGeoeffnet: true, kasseGeoeffnetAt: new Date().toISOString() }, "kasseGeoeffnet");
-      this.#live("offer");
+      this.#live("kasa");
     }
     /* DIE KASSE TRITT AN DIE STELLE DER SEITE (shared/lifeskin-ansicht.js)
        und liegt nicht mehr als festes Fenster mit Scroll-Sperre darueber.
@@ -916,7 +917,7 @@ export class Laden {
        * dem beim Ausfuellen abgebrochen wurde, standen in derselben
        * Zahl - obwohl das zwei verschiedene Gespraeche sind. */
       this.#merke({ adresseBegonnen: true }, "adresseBegonnen");
-      this.#live("address");
+      this.#live("kasa");
     });
   }
 

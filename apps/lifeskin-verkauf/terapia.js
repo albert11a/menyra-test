@@ -1455,9 +1455,11 @@ export class Terapia {
     blatt.scrollTop = 0;
     if (this.nurVorschau) return;
     this.pixel.meldeKorb(this.preis);
+    // Live: "shporta" - ein eigener Name, die Kasse dahinter schreibt
+    // "porosia" (Heart: Live · Analyse, N'shport und Adresa).
     if (!this.korbGemerkt) {
       this.korbGemerkt = true;
-      this.quelle.merken({ timings: { live: "porosia" } });
+      this.quelle.merken({ timings: { live: "shporta" } });
     }
   }
 

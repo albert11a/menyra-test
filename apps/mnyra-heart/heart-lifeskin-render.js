@@ -392,6 +392,9 @@ function renderLiveKarte(reihe, art, titel) {
   // Beim Kauf blinkt zusaetzlich der Rand - dort liegt Geld.
   const zahl = (reihe?.punkte || []).filter((p) => p.anzahl > 0)
     .map((p) => `${p.anzahl} ${p.label}`).join(" · ") || "niemand";
+  // Im Laden (drei Reihen) blinkt der Rand, sobald jemand bei N'shport,
+  // Adresa oder Gotat steht - wer nur auf der Landing liest, ist kein Geld.
+  const geld = (reihe?.punkte || []).some((p) => p.geld && p.anzahl > 0);
   return alsKlapp(`
     <section class="heart-lifeskin-block heart-live" id="heart-live-${escapeHtml(art)}">
       <h3 class="heart-lifeskin-block__titel">${escapeHtml(titel)}</h3>
@@ -399,11 +402,21 @@ function renderLiveKarte(reihe, art, titel) {
       ${still ? "" : `<p class="heart-lifeskin-block__fuss">${reihe.gesamt} ${reihe.gesamt === 1 ? "Person ist" : "Personen sind"} gerade dabei.</p>`}
       ${renderLiveLeute(reihe)}
     </section>`, `live-${art}`, {
-    zahl, ton: still ? "" : "offen", blink: art === "bestellungen" && !still
+    zahl, ton: still ? "" : "offen", blink: (art === "bestellungen" && !still) || geld
   });
 }
 
+// DER LADEN (/lifeskinshop): drei Reihen statt zwei (29.09., Inhaber) -
+// der Laden, der Trichter und die Ergebnisseite, jede mit ihrem eigenen Kauf.
+function renderLiveLaden(live) {
+  return `
+    ${renderLiveKarte(live.shop, "shop", "Live · Shop")}
+    ${renderLiveKarte(live.trichter, "trichter", "Live · Trichter")}
+    ${renderLiveKarte(live.analyse, "analyse", "Live · Analyse")}`;
+}
+
 function renderLive(live) {
+  if (live?.shop) return renderLiveLaden(live);
   return `
     ${renderLiveKarte(live?.analysen, "analysen", "Live · Analyse")}
     ${renderLiveKarte(live?.bestellungen, "bestellungen", "Live · Kauf")}`;

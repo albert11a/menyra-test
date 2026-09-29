@@ -147,7 +147,9 @@ export function istGeradeAktiv(sitzung, jetzt = Date.now(), fenster = LIVE_FENST
 // nicht auch bei "camera". Das ist der ganze Unterschied zum Trichter.
 function schrittVon(sitzung) {
   const live = sitzung?.timings?.live;
-  return live ? ({ prit: "result", porosia: "offer", fertig: "report" }[live] || live)
+  // shporta (Warenkorb der Ergebnisseite) und kasa (Kasse des Ladens) gibt
+  // es seit dem 29.09. - in diesen zwei Reihen heissen sie N'shport und Adresa.
+  return live ? ({ prit: "result", porosia: "offer", fertig: "report", shporta: "offer", kasa: "address" }[live] || live)
     : String(sitzung?.step || "");
 }
 
@@ -257,6 +259,97 @@ export function baueLive(sitzungen, jetzt = Date.now(), fenster = LIVE_FENSTER_M
     bestellungen: baueLiveReihe(LIVE_BESTELL_PUNKTE, sitzungen, jetzt, fenster),
     stand: jetzt
   };
+}
+
+// ══ DER LADEN (/lifeskinshop): DREI REIHEN (29.09., Wunsch Inhaber) ════
+//
+// "Live Shop: Landing - N'shport - Adresa - Gotat. Live Trichter: Mënyra -
+// Foto - Pytjet - Nummri - Patient. Live Analyse: Analyse - N'shport -
+// Adresa - Gotat. So haben wir keinen Mismatch."
+//
+// Im Tab "Lifeskin Shop" gehen drei Wege durch dieselbe Seite: direkt
+// kaufen (der Laden), die Analyse (der Trichter) und der Kauf nach der
+// Analyse (die Ergebnisseite). Jeder hat seine eigene Reihe - und jede
+// Seite schreibt ihren EIGENEN Live-Stand, daran steht jeder in genau
+// einem Punkt genau einer Reihe:
+//
+//   Laden          offer (Korb) · kasa (Kasse, Anschrift) · ordered mit order.kind "shop"
+//   Trichter       wahl ... numri · result, prit (Patient)
+//   Ergebnisseite  fertig (liest) · shporta (Warenkorb) · porosia (Kasse)
+//                  · address (Anschrift) · ordered
+//
+// Ohne Live-Stand steht er auf der Landing - oder, bei Besuchen von vor
+// diesen Staenden, dort, wo die Marken des Ladens hinzeigen.
+//
+// Die anderen Tabs (Lifeskin, Lifeskin 2) behalten ihre zwei Reihen.
+export const LIVE_SHOP_PUNKTE = Object.freeze([
+  { id: "landing", label: "Landing" },
+  { id: "korb", label: "N'shport", geld: true },
+  { id: "adresa", label: "Adresa", geld: true },
+  { id: "gotat", label: "Gotat", geld: true }
+].map((p) => Object.freeze(p)));
+export const LIVE_TRICHTER_PUNKTE = Object.freeze(LIVE_ANALYSE_PUNKTE.filter((p) => p.id !== "landing"));
+export const LIVE_ERGEBNIS_PUNKTE = Object.freeze([
+  { id: "analyse", label: "Analyse" },
+  { id: "korb", label: "N'shport", geld: true },
+  { id: "adresa", label: "Adresa", geld: true },
+  { id: "gotat", label: "Gotat", geld: true }
+].map((p) => Object.freeze(p)));
+
+// Eine Bestellung aus dem Laden (shop.js: order.kind "shop", danach shopKauf).
+const istLadenKauf = (sitzung) => sitzung?.order?.kind === "shop" || sitzung?.shopKauf === true;
+
+// Wo steht diese Sitzung im Tab "Lifeskin Shop": [Reihe, Punkt] oder null.
+export function liveOrtShop(sitzung) {
+  const live = String(sitzung?.timings?.live || "");
+  const stand = live || String(sitzung?.step || "");
+  // Die Ergebnisseite.
+  if (live === "fertig") return ["analyse", "analyse"];
+  if (live === "shporta") return ["analyse", "korb"];
+  if (live === "porosia") return ["analyse", "adresa"];
+  // "address" schreibt heute nur die Ergebnisseite (der Laden schreibt kasa);
+  // ein Laden von vor dem Umbau, der noch offen ist, hat keinen Befund offen.
+  if (live === "address") return sitzung?.berichtGeoeffnet === true ? ["analyse", "adresa"] : ["shop", "adresa"];
+  if (stand === "ordered") return istLadenKauf(sitzung) ? ["shop", "gotat"] : ["analyse", "gotat"];
+  // Der Laden.
+  if (live === "offer") return ["shop", "korb"];
+  if (live === "kasa") return ["shop", "adresa"];
+  // Der Trichter.
+  const schritt = stand === "prit" ? "result" : stand;
+  const imTrichter = LIVE_TRICHTER_PUNKTE.find((p) => p.schritte.includes(schritt));
+  if (imTrichter) return ["trichter", imTrichter.id];
+  // Kein Live-Stand: auf der Landing - oder die Marken des Ladens.
+  if (!live && (!stand || stand === "opened")) {
+    if (sitzung?.adresseBegonnen === true || sitzung?.kasseGeoeffnet === true) return ["shop", "adresa"];
+    if (sitzung?.imKorb === true) return ["shop", "korb"];
+    return ["shop", "landing"];
+  }
+  return null;
+}
+
+// Die drei Reihen auf einmal - dieselbe Form wie baueLiveReihe je Reihe.
+export function baueLiveShop(sitzungen, jetzt = Date.now(), fenster = LIVE_FENSTER_MS, berichte = {}) {
+  const reihen = { shop: LIVE_SHOP_PUNKTE, trichter: LIVE_TRICHTER_PUNKTE, analyse: LIVE_ERGEBNIS_PUNKTE };
+  const zahl = Object.fromEntries(Object.entries(reihen).map(([k, punkte]) => [k, new Map(punkte.map((p) => [p.id, 0]))]));
+  const leute = { shop: [], trichter: [], analyse: [] };
+  for (const sitzung of Array.isArray(sitzungen) ? sitzungen : []) {
+    if (istTest(sitzung, berichte?.[sitzung?.id]) || !istGeradeAktiv(sitzung, jetzt, fenster)) continue;
+    const ort = liveOrtShop(sitzung);
+    if (!ort) continue;
+    const [reihe, punkt] = ort;
+    if (punkt === "gotat" && bestelltVorhin(sitzung, jetzt, fenster)) continue;
+    zahl[reihe].set(punkt, zahl[reihe].get(punkt) + 1);
+    leute[reihe].push({ id: String(sitzung.id || ""), name: String(sitzung.name || "").trim(), punkt, source: sitzung.source || {} });
+  }
+  const bau = (k) => ({
+    gesamt: leute[k].length,
+    leute: leute[k],
+    punkte: reihen[k].map((p) => ({
+      id: p.id, label: p.label, ton: p.ton || "", geld: p.geld === true,
+      anzahl: zahl[k].get(p.id), aktiv: zahl[k].get(p.id) > 0
+    }))
+  });
+  return { shop: bau("shop"), trichter: bau("trichter"), analyse: bau("analyse"), stand: jetzt };
 }
 
 // Heart: eine Sitzung ohne ihren Klickpfad - fuer den Vergleich, ob sich
