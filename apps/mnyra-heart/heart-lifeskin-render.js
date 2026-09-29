@@ -170,6 +170,16 @@ function renderChips(eintraege, aktiv, aktion, art = "") {
   </div>`;
 }
 
+// Four fixed columns per swipe page, including incomplete final pages.
+function renderChipSeiten(eintraege, aktiv, aktion) {
+  const seiten = [];
+  for (let i = 0; i < eintraege.length; i += 4) {
+    seiten.push(renderChips(eintraege.slice(i, i + 4), aktiv, aktion, "shop")
+      .replace("heart-lifeskin-chips heart-lifeskin-chips--shop", "heart-shopchip-page heart-lifeskin-chips--shop"));
+  }
+  return `<div class="heart-lifeskin-chips heart-shopchip-pages" role="group" aria-label="Auswahl – seitenweise wischen">${seiten.join("")}</div>`;
+}
+
 // DIE ZEITRAEUME IM KOPF VON HEART (heart-render.js): Der Datum-Knopf
 // klappt diese Reihe an die Stelle von Menue, Marke und Aktualisieren.
 export const zeitraumName = (zeitraum) => ZEITRAEUME.find((z) => z.id === zeitraum)?.label || "Heute";
@@ -654,11 +664,13 @@ export const SHOP_CHIPS = Object.freeze([
   { id: "foto", label: "Foto", titel: "Foto · Bildschirm für Bildschirm" },
   { id: "analyse", label: "Analyse", titel: "Analyseseite · vom Öffnen bis zum Kauf" },
   { id: "kauf", label: "Kauf", titel: "Kauf" },
-  { id: "bericht", label: "Bericht", titel: "Bericht" }
+  { id: "bericht", label: "Bericht", titel: "Bericht" },
+  { id: "gjeni", label: "Gjeni", titel: "Gjeni setin për lëkurën tuaj" }
 ].map((chip) => Object.freeze(chip)));
 
 // Was unter einem Chip steht (ohne die Chips).
 function renderShopAnsicht(weg, id, trichter = []) {
+  if (id === "gjeni") return `<div class="heart-lifeskin-trichter">${renderStufen(weg.analyse)}</div>`;
   const zusatz = trichter.find((t) => t.id === id);
   if (zusatz) return `<div class="heart-shopschritte">${renderShopSchritte(zusatz.stufen.map((s, i) => ({ ...s, nr: i + 1 })), zusatz.stufen[0]?.anzahl || 0)}</div>${zusatz.extra || ""}${zusatz.fuss ? `<p class="heart-lifeskin-block__fuss">${escapeHtml(zusatz.fuss)}</p>` : ""}`;
   if (id === "shop") {
@@ -687,11 +699,12 @@ function renderShopWeg(weg, zeitraum = "", chip = "shop", trichter = []) {
   const wort = ZEITRAEUME.find((z) => z.id === (zeitraum || "heute"))?.label || "";
   const offen = SHOP_CHIPS.find((c) => c.id === chip) || SHOP_CHIPS[0];
   const anzahl = (c) => {
+    if (c.id === "gjeni") return weg.analyse.at(-1)?.anzahl || 0;
     const t = trichter.find((t) => t.id === c.id);
     if (t) return (t.chipStufe === undefined ? t.stufen.at(-1) : t.stufen[t.chipStufe])?.anzahl ?? 0;
     return c.id === "shop" ? weg.besucher : weg.chips[c.id]?.basis || 0;
   };
-  const chips = `<div class="heart-lifeskin-chips heart-shopchip-pages" role="group" aria-label="Auswertungen – seitenweise wischen">${[SHOP_CHIPS.slice(0, 4), SHOP_CHIPS.slice(4)].map((seite) => renderChips(seite.map((c) => ({ ...c, anzahl: anzahl(c) })), offen.id, "lifeskin-shopchip", "shop").replace('heart-lifeskin-chips heart-lifeskin-chips--shop', 'heart-shopchip-page heart-lifeskin-chips--shop')).join("")}</div>`;
+  const chips = renderChipSeiten(SHOP_CHIPS.map((c) => ({ ...c, anzahl: anzahl(c) })), offen.id, "lifeskin-shopchip");
   // ALLE ANSICHTEN GLEICH HOCH: Die sechs Ansichten
   // liegen uebereinander in derselben Zelle (heart.css .heart-shopansichten),
   // sichtbar ist nur die gewaehlte. Die Karte ist so hoch wie die laengste,
@@ -1456,12 +1469,12 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
   const gewaehlt = fach === "alle" ? imGewaehltenFach : imGewaehltenFach.slice(0, 300);
   const mehr = imGewaehltenFach.length - gewaehlt.length;
 
-  const chips = renderChips(FAECHER.map((f) => ({ ...f, anzahl: zaehler[f.id] })), fach, "lifeskin-fach");
+  const chips = renderChipSeiten(FAECHER.map((f) => ({ ...f, anzahl: zaehler[f.id] })), fach, "lifeskin-fach");
   const neu = zaehler.alle || 0;
   const zahl = `${neu} neu`;
 
   if (!fertige.length) {
-    return alsKlapp(leererBlock(titel, "Noch kein abgeschlossener Fall."), "faelle", { zahl });
+    return alsKlapp(leererBlock(titel, "Noch kein abgeschlossener Fall.").replace("</h3>", `</h3>${chips}`), "faelle", { zahl });
   }
 
   const waehlen = Array.isArray(auswahl);
@@ -1478,16 +1491,16 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
     archiviert: "Nichts abgehakt."
   }[fach] || "Nichts hier.";
 
-  // DIE CHIPS STEHEN UEBER DER KARTE, wie beim Trichter. Oben rechts im
+  // DIE CHIPS STEHEN IN DER KARTE und wischen seitenweise. Oben rechts im
   // Kopf das Zahnrad fuer die Auswahl.
   const zahnrad = `<button type="button" class="heart-faelle-zahnrad${waehlen ? " heart-faelle-zahnrad--an" : ""}"
       data-action="lifeskin-auswahl" aria-label="Fälle auswählen" aria-pressed="${waehlen}">${renderHeartIcon("zahnrad", "heart-faelle-zahnrad__icon")}</button>`;
   // Der Abdruck gehoert an die Karte selbst, nicht an die Chips davor:
   // Aendert sich nichts an der Liste, bleibt die ganze Karte stehen.
   const karte = alsKlapp(`
-    ${chips}
     <section class="heart-lifeskin-block heart-faelle">
       <h3 class="heart-lifeskin-block__titel">${escapeHtml(titel)}</h3>
+      ${chips}
       ${fuss ? `<p class="heart-lifeskin-block__fuss">${escapeHtml(fuss)}</p>` : ""}
       ${waehlen ? renderAuswahlLeiste(fach, gewaehlt.map((s) => s.id), auswahl, auswahlLoeschen) : ""}
       ${zeilen ? `<div class="heart-lifeskin-faelle">${zeilen}</div>`
@@ -3503,7 +3516,7 @@ export function renderLifeskin(zustand) {
       ${zustand.liveFehler
         ? leererBlock("Live", "Verbindung unterbrochen — Live-Zahlen nicht verfuegbar.")
         : renderLive(zustand.live)}
-      ${weg === "lifeskinshop" ? renderShopWeg(shopWeg, zeitraum, zustand.shopChip || "shop", trichterListe) + renderShopKontrolle(shopWeg, zeitraum) : renderTrichter(trichterListe, zustand.trichterOffen || "main")}
+      ${weg === "lifeskinshop" ? renderShopWeg(shopWeg, zeitraum, zustand.shopChip || "shop", trichterListe) : renderTrichter(trichterListe, zustand.trichterOffen || "main")}
       ${renderAnalysen(alleDesWegs, zustand.berichte || {}, zustand.fach || "alle", "Fälle", "",
         zustand.vorschau || {}, { auswahl: zustand.auswahl ?? null, auswahlLoeschen: !!zustand.auswahlLoeschen })}
       ${renderBetreuung(zustandWeg)}

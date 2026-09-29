@@ -10323,4 +10323,5 @@ html:where([data-heart-theme="tag"]),
 }
 .heart-shopchip-page .heart-lifeskin-chip { min-width: 0; padding-inline: 4px; }
 
-.heart-shopchip-page:last-child { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* Only complete pages are snap targets; individual chips must not intercept a swipe. */
+.heart-shopchip-page .heart-lifeskin-chip { scroll-snap-align: none; }
