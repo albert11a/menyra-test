@@ -74,6 +74,10 @@ export function bindHeartEvents({
       globalThis.requestAnimationFrame?.(() => { zurueck(); sichtbar(); });
     });
   }
+  // Dasselbe Klappen fuer die Karte "Shop" (heart-doppeltipp, 29.09.):
+  // offen klappt ein Doppeltipp sie zu, zu klappt ein Tipp sie auf.
+  const doppeltippKarte = (el) => Boolean(el?.classList?.contains("heart-kachelklapp")
+    || el?.classList?.contains("heart-doppeltipp"));
   let letzterTipp = { karte: null, zeit: 0 };
   function zahlenTipp(event) {
     const el = event.target;
@@ -83,14 +87,14 @@ export function bindHeartEvents({
       zahlenKlappen(pfeilKarte, false);
       return true;
     }
-    const kopf = el?.closest?.(".heart-kachelklapp:not([open]) > summary");
+    const kopf = el?.closest?.(".heart-kachelklapp:not([open]) > summary, .heart-doppeltipp:not([open]) > summary");
     if (kopf?.tagName === "SUMMARY") {
       event.preventDefault?.();
       zahlenKlappen(kopf.parentElement, true);
       return true;
     }
-    const karte = el?.closest?.(".heart-kachelklapp[open]");
-    if (!karte?.classList?.contains("heart-kachelklapp") || el.closest("a, button, input, select, textarea")) return false;
+    const karte = el?.closest?.(".heart-kachelklapp[open], .heart-doppeltipp[open]");
+    if (!doppeltippKarte(karte) || el.closest("a, button, input, select, textarea")) return false;
     const jetzt = event.timeStamp || Date.now();
     if (letzterTipp.karte === karte && jetzt - letzterTipp.zeit < 350) {
       letzterTipp = { karte: null, zeit: 0 };

@@ -299,11 +299,20 @@ breit). Am Chip die Zahl bei Punkt 1. Gezaehlt "bis hierher"; Balken am
 Punkt 1 des Chips.
 
 Die Chips stehen IN der Karte, ganz oben; einen Titel hat die Karte nicht
-mehr (er steht nur noch als `aria-label` fuer Vorleseprogramme). Deshalb
-laesst sie sich nicht zuklappen - `alsKlapp` braucht den Titel als Kopf.
-Die Chips: eine Reihe, 32 px hoch, Ecken 6 px, der gewaehlte gruen wie
-Kreise und Balken (das Grau der anderen Chip-Reihen verschwaende auf dem
-Grund der Karte). Wird eine Zahl lang, rollt die Reihe.
+mehr (er steht nur noch als `aria-label` fuer Vorleseprogramme). Die Chips:
+eine Reihe, 32 px hoch, Ecken 6 px; der gewaehlte ruhig - etwas heller als
+die Karte, weisse Schrift, deutlicherer Rand, nicht das Gruen der Kreise.
+Wird eine Zahl lang, rollt die Reihe.
+
+Zuklappen per Doppeltipp wie bei den Kacheln (`heart-doppeltipp`,
+heart-events.js): Zu bleibt eine schmale Zeile "Shop 19 · Scan 4 · Foto 0 ·
+Analyse 0" mit dem Pfeil; ein Tipp darauf klappt auf. Ein Doppeltipp auf
+einen Chip klappt nicht zu. Gemerkt wird es wie jede Karte (`shopweg`).
+
+Alle vier Chips gleich hoch: Die vier Ansichten liegen uebereinander in
+derselben Zelle (`.heart-shopansichten`), sichtbar nur die gewaehlte. Die
+Karte ist so hoch wie die laengste (Shop mit Umsatz-Zeilen); unter Scan
+und Foto bleibt dafuer unten etwas frei.
 
 **Scan** (nur wer Scan gewaehlt hat, ohne Laden-Kaeufe - deren Schritt steht
 auf "ordered"): 1 Anleitung (named) · 2 Scan akzeptiert (kameraOk) ·

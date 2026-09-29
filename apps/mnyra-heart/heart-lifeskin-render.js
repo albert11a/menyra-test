@@ -627,44 +627,61 @@ export const SHOP_CHIPS = Object.freeze([
   { id: "analyse", label: "Analyse", titel: "Analyseseite · vom Öffnen bis zum Kauf" }
 ].map((chip) => Object.freeze(chip)));
 
-function renderShopWeg(weg, zeitraum = "", chip = "shop") {
-  const wort = ZEITRAEUME.find((z) => z.id === (zeitraum || "heute"))?.label || "";
-  const offen = SHOP_CHIPS.find((c) => c.id === chip) || SHOP_CHIPS[0];
-  const chips = renderChips(SHOP_CHIPS.map((c) => ({
-    id: c.id, label: c.label,
-    anzahl: c.id === "shop" ? weg.besucher : weg.chips[c.id].basis
-  })), offen.id, "lifeskin-shopchip", "shop");
-  let inhalt;
-  if (offen.id === "shop") {
+// Was unter einem Chip steht (ohne die Chips).
+function renderShopAnsicht(weg, id) {
+  if (id === "shop") {
     const was = weg.nachSet.length
       ? weg.nachSet.map(([name, n]) => `${escapeHtml(name)}: <b>${n}</b>`).join(" · ")
       : "noch kein Kauf";
-    inhalt = `
+    return `
       <div class="heart-shopschritte">${renderShopSchritte(weg.seite, weg.besucher)}</div>
       <div class="heart-shopschritte heart-shopschritte--kauf">${renderShopSchritte(weg.kauf, weg.besucher)}</div>
       <p class="heart-lifeskin-block__fuss">Umsatz <b>${escapeHtml(euro(weg.umsatz) || "0 €")}</b> · ${weg.kaeufe} ${weg.kaeufe === 1 ? "Bestellung" : "Bestellungen"}
         · Ø Bestellung <b>${escapeHtml(euro(weg.bestellwert) || "—")}</b> · Ø Warenkorb <b>${escapeHtml(euro(weg.korbwert) || "—")}</b>
         · Kauf je Besuch <b>${prozent(weg.kaufquote)}</b></p>
       <p class="heart-lifeskin-block__fuss">Gekauft: ${was}</p>`;
-  } else if (offen.id === "analyse") {
+  }
+  if (id === "analyse") {
     const a = weg.chips.analyse;
-    inhalt = `
+    return `
       <div class="heart-shopschritte">${renderShopSchritte(a.stufen, a.basis)}</div>
       <div class="heart-shopschritte heart-shopschritte--kauf">${renderShopSchritte(a.kauf, a.basis)}</div>`;
-  } else {
-    const w = weg.chips[offen.id];
-    inhalt = `<div class="heart-shopschritte">${renderShopSchritte(w.stufen, w.basis)}</div>`;
   }
+  const w = weg.chips[id];
+  return `<div class="heart-shopschritte">${renderShopSchritte(w.stufen, w.basis)}</div>`;
+}
+
+function renderShopWeg(weg, zeitraum = "", chip = "shop") {
+  const wort = ZEITRAEUME.find((z) => z.id === (zeitraum || "heute"))?.label || "";
+  const offen = SHOP_CHIPS.find((c) => c.id === chip) || SHOP_CHIPS[0];
+  const anzahl = (c) => (c.id === "shop" ? weg.besucher : weg.chips[c.id].basis);
+  const chips = renderChips(SHOP_CHIPS.map((c) => ({ id: c.id, label: c.label, anzahl: anzahl(c) })),
+    offen.id, "lifeskin-shopchip", "shop");
+  // ALLE VIER GLEICH HOCH (Wunsch Inhaber 29.09.): Die vier Ansichten
+  // liegen uebereinander in derselben Zelle (heart.css .heart-shopansichten),
+  // sichtbar ist nur die gewaehlte. Die Karte ist so hoch wie die laengste,
+  // und beim Umschalten springt nichts.
+  const ansichten = SHOP_CHIPS.map((c) => `
+      <div class="heart-shopansicht" data-ansicht="${c.id}" data-an="${c.id === offen.id ? "ja" : "nein"}"${c.id === offen.id ? "" : ' aria-hidden="true"'}>
+        ${renderShopAnsicht(weg, c.id)}
+      </div>`).join("");
+  const zu = SHOP_CHIPS.map((c) => `${c.label} ${anzahl(c)}`).join(" · ");
   // DIE CHIPS SIND DER KOPF DER KARTE, einen Titel gibt es nicht (Wunsch
-  // Inhaber 29.09.): Der Chip sagt, was darunter steht. Ohne Titel ist die
-  // Karte auch nicht zum Zuklappen (alsKlapp braucht ihn als Kopf). Was
-  // der Titel sagte, steht fuer Vorleseprogramme im aria-label.
+  // Inhaber 29.09.): Der Chip sagt, was darunter steht; was der Titel sagte,
+  // steht fuer Vorleseprogramme im aria-label. ZUKLAPPEN PER DOPPELTIPP wie
+  // bei den Kacheln (heart-doppeltipp, heart-events.js): zu bleibt eine
+  // schmale Zeile mit den vier Zahlen der Chips, ein Tipp klappt auf.
   return `
-    <section class="heart-lifeskin-block heart-lifeskin-block--shopweg"
+    <details class="heart-lifeskin-block heart-klapp heart-doppeltipp heart-lifeskin-block--shopweg" ${klappAttr("shopweg", true)}
              aria-label="${escapeHtml(offen.titel)}${wort ? ` · ${escapeHtml(wort)}` : ""}">
+      <summary class="heart-klapp__kopf" aria-label="Shop · aufklappen">
+        <span class="heart-klapp__zahl heart-klapp__zahl--zu">${escapeHtml(zu)}</span>
+        <span class="heart-kachelklapp__pfeil" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span>
+      </summary>
       ${chips}
-      ${inhalt}
-    </section>`;
+      <div class="heart-shopansichten">${ansichten}
+      </div>
+    </details>`;
 }
 
 // DIE KONTROLLE (spaeter 14-16) - vorerst in einer eigenen Karte mit dem

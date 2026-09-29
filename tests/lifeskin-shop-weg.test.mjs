@@ -14,6 +14,12 @@ import { readFileSync } from "node:fs";
 globalThis.__LIFESKIN_TEST__ = true;
 
 const lies = (p) => readFileSync(p, "utf8");
+// Nur die gewaehlte Ansicht der Karte "Shop" - die anderen drei liegen
+// unsichtbar in derselben Zelle (gleiche Hoehe fuer alle Chips).
+function sichtbareAnsicht(html) {
+  const teile = String(html).split('<div class="heart-shopansicht"').slice(1);
+  return (teile.find((t) => /^ data-ansicht="[a-z]+" data-an="ja"/.test(t)) || "").split("</details>")[0];
+}
 
 const { OBERFLAECHE, OBERFLAECHE_WEGE, FRAGEN_TEXTE, FRAGEN_TEXTE_WEGE, FRAGEN_NACH_AUFNAHME, t } =
   await import("../apps/lifeskin/lifeskin-content.js");
@@ -553,7 +559,7 @@ test("die Karte: Kreis mit Nummer, Name, Balken, Zahl - 1 bis 13, der Kauf abges
     lesetiefe: b.baueLesetiefe([]), herkunft: b.baueHerkunft([]), verteilung: b.baueVerteilung([]), verlauf: [],
     offen: "", fotos: {}, fotosStatus: "", zeitraum: "", fach: "alle"
   });
-  const zeilen = [...html.matchAll(/<div class="heart-shopschritt">\s*<span class="heart-shopschritt__nr">(\d+)<\/span>\s*<span class="heart-shopschritt__name">([^<]+)<\/span>\s*<span class="heart-shopschritt__spur"><span class="heart-shopschritt__balken" style="width:([\d.]+)%"><\/span><\/span>\s*<b class="heart-shopschritt__zahl">(\d+)<\/b>/g)]
+  const zeilen = [...sichtbareAnsicht(html).matchAll(/<div class="heart-shopschritt">\s*<span class="heart-shopschritt__nr">(\d+)<\/span>\s*<span class="heart-shopschritt__name">([^<]+)<\/span>\s*<span class="heart-shopschritt__spur"><span class="heart-shopschritt__balken" style="width:([\d.]+)%"><\/span><\/span>\s*<b class="heart-shopschritt__zahl">(\d+)<\/b>/g)]
     .map((m) => [Number(m[1]), m[2], Number(m[3]), Number(m[4])]);
   assert.deepEqual(zeilen.map((z) => z[0]), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
   assert.deepEqual(zeilen.map((z) => z[1]), ["Acne duo", "Para - Pas", "Informata", "SkinReact", "Postimet", "Dërgesa",
@@ -609,24 +615,41 @@ test("die Karte Shop hat oben vier Chips, je 13 Punkte - unten nur noch Kauf und
   const nummern = (html) => [...html.matchAll(/heart-shopschritt__nr">(\d+)</g)].map((m) => Number(m[1]));
   const html = grund("lifeskinshop", "shop");
   assert.deepEqual([...html.matchAll(/data-action="lifeskin-shopchip" data-wert="([a-z]+)"/g)].map((m) => m[1]), ["shop", "scan", "foto", "analyse"]);
-  // Alle vier IN der Karte, ganz oben an Stelle des Titels, in einer kompakten Reihe.
-  assert.match(html, /<section class="heart-lifeskin-block heart-lifeskin-block--shopweg"\s+aria-label="Shop · vom Besuch bis zum Kauf · Heute">\s*<div class="heart-lifeskin-chips heart-lifeskin-chips--shop" role="group">\s*<button[^>]*data-action="lifeskin-shopchip"/);
-  const shopKarte = html.slice(html.indexOf("heart-lifeskin-block--shopweg"), html.indexOf("</section>", html.indexOf("heart-lifeskin-block--shopweg")));
-  assert.doesNotMatch(shopKarte, /heart-lifeskin-block__titel|<summary/, "kein Titel mehr in der Karte");
-  assert.doesNotMatch(html, /data-klapp="shopweg"/);
+  // Alle vier IN der Karte, ganz oben an Stelle des Titels, in einer kompakten Reihe;
+  // der Kopf (zugeklappt) ist offen versteckt.
+  assert.match(html, /<details class="heart-lifeskin-block heart-klapp heart-doppeltipp heart-lifeskin-block--shopweg" data-klapp="shopweg" open\s+aria-label="Shop · vom Besuch bis zum Kauf · Heute">\s*<summary class="heart-klapp__kopf" aria-label="Shop · aufklappen">[\s\S]*?<\/summary>\s*<div class="heart-lifeskin-chips heart-lifeskin-chips--shop" role="group">\s*<button[^>]*data-action="lifeskin-shopchip"/);
+  const shopKarte = html.slice(html.indexOf("heart-lifeskin-block--shopweg"), html.indexOf("</details>", html.indexOf("heart-lifeskin-block--shopweg")));
+  assert.doesNotMatch(shopKarte, /heart-lifeskin-block__titel|<h3/, "kein Titel mehr in der Karte");
+  // Zugeklappt: eine schmale Zeile mit den vier Zahlen der Chips.
+  assert.match(shopKarte, /<span class="heart-klapp__zahl heart-klapp__zahl--zu">Shop 1 · Scan 0 · Foto 0 · Analyse 0<\/span>/);
+  // Gleich hoch: alle vier Ansichten liegen in der Karte, sichtbar nur die gewaehlte.
+  const ansichten = (h) => [...h.matchAll(/<div class="heart-shopansicht" data-ansicht="([a-z]+)" data-an="(ja|nein)"/g)].map((m) => `${m[1]}:${m[2]}`);
+  assert.deepEqual(ansichten(html), ["shop:ja", "scan:nein", "foto:nein", "analyse:nein"]);
+  assert.deepEqual(ansichten(grund("lifeskinshop", "analyse")), ["shop:nein", "scan:nein", "foto:nein", "analyse:ja"]);
   const chipCss = lies("apps/mnyra-heart/heart.css");
   assert.match(chipCss, /\.heart-lifeskin-chips--shop \.heart-lifeskin-chip \{\s*flex: 1 0 auto; min-height: 32px; padding: 0 7px;\s*border-radius: 6px; font-size: 12px;\s*\}/);
-  assert.match(chipCss, /\.heart-lifeskin-chips--shop \.heart-lifeskin-chip--an \{\s*background: #00796a;/);
+  // Der gewaehlte Chip ruhig - nicht das Gruen der Kreise.
+  const chipAn = chipCss.match(/\.heart-lifeskin-chips--shop \.heart-lifeskin-chip--an \{[^}]*\}/)[0];
+  assert.doesNotMatch(chipAn, /#00796a/);
+  assert.match(chipAn, /background: var\(--heart-surface-soft, #232327\);\s*background: color-mix\(in srgb, var\(--heart-text, #fafafa\) 10%, transparent\);/);
+  assert.match(chipCss, /\.heart-shopansichten \{ display: grid; \}\s*\.heart-shopansicht \{ grid-area: 1 \/ 1;/);
+  assert.match(chipCss, /\.heart-shopansicht\[data-an="nein"\] \{ visibility: hidden; \}/);
+  // Doppeltipp klappt zu, ein Tipp auf die schmale Zeile auf - wie bei den Kacheln.
+  assert.match(chipCss, /\.heart-doppeltipp\[open\] > \.heart-klapp__kopf \{ display: none; \}/);
+  assert.match(chipCss, /\.heart-doppeltipp\[open\] > \.heart-klapp__kopf \+ \* \{ margin-top: 0; \}/);
+  const ereignisse = lies("apps/mnyra-heart/heart-events.js");
+  assert.match(ereignisse, /closest\?\.\("\.heart-kachelklapp:not\(\[open\]\) > summary, \.heart-doppeltipp:not\(\[open\]\) > summary"\)/);
+  assert.match(ereignisse, /closest\?\.\("\.heart-kachelklapp\[open\], \.heart-doppeltipp\[open\]"\);\s*if \(!doppeltippKarte\(karte\) \|\| el\.closest\("a, button, input, select, textarea"\)\) return false;/);
   assert.doesNotMatch(grund("lifeskinshop", "shop"), /heart-lifeskin-chips--shop[^>]*>\s*<button[^>]*data-action="lifeskin-trichter"/);
   assert.deepEqual([...html.matchAll(/data-action="lifeskin-trichter" data-wert="([a-z]+)"/g)].map((m) => m[1]), ["kauf", "bericht"]);
-  const scan = grund("lifeskinshop", "scan");
+  const scan = sichtbareAnsicht(grund("lifeskinshop", "scan"));
   assert.deepEqual(namen(scan), ["Anleitung", "Scan akzeptiert", "Scan gestartet", "Scan fertig", "Frage 1", "Frage 2", "Frage 3",
     "Name +", "Nummer", "Nummer Feld", "Loading", "Loading fertig", "Patient"]);
   assert.deepEqual(nummern(scan), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
-  const foto = grund("lifeskinshop", "foto");
+  const foto = sichtbareAnsicht(grund("lifeskinshop", "foto"));
   assert.deepEqual(namen(foto).slice(0, 4), ["Anleitung", "Foto akzeptiert", "Foto gestartet", "Foto fertig"]);
   assert.deepEqual(namen(foto).slice(4), namen(scan).slice(4));
-  const analyse = grund("lifeskinshop", "analyse");
+  const analyse = sichtbareAnsicht(grund("lifeskinshop", "analyse"));
   assert.deepEqual(namen(analyse), ["Përputhja", "Gjetjet", "Pakoja", "Ndjekja", "Para - Pas", "Oferta", "F.A.Q", "Detajet", "Fundi",
     "Shport", "Arka", "Adresa", "Gotat Nalt"]);
   assert.match(analyse, /heart-shopschritte--kauf/);

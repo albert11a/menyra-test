@@ -5770,10 +5770,37 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
   border-radius: 6px; font-size: 12px;
 }
 .heart-lifeskin-chips--shop .heart-lifeskin-chip span { margin-left: 3px; }
+/* Der gewaehlte Chip ruhig: etwas heller als die Karte, weisse Schrift,
+   deutlicherer Rand - nicht das Gruen der Kreise (29.09.: "zu intensiv").
+   Ohne color-mix (aeltere Browser) gilt die erste Zeile. */
 .heart-lifeskin-chips--shop .heart-lifeskin-chip--an {
-  background: #00796a; border-color: #00796a; color: #ffffff;
+  background: var(--heart-surface-soft, #232327);
+  background: color-mix(in srgb, var(--heart-text, #fafafa) 10%, transparent);
+  border-color: var(--heart-border-strong, rgba(82, 82, 91, 0.95));
+  color: var(--heart-text, #fafafa);
 }
-.heart-lifeskin-chips--shop .heart-lifeskin-chip--an span { opacity: 0.85; }
+
+/* DIE KARTE "SHOP" KLAPPT PER DOPPELTIPP ZU (Wunsch Inhaber 29.09.) - wie
+   die Kacheln (.heart-kachelklapp, heart-events.js): offen ohne Kopf, zu
+   nur eine schmale Zeile mit den vier Zahlen der Chips und dem Pfeil; ein
+   Tipp darauf klappt sie auf. Die Huelle der Karte bleibt dabei. */
+.heart-doppeltipp { touch-action: manipulation; }
+.heart-doppeltipp[open] { cursor: default; user-select: none; -webkit-user-select: none; }
+.heart-doppeltipp[open] > .heart-klapp__kopf { display: none; }
+/* Der versteckte Kopf zaehlt fuer "* + *" (.heart-klapp) noch mit - ohne
+   diese Zeile staenden die Chips 10 px tiefer als der Rand an den Seiten. */
+.heart-doppeltipp[open] > .heart-klapp__kopf + * { margin-top: 0; }
+.heart-doppeltipp > .heart-klapp__kopf { justify-content: space-between; }
+.heart-doppeltipp > .heart-klapp__kopf::before { content: none; }
+.heart-doppeltipp > .heart-klapp__kopf .heart-klapp__zahl { flex: 1 1 auto; min-width: 0; max-width: none; font-size: 13px; }
+.heart-doppeltipp > .heart-klapp__kopf .heart-kachelklapp__pfeil { width: 30px; height: 30px; }
+
+/* ALLE VIER CHIPS GLEICH HOCH (29.09.): Die vier Ansichten liegen
+   uebereinander in derselben Zelle, sichtbar ist nur die gewaehlte - die
+   Karte ist so hoch wie die laengste, beim Umschalten springt nichts. */
+.heart-shopansichten { display: grid; }
+.heart-shopansicht { grid-area: 1 / 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.heart-shopansicht[data-an="nein"] { visibility: hidden; }
 
 /* Chips ueber einer zugeklappten Karte verschwinden mit ihr. */
 .heart-lifeskin-chips:has(+ .heart-klapp:not([open])) { display: none; }
