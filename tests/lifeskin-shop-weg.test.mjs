@@ -605,6 +605,10 @@ test("die Karte Shop hat oben vier Chips, je 13 Punkte - unten nur noch Kauf und
   const nummern = (html) => [...html.matchAll(/heart-shopschritt__nr">(\d+)</g)].map((m) => Number(m[1]));
   const html = grund("lifeskinshop", "shop");
   assert.deepEqual([...html.matchAll(/data-action="lifeskin-shopchip" data-wert="([a-z]+)"/g)].map((m) => m[1]), ["shop", "scan", "foto", "analyse"]);
+  // Alle vier in einer Reihe auf dem Telefon: eigene, schmalere Spielart.
+  assert.match(html, /<div class="heart-lifeskin-chips heart-lifeskin-chips--shop" role="group">\s*<button[^>]*data-action="lifeskin-shopchip"/);
+  assert.match(lies("apps/mnyra-heart/heart.css"), /\.heart-lifeskin-chips--shop \.heart-lifeskin-chip \{ flex: 1 0 auto; padding: 8px 10px; \}/);
+  assert.doesNotMatch(grund("lifeskinshop", "shop"), /heart-lifeskin-chips--shop[^>]*>\s*<button[^>]*data-action="lifeskin-trichter"/);
   assert.deepEqual([...html.matchAll(/data-action="lifeskin-trichter" data-wert="([a-z]+)"/g)].map((m) => m[1]), ["kauf", "bericht"]);
   const scan = grund("lifeskinshop", "scan");
   assert.deepEqual(namen(scan), ["Anleitung", "Scan akzeptiert", "Scan gestartet", "Scan fertig", "Frage 1", "Frage 2", "Frage 3",

@@ -157,8 +157,9 @@ function renderKachel({ marke, wert, zusatz, richtung }) {
 
 // Eine Reihe Chips. Sie traegt zwei Dinge: den Zeitraum ueber den Zahlen
 // und das Fach ueber der Liste. Ein Baustein, weil es dieselbe Geste ist.
-function renderChips(eintraege, aktiv, aktion) {
-  return `<div class="heart-lifeskin-chips" role="group">
+// art: eine Spielart der Reihe (heart-lifeskin-chips--<art> in heart.css).
+function renderChips(eintraege, aktiv, aktion, art = "") {
+  return `<div class="heart-lifeskin-chips${art ? ` heart-lifeskin-chips--${escapeHtml(art)}` : ""}" role="group">
     ${eintraege.map((e) => `
       <button type="button" class="heart-lifeskin-chip${e.id === aktiv ? " heart-lifeskin-chip--an" : ""}"
               data-action="${escapeHtml(aktion)}" data-wert="${escapeHtml(e.id)}"
@@ -632,7 +633,7 @@ function renderShopWeg(weg, zeitraum = "", chip = "shop") {
   const chips = renderChips(SHOP_CHIPS.map((c) => ({
     id: c.id, label: c.label,
     anzahl: c.id === "shop" ? weg.besucher : weg.chips[c.id].basis
-  })), offen.id, "lifeskin-shopchip");
+  })), offen.id, "lifeskin-shopchip", "shop");
   let inhalt;
   if (offen.id === "shop") {
     const was = weg.nachSet.length

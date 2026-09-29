@@ -5756,6 +5756,13 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
 }
 .heart-lifeskin-chips::-webkit-scrollbar { display: none; }
 .heart-lifeskin-chip { flex: none; white-space: nowrap; scroll-snap-align: start; }
+/* DIE VIER CHIPS DER KARTE "SHOP" (Shop, Scan, Foto, Analyse) stehen auf
+   dem Telefon ganz in einer Reihe (390 px): schmaler gepolstert, der Rest
+   gleich verteilt. Wird eine Zahl lang (Zeitraum "Monat"), rollt die Reihe
+   wie jede andere. */
+.heart-lifeskin-chips--shop { gap: 6px; }
+.heart-lifeskin-chips--shop .heart-lifeskin-chip { flex: 1 0 auto; padding: 8px 10px; }
+.heart-lifeskin-chips--shop .heart-lifeskin-chip span { margin-left: 4px; }
 
 /* Chips ueber einer zugeklappten Karte verschwinden mit ihr. */
 .heart-lifeskin-chips:has(+ .heart-klapp:not([open])) { display: none; }
