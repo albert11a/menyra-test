@@ -200,14 +200,17 @@ const ohneLadenKorb = (s) => s?.imKorb !== true;
 export const SHOP_ANALYSE_SEITE = Object.freeze(TERAPIA_ABSCHNITTE.map((a) => Object.freeze({
   id: `t${a.nr}`, nr: a.nr, label: a.name, gilt: (s) => terapiaTiefe(s) >= a.nr
 })));
-// PUNKT 10 IST "ÇMIMI", NICHT "SHPORT" (29.09., Rueckfrage Inhaber): Auf der
-// Analyseseite gibt es keinen Korb - "Porosit" oeffnet gleich die Kasse
-// (Arka). Hier steht nur, wer den Preis gesehen hat. Meta bekommt dafuer
-// AddToCart (Pixel, gesperrt); in Heart ist es kein Warenkorb - wie in der
-// Kachel "Warenkoerbe" und in Live.
+// 10 SHPORT = EIN KAUFKNOPF DER ANALYSESEITE GEDRUECKT (29.09., Inhaber:
+// "wenn er Button drueckt, dann Shport"): timings.kauf.knopf. Nur den
+// Preis gesehen zaehlt nicht - das ist kein Warenkorb (Meta bekommt dafuer
+// trotzdem AddToCart, Pixel gesperrt). Der Knopf oeffnet gleich die Kasse;
+// wer die Kasse offen hatte, hat also gedrueckt (auch ueber das
+// Medienfenster, das keine Knopf-Marke schreibt, und Besuche vor der
+// Marke). Shport ueber Arka heisst: gedrueckt, aber die Kasse ging nicht auf.
+const analyseKasse = (s) => Boolean(s?.timings?.kauf?.kasse) || (ohneLadenKorb(s) && s?.kasseGeoeffnet === true);
 export const SHOP_ANALYSE_KAUF = Object.freeze([
-  { nr: 10, id: "preis", label: "Çmimi", gilt: (s) => s?.sahPreis === true },
-  { nr: 11, id: "kasse", label: "Arka", gilt: (s) => Boolean(s?.timings?.kauf?.kasse) || (ohneLadenKorb(s) && s?.kasseGeoeffnet === true) },
+  { nr: 10, id: "korb", label: "Shport", gilt: (s) => Boolean(s?.timings?.kauf?.knopf) || analyseKasse(s) },
+  { nr: 11, id: "kasse", label: "Arka", gilt: analyseKasse },
   { nr: 12, id: "anschrift", label: "Adresa", gilt: (s) => Boolean(s?.timings?.kauf?.eingabe)
     || (ohneLadenKorb(s) && (s?.hatAnschrift === true || s?.adresseBegonnen === true)) },
   { nr: 13, id: "bestellt", label: "Gotat Nalt", gilt: (s) => s?.hatBestellt === true && s?.shopKauf !== true }

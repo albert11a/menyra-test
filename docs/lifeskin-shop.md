@@ -331,15 +331,21 @@ Scan; vorher erst mit dem Bild, dann waeren 2 und 3 immer gleich gewesen.
 **Analyse** (wer die Analyseseite geoeffnet hat): 1 Përputhja (#terapia) ·
 2 Gjetjet (#pse) · 3 Pakoja (#merrni) · 4 Ndjekja (#ndjekja oder #ditet) ·
 5 Para - Pas (#rezultate) · 6 Oferta (#vendimi) · 7 F.A.Q (#pyetjet) ·
-8 Detajet (#analiza) · 9 Fundi (#ndaje oder #instagram); dann 10 Çmimi
-(Preis gesehen; Meta bekommt dafuer AddToCart, in Heart ist es kein
-Warenkorb - auf der Analyseseite gibt es keinen Korb, "Porosit" oeffnet
-gleich die Kasse; bis 29.09. mittags hiess der Punkt "Shport") · 11 Arka ·
-12 Adresa · 13 Gotat Nalt - nur,
+8 Detajet (#analiza) · 9 Fundi (#ndaje oder #instagram); dann 10 Shport
+(ein Kaufknopf der Analyseseite gedrueckt, `timings.kauf.knopf` - oder die
+Kasse war offen) · 11 Arka · 12 Adresa · 13 Gotat Nalt - nur,
 was auf der Analyseseite geschah (`timings.kauf`, sonst alte Marken ohne
 Laden-Korb). Gemessen von der Analyseseite im Kleid des Ladens
 (`timings.terapia.sN`, gesehen wie im Laden, nie in der Vorschau);
 aeltere Besuche: berichtGeoeffnet 1, sahSchnitt 2, sahTherapie 3.
+
+Nur den Preis gesehen ist KEIN Warenkorb (Rueckfrage Inhaber 29.09.): Der
+Preis steht oben im ersten Abschnitt, Meta bekommt dafuer AddToCart (Pixel,
+gesperrt, bleibt so). In Heart zaehlt erst der Kaufknopf: Er oeffnet die
+Kasse (kasseGeoeffnet, InitiateCheckout) - das ist der Warenkorb der
+Analyseseite in der Kachel "Warenkoerbe" und in "Live · Kauf - N'shport".
+Bis 29.09. mittags stand Punkt 10 kurz auf "Preis gesehen" (erst "Shport",
+dann "Çmimi").
 
 Die neuen Marken stehen unter `timings` (offene Karte in firestore.rules):
 keine neue Regel, keine neue Stufe, kein Pixel. Im stillen Modus nichts.

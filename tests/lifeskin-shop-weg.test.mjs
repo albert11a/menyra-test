@@ -680,7 +680,7 @@ test("die Karte Shop hat oben vier Chips, je 13 Punkte - unten nur noch Kauf und
   assert.deepEqual(namen(foto).slice(4), namen(scan).slice(4));
   const analyse = sichtbareAnsicht(grund("lifeskinshop", "analyse"));
   assert.deepEqual(namen(analyse), ["Përputhja", "Gjetjet", "Pakoja", "Ndjekja", "Para - Pas", "Oferta", "F.A.Q", "Detajet", "Fundi",
-    "Çmimi", "Arka", "Adresa", "Gotat Nalt"]);
+    "Shport", "Arka", "Adresa", "Gotat Nalt"]);
   assert.match(analyse, /heart-shopschritte--kauf/);
   // Die anderen Tabs behalten alle Trichter-Chips.
   assert.deepEqual([...grund("", "shop").matchAll(/data-action="lifeskin-trichter" data-wert="([a-z]+)"/g)].map((m) => m[1]),
@@ -720,10 +720,17 @@ test("Analyse: die Seite mit dem Ergebnis, 9 Punkte und ihr Kauf - ohne die Kass
     { step: "opened" }
   ]);
   assert.deepEqual(w.chips.analyse.stufen.map((s) => s.anzahl), [3, 1, 1, 1, 1, 1, 0, 0, 0]);
-  // Punkt 10 heisst "Çmimi": Preis gesehen ist kein Warenkorb (in Heart nicht, nur Meta bekommt AddToCart).
-  assert.deepEqual(w.chips.analyse.kauf.map((s) => [s.label, s.anzahl]), [["Çmimi", 1], ["Arka", 1], ["Adresa", 0], ["Gotat Nalt", 0]]);
+  assert.deepEqual(w.chips.analyse.kauf.map((s) => [s.label, s.anzahl]), [["Shport", 1], ["Arka", 1], ["Adresa", 0], ["Gotat Nalt", 0]]);
+  // Shport = Kaufknopf gedrueckt - nur den Preis gesehen zaehlt nicht (kein Warenkorb, auch nicht in der Kachel).
+  const knopf = baueShopWeg([
+    { berichtGeoeffnet: true, sahPreis: true },
+    { berichtGeoeffnet: true, sahPreis: true, timings: { kauf: { knopf: "2026-09-29T10:00:00Z" } } },
+    { berichtGeoeffnet: true, sahPreis: true, kasseGeoeffnet: true }
+  ]);
+  assert.deepEqual(knopf.chips.analyse.kauf.map((s) => [s.label, s.anzahl]), [["Shport", 2], ["Arka", 1], ["Adresa", 0], ["Gotat Nalt", 0]]);
   const { imWarenkorb } = await import("../apps/mnyra-heart/heart-lifeskin-berechnung.js");
   assert.equal(imWarenkorb({ berichtGeoeffnet: true, sahPreis: true }), false, "Preis gesehen zaehlt nicht als Warenkorb");
+  assert.equal(imWarenkorb({ berichtGeoeffnet: true, kasseGeoeffnet: true }), true, "die Kasse der Analyseseite ist der Warenkorb");
   // Jeder Punkt steht so auf der Analyseseite, wie er gesucht wird.
   const html = lies("apps/lifeskin-verkauf/terapia.html");
   for (const a of TERAPIA_ABSCHNITTE) {
