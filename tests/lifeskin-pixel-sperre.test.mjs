@@ -69,7 +69,12 @@ export function pixelZeilen(pfad) {
 }
 // Neu eingetragen am 29.09.2026 mit der Erlaubnis oben (browserAngaben in den
 // Bestellungen, kein AddToCart/InitiateCheckout nach dem Kauf).
-const SEITEN_HASH = "2eb7f4b9de32d1ac";
+// Pixel-Aenderung erlaubt von Albert am 29.09.2026 (zweiter Auftrag):
+// Ergebnisseite mit Warenkorb wie im Laden - AddToCart beim Kaufknopf
+// (Warenkorb), nicht mehr beim gesehenen Preis; InitiateCheckout bei
+// "Vazhdo me porosinë" (Kasse). Auch die Warteseite meldet kein AddToCart
+// mehr fuer den blossen Preis.
+const SEITEN_HASH = "485b6255a34667f9";
 
 test("Meta-Pixel-Sperre: die Pixel-Dateien sind unveraendert", () => {
   for (const [pfad, erwartet] of Object.entries(DATEIEN)) {

@@ -731,6 +731,9 @@ test("Analyse: die Seite mit dem Ergebnis, 9 Punkte und ihr Kauf - ohne die Kass
   const { imWarenkorb } = await import("../apps/mnyra-heart/heart-lifeskin-berechnung.js");
   assert.equal(imWarenkorb({ berichtGeoeffnet: true, sahPreis: true }), false, "Preis gesehen zaehlt nicht als Warenkorb");
   assert.equal(imWarenkorb({ berichtGeoeffnet: true, kasseGeoeffnet: true }), true, "die Kasse der Analyseseite ist der Warenkorb");
+  // Seit dem 29.09. hat die Analyseseite einen Warenkorb vor der Kasse (terapia.js #korb).
+  assert.equal(imWarenkorb({ berichtGeoeffnet: true, sahPreis: true, timings: { kauf: { knopf: "2026-09-29T10:00:00Z" } } }), true,
+    "der Warenkorb der Analyseseite zaehlt, auch ohne Kasse");
   // Jeder Punkt steht so auf der Analyseseite, wie er gesucht wird.
   const html = lies("apps/lifeskin-verkauf/terapia.html");
   for (const a of TERAPIA_ABSCHNITTE) {

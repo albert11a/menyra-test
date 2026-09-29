@@ -28,6 +28,7 @@ html[data-weg="lifeskinshop"] {
   --wash: #f2f6f5;
   --accent: #c8eadc;
   --shop-pfeil: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 17 17 7'/%3E%3Cpath d='M7 7h10v10'/%3E%3C/svg%3E");
+  --shop-weiter: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14'/%3E%3Cpath d='m12 5 7 7-7 7'/%3E%3C/svg%3E");
   --shop-teilen: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3v13'/%3E%3Cpath d='m7 8 5-5 5 5'/%3E%3Cpath d='M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6'/%3E%3C/svg%3E");
   background: #fff;
 }
@@ -104,6 +105,12 @@ html[data-weg="lifeskinshop"] .knopf::after {
   mask: var(--shop-pfeil) center / contain no-repeat;
 }
 html[data-weg="lifeskinshop"] .knopf:active { background: #24575a; }
+/* Im Warenkorb geht es weiter, nicht hinaus: der Pfeil nach rechts wie
+   "Vazhdo me porosinë" im Laden (shop.js #korbBlatt, ArrowRight). */
+html[data-weg="lifeskinshop"] .korb__vazhdo::after {
+  -webkit-mask: var(--shop-weiter) center / contain no-repeat;
+  mask: var(--shop-weiter) center / contain no-repeat;
+}
 html[data-weg="lifeskinshop"] .knopf--wa { background: #1f8f55; }
 html[data-weg="lifeskinshop"] .porosia__forma input { border-color: #7d938f; border-radius: 8px; }
 html[data-weg="lifeskinshop"] .porosia__forma input:focus { outline: 2px solid var(--ink); outline-offset: 1px; }

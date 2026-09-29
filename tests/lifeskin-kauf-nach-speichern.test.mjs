@@ -197,13 +197,87 @@ test("die Conversions API sendet User-Agent und Seite - nur unsere eigene", () =
 });
 
 // ---------- 4. Nach dem Kauf keine AddToCart/InitiateCheckout mehr ----------
+//
+// Seit dem zweiten Auftrag vom 29.09. ("shto në shportë nur bei Preis
+// gesichtet ist ein Fehler"): Der Preis allein meldet gar nichts mehr an
+// Meta. AddToCart kommt beim Kaufknopf, der in den Warenkorb legt.
 
-test("nach dem Kauf melden Ergebnis- und Warteseite kein AddToCart/InitiateCheckout mehr", () => {
+test("nach dem Kauf keine Kasse mehr an Meta - und der Preis allein meldet nichts", () => {
   for (const pfad of ["apps/lifeskin-verkauf/terapia.js", "apps/lifeskin-astra/astra.js"]) {
     const quelle = lies(pfad);
-    assert.match(quelle, /if \(feld === "sahPreis" && !this\.bestellt\) this\.pixel\.meldeKorb\(this\.preis\);/, pfad);
-    assert.match(quelle, /else if \(feld === "kasseGeoeffnet" && !this\.bestellt\) this\.pixel\.meldeKasse\(this\.preis\);/, pfad);
+    assert.match(quelle, /if \(feld === "kasseGeoeffnet" && !this\.bestellt\) this\.pixel\.meldeKasse\(this\.preis\);/, pfad);
+    assert.doesNotMatch(quelle, /sahPreis[^\n]*meldeKorb/, `${pfad}: AddToCart beim blossen Preis`);
   }
+  // Die Warteseite hat keinen Korb: dort kein AddToCart mehr.
+  assert.doesNotMatch(lies("apps/lifeskin-astra/astra.js"), /pixel\.meldeKorb\(/);
+});
+
+// ---------- 5. Der Warenkorb der Ergebnisseite (zweiter Auftrag, 29.09.) ----------
+//
+// "Da die Therapieseite direkt zur Kasse fuehrt, machen wir es dort wie im
+// Laden": Jeder Kaufknopf legt in den Warenkorb, nur "Vazhdo me porosinë"
+// fuehrt weiter. AddToCart beim Korb, InitiateCheckout bei der Kasse.
+
+test("jeder Kaufknopf der Ergebnisseite legt zuerst in den Warenkorb", () => {
+  const js = lies("apps/lifeskin-verkauf/terapia.js");
+  assert.match(js, /if \(ziel\.closest\("\[data-porosi\]"\)\) \{\s*this\.#kauf\("knopf"\);\s*this\.#korb\(true\);/);
+  assert.match(js, /ziel\.closest\("\[data-korbvazhdo\]"\)\) \{\s*this\.#korb\(false\);\s*this\.#porosia\(true\);/);
+  // Auch aus dem Medienfenster.
+  assert.match(js, /tun: \(\) => \{ this\.#kauf\("knopf"\); this\.#korb\(true\); \}/);
+  // Kein Kaufknopf fuehrt mehr direkt in die Kasse.
+  assert.doesNotMatch(js, /tun: \(\) => this\.#porosia\(true\)/);
+  // Alle Kaufknoepfe der Seite tragen data-porosi: unter den Produkten, unter
+  // der Përputhje, die Leiste unten.
+  const html = lies("apps/lifeskin-verkauf/terapia.html");
+  assert.equal((html.match(/<button class="knopf" type="button" data-porosi/g) || []).length, 3);
+});
+
+test("das Blatt: wie im Laden, nur ein Weg weiter", () => {
+  const html = lies("apps/lifeskin-verkauf/terapia.html");
+  const blatt = html.slice(html.indexOf('<dialog class="korb"'), html.indexOf("</dialog>"));
+  assert.ok(blatt, "Kein Warenkorb-Blatt");
+  assert.match(blatt, /Zgjedhja juaj/);
+  assert.match(blatt, /U shtua në shportë\./);
+  assert.match(blatt, /Kontrolloni produktet dhe vazhdoni me porosinë\./);
+  assert.match(blatt, /Gjithsej · dërgesa e përfshirë/);
+  assert.match(blatt, /data-korbvazhdo/);
+  assert.match(blatt, /data-korbmbyll/);
+  assert.doesNotMatch(blatt, /Vazhdo blerjet/, "Kein zweiter Knopf - der Weg geht nur zur Kasse");
+  assert.equal((blatt.match(/<button/g) || []).length, 2, "Schliessen und Weiter, sonst nichts");
+  const js = lies("apps/lifeskin-verkauf/terapia.js");
+  assert.match(js, /schreibe\(\$\("#t-korbvazhdo"\), `Vazhdo me porosinë · \$\{euro\(this\.preis\)\}`\);/);
+});
+
+test("Meta: AddToCart beim Warenkorb, einmal, nie in der Vorschau, nie nach dem Kauf", () => {
+  const js = lies("apps/lifeskin-verkauf/terapia.js");
+  const korb = js.slice(js.indexOf("  #korb(auf) {"), js.indexOf("  #korbZeichnen() {"));
+  assert.ok(korb.includes("this.pixel.meldeKorb(this.preis);"), "Kein AddToCart beim Warenkorb");
+  assert.ok(korb.indexOf("if (!this.mitAngebot) return;") < korb.indexOf("this.pixel.meldeKorb"), "nach dem Kauf (mitAngebot) kein AddToCart");
+  assert.ok(korb.indexOf("if (this.nurVorschau) return;") < korb.indexOf("this.pixel.meldeKorb"), "in der Vorschau kein AddToCart");
+  // Genau eine Stelle meldet AddToCart auf der Ergebnisseite.
+  assert.equal((js.match(/pixel\.meldeKorb\(/g) || []).length, 1);
+  // Live: im Korb steht er bei N'shport.
+  assert.match(korb, /this\.quelle\.merken\(\{ timings: \{ live: "porosia" \} \}\)/);
+});
+
+test("Heart: der Warenkorb der Ergebnisseite zaehlt als Warenkorb, Shport und Wert", async () => {
+  const { imWarenkorb, baueKennzahlen, normalisiere } = await import("../apps/mnyra-heart/heart-lifeskin-berechnung.js");
+  const { baueShopWeg } = await import("../apps/mnyra-heart/heart-lifeskin-weg.js");
+  const jetzt = new Date().toISOString();
+  const nurKorb = normalisiere("k1", { createdAt: jetzt, updatedAt: jetzt, step: "result", berichtGeoeffnet: true, sahPreis: true,
+    timings: { kauf: { knopf: jetzt, v: "klassisch" } } });
+  const mitKasse = normalisiere("k2", { createdAt: jetzt, updatedAt: jetzt, step: "result", berichtGeoeffnet: true, sahPreis: true,
+    kasseGeoeffnet: true, timings: { kauf: { knopf: jetzt, v: "klassisch" } } });
+  const nurPreis = normalisiere("k3", { createdAt: jetzt, updatedAt: jetzt, step: "result", berichtGeoeffnet: true, sahPreis: true });
+  assert.equal(imWarenkorb(nurKorb), true);
+  assert.equal(imWarenkorb(nurPreis), false, "Preis gesehen ist kein Warenkorb");
+  const k = baueKennzahlen([nurKorb, mitKasse, nurPreis], { zeitraum: "heute" });
+  assert.equal(k.warenkoerbe, 2);
+  assert.equal(k.warenkorbWert, 78, "je Korb der Preis des Sets");
+  const weg = baueShopWeg([nurKorb, mitKasse, nurPreis]);
+  const analyse = Object.fromEntries(weg.chips.analyse.kauf.map((s) => [s.label, s.anzahl]));
+  assert.equal(analyse.Shport, 2);
+  assert.equal(analyse.Arka, 1, "Arka erst mit der Kasse");
 });
 
 // ---------- Live: der Laden schreibt, wo der Besucher gerade ist ----------

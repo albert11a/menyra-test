@@ -354,6 +354,27 @@
     <p>Paguani te dera · Transport falas · <span id="t-leistegaranci"></span></p>
   </div>
 
+  <!-- DER WARENKORB VOR DER KASSE (29.09., Wunsch Inhaber): wie im Laden
+       (/lifeskinshop). Jeder Kaufknopf der Seite legt die Therapie in den
+       Korb, das Blatt zeigt, was darin liegt, und es gibt nur einen Weg
+       weiter: "Vazhdo me porosinë" in die Kasse. Meta bekommt hier
+       AddToCart (nicht mehr beim blossen Preis), die Kasse InitiateCheckout.
+       Gefuellt von terapia.js (#korb). -->
+  <dialog class="korb" id="korb" aria-labelledby="t-korbtitulli" data-pfad="Warenkorb">
+    <div class="korb__kok">
+      <span class="korb__syri">Zgjedhja juaj</span>
+      <button type="button" class="korb__mbyll" id="t-korbmbyll" data-korbmbyll aria-label="Mbyllni">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <h2 class="korb__titulli" id="t-korbtitulli">U shtua në shportë.</h2>
+    <p class="korb__nen">Kontrolloni produktet dhe vazhdoni me porosinë.</p>
+    <div class="korb__lista" id="t-korblista"></div>
+    <div class="korb__totali"><span>Gjithsej · dërgesa e përfshirë</span><strong id="t-korbshuma"></strong></div>
+    <p class="korb__kursim" id="t-korbkursim" hidden></p>
+    <button class="knopf korb__vazhdo" type="button" data-korbvazhdo id="t-korbvazhdo"></button>
+  </dialog>
+
   <div class="porosia" id="porosia" data-pfad="Bestellschirm" hidden>
     <div class="porosia__kok">
       <button type="button" class="mbrapa" data-mbyll aria-label="Kthehu">←</button>

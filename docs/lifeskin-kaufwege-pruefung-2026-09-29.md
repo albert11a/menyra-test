@@ -82,6 +82,38 @@ AddToCart/InitiateCheckout mehr." Tests:
    und Warteseite). Pruefstand: Wiederoeffnen nach dem Kauf mit dem Preis im
    Bild - nur PageView.
 
+## Zweiter Auftrag 29.09.: Warenkorb auf der Ergebnisseite
+
+Pixel-Aenderung erlaubt von Albert am 29.09.2026 ("ich sehe das als Fehler:
+shto në shportë nur bei Preis gesichtet"; "ich gebe dir die Erlaubnis alles
+zu machen, solange es richtig ist"). Tests:
+`tests/lifeskin-kauf-nach-speichern.test.mjs` (Teil 5), Pixel-Sperre neu
+eingetragen.
+
+- **Laden (/lifeskinshop), geprueft:** Alle Knoepfe, die in den Korb legen
+  (unter dem Titelbild "Porosit setin", Leiste unten "Zgjidh setin",
+  "Porosit setin e plotë", die Blaetter "Zgjidh këtë set" und "Porosit setin"),
+  laufen ueber `setLegen`: AddToCart 39 € einmal je Besuch, Heart imKorb,
+  Warenkorb 39 €, Chip Shop "Shport", Live N'shport; dann das Blatt "U shtua
+  në shportë", "Vazhdo me porosinë" oeffnet die Kasse (InitiateCheckout, Arka).
+- **Ergebnisseite (/terapia, beide Kleider):** Jeder Kaufknopf (unter den
+  Produkten, unter der Përputhje, Leiste unten, Medienfenster) legt zuerst in
+  den Warenkorb: dasselbe Blatt wie im Laden, nur mit "Vazhdo me porosinë".
+  - Meta: **AddToCart beim Knopf** (nicht mehr beim gesehenen Preis),
+    InitiateCheckout bei "Vazhdo me porosinë", Purchase nach dem Speichern.
+  - Heart: der Knopf als `timings.kauf.knopf` (jetzt auch in der klassischen
+    Fassung) - Kachel "Warenkoerbe" (39 €), Chip "Analyse" Shport, Live
+    N'shport; Arka erst mit der Kasse. Bewusst nicht `imKorb` (der Korb des
+    Ladens; der Chip "Analyse" trennt daran die zwei Kassen).
+- **Warteseite:** kein AddToCart mehr fuer den blossen Preis (zeigt einen
+  freigegebenen Befund ohnehin nur mit ?klasik=1).
+- Heart "Seiten ohne Stats": "Kauf (N'shport)" oeffnet den Warenkorb
+  (?korb=1), neu "Kasse (Arka)" (?kasse=1).
+- Pruefstand (390 px, beide Kleider): Preis im Bild nichts; Knopf AddToCart
+  39 € einmal (auch mit dem zweiten Knopf nicht noch einmal); Kasse
+  InitiateCheckout 39 € einmal; Purchase 39 € = Fallnummer; Wiederoeffnen nur
+  PageView. Heart: Warenkoerbe 1 (39 €), Shport 1, Arka 1, Adresa, Cash.
+
 ## Weiter offen
 
 - **Ob die Conversions API ueberhaupt laeuft, ist von hier nicht zu sehen**

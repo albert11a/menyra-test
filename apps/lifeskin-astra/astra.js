@@ -1944,14 +1944,12 @@ export class Analiza {
     this.markenGesetzt = this.markenGesetzt || new Set();
     this.markenGesetzt.add(feld);
 
-    // ZWEI DER MARKEN SIND AUCH FUER META EIN EREIGNIS.
+    // EINE DER MARKEN IST AUCH FUER META EIN EREIGNIS.
     //
-    // "Preis gesehen" ist AddToCart, "Kasse geoeffnet" ist
-    // InitiateCheckout - zwei von Metas fuenf Standardereignissen, auf
-    // die sich eine Anzeigengruppe richten laesst. Sie standen seit
-    // jeher in PIXEL_EREIGNISSE und wurden nie gemeldet: Sie hingen an
-    // den Schritten "offer" und "address", und die ruft im ganzen
-    // Trichter niemand auf.
+    // "Kasse geoeffnet" ist InitiateCheckout - eines von Metas fuenf
+    // Standardereignissen, auf die sich eine Anzeigengruppe richten
+    // laesst. Bis zum 29.09. war auch "Preis gesehen" eines (AddToCart);
+    // siehe unten, warum nicht mehr.
     //
     // HIER UND NICHT AN VIER STELLEN: Diese Methode ist ohnehin die
     // Sperre, die jede Marke genau einmal durchlaesst. Was hier
@@ -1962,8 +1960,13 @@ export class Analiza {
     //
     // Nach dem Kauf nicht mehr (29.09., Pixel-Aenderung erlaubt von Albert
     // am 29.09.2026) - wie auf der Ergebnisseite (terapia.js #marke).
-    if (feld === "sahPreis" && !this.bestellt) this.pixel.meldeKorb(this.preis);
-    else if (feld === "kasseGeoeffnet" && !this.bestellt) this.pixel.meldeKasse(this.preis);
+    //
+    // UND "PREIS GESEHEN" IST KEIN WARENKORB MEHR (29.09., ebenso erlaubt):
+    // Meta bekommt AddToCart nur noch, wenn wirklich etwas in einen Korb
+    // gelegt wird (Laden, Warenkorb der Ergebnisseite). Diese Seite zeigt
+    // einen freigegebenen Befund nur noch mit ?klasik=1 (#zurTerapia) und hat
+    // keinen Korb - hier bleibt fuer Meta die Kasse.
+    if (feld === "kasseGeoeffnet" && !this.bestellt) this.pixel.meldeKasse(this.preis);
 
     this.quelle.merken({ [feld]: true }).then((antwort) => {
       if (!antwort?.ok) this.markenGesetzt.delete(feld);

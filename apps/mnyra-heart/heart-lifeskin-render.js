@@ -911,7 +911,11 @@ export function baueStillLinks(zustand) {
         fehlt: "kein wartender Fall" },
       { label: "Analyse", url: fertig ? stillLink(`/analiza/${fertig.id}`, mitWeg) : "",
         fehlt: "keine freigegebene Analyse" },
-      { label: "Kauf (N'shport)", url: mitKorb ? stillLink(`/analiza/${mitKorb.id}`, { kasse: "1", ...mitWeg }) : "",
+      // Seit dem 29.09. hat die Ergebnisseite einen Warenkorb vor der Kasse:
+      // N'shport oeffnet ihn, Arka die Kasse dahinter.
+      { label: "Kauf (N'shport)", url: mitKorb ? stillLink(`/analiza/${mitKorb.id}`, { korb: "1", ...mitWeg }) : "",
+        fehlt: "keine Analyse mit Mitteln" },
+      { label: "Kasse (Arka)", url: mitKorb ? stillLink(`/analiza/${mitKorb.id}`, { kasse: "1", ...mitWeg }) : "",
         fehlt: "keine Analyse mit Mitteln" },
       { label: weg ? "Ergebnis (Urteil)" : "Therapieseite (neu)", url: fertig ? stillLink(`/terapia/${fertig.id}`, mitWeg) : "",
         fehlt: "keine freigegebene Analyse" }

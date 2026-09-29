@@ -575,6 +575,43 @@ html[data-ansicht] body:has(#leiste) { padding-bottom: 0; }
 .porosia__siguria { font-size: .78rem; color: var(--muted); text-align: center; margin-bottom: 8px; }
 .porosia__vorlage { font-size: .82rem; color: var(--orange); text-align: center; margin-top: 8px; font-weight: 600; }
 
+/* DER WARENKORB VOR DER KASSE (29.09., Wunsch Inhaber) - ein Blatt von
+   unten wie im Laden (apps/lifeskin-shop/shop.css: dialog, .basket-row,
+   .total, .cart-saving). Die Farben kommen aus den Variablen der Seite:
+   im Kleid des Ladens (terapia-shop.css) die Tinte, auf /lifeskin das
+   Gruen und der orange Knopf der Seite. Klassen statt h2/h3, damit keine
+   Regel fuer Ueberschriften der Seite hineingreift. */
+.korb {
+  position: fixed; inset: auto 0 0; margin: 0 auto;
+  width: min(100%, 480px); max-width: 100%; max-height: 90dvh;
+  padding: 0 22px calc(24px + env(safe-area-inset-bottom));
+  border: 0; border-radius: 22px 22px 0 0;
+  background: var(--white); color: var(--ink);
+  overflow-y: auto; overscroll-behavior: contain;
+}
+.korb::backdrop { background: #062e326e; backdrop-filter: blur(3px); }
+body:has(.korb[open]) { overflow: hidden; }
+.korb__kok {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 19px 0; position: sticky; top: 0; z-index: 1; background: var(--white);
+}
+.korb__syri { font-size: 11px; line-height: 1.4; letter-spacing: 1.6px; font-weight: 700; text-transform: uppercase; }
+.korb__mbyll {
+  width: 44px; height: 44px; display: grid; place-items: center; flex: none;
+  border: 1px solid var(--line); border-radius: 50%; background: transparent; color: var(--ink);
+}
+.korb .korb__titulli { font-size: 27px; line-height: 1.1; letter-spacing: -1px; font-weight: 700; margin: 0 0 12px; }
+.korb .korb__nen { font-size: 14px; line-height: 1.5; color: var(--muted); margin-bottom: 20px; }
+.korb__rresht { display: flex; align-items: center; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+.korb__foto { width: 62px; height: 78px; flex: none; object-fit: cover; border-radius: 5px; background: var(--green-soft); }
+.korb__rresht > div { flex: 1; min-width: 0; }
+.korb .korb__emer { font-size: 14px; font-weight: 700; line-height: 1.3; }
+.korb .korb__pershkrim { font-size: 12px; line-height: 1.4; color: var(--muted); margin-top: 6px; }
+.korb__totali { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 23px 0; font-size: 16px; }
+.korb__totali strong { font-size: 27px; white-space: nowrap; }
+.korb .korb__kursim { font-size: 12px; line-height: 1.5; color: var(--ink); background: var(--green-soft); padding: 12px; border-radius: 7px; }
+.korb__vazhdo { margin-top: 22px; }
+
 /* ---------- Nur die Seite mit echten Daten (terapia.html) ---------- */
 .gjendja { padding: 60px 0; color: var(--muted); }
 .gjendja h1 { font-size: 1.5rem; margin-bottom: 12px; color: var(--ink); }

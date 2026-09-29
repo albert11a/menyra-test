@@ -22,7 +22,9 @@ test("jeder Link in 'Seiten ohne Stats' traegt still=1", () => {
   const nach = gruppen.at(-1).seiten;
   assert.match(nach[0].url, /\/analiza\/aaaa1111\?still=1$/);
   assert.match(nach[1].url, /\/analiza\/bbbb2222\?still=1$/);
-  assert.match(nach[2].url, /\/analiza\/bbbb2222\?still=1&kasse=1$/);
+  // Seit dem 29.09.: N'shport oeffnet den Warenkorb der Ergebnisseite, Arka die Kasse.
+  assert.match(nach[2].url, /\/analiza\/bbbb2222\?still=1&korb=1$/);
+  assert.match(nach[3].url, /\/analiza\/bbbb2222\?still=1&kasse=1$/);
   assert.ok(alle.some((s) => /schirm=tel&weg=foto/.test(s.url)));
 });
 

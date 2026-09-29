@@ -16,6 +16,7 @@
 import { AnalyseDaten, kennungAusPfad, dokument } from "../lifeskin-astra/astra-daten.js";
 import { Pixel, pixelKennungen, browserAngaben } from "../lifeskin/lifeskin-pixel.js";
 import { STANDARD_KONFIG } from "../lifeskin/lifeskin-catalog.js";
+import { preisFuer } from "../../shared/lifeskin-preise.js";
 import { LIFESKIN_WHATSAPP, LIFESKIN_WHATSAPP_TEXT, LIFESKIN_TELEFON_VORWAHL } from "../lifeskin/lifeskin-config.js";
 import { brauchtAbklaerung } from "../../shared/lifeskin-raport-v3.js";
 import { shitjaLesen } from "../../shared/lifeskin-shitja.js";
@@ -322,6 +323,8 @@ export class Terapia {
       this.#abschnitteMessen();
     }
     if (globalThis.__mnyraStill === true && this.#suche("kasse") === "1") this.#porosia(true);
+    // Im stillen Modus direkt der Warenkorb (Heart: "Seiten ohne Stats").
+    else if (globalThis.__mnyraStill === true && this.#suche("korb") === "1") this.#korb(true);
   }
 
   // DIE ERGEBNISSE ANDERER - welche, entscheidet Heart je Befund
@@ -423,7 +426,8 @@ export class Terapia {
       name: this.daten?.name,
       melde: (m) => this.klickpfad?.melde("kommentar", `${m.art === "video" ? "Video" : "Foto"} · ${m.produkt || m.id}`),
       nachSchliessen: () => this.leistePruefen?.(),
-      kaufen: this.mitAngebot ? { text: this.kaufWort(), tun: () => this.#porosia(true), gilt: () => this.mitAngebot } : null
+      // Auch aus dem Medienfenster erst in den Warenkorb, wie jeder Kaufknopf.
+      kaufen: this.mitAngebot ? { text: this.kaufWort(), tun: () => { this.#kauf("knopf"); this.#korb(true); }, gilt: () => this.mitAngebot } : null
     });
     this.kundenMedien.zeige(this.daten?.klientet);
   }
@@ -1362,10 +1366,16 @@ export class Terapia {
     document.addEventListener("click", (ereignis) => {
       const ziel = ereignis.target;
       if (!(ziel instanceof Element)) return;
+      // Jeder Kaufknopf legt zuerst in den Warenkorb (#korb) - erst
+      // "Vazhdo me porosinë" oeffnet die Kasse, wie im Laden.
       if (ziel.closest("[data-porosi]")) {
         this.#kauf("knopf");
+        this.#korb(true);
+      } else if (ziel.closest("[data-korbvazhdo]")) {
+        this.#korb(false);
         this.#porosia(true);
-      } else if (ziel.closest("[data-mbyll]")) this.#porosia(false);
+      } else if (ziel.closest("[data-korbmbyll]")) this.#korb(false);
+      else if (ziel.closest("[data-mbyll]")) this.#porosia(false);
       else if (ziel.closest("[data-hilfe]") && LIFESKIN_WHATSAPP) {
         globalThis.open?.(this.#waLink(), "_blank", "noopener");
       } else if (ziel.closest('a[href="#garancia"]')) {
@@ -1374,6 +1384,14 @@ export class Terapia {
         if (block) block.open = true;
       }
     });
+    // Ein Tipp neben den Warenkorb schliesst ihn - wie im Laden (shop.js).
+    const korb = $("#korb");
+    korb?.addEventListener("click", (ereignis) => {
+      if (ereignis.target !== korb) return;
+      const r = korb.getBoundingClientRect();
+      if (ereignis.clientX < r.left || ereignis.clientX > r.right || ereignis.clientY < r.top || ereignis.clientY > r.bottom) this.#korb(false);
+    });
+    korb?.addEventListener("close", () => this.leistePruefen?.());
     $("#forma")?.addEventListener("submit", (ereignis) => {
       ereignis.preventDefault();
       this.#bestellen();
@@ -1395,6 +1413,88 @@ export class Terapia {
         if (address.strasse || address.ort) this.quelle.merken({ address, timings: { live: "address" } });
       });
     }
+  }
+
+  // ---------- Der Warenkorb vor der Kasse (29.09., Wunsch Inhaber) ----------
+  //
+  // WIE IM LADEN (/lifeskinshop, shop.js #korbBlatt): Der Kaufknopf legt die
+  // Therapie in den Korb, ein Blatt von unten zeigt, was darin liegt, und nur
+  // ein Knopf fuehrt weiter - "Vazhdo me porosinë" in die Kasse. Vorher ging
+  // jeder Kaufknopf gleich in die Kasse; einen Warenkorb gab es hier nicht.
+  //
+  // META (Pixel-Aenderung erlaubt von Albert am 29.09.2026): AddToCart kommt
+  // HIER, beim Knopf - nicht mehr, wenn nur der Preis im Bild stand (#marke).
+  // "Nur gesehen" ist kein Warenkorb, und auf ein Signal, das jeder Leser
+  // ausloest, kann eine Anzeige nicht sinnvoll optimieren. Die Kasse
+  // (#porosia) meldet weiter InitiateCheckout, die Bestellung Purchase.
+  // Einmal je Besuch (der Pixel sperrt selbst), nie in der Vorschau, nie
+  // nach dem Kauf (mitAngebot).
+  //
+  // HEART: Der Knopf steht als timings.kauf.knopf in der Sitzung (#kauf) -
+  // daran zaehlen Chip "Analyse" Nr. 10 "Shport" und die Kachel
+  // "Warenkoerbe" (imWarenkorb); Live steht bei N'shport. Bewusst NICHT
+  // imKorb: Das ist der Korb im Laden, und der Chip "Analyse" trennt daran
+  // die Kasse des Ladens von der Kasse dieser Seite.
+  #korb(auf) {
+    const blatt = $("#korb");
+    if (!auf) {
+      if (blatt?.open) {
+        if (typeof blatt.close === "function") blatt.close();
+        else blatt.removeAttribute("open");
+      }
+      return;
+    }
+    if (!this.mitAngebot) return;
+    // Ohne Blatt (eine aeltere Seite aus dem Zwischenspeicher): gleich zur Kasse.
+    if (!blatt) { this.#porosia(true); return; }
+    this.#korbZeichnen();
+    if (!blatt.open) {
+      if (typeof blatt.showModal === "function") blatt.showModal();
+      else blatt.setAttribute("open", "");
+    }
+    blatt.scrollTop = 0;
+    if (this.nurVorschau) return;
+    this.pixel.meldeKorb(this.preis);
+    if (!this.korbGemerkt) {
+      this.korbGemerkt = true;
+      this.quelle.merken({ timings: { live: "porosia" } });
+    }
+  }
+
+  // Was im Korb liegt: die Mittel dieses Befunds, in der Reihenfolge der
+  // Anwendung, mit Foto, Name und Menge - und der Preis des Pakets. Die
+  // Ersparnis nur im Kleid des Ladens, dort steht sie auch im Laden.
+  #korbZeichnen() {
+    const sortiert = [...this.produkte].sort((a, b) => (Number(a.perdorimi?.hapi) || 9) - (Number(b.perdorimi?.hapi) || 9));
+    $("#t-korblista")?.replaceChildren(...sortiert.map((p) => {
+      const zeile = element("div", "korb__rresht");
+      const bild = this.#bilderVon(p)[0];
+      let foto;
+      if (bild) {
+        foto = element("img", "korb__foto");
+        foto.src = bild;
+        foto.alt = p.name;
+        foto.width = 62;
+        foto.height = 78;
+        foto.decoding = "async";
+      } else {
+        foto = produktBild(p, "korb__foto");
+      }
+      const text = element("div");
+      text.append(element("h3", "korb__emer", p.name));
+      const nen = [p.nenName, p.inhalt].filter(Boolean).join(" · ");
+      if (nen) text.append(element("p", "korb__pershkrim", nen));
+      zeile.append(foto, text);
+      return zeile;
+    }));
+    schreibe($("#t-korbshuma"), euro(this.preis));
+    const einzeln = this.produkte.length * preisFuer(1);
+    const kursim = this.shop && this.produkte.length > 1 && einzeln > this.preis
+      ? `Veçmas ${euro(einzeln)} · Kurseni ${euro(einzeln - this.preis)} së bashku.` : "";
+    const zeile = $("#t-korbkursim");
+    schreibe(zeile, kursim);
+    zeigen(zeile, Boolean(kursim));
+    schreibe($("#t-korbvazhdo"), `Vazhdo me porosinë · ${euro(this.preis)}`);
   }
 
   #porosia(auf) {
@@ -1798,8 +1898,13 @@ export class Terapia {
   // Der Kaufweg (shared/lifeskin-kaufweg.js) - nur in der neuen Fassung,
   // nie in der Vorschau fuer uns und nie im stillen Modus. Jede Marke
   // einmal je Besuch, ein Fehler einmal je Art.
+  // DEN KAUFKNOPF ZAEHLT SEIT DEM 29.09. AUCH DIE KLASSISCHE FASSUNG: Er legt
+  // die Therapie in den Warenkorb (#korb), und Heart zaehlt den Korb an
+  // timings.kauf.knopf. Vorher ging er gleich in die Kasse, und
+  // kasseGeoeffnet sagte dasselbe. Die uebrigen Marken schreibt weiter nur
+  // die neue Fassung (ihre eigene Messung, shared/lifeskin-kaufweg.js).
   #kauf(marke, art = "") {
-    if (!this.neu || this.nurVorschau || globalThis.__mnyraStill === true) return;
+    if ((!this.neu && marke !== "knopf") || this.nurVorschau || globalThis.__mnyraStill === true) return;
     const schluessel = art ? `${marke}:${art}` : marke;
     if (this.kaufMarken.has(schluessel)) return;
     this.kaufMarken.add(schluessel);
@@ -1929,15 +2034,16 @@ export class Terapia {
   // Jede Marke einmal je Besuch, nie in der Vorschau.
   //
   // NACH DEM KAUF NICHTS MEHR AN META (29.09., Pixel-Aenderung erlaubt von
-  // Albert am 29.09.2026). Wer seine Seite nach der Bestellung wieder
-  // oeffnet, hat den Preis noch im Bild - das war ein zweites AddToCart von
-  // jemandem, der schon gekauft hat. Ein zweiter Kauf geht von hier nicht
-  // (mitAngebot). Die Marken fuer Heart bleiben, wie sie sind.
+  // Albert am 29.09.2026). Ein zweiter Kauf geht von hier nicht (mitAngebot).
+  //
+  // "PREIS GESEHEN" IST FUER META KEIN WARENKORB MEHR (29.09., ebenso
+  // erlaubt): AddToCart kommt beim Kaufknopf, der jetzt in den Warenkorb legt
+  // (#korb). Hier bleibt fuer Meta nur die Kasse. Die Marken fuer Heart
+  // bleiben, wie sie sind - "Preis gesehen" steht weiter am Fall.
   #marke(feld) {
     if (this.nurVorschau || !feld || this.marken.has(feld)) return;
     this.marken.add(feld);
-    if (feld === "sahPreis" && !this.bestellt) this.pixel.meldeKorb(this.preis);
-    else if (feld === "kasseGeoeffnet" && !this.bestellt) this.pixel.meldeKasse(this.preis);
+    if (feld === "kasseGeoeffnet" && !this.bestellt) this.pixel.meldeKasse(this.preis);
     this.quelle.merken({ [feld]: true }).then((antwort) => {
       if (!antwort?.ok) this.marken.delete(feld);
     });

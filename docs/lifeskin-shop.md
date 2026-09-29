@@ -339,13 +339,17 @@ Laden-Korb). Gemessen von der Analyseseite im Kleid des Ladens
 (`timings.terapia.sN`, gesehen wie im Laden, nie in der Vorschau);
 aeltere Besuche: berichtGeoeffnet 1, sahSchnitt 2, sahTherapie 3.
 
-Nur den Preis gesehen ist KEIN Warenkorb (Rueckfrage Inhaber 29.09.): Der
-Preis steht oben im ersten Abschnitt, Meta bekommt dafuer AddToCart (Pixel,
-gesperrt, bleibt so). In Heart zaehlt erst der Kaufknopf: Er oeffnet die
-Kasse (kasseGeoeffnet, InitiateCheckout) - das ist der Warenkorb der
-Analyseseite in der Kachel "Warenkoerbe" und in "Live · Kauf - N'shport".
+Nur den Preis gesehen ist KEIN Warenkorb (Rueckfrage Inhaber 29.09.) - und
+seit dem 29.09. abends auch fuer Meta nicht mehr (Pixel-Aenderung erlaubt von
+Albert am 29.09.2026). Die Analyseseite hat jetzt einen WARENKORB WIE DER
+LADEN: Jeder Kaufknopf oeffnet das Blatt "U shtua në shportë" (nur "Vazhdo
+me porosinë", kein "Vazhdo blerjet"), erst dieser Knopf die Kasse.
+Meta: AddToCart beim Knopf, InitiateCheckout bei der Kasse, Purchase nach
+dem Speichern. Heart: der Knopf (`timings.kauf.knopf`, auch in der
+klassischen Fassung) zaehlt in der Kachel "Warenkoerbe" (Setpreis), als
+Punkt 10 "Shport" und in "Live · Kauf - N'shport"; Arka erst mit der Kasse.
 Bis 29.09. mittags stand Punkt 10 kurz auf "Preis gesehen" (erst "Shport",
-dann "Çmimi").
+dann "Çmimi"). Pruefbericht: docs/lifeskin-kaufwege-pruefung-2026-09-29.md.
 
 Die neuen Marken stehen unter `timings` (offene Karte in firestore.rules):
 keine neue Regel, keine neue Stufe, kein Pixel. Im stillen Modus nichts.

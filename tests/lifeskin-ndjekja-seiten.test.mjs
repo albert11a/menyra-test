@@ -47,9 +47,12 @@ test("Therapieseite: die Beispielkarte zeichnet der Klickpfad nicht auf", () => 
   assert.match(lies("shared/lifeskin-klickpfad.js"), /if \(ziel\?\.closest\("\[data-pfad-still\]"\)\) return;/);
 });
 
-test("Therapieseite: Messmarken nur in der neuen Fassung, nie in der Vorschau oder still", () => {
+test("Therapieseite: Messmarken nur in der neuen Fassung (ausser dem Kaufknopf), nie in der Vorschau oder still", () => {
   const js = lies("apps/lifeskin-verkauf/terapia.js");
-  assert.match(js, /if \(!this\.neu \|\| this\.nurVorschau \|\| globalThis\.__mnyraStill === true\) return;/);
+  // Seit dem 29.09. zaehlt auch die klassische Fassung den Kaufknopf: Er legt
+  // die Therapie in den Warenkorb (#korb), und Heart zaehlt den Korb an
+  // timings.kauf.knopf. Alle anderen Marken bleiben der neuen Fassung.
+  assert.match(js, /if \(\(!this\.neu && marke !== "knopf"\) \|\| this\.nurVorschau \|\| globalThis\.__mnyraStill === true\) return;/);
   // Kein Pixel-Ereignis fuer die Begleitung oder die Messung.
   assert.doesNotMatch(js, /pixel\.melde\("(betreuung|ndjekja|kauf)/);
 });

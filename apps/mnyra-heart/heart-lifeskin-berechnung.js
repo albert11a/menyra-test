@@ -747,9 +747,14 @@ export const KAUF_STUFEN = Object.freeze([
 // Ob etwas im Warenkorb lag. Zwei Laeden, eine Frage: der auf der
 // Landingpage (imKorb) und die Kasse auf der Befundseite
 // (kasseGeoeffnet).
+//
+// SEIT DEM 29.09. HAT AUCH DIE BEFUNDSEITE EINEN WARENKORB: Ihr Kaufknopf
+// legt die Therapie in den Korb (terapia.js #korb), erst danach kommt die
+// Kasse. Der Knopf steht als timings.kauf.knopf in der Sitzung - wer ihn
+// gedrueckt und die Kasse nicht geoeffnet hat, hatte trotzdem etwas im Korb.
 export function imWarenkorb(sitzung) {
   return sitzung?.imKorb === true || sitzung?.kasseGeoeffnet === true
-    || sitzung?.hatBestellt === true;
+    || Boolean(sitzung?.timings?.kauf?.knopf) || sitzung?.hatBestellt === true;
 }
 
 export function anschriftBegonnen(sitzung) {
@@ -1214,12 +1219,12 @@ export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS, zeitraum = "" 
   const korbAlle = imBlick.filter(imWarenkorb);
   // Was im Korb lag. Drei Quellen, eine Zahl: der Korb auf der
   // Landingpage (korbWert), die fertige Bestellung (ihre Summe) und,
-  // wenn nur die Kasse der Befundseite aufging, der Preis des Sets -
-  // das ist es, was dort im Korb liegt.
+  // wenn nur der Korb oder die Kasse der Befundseite aufging, der Preis
+  // des Sets - das ist es, was dort im Korb liegt.
   const korbWert = korbAlle.reduce((summe, s) => summe
     + (alsZahl(s.korbWert) > 0 ? alsZahl(s.korbWert)
       : s.hatBestellt ? alsZahl(s.order?.total)
-        : s.kasseGeoeffnet ? setPreis : 0), 0);
+        : (s.kasseGeoeffnet || s.timings?.kauf?.knopf) ? setPreis : 0), 0);
   const kaufAbbrueche = imBlick.filter((s) => istKaufAbbruch(s, jetzt));
   const analyseAbbrueche = imBlick.filter((s) => istAnalyseAbbruch(s, jetzt));
 

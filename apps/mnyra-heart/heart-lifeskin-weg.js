@@ -129,7 +129,10 @@ export function baueLs2Weg(sitzungen, berichte = {}) {
 // "Gjeni setin" in die Analyse (Lead bei der Nummer). Beide stehen hier in
 // einer Reihe, dazu Umsatz, Bestellwert und was gekauft wird.
 const istShopKauf = (s) => s?.hatBestellt === true;
-const imKorbS = (s) => s?.imKorb === true || s?.kasseGeoeffnet === true || istShopKauf(s);
+// Wie die Kachel "Warenkoerbe" (imWarenkorb): seit dem 29.09. auch der
+// Warenkorb der Ergebnisseite (timings.kauf.knopf).
+const imKorbS = (s) => s?.imKorb === true || s?.kasseGeoeffnet === true
+  || Boolean(s?.timings?.kauf?.knopf) || istShopKauf(s);
 
 // DIE SEITE, ABSCHNITT FUER ABSCHNITT (1-9) - wie weit jemand gekommen
 // ist (shared/lifeskin-shopsicht.js; die Namen hat der Inhaber vergeben).
@@ -202,11 +205,12 @@ export const SHOP_ANALYSE_SEITE = Object.freeze(TERAPIA_ABSCHNITTE.map((a) => Ob
 })));
 // 10 SHPORT = EIN KAUFKNOPF DER ANALYSESEITE GEDRUECKT (29.09., Inhaber:
 // "wenn er Button drueckt, dann Shport"): timings.kauf.knopf. Nur den
-// Preis gesehen zaehlt nicht - das ist kein Warenkorb (Meta bekommt dafuer
-// trotzdem AddToCart, Pixel gesperrt). Der Knopf oeffnet gleich die Kasse;
-// wer die Kasse offen hatte, hat also gedrueckt (auch ueber das
-// Medienfenster, das keine Knopf-Marke schreibt, und Besuche vor der
-// Marke). Shport ueber Arka heisst: gedrueckt, aber die Kasse ging nicht auf.
+// Preis gesehen zaehlt nicht - das ist kein Warenkorb, und seit dem 29.09.
+// bekommt Meta dafuer auch kein AddToCart mehr (erst beim Knopf). Der Knopf
+// legt die Therapie in den Warenkorb (terapia.js #korb), erst "Vazhdo me
+// porosinë" oeffnet die Kasse (Arka). Wer die Kasse offen hatte, hat also
+// gedrueckt (Besuche vor der Marke). Shport ueber Arka heisst: im Korb,
+// aber nicht weiter zur Kasse.
 const analyseKasse = (s) => Boolean(s?.timings?.kauf?.kasse) || (ohneLadenKorb(s) && s?.kasseGeoeffnet === true);
 export const SHOP_ANALYSE_KAUF = Object.freeze([
   { nr: 10, id: "korb", label: "Shport", gilt: (s) => Boolean(s?.timings?.kauf?.knopf) || analyseKasse(s) },
