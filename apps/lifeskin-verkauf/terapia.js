@@ -40,6 +40,8 @@ import { beispielKarte, ikone } from "./ndjekja-teile.js";
 import { antwortenSpiegel } from "../../shared/lifeskin-antworten.js";
 import { wegAusSuche, wegGueltig } from "../../shared/lifeskin-weg.js";
 import { perputhjaGueltig, perputhjaStufe } from "../../shared/lifeskin-perputhja.js";
+import { TERAPIA_ABSCHNITTE, terapiaSichtPatch } from "../../shared/lifeskin-shopsicht.js";
+import { schirmGesehen } from "../../shared/lifeskin-landingtiefe.js";
 
 const $ = (wahl) => document.querySelector(wahl);
 const $$ = (wahl) => Array.from(document.querySelectorAll(wahl));
@@ -317,6 +319,7 @@ export class Terapia {
       this.quelle.merken({ timings: { live: this.bestellt ? "ordered" : "fertig" } });
       this.#marke("berichtGeoeffnet");
       this.#kauf("geoeffnet");
+      this.#abschnitteMessen();
     }
     if (globalThis.__mnyraStill === true && this.#suche("kasse") === "1") this.#porosia(true);
   }
@@ -1888,6 +1891,34 @@ export class Terapia {
       if (!knoten || knoten.hidden || knoten.closest("[hidden]")) continue;
       knoten.dataset.kaufmarke = marke;
       kauf.observe(knoten);
+    }
+  }
+
+  // WIE WEIT DIE SEITE GELESEN WURDE - nur im Laden, fuer den Chip
+  // "Analyse" in Heart (TERAPIA_ABSCHNITTE, shared/lifeskin-shopsicht.js).
+  // Gesehen heisst wie im Laden: wirklich im Bild, nicht nur mit einer
+  // Kante. Nie in der Vorschau; kein Pixel.
+  #abschnitteMessen() {
+    if (!this.shop || this.nurVorschau || typeof IntersectionObserver !== "function") return;
+    const nrVon = new Map();
+    const gemeldet = new Set();
+    const sicht = new IntersectionObserver((eintraege) => {
+      for (const e of eintraege) {
+        if (!e.isIntersecting) continue;
+        if (!schirmGesehen(e.intersectionRect.height, e.boundingClientRect.height, globalThis.innerHeight)) continue;
+        sicht.unobserve(e.target);
+        const nr = nrVon.get(e.target);
+        if (!nr || gemeldet.has(nr)) continue;
+        gemeldet.add(nr);
+        const patch = terapiaSichtPatch(nr);
+        if (patch) this.quelle.sichtSchreiben(patch);
+      }
+    }, { threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] });
+    for (const a of TERAPIA_ABSCHNITTE) {
+      for (const el of globalThis.document?.querySelectorAll?.(a.wahl) || []) {
+        nrVon.set(el, a.nr);
+        sicht.observe(el);
+      }
     }
   }
 

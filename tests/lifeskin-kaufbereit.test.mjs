@@ -60,7 +60,8 @@ test("Scan und Foto laufen durch die vier Fragen, dann Name und Nummer", () => {
   assert.match(methode(APP, "#fragenZeigen"), /this\.#aufnahmeFragen\("scan"\);/);
   assert.match(methode(APP, "#fotoNehmen"), /this\.#aufnahmeFragen\("foto"\);/);
   const fragen = methode(APP, "#aufnahmeFragen");
-  assert.match(fragen, /FRAGEN_NACH_AUFNAHME/);
+  // Die Liste je Weg: im Laden drei Fragen, sonst vier (lifeskin-content.js).
+  assert.match(fragen, /fragenNachAufnahme\(this\.weg\)/);
   assert.match(fragen, /danach: "name"/);
   // Ohne Fragenbildschirm wie bisher direkt zum Namen - nie eine weisse Seite.
   assert.match(fragen, /if \(!\$\("#ls-fragen"\)\) \{ this\.#nameZeigen\(\); return; \}/);
@@ -147,7 +148,7 @@ test("Neuladen mitten in den Fragen: zurueck an dieselbe Frage, mit den Antworte
   assert.match(merken, /antworten: \{ \.\.\.\(this\.fragen\.antworten \|\| \{\}\) \}/);
   const aufnehmen = methode(APP, "#standAufnehmen");
   assert.match(aufnehmen, /if \(stand\.schirm === "fragen"\) \{/);
-  assert.match(aufnehmen, /this\.#fragenStarten\(FRAGEN_NACH_AUFNAHME/);
+  assert.match(aufnehmen, /const liste = fragenNachAufnahme\(this\.weg\);\s*this\.#fragenStarten\(liste,/);
   // Jede neue Frage wird sofort gemerkt - ein hart beendetes App-Fenster
   // meldet kein pagehide mehr.
   assert.match(methode(APP, "#frageZeichnen"), /this\.#standMerken\(\);/);

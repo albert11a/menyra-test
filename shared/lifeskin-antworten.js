@@ -2,8 +2,9 @@
 //
 // Nach Scan und Foto stellt der Trichter vier Fragen (FRAGEN_NACH_AUFNAHME
 // in apps/lifeskin/lifeskin-content.js): was stoert, seit wann, was schon
-// probiert wurde und ob Dr. Gashi auch die Therapie vorbereiten soll. Die
-// Antworten liegen in der Sitzung - und die liest nur das CEO-Konto.
+// probiert wurde und ob Dr. Gashi auch die Therapie vorbereiten soll (im
+// Laden seit dem 29.09. nur die ersten drei - ohne die letzte Antwort bleibt
+// ihr Satz weg, bereitSatz). Die Antworten liegen in der Sitzung - und die liest nur das CEO-Konto.
 //
 // Heart legt beim Freigeben eine KLEINE, GEPRUEFTE Abschrift in den
 // Bericht (bericht.antworten), und die Therapieseite spiegelt sie zurueck:

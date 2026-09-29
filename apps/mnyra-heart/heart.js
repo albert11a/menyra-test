@@ -3921,6 +3921,10 @@ const operations = {
   setLifeskinTrichter(id) {
     actions.patchLifeskin({ trichterOffen: String(id || "main").trim() });
   },
+  // Welcher Chip der Karte "Shop" offen ist (Shop, Scan, Foto, Analyse).
+  setLifeskinShopChip(id) {
+    actions.patchLifeskin({ shopChip: String(id || "shop").trim() });
+  },
   setLifeskinFach(id) {
     const auswahl = store.getState().lifeskin?.auswahl;
     actions.patchLifeskin({ fach: String(id || "alle").trim(), auswahl: Array.isArray(auswahl) ? [] : null, auswahlLoeschen: false });

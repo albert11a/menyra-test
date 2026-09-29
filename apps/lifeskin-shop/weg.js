@@ -1,12 +1,12 @@
 /* DIE TIPPS WAEHREND DER KONTROLLE (/lifeskinshop, docs/lifeskin-shop-perputhja.md).
  *
- * Unter jeder der vier Fragen nach der Aufnahme steht ein kleiner Tipp zu
+ * Unter jeder der drei Fragen nach der Aufnahme steht ein kleiner Tipp zu
  * Akne - einer je Frage, und zwar einer, der zu dem passt, was gerade
  * gefragt wird. Die Antworten gehen dabei nicht verloren und nichts wird
  * gezaehlt: Das hier ist Text neben dem Trichter, kein Teil davon.
  *
  * WELCHE FRAGE GERADE STEHT, liest diese Datei an den Antwortknoepfen ab,
- * die der Trichter zeichnet (data-antwort). Jede der vier Fragen hat eine
+ * die der Trichter zeichnet (data-antwort). Jede der drei Fragen hat eine
  * Antwort, die es nur bei ihr gibt - am Trichter aendert sich dafuer keine
  * Zeile. Kennt die Datei die Frage nicht, bleibt die Karte versteckt.
  *
@@ -29,12 +29,9 @@ export const FRAGE_TIPPS = Object.freeze({
     marke: "KËSHILLË",
     fett: "Më pak, por të duhurat.",
     text: "Shumë produkte njëherësh e irritojnë lëkurën. Dy hapa të qartë bëjnë më shumë se pesë herë pas here."
-  }),
-  gatishmeria: Object.freeze({
-    marke: "PSE DY PRODUKTE?",
-    fett: "Aknet duan edhe hidratim.",
-    text: "Produktet kundër akneve e thajnë shpesh lëkurën – dhe lëkura e tharë irritohet më lehtë. Prandaj LF ACNE vjen me LF MOISTUR."
   })
+  // Die vierte Frage (gatishmeria) gibt es im Laden seit dem 29.09. nicht
+  // mehr (FRAGEN_NACH_AUFNAHME_WEGE) - und damit auch ihren Tipp nicht.
 });
 
 // Je Frage eine Antwort, die es nur in ihr gibt (FRAGEN in
@@ -43,8 +40,7 @@ export const FRAGE_TIPPS = Object.freeze({
 const ERKENNUNG = Object.freeze([
   ["anliegen", "pucrrat"],
   ["kohezgjatja", "vit"],
-  ["perdorimi", "farmaci"],
-  ["gatishmeria", "tani"]
+  ["perdorimi", "farmaci"]
 ]);
 
 export function frageAus(kennungen) {

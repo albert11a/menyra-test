@@ -54,3 +54,44 @@ export function shopTiefe(sitzung) {
   for (const a of SHOP_ABSCHNITTE) if (sicht[`s${a.nr}`] === true) tiefe = Math.max(tiefe, a.nr);
   return tiefe;
 }
+
+// DIE ANALYSESEITE IM LADEN (/terapia/<id>?weg=lifeskinshop) - fuer den
+// Chip "Analyse" in Heart (29.09.). Neun Punkte in der Reihenfolge, in der
+// sie im Kleid des Ladens stehen (gemessen im Pruefstand): oben die
+// Prozentzahl, unten Teilen und Instagram als "Fundi". Zwei Abschnitte
+// sagen dasselbe ("Nuk mbeteni vetëm": #ndjekja oder #ditet, je nach Fall) -
+// einer von beiden zaehlt als Punkt 4.
+//
+// Unter timings.terapia, je Punkt ein Feld (s1 ... s9), wie timings.shop.
+export const TERAPIA_ABSCHNITTE = Object.freeze([
+  { nr: 1, wahl: "#terapia", name: "Përputhja" },
+  { nr: 2, wahl: "#pse", name: "Gjetjet" },
+  { nr: 3, wahl: "#merrni", name: "Pakoja" },
+  { nr: 4, wahl: "#ndjekja, #ditet", name: "Ndjekja" },
+  { nr: 5, wahl: "#rezultate", name: "Para - Pas" },
+  { nr: 6, wahl: "#vendimi", name: "Oferta" },
+  { nr: 7, wahl: "#pyetjet", name: "F.A.Q" },
+  { nr: 8, wahl: "#analiza", name: "Detajet" },
+  { nr: 9, wahl: "#ndaje, #instagram", name: "Fundi" }
+].map((a) => Object.freeze(a)));
+
+export function terapiaSichtPatch(nr) {
+  const n = Number(nr);
+  if (!Number.isInteger(n) || n < 1 || n > TERAPIA_ABSCHNITTE.length) return null;
+  return { v: SHOP_SICHT_VERSION, [`s${n}`]: true };
+}
+
+// Wie weit die Analyseseite gelesen wurde: 0 = nie geoeffnet, 1 ... 9.
+// Besuche von vor der Messung: die Lesemarken, die es schon gab
+// (berichtGeoeffnet = 1, sahSchnitt #pse = 2, sahTherapie #merrni = 3).
+export function terapiaTiefe(sitzung) {
+  const sicht = sitzung?.timings?.terapia;
+  let tiefe = 0;
+  if (sicht && typeof sicht === "object") {
+    for (const a of TERAPIA_ABSCHNITTE) if (sicht[`s${a.nr}`] === true) tiefe = Math.max(tiefe, a.nr);
+  }
+  if (sitzung?.sahTherapie === true) tiefe = Math.max(tiefe, 3);
+  else if (sitzung?.sahSchnitt === true) tiefe = Math.max(tiefe, 2);
+  if (sitzung?.berichtGeoeffnet === true) tiefe = Math.max(tiefe, 1);
+  return tiefe;
+}

@@ -257,7 +257,7 @@ html[data-ls-landing="lifeskinshop"] .ls-gesichert__titel { color: var(--basis);
 html[data-ls-landing="lifeskinshop"] .ls-viberlink { color: var(--basis); }
 html[data-ls-landing="lifeskinshop"] .ls-anhang__knopf { border-color: #bbc9c7; border-radius: 8px; color: var(--basis); }
 
-/* ── Die vier Fragen ──────────────────────────────────────────────────── */
+/* ── Die drei Fragen ──────────────────────────────────────────────────── */
 /* Der Satz ueber der ersten Frage ist eine kleine Belohnung ("Skanimi
    mbaroi ✓") - deshalb auf Minze und nicht als graue Zeile. */
 html[data-ls-landing="lifeskinshop"] #ls-frageneinleitung {

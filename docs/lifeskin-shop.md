@@ -53,7 +53,8 @@ fuer spaetere Sortimentserweiterung erhaltenen Unterbau.
    Tastatur): Zeilen, Summe nach Staffel, Name/Telefon/Adresse/Stadt,
    "Porositni" → Bestaetigung mit Bestellnummer. Bezahlt an der Tuer.
 4. **"Zbuloni nëse seti ju përshtatet"** (`#ls-start`) → dieselbe Strecke wie
-   /lifeskin: Wahl (Scan/Foto/Trup-Pytje), Aufnahme, Fragen, Name, Nummer
+   /lifeskin, aber nur Scan und Foto (Trup/Pytje seit 29.09. weg), drei
+   Fragen (die vierte seit 29.09. weg): Wahl, Aufnahme, Fragen, Name, Nummer
    (Lead), Warteseite `/analiza/<id>?weg=lifeskinshop` - im Kleid des
    Ladens, mit Tipps und der Përputhja von Dr. Gashi auf der Therapieseite
    (`docs/lifeskin-shop-perputhja.md`).
@@ -191,11 +192,12 @@ Meta; Kamera ist das Testbild von Chromium):
 - Direktkauf: PageView + lifeskin_landing_view, Set -> AddToCart(39), Kasse
   -> InitiateCheckout(39), Porositni -> Purchase(39) und `order` in der
   Sitzung; Danke-Text.
-- Foto: Anleitung, Kamera, Ausloeser, Foto uebernehmen, die vier Fragen mit
-  Tipps, Name/Alter, Nummer (Lead), Uebergabe, Warteseite im Kleid des
+- Foto: Anleitung, Kamera, Ausloeser, Foto uebernehmen, die vier Fragen (seit
+  29.09. drei) mit Tipps, Name/Alter, Nummer (Lead), Uebergabe, Warteseite im Kleid des
   Ladens mit WhatsApp-Text "kontrollin e përputhjes"; zurueck in den Laden
   im selben Tab -> wieder die Warteseite.
-- Trup: Name/Alter, Anliegen, Nummer (Lead), Warteseite wie oben.
+- Trup: Name/Alter, Anliegen, Nummer (Lead), Warteseite wie oben (seit
+  29.09. nicht mehr im Laden).
 - Scan: bis zur Kamera (braucht ein echtes Gesicht und MediaPipe von
   jsdelivr, im Pruefstand gesperrt).
 - Freigabe nachgespielt (Bericht `fertig`, `perputhja` 92): Die Warteseite
@@ -287,3 +289,48 @@ Namen wie vom Inhaber, drei Schreibweisen angeglichen: "Skinract" ->
 **Noch offen:** 14-16 (Kontrolle gestartet, Nummer, abgegeben) bekommen
 eine eigene Karte; bis dahin steht dort der bisherige Block
 "„Gjeni setin“ · Analyse".
+
+## Chips der Karte "Shop": Shop, Scan, Foto, Analyse (29.09.)
+
+Wunsch Inhaber: oben an der Karte vier Chips (wie beim Trichter), je Chip
+ein Weg Bildschirm fuer Bildschirm im selben Aufbau (Kreis mit Nummer,
+Name, Balken, Zahl - die Nummern im Kreis kompakter, die Namensspalte fuer
+alle Chips gleich breit). Am Chip die Zahl bei Punkt 1. Gezaehlt "bis
+hierher"; Balken am Punkt 1 des Chips.
+
+**Scan** (nur wer Scan gewaehlt hat, ohne Laden-Kaeufe - deren Schritt steht
+auf "ordered"): 1 Anleitung (named) · 2 Scan akzeptiert (kameraOk) ·
+3 Scan gestartet (`timings.weg.bildDa`: das Kamerabild ist da) · 4 Scan
+fertig (captured) · 5-7 Frage 1-3 (pyetja1-3) · 8 Name + (emri) · 9 Nummer
+(numri) · 10 Nummer Feld (`timings.weg.nummerGetippt`: erste Ziffer im Feld;
+aeltere Besuche: Nummer vorhanden) · 11 Loading (aufbereitung) · 12 Loading
+fertig (result - erst, wenn der Bericht steht) · 13 Patient (Warteseite).
+3 und 4 zeigen Fehler: akzeptiert, aber kein Bild; Bild, aber nicht fertig.
+
+**Foto**: gleich, ausser 1 Anleitung (fotopara), 2 Foto akzeptiert, 3 Foto
+gestartet, 4 Foto fertig (fotogati). "Foto akzeptiert" faellt jetzt schon,
+wenn die Kamera freigegeben ist (`beiStrom`, lifeskin-foto.js) - wie beim
+Scan; vorher erst mit dem Bild, dann waeren 2 und 3 immer gleich gewesen.
+
+**Analyse** (wer die Analyseseite geoeffnet hat): 1 Përputhja (#terapia) ·
+2 Gjetjet (#pse) · 3 Pakoja (#merrni) · 4 Ndjekja (#ndjekja oder #ditet) ·
+5 Para - Pas (#rezultate) · 6 Oferta (#vendimi) · 7 F.A.Q (#pyetjet) ·
+8 Detajet (#analiza) · 9 Fundi (#ndaje oder #instagram); dann 10 Shport
+(Preis gesehen = AddToCart) · 11 Arka · 12 Adresa · 13 Gotat Nalt - nur,
+was auf der Analyseseite geschah (`timings.kauf`, sonst alte Marken ohne
+Laden-Korb). Gemessen von der Analyseseite im Kleid des Ladens
+(`timings.terapia.sN`, gesehen wie im Laden, nie in der Vorschau);
+aeltere Besuche: berichtGeoeffnet 1, sahSchnitt 2, sahTherapie 3.
+
+Die neuen Marken stehen unter `timings` (offene Karte in firestore.rules):
+keine neue Regel, keine neue Stufe, kein Pixel. Im stillen Modus nichts.
+
+**Unten im Tab Lifeskin Shop** nur noch die Trichter Kauf und Bericht:
+Main, Skanim, Foto, Trup/Pytje und Landing stehen jetzt in den Chips; Gati
+hing an Frage 4, die es im Laden nicht mehr gibt. Die anderen Tabs
+unveraendert.
+
+**Pixel:** keine Zeile geaendert, Sperrtest gruen. Mit dem Weg Trup/Pytje
+fallen im Laden dessen eigene Ereignisse weg (lifeskin_method_body,
+lifeskin_body_problem_completed, lifeskin_question_completed) - vom
+Inhaber so gewuenscht. Frage 4 hatte kein eigenes Ereignis.

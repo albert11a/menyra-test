@@ -23,9 +23,14 @@ ein. Keine Software errechnet, schaetzt oder schlaegt sie vor
 2. **Wahl, Anleitung, Kamera/Foto, Fragen, Name, Nummer** - derselbe
    Trichter wie /lifeskin, im Kleid des Ladens (`shop-weg.css`) und mit
    eigenen Worten (`OBERFLAECHE_WEGE.lifeskinshop`,
-   `FRAGEN_TEXTE_WEGE.lifeskinshop`, `gatishmeria.wege.lifeskinshop`).
+   `FRAGEN_TEXTE_WEGE.lifeskinshop`). Seit dem 29.09. (Wunsch Inhaber): nur
+   Scan und Foto (kein Weg Trup/Pytje) und DREI Fragen nach der Aufnahme -
+   die vierte (gatishmeria, Bereitschaft) faellt im Laden weg
+   (`fragenNachAufnahme("lifeskinshop")`, lifeskin-content.js). Prompt:
+   Laden-Faelle haben diese Antwort nicht (docs/lifeskin-prompt-v9*.txt);
+   die Therapieseite zeigt den Satz am Kaufknopf nur mit Antwort.
    Tipp-Karten: Wahl ("A e dinit?"), Foto-Anleitung, Scan-Anleitung und je
-   eine unter den vier Fragen nach der Aufnahme (`apps/lifeskin-shop/weg.js`).
+   eine unter den drei Fragen nach der Aufnahme (`apps/lifeskin-shop/weg.js`).
 3. **Warteseite** `/analiza/<id>?weg=lifeskinshop`: Farben des Ladens
    (`astra-shop.css`), Texte `TEXTE_WEGE.lifeskinshop` ("Dr. Gashi po
    vlerëson sa ju përshtatet terapia", "Numri i rastit", "Përqindja juaj").
@@ -90,7 +95,7 @@ sich daran nichts.
 - Handy-Ansicht 390x844 (Headless-Chromium ueber das DevTools-Protokoll,
   stiller Modus, jede fremde Adresse gesperrt, Firestore-Antworten lokal
   gespielt): Laden-Abschnitt, Wahl, Foto- und Scan-Anleitung, Kamera, die
-  vier Fragen mit Tipps, Name, Nummer, Uebergabe, Warteseite,
+  vier Fragen (seit 29.09. drei) mit Tipps, Name, Nummer, Uebergabe, Warteseite,
   Therapieseite mit 92 % und 58 %, /lifeskin-Therapieseite unveraendert.
   Kein Playwright-Testlauf.
 - Nicht geprueft: echtes iPhone/Instagram, Heart im Browser (Anmeldung),

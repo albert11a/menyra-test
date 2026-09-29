@@ -11,8 +11,8 @@
 // neue Weg besser verkauft - also steht sie hier in einer Reihe, mit der
 // Zeit bis zur Antwort daneben.
 import { wegDerSitzung, zaehltImWeg } from "../../shared/lifeskin-weg.js";
-import { stufenIndex, istPatient, istLanding } from "./heart-lifeskin-berechnung.js";
-import { SHOP_ABSCHNITTE, shopTiefe } from "../../shared/lifeskin-shopsicht.js";
+import { stufenIndex, istPatient, istLanding, typVon } from "./heart-lifeskin-berechnung.js";
+import { SHOP_ABSCHNITTE, shopTiefe, TERAPIA_ABSCHNITTE, terapiaTiefe } from "../../shared/lifeskin-shopsicht.js";
 
 // Nur die Faelle eines Wegs. "" ist der bisherige Weg (/lifeskin) - dort
 // bleiben alle Faelle ohne Merkmal, also auch jeder von vorher.
@@ -152,6 +152,62 @@ export const SHOP_KAUF = Object.freeze([
   { id: "bestellt", nr: 13, label: "Gotat Nalt", gilt: istShopKauf }
 ].map((stufe) => Object.freeze(stufe)));
 
+// ══ DIE CHIPS DER KARTE "SHOP": Scan, Foto, Analyse (29.09.) ═══════════
+//
+// Wunsch Inhaber: dieselbe Karte, je Chip ein Weg Bildschirm fuer
+// Bildschirm - 13 Punkte. Beim Scan und beim Foto sollen 3 und 4 Fehler
+// zeigen: akzeptiert, aber kein Bild; Bild, aber nicht fertig.
+//
+// "bildDa" und "nummerGetippt" sind Marken unter timings.weg
+// (lifeskin-session.js); "Loading fertig" ist der Schritt "result", den der
+// Trichter erst setzt, wenn der Bericht steht. Gezaehlt wird wie immer "bis
+// hierher" (stufenZaehlen), und nur, wer diesen Weg gewaehlt hat (typVon).
+const abSchritt = (schritt) => (s) => stufenIndex(s?.step) >= stufenIndex(schritt);
+const wegMarke = (name) => (s) => s?.timings?.weg?.[name] === true;
+
+function wegStufen({ anleitung, akzeptiert, gestartet, fertig, fertigSchritt }) {
+  return Object.freeze([
+    { nr: 1, id: "anleitung", label: "Anleitung", gilt: abSchritt(anleitung) },
+    { nr: 2, id: "akzeptiert", label: akzeptiert, gilt: (s) => s?.kameraOk === true },
+    { nr: 3, id: "gestartet", label: gestartet, gilt: wegMarke("bildDa") },
+    { nr: 4, id: "fertig", label: fertig, gilt: abSchritt(fertigSchritt) },
+    { nr: 5, id: "frage1", label: "Frage 1", gilt: abSchritt("pyetja1") },
+    { nr: 6, id: "frage2", label: "Frage 2", gilt: abSchritt("pyetja2") },
+    { nr: 7, id: "frage3", label: "Frage 3", gilt: abSchritt("pyetja3") },
+    { nr: 8, id: "name", label: "Name +", gilt: abSchritt("emri") },
+    { nr: 9, id: "nummer", label: "Nummer", gilt: abSchritt("numri") },
+    // Besuche von vor der Marke: wer eine Nummer hinterlassen hat, hat getippt.
+    { nr: 10, id: "nummerFeld", label: "Nummer Feld", gilt: (s) => wegMarke("nummerGetippt")(s) || Boolean(s?.phone) },
+    { nr: 11, id: "loading", label: "Loading", gilt: abSchritt("aufbereitung") },
+    { nr: 12, id: "loadingFertig", label: "Loading fertig", gilt: abSchritt("result") },
+    { nr: 13, id: "patient", label: "Patient", gilt: istPatient }
+  ].map((stufe) => Object.freeze(stufe)));
+}
+
+export const SHOP_SCAN = wegStufen({
+  anleitung: "named", akzeptiert: "Scan akzeptiert", gestartet: "Scan gestartet", fertig: "Scan fertig", fertigSchritt: "captured"
+});
+export const SHOP_FOTO = wegStufen({
+  anleitung: "fotopara", akzeptiert: "Foto akzeptiert", gestartet: "Foto gestartet", fertig: "Foto fertig", fertigSchritt: "fotogati"
+});
+
+// DIE ANALYSESEITE (1-9, TERAPIA_ABSCHNITTE) und ihr Kauf (10-13) - wie
+// die Karte "Shop", nur ueber die Seite mit dem Ergebnis. Der Kauf zaehlt
+// nur, was auf DIESER Seite geschah: timings.kauf (neue Fassung), sonst
+// die alten Marken, aber nur ohne Korb im Laden - dessen Kasse ist nicht
+// die der Analyseseite.
+const ohneLadenKorb = (s) => s?.imKorb !== true;
+export const SHOP_ANALYSE_SEITE = Object.freeze(TERAPIA_ABSCHNITTE.map((a) => Object.freeze({
+  id: `t${a.nr}`, nr: a.nr, label: a.name, gilt: (s) => terapiaTiefe(s) >= a.nr
+})));
+export const SHOP_ANALYSE_KAUF = Object.freeze([
+  { nr: 10, id: "korb", label: "Shport", gilt: (s) => s?.sahPreis === true },
+  { nr: 11, id: "kasse", label: "Arka", gilt: (s) => Boolean(s?.timings?.kauf?.kasse) || (ohneLadenKorb(s) && s?.kasseGeoeffnet === true) },
+  { nr: 12, id: "anschrift", label: "Adresa", gilt: (s) => Boolean(s?.timings?.kauf?.eingabe)
+    || (ohneLadenKorb(s) && (s?.hatAnschrift === true || s?.adresseBegonnen === true)) },
+  { nr: 13, id: "bestellt", label: "Gotat Nalt", gilt: (s) => s?.hatBestellt === true && s?.shopKauf !== true }
+].map((stufe) => Object.freeze(stufe)));
+
 // Die Analyse ueber "Gjeni setin". Ein Kauf im Laden schreibt auch eine
 // Nummer (Kasse) und den Schritt "ordered" - er zaehlt hier nur, wenn
 // wirklich ein Weg der Analyse gewaehlt wurde (typ) oder die Sitzung ohne
@@ -191,10 +247,27 @@ export function baueShopWeg(sitzungen) {
   }
   const analyse = stufenZaehlen(liste, SHOP_ANALYSE_STUFEN);
   const koerbe = liste.filter(imKorbS);
+  // OHNE KAEUFE IM LADEN: Wer dort gekauft hat, steht auf "ordered" - und
+  // weil schritt() nie zurueckgeht, saehe jeder Punkt dieses Wegs erreicht
+  // aus. Sein Kauf steht im Chip Shop.
+  const imWeg = (typ) => (s) => typVon(s) === typ && s?.shopKauf !== true;
+  const scanListe = liste.filter(imWeg("scan"));
+  const fotoListe = liste.filter(imWeg("foto"));
+  const seitenListe = liste.filter((s) => terapiaTiefe(s) >= 1);
+  const scan = stufenZaehlen(scanListe, SHOP_SCAN);
+  const foto = stufenZaehlen(fotoListe, SHOP_FOTO);
+  const analyseSeite = stufenZaehlen(seitenListe, SHOP_ANALYSE_SEITE);
+  const analyseKauf = stufenZaehlen(seitenListe, SHOP_ANALYSE_KAUF);
   return {
     seite,
     kauf,
     analyse,
+    // Die Chips: je ein Weg, Balken am ersten Punkt des Chips.
+    chips: {
+      scan: { stufen: scan, basis: scan[0]?.anzahl || 0 },
+      foto: { stufen: foto, basis: foto[0]?.anzahl || 0 },
+      analyse: { stufen: analyseSeite, kauf: analyseKauf, basis: analyseSeite[0]?.anzahl || 0 }
+    },
     // Der Massstab fuer alle Balken der Karte: die Shop-Besucher (1).
     besucher: seite[0]?.anzahl || 0,
     besuche: liste.length,

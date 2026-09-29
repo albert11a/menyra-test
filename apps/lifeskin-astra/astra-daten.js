@@ -320,6 +320,26 @@ export class AnalyseDaten {
     }
   }
 
+  // Wie weit die Seite gelesen wurde (shared/lifeskin-shopsicht.js,
+  // TERAPIA_ABSCHNITTE): je Punkt ein Blatt unter timings.terapia - nur in
+  // eine bestehende Sitzung, wie der Klickpfad.
+  async sichtSchreiben(daten) {
+    if (!this.kennung || !daten || typeof daten !== "object") return undefined;
+    const felderListe = Object.keys(daten);
+    if (!felderListe.length) return undefined;
+    const maske = [...felderListe.map((f) => `updateMask.fieldPaths=${encodeURIComponent(`timings.terapia.${f}`)}`), "currentDocument.exists=true"].join("&");
+    try {
+      return await this.fetchFn(this.#sitzung(`?${maske}`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fields: felder({ timings: { terapia: { ...daten } } }) }),
+        keepalive: true
+      });
+    } catch {
+      return undefined;
+    }
+  }
+
   async zustandSchreiben(werte) {
     if (!this.kennung) return false;
     const maske = Object.keys(werte).map((f) => `updateMask.fieldPaths=${encodeURIComponent(f)}`).join("&");

@@ -1127,26 +1127,9 @@ export const FRAGEN = Object.freeze([
           pasi: { sq: "Po, kur ta shoh cilin set më duhet", de: "Ja, wenn ich sehe, welches Set ich brauche" },
           analiza: { sq: "Së pari dua të di nëse më përshtatet", de: "Zuerst will ich wissen, ob es passt" }
         }
-      },
-      // DER LADEN (/lifeskinshop): Dort wartet der Kunde auf eine Zahl -
-      // Dr. Gashi sagt ihm in Prozent, wie gut das Set zu seiner Haut
-      // passt (docs/lifeskin-shop-perputhja.md). "Analyse" kommt ihm auch
-      // hier nicht vor; die Kennungen bleiben.
-      lifeskinshop: {
-        titel: {
-          sq: "Nëse përputhja është e lartë, a doni ta filloni rutinën 4-javore?",
-          de: "Wenn die Übereinstimmung hoch ist, möchten Sie die 4-Wochen-Routine beginnen?"
-        },
-        unter: {
-          sq: "Pa detyrim. Porositni vetëm nëse ju bind përqindja.",
-          de: "Unverbindlich. Sie bestellen nur, wenn die Prozentzahl Sie überzeugt."
-        },
-        antworten: {
-          tani: { sq: "Po, dua ta filloj sa më shpejt", de: "Ja, so bald wie möglich" },
-          pasi: { sq: "Po, kur ta shoh përqindjen", de: "Ja, wenn ich die Prozentzahl sehe" },
-          analiza: { sq: "Së pari dua të shoh vetëm përqindjen", de: "Zuerst will ich nur die Prozentzahl sehen" }
-        }
       }
+      // DER LADEN (/lifeskinshop) stellt diese Frage seit dem 29.09. nicht
+      // mehr (FRAGEN_NACH_AUFNAHME_WEGE) - deshalb hier keine Worte fuer ihn.
     }
   },
   {
@@ -1239,13 +1222,14 @@ export const OBERFLAECHE_WEGE = Object.freeze({
 // OBERFLAECHE_WEGE, fuer FRAGEN_TEXTE. Nur, was sich unterscheidet.
 export const FRAGEN_TEXTE_WEGE = Object.freeze({
   lifeskinshop: Object.freeze({
+    // Drei Fragen im Laden (FRAGEN_NACH_AUFNAHME_WEGE).
     einleitungNachScan: {
-      sq: "Skanimi mbaroi ✓ 4 pyetje të shkurtra, vetëm me prekje – që Dr. Gashi ta vlerësojë më saktë përputhjen tuaj.",
-      de: "Der Scan ist fertig ✓ 4 kurze Fragen, nur antippen – damit Dr. Gashi Ihre Übereinstimmung genauer beurteilt."
+      sq: "Skanimi mbaroi ✓ 3 pyetje të shkurtra, vetëm me prekje – që Dr. Gashi ta vlerësojë më saktë përputhjen tuaj.",
+      de: "Der Scan ist fertig ✓ 3 kurze Fragen, nur antippen – damit Dr. Gashi Ihre Übereinstimmung genauer beurteilt."
     },
     einleitungNachFoto: {
-      sq: "Fotoja u ruajt ✓ 4 pyetje të shkurtra, vetëm me prekje – që Dr. Gashi ta vlerësojë më saktë përputhjen tuaj.",
-      de: "Das Foto ist gespeichert ✓ 4 kurze Fragen, nur antippen – damit Dr. Gashi Ihre Übereinstimmung genauer beurteilt."
+      sq: "Fotoja u ruajt ✓ 3 pyetje të shkurtra, vetëm me prekje – që Dr. Gashi ta vlerësojë më saktë përputhjen tuaj.",
+      de: "Das Foto ist gespeichert ✓ 3 kurze Fragen, nur antippen – damit Dr. Gashi Ihre Übereinstimmung genauer beurteilt."
     }
   })
 });
@@ -1316,6 +1300,22 @@ export const FRAGEN_NACH_SCAN = Object.freeze(
 // bisher nicht). Roaccutane steckt in perdorimi ("mjek").
 export const FRAGEN_NACH_AUFNAHME = Object.freeze(
   ["anliegen", "kohezgjatja", "perdorimi", "gatishmeria"].map(ausVorrat));
+
+// IM LADEN DREI FRAGEN (29.09., Wunsch Inhaber). Die vierte (gatishmeria:
+// ob er anfangen will) faellt auf /lifeskinshop weg - dort fragt die
+// Kontrolle nach der Uebereinstimmung, gekauft wird im Laden selbst. Danach
+// Name und Nummer wie ueberall. Die Stufen bleiben pyetja1 bis pyetja3;
+// pyetja4 wird im Laden nie erreicht (schritt() geht nie zurueck, eine
+// uebersprungene Stufe stoert nicht). Prompt und Therapieseite kommen ohne
+// die Antwort aus (heart-lifeskin-prompt.js, shared/lifeskin-antworten.js).
+export const FRAGEN_NACH_AUFNAHME_WEGE = Object.freeze({
+  lifeskinshop: Object.freeze(["anliegen", "kohezgjatja", "perdorimi"].map(ausVorrat))
+});
+
+// Die Fragen nach der Aufnahme fuer diesen Weg.
+export function fragenNachAufnahme(weg) {
+  return FRAGEN_NACH_AUFNAHME_WEGE[weg] || FRAGEN_NACH_AUFNAHME;
+}
 
 // DER WEG OHNE SCAN - und er ist der Grund, warum es diese Liste gibt.
 //

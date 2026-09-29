@@ -1077,6 +1077,16 @@ export class Sitzung {
     return this.#sammeln({ timings: { landing: { ...daten } } }, felderListe.map((f) => `timings.landing.${f}`));
   }
 
+  // MARKEN FUER HEART, OHNE SCHRITT UND OHNE PIXEL (29.09.): wo genau es
+  // hakt - "bildDa" (die Kamera zeigt ein Bild, Scan oder Foto kann
+  // beginnen), "nummerGetippt" (die erste Ziffer steht im Nummernfeld).
+  // Unter timings.weg: timings ist in firestore.rules eine offene Karte,
+  // es braucht keine neue Regel und keine neue Stufe.
+  wegMarkeSchreiben(name) {
+    if (!/^[a-zA-Z]{1,24}$/.test(String(name || ""))) return this.kette;
+    return this.#sammeln({ timings: { weg: { [name]: true } } }, [`timings.weg.${name}`]);
+  }
+
   // Dasselbe fuer den Laden (/lifeskinshop): welche seiner Abschnitte im
   // Bild standen (shared/lifeskin-shopsicht.js), unter timings.shop.
   shopSichtSchreiben(daten) {

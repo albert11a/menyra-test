@@ -261,22 +261,10 @@
         </span>
       </button>
 
-      <!-- EINE KARTE STATT ZWEIER.
-           "Trup" und "Pytje" fuehrten auf denselben Bildschirm; der
-           Unterschied bestand aus zwei Saetzen. Zwei Karten fuer eine
-           Sache sind eine Entscheidung, die niemand treffen kann - und
-           in jeder Zahl standen sie getrennt, obwohl sie dieselbe
-           Arbeit sind. -->
-      <button type="button" class="ls-wahlkarte" data-ls-weg="trup">
-        <span class="ls-wahlkarte__zeichen" aria-hidden="true">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2.3"/><path d="M12 7.2v8.3"/><path d="M12 8.6 7.6 11M12 8.6l4.4 2.4"/><path d="m12 15.5-2.6 4.3M12 15.5l2.6 4.3"/></svg>
-        </span>
-        <span class="ls-wahlkarte__leib">
-          <span class="ls-wahlkarte__titel" data-text="wahlTrupTitel"></span>
-          <span class="ls-wahlkarte__text" data-text="wahlTrupText"></span>
-          <span class="ls-wahlkarte__punkt" data-text="wahlTrupPunkt"></span>
-        </span>
-      </button>
+      <!-- KEIN WEG "PER TRUPIN OSE VETËM PYETJE" IM LADEN (29.09.,
+           Wunsch Inhaber): hier nur Scan und Foto. Die Klasse
+           ls-wahl--drei bleibt, an ihr haengt der Zuschnitt der Karten
+           (shop-weg.css). /lifeskin behaelt den Weg. -->
     </div>
 
     <!-- EIN TIPP UNTER DER WAHL (shop-weg.css .weg-tipp): Wer hier zoegert,
@@ -661,7 +649,7 @@
      hier gehoerte deshalb lange zur alten Fassung und stand nur als
      Rueckfall im Aufbau. Seit der Weg OHNE Scan Fragen stellt, ist er
      der Bildschirm, auf dem dieser Weg seinen ganzen Inhalt einsammelt -
-     vier Fragen vor Name und Alter, die Nummer danach. Er wird also
+     drei Fragen vor Name und Alter (im Laden, seit 29.09.), die Nummer danach. Er wird also
      ZWEIMAL durchlaufen, mit verschiedenen Listen; was sich dabei
      unterscheidet, gibt ihm #fragenStarten() mit. -->
 <section class="ls-schirm" id="ls-fragen" data-aktiv="nein">
@@ -715,7 +703,7 @@
 <!-- DER LADEN: Sets, Einzelmittel und Faelle aus Heart, Korb, Kasse,
      Bestellung in dieselbe Sitzung. -->
 <script type="module" src="/apps/lifeskin-shop/shop.js"></script>
-<!-- Die Tipps unter den vier Fragen (docs/lifeskin-shop-perputhja.md) -
+<!-- Die Tipps unter den drei Fragen (docs/lifeskin-shop-perputhja.md) -
      Text neben dem Trichter, ohne Zaehlung und ohne Pixel. -->
 <script type="module" src="/apps/lifeskin-shop/weg.js"></script>
 </body>

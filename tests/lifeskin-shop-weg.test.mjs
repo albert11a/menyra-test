@@ -15,7 +15,7 @@ globalThis.__LIFESKIN_TEST__ = true;
 
 const lies = (p) => readFileSync(p, "utf8");
 
-const { OBERFLAECHE, OBERFLAECHE_WEGE, FRAGEN_TEXTE, FRAGEN_TEXTE_WEGE, FRAGEN_NACH_AUFNAHME, frageFuerWeg, t } =
+const { OBERFLAECHE, OBERFLAECHE_WEGE, FRAGEN_TEXTE, FRAGEN_TEXTE_WEGE, FRAGEN_NACH_AUFNAHME, t } =
   await import("../apps/lifeskin/lifeskin-content.js");
 const { TEXTE, TEXTE_WEGE } = await import("../apps/lifeskin-astra/astra-texte.js");
 const { FRAGE_TIPPS, frageAus, tippZeigen } = await import("../apps/lifeskin-shop/weg.js");
@@ -38,23 +38,44 @@ test("der Laden spricht in eigenen Worten - und nur mit Schluesseln, die es gibt
   assert.match(t(TEXTE_WEGE.lifeskinshop.pritWarum, "sq"), /vetë Dr\. Gashi/);
 });
 
-test("die Bereitschaftsfrage im Laden fragt nach der Zahl, nicht nach der Analyse", () => {
-  const frage = FRAGEN_NACH_AUFNAHME.find((f) => f.id === "gatishmeria");
-  const shop = frageFuerWeg(frage, "lifeskinshop");
-  assert.deepEqual(shop.antworten.map((a) => a.id), frage.antworten.map((a) => a.id),
-    "Die Kennungen der Antworten muessen dieselben bleiben - Heart und der Bericht lesen sie");
-  assert.match(t(shop.titel, "sq"), /përputhja/);
-  for (const a of shop.antworten) assert.doesNotMatch(t(a.text, "sq"), /analiz/i);
-  // Die anderen Wege bleiben, wie sie waren.
-  assert.equal(frageFuerWeg(frage, ""), frage);
+test("im Laden drei Fragen nach der Aufnahme - ohne die Bereitschaft (Frage 4)", async () => {
+  const { fragenNachAufnahme, FRAGEN } = await import("../apps/lifeskin/lifeskin-content.js");
+  assert.deepEqual(fragenNachAufnahme("lifeskinshop").map((f) => f.id), ["anliegen", "kohezgjatja", "perdorimi"]);
+  // Die anderen Wege behalten ihre vier.
+  assert.deepEqual(fragenNachAufnahme("").map((f) => f.id), FRAGEN_NACH_AUFNAHME.map((f) => f.id));
+  assert.equal(fragenNachAufnahme("lifeskin2").length, 4);
+  // Keine Worte mehr fuer eine Frage, die der Laden nicht stellt.
+  assert.equal(FRAGEN.find((f) => f.id === "gatishmeria").wege.lifeskinshop, undefined);
+  // Die Einleitung sagt, was kommt: drei.
+  for (const k of ["einleitungNachScan", "einleitungNachFoto"]) {
+    assert.match(t(FRAGEN_TEXTE_WEGE.lifeskinshop[k], "sq"), /3 pyetje/);
+    assert.doesNotMatch(t(FRAGEN_TEXTE_WEGE.lifeskinshop[k], "sq"), /4 pyetje/);
+  }
+  // Der Prompt weiss, dass Laden-Faelle diese Antwort nicht haben.
+  for (const p of ["docs/lifeskin-prompt-v9.txt", "docs/lifeskin-prompt-v9-pa-foto.txt"]) {
+    assert.match(lies(p), /keine Antwort: wie unten beschrieben\. So immer bei Fällen aus dem\s+Laden \(\/lifeskinshop\)/, p);
+  }
+  // Die Therapieseite zeigt den Satz am Kaufknopf nur mit Antwort.
+  assert.match(lies("apps/lifeskin-verkauf/terapia.js"), /zeigen\(\$\("#t-gati"\), Boolean\(spiegel\?\.bereit\)\);/);
+});
+
+test("im Laden kein Weg Trup/Pytje - weder auf der Wahl noch in den stillen Links", async () => {
+  assert.doesNotMatch(lies("apps/lifeskin-shop/index.html"), /data-ls-weg="trup"/);
+  assert.match(lies("apps/lifeskin-landing/index.html"), /data-ls-weg="trup"/, "/lifeskin muss den Weg behalten");
+  const { baueStillLinks } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
+  const titel = (weg) => baueStillLinks({ weg, tests: [], sitzungen: [], berichte: {} }).gruppen.map((g) => g.titel);
+  assert.ok(!titel("lifeskinshop").includes("Trup/Pytje"));
+  assert.ok(titel("").includes("Trup/Pytje"));
 });
 
 // ---------- Die Tipps ----------
 
-test("jede der vier Fragen hat ihren Tipp - erkannt an einer Antwort, die es nur bei ihr gibt", () => {
-  const ids = FRAGEN_NACH_AUFNAHME.map((f) => f.id);
+test("jede der drei Fragen im Laden hat ihren Tipp - erkannt an einer Antwort, die es nur bei ihr gibt", async () => {
+  const { fragenNachAufnahme } = await import("../apps/lifeskin/lifeskin-content.js");
+  const fragen = fragenNachAufnahme("lifeskinshop");
+  const ids = fragen.map((f) => f.id);
   assert.deepEqual(Object.keys(FRAGE_TIPPS).sort(), [...ids].sort());
-  for (const frage of FRAGEN_NACH_AUFNAHME) {
+  for (const frage of fragen) {
     const kennungen = frage.antworten.map((a) => a.id);
     assert.equal(frageAus(kennungen), frage.id, `${frage.id} wird nicht erkannt`);
   }
@@ -546,8 +567,8 @@ test("die Karte: Kreis mit Nummer, Name, Balken, Zahl - 1 bis 13, der Kauf abges
   assert.doesNotMatch(html, /Shop geöffnet|Sets \/ Produkte angesehen/);
   // Das Aussehen: kleiner Kreis, feste Namensspalte, damit jeder Balken gleich beginnt.
   const css = lies("apps/mnyra-heart/heart.css");
-  assert.match(css, /\.heart-shopschritt \{\s*display: grid;\s*grid-template-columns: 20px 5\.4rem 1fr 2\.2rem;/);
-  assert.match(css, /\.heart-shopschritt__nr \{\s*width: 20px; height: 20px; border-radius: 50%;/);
+  assert.match(css, /\.heart-shopschritt \{\s*display: grid;\s*grid-template-columns: 18px 7\.2rem 1fr 2\.2rem;/);
+  assert.match(css, /\.heart-shopschritt__nr \{\s*width: 18px; height: 18px; border-radius: 50%;/);
 });
 
 test("der Laden misst die Abschnitte - erst nach dem Anlegen der Sitzung, ohne Pixel", async () => {
@@ -565,4 +586,114 @@ test("der Laden misst die Abschnitte - erst nach dem Anlegen der Sitzung, ohne P
   assert.match(letzte.url, /updateMask\.fieldPaths=timings\.shop\.v/);
   assert.match(letzte.url, /updateMask\.fieldPaths=timings\.shop\.s3/);
   assert.doesNotMatch(letzte.url, /fieldPaths=timings(?!\.)/, "die ganze timings-Karte wuerde ueberschrieben");
+});
+
+// ---------- Chips Shop / Scan / Foto / Analyse (29.09., Wunsch Inhaber) ----------
+
+test("die Karte Shop hat oben vier Chips, je 13 Punkte - unten nur noch Kauf und Bericht", async () => {
+  const b = await import("../apps/mnyra-heart/heart-lifeskin-berechnung.js");
+  const { renderLifeskin } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
+  const jetzt = new Date().toISOString();
+  const grund = (weg, shopChip) => renderLifeskin({
+    status: "ready", loadedFrom: "network", weg, tests: [], berichte: {},
+    sitzungen: [{ id: "a", createdAt: jetzt, updatedAt: jetzt, step: "opened", source: weg ? { weg } : {}, device: {} }],
+    produkte: [], abdeckung: [], kennzahlen: b.baueKennzahlen([]), trichter: b.baueTrichter([]),
+    lesetiefe: b.baueLesetiefe([]), herkunft: b.baueHerkunft([]), verteilung: b.baueVerteilung([]), verlauf: [],
+    offen: "", fotos: {}, fotosStatus: "", zeitraum: "", fach: "alle", shopChip
+  });
+  const namen = (html) => [...html.matchAll(/heart-shopschritt__name">([^<]+)</g)].map((m) => m[1]);
+  const nummern = (html) => [...html.matchAll(/heart-shopschritt__nr">(\d+)</g)].map((m) => Number(m[1]));
+  const html = grund("lifeskinshop", "shop");
+  assert.deepEqual([...html.matchAll(/data-action="lifeskin-shopchip" data-wert="([a-z]+)"/g)].map((m) => m[1]), ["shop", "scan", "foto", "analyse"]);
+  assert.deepEqual([...html.matchAll(/data-action="lifeskin-trichter" data-wert="([a-z]+)"/g)].map((m) => m[1]), ["kauf", "bericht"]);
+  const scan = grund("lifeskinshop", "scan");
+  assert.deepEqual(namen(scan), ["Anleitung", "Scan akzeptiert", "Scan gestartet", "Scan fertig", "Frage 1", "Frage 2", "Frage 3",
+    "Name +", "Nummer", "Nummer Feld", "Loading", "Loading fertig", "Patient"]);
+  assert.deepEqual(nummern(scan), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+  const foto = grund("lifeskinshop", "foto");
+  assert.deepEqual(namen(foto).slice(0, 4), ["Anleitung", "Foto akzeptiert", "Foto gestartet", "Foto fertig"]);
+  assert.deepEqual(namen(foto).slice(4), namen(scan).slice(4));
+  const analyse = grund("lifeskinshop", "analyse");
+  assert.deepEqual(namen(analyse), ["Përputhja", "Gjetjet", "Pakoja", "Ndjekja", "Para - Pas", "Oferta", "F.A.Q", "Detajet", "Fundi",
+    "Shport", "Arka", "Adresa", "Gotat Nalt"]);
+  assert.match(analyse, /heart-shopschritte--kauf/);
+  // Die anderen Tabs behalten alle Trichter-Chips.
+  assert.deepEqual([...grund("", "shop").matchAll(/data-action="lifeskin-trichter" data-wert="([a-z]+)"/g)].map((m) => m[1]),
+    ["main", "scan", "foto", "trup", "kauf", "gati", "bericht", "landing"]);
+  // Der Chip wird gemerkt wie der Trichter.
+  assert.match(lies("apps/mnyra-heart/heart-events.js"), /action === "lifeskin-shopchip"\) \{\s*operations\.setLifeskinShopChip\?\.\(target\.getAttribute\("data-wert"\)\);/);
+  assert.match(lies("apps/mnyra-heart/heart.js"), /setLifeskinShopChip\(id\) \{\s*actions\.patchLifeskin\(\{ shopChip: String\(id \|\| "shop"\)\.trim\(\) \}\);/);
+});
+
+test("Scan und Foto Bildschirm fuer Bildschirm - 3 und 4 zeigen, wo es hakt", async () => {
+  const { baueShopWeg } = await import("../apps/mnyra-heart/heart-lifeskin-weg.js");
+  const w = baueShopWeg([
+    { typ: "scan", step: "named" },
+    { typ: "scan", step: "camera", kameraOk: true },
+    { typ: "scan", step: "camera", kameraOk: true, timings: { weg: { bildDa: true } } },
+    { typ: "scan", step: "result", kameraOk: true, phone: "044123456", warteseiteGeoeffnet: true, timings: { weg: { bildDa: true, nummerGetippt: true } } },
+    { typ: "foto", step: "fotokamera", kameraOk: true },
+    { typ: "foto", step: "numri", kameraOk: true, timings: { weg: { bildDa: true } } },
+    // Wer im Laden gekauft hat, ist kein Analyseweg.
+    { typ: "scan", step: "ordered", shopKauf: true, hatBestellt: true }
+  ]);
+  assert.deepEqual(w.chips.scan.stufen.map((s) => s.anzahl), [4, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
+  assert.equal(w.chips.scan.basis, 4);
+  assert.deepEqual(w.chips.foto.stufen.map((s) => s.anzahl), [2, 2, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0]);
+});
+
+test("Analyse: die Seite mit dem Ergebnis, 9 Punkte und ihr Kauf - ohne die Kasse aus dem Laden", async () => {
+  const { baueShopWeg } = await import("../apps/mnyra-heart/heart-lifeskin-weg.js");
+  const { TERAPIA_ABSCHNITTE, terapiaSichtPatch, terapiaTiefe } = await import("../shared/lifeskin-shopsicht.js");
+  const sicht = (...nr) => Object.fromEntries([["v", 1], ...nr.map((n) => [`s${n}`, true])]);
+  const w = baueShopWeg([
+    { berichtGeoeffnet: true, sahPreis: true, timings: { terapia: sicht(1, 2, 3, 4, 5, 6), kauf: { kasse: "2026-09-29T10:00:00Z" } } },
+    { berichtGeoeffnet: true },
+    // Korb und Kasse im Laden, dann die Analyseseite nur geoeffnet.
+    { imKorb: true, kasseGeoeffnet: true, berichtGeoeffnet: true, timings: { terapia: sicht(1) } },
+    // Nie auf der Analyseseite: zaehlt hier nicht.
+    { step: "opened" }
+  ]);
+  assert.deepEqual(w.chips.analyse.stufen.map((s) => s.anzahl), [3, 1, 1, 1, 1, 1, 0, 0, 0]);
+  assert.deepEqual(w.chips.analyse.kauf.map((s) => [s.label, s.anzahl]), [["Shport", 1], ["Arka", 1], ["Adresa", 0], ["Gotat Nalt", 0]]);
+  // Jeder Punkt steht so auf der Analyseseite, wie er gesucht wird.
+  const html = lies("apps/lifeskin-verkauf/terapia.html");
+  for (const a of TERAPIA_ABSCHNITTE) {
+    for (const wahl of a.wahl.split(",").map((x) => x.trim())) assert.match(html, new RegExp(`<section[^>]*id="${wahl.slice(1)}"`), wahl);
+  }
+  assert.deepEqual(terapiaSichtPatch(9), { v: 1, s9: true });
+  assert.equal(terapiaSichtPatch(10), null);
+  // Besuche von vor der Messung: die alten Lesemarken.
+  assert.equal(terapiaTiefe({ berichtGeoeffnet: true, sahSchnitt: true }), 2);
+  assert.equal(terapiaTiefe({ berichtGeoeffnet: true, sahTherapie: true }), 3);
+  assert.equal(terapiaTiefe({}), 0);
+});
+
+test("die neuen Marken: Bild da, Nummer getippt, Abschnitte der Analyseseite - ohne Schritt, ohne Pixel", async () => {
+  const app = lies("apps/lifeskin/lifeskin-app.js");
+  assert.equal((app.match(/this\.#wegMarke\("bildDa"\);/g) || []).length, 2, "Scan und Foto melden 'Bild da'");
+  assert.match(app, /if \(\/\\d\/\.test\(\$\("#ls-telfeld"\)\?\.value \|\| ""\)\) this\.#wegMarke\("nummerGetippt"\);/);
+  assert.match(app, /beiStrom: \(\) => this\.#kameraOkMerken\(\),/);
+  const foto = lies("apps/lifeskin/lifeskin-foto.js");
+  assert.match(foto, /this\.strom = strom;\s*try \{ this\.beiStrom\?\.\(\); \}/);
+  const terapia = lies("apps/lifeskin-verkauf/terapia.js");
+  assert.match(terapia, /#abschnitteMessen\(\) \{\s*if \(!this\.shop \|\| this\.nurVorschau \|\| typeof IntersectionObserver !== "function"\) return;/);
+  // Die Marken gehen unter timings.weg, nie als eigenes Feld (keine neue Regel).
+  const { Sitzung } = await import("../apps/lifeskin/lifeskin-session.js");
+  const aufrufe = [];
+  const fetchFn = async (url) => { aufrufe.push(url); return { ok: true, status: 200, json: async () => ({}) }; };
+  const sitzung = new Sitzung({ fetchFn, speicher: null });
+  await sitzung.starte({ sprache: "sq" });
+  await sitzung.wegMarkeSchreiben("bildDa");
+  assert.match(aufrufe.at(-1), /updateMask\.fieldPaths=timings\.weg\.bildDa/);
+  const vorher = aufrufe.length;
+  await sitzung.wegMarkeSchreiben("kaputt; x");
+  assert.equal(aufrufe.length, vorher, "ein ungueltiger Name wird nicht geschrieben");
+  // Die Analyseseite schreibt ihre Punkte nur in eine bestehende Sitzung.
+  const { AnalyseDaten } = await import("../apps/lifeskin-astra/astra-daten.js");
+  const urls = [];
+  const daten = new AnalyseDaten({ fetchFn: async (url) => { urls.push(url); return { ok: true }; }, kennung: "a".repeat(20) });
+  await daten.sichtSchreiben({ v: 1, s4: true });
+  assert.match(urls[0], /updateMask\.fieldPaths=timings\.terapia\.s4/);
+  assert.match(urls[0], /currentDocument\.exists=true/);
 });

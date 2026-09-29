@@ -281,7 +281,7 @@ export function beiFreigabe(melde, { rechte = globalThis.navigator?.permissions 
 // Klasse macht den Strom auf, haelt ihn am Video und gibt auf Zuruf ein
 // Bild heraus. Alles andere entscheidet der Mensch davor.
 export class Flaechenkamera {
-  constructor({ video, dokument = globalThis.document, medien = null, rechte = null, beiFehler = null, beiBereit = null } = {}) {
+  constructor({ video, dokument = globalThis.document, medien = null, rechte = null, beiFehler = null, beiBereit = null, beiStrom = null } = {}) {
     this.video = video || null;
     this.dokument = dokument;
     // Woher der Strom kommt. Im Betrieb steht hier nichts und es gilt
@@ -295,6 +295,9 @@ export class Flaechenkamera {
     this.rechte = rechte;
     this.beiFehler = typeof beiFehler === "function" ? beiFehler : null;
     this.beiBereit = typeof beiBereit === "function" ? beiBereit : null;
+    // Die Kamera ist freigegeben (getUserMedia hat geantwortet) - bevor ein
+    // Bild da ist. Heart trennt damit "akzeptiert" von "Bild da".
+    this.beiStrom = typeof beiStrom === "function" ? beiStrom : null;
     this.strom = null;
     // Vorne, nicht hinten. Wer "Me foto" waehlt, fotografiert meistens
     // eine Stelle im Gesicht - Wange, Stirn, Kinn -, und das geht nur
@@ -387,6 +390,7 @@ export class Flaechenkamera {
         return false;
       }
       this.strom = strom;
+      try { this.beiStrom?.(); } catch { /* eine Marke haelt die Kamera nie an */ }
       // WELCHE KAMERA ES WIRKLICH GEWORDEN IST.
       //
       // facingMode ist eine Bitte, keine Bedingung ("ideal", nicht

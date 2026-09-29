@@ -590,6 +590,10 @@ export function bindHeartEvents({
       operations.setLifeskinTrichter?.(target.getAttribute("data-wert"));
       return;
     }
+    if (action === "lifeskin-shopchip") {
+      operations.setLifeskinShopChip?.(target.getAttribute("data-wert"));
+      return;
+    }
     if (action === "lifeskin-zeitraum") {
       operations.setLifeskinZeitraum?.(target.getAttribute("data-wert"));
       return;

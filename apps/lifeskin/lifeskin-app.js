@@ -34,7 +34,7 @@ import { LIFESKIN_TELEFON_VORWAHL } from "./lifeskin-config.js";
 import { netzVorladen, netzHolen, netzStand, netzArt, netzFehlerFolge, messeNetz, MARKE } from "./lifeskin-netz.js";
 import { STANDARD_KONFIG, ALTERSGRUPPEN } from "./lifeskin-catalog.js";
 import { OBERFLAECHE, EINSTIEG_HINWEIS, EINSTIEG_KARTEN, ARZT_BILD, ARZT_NAME,
-  FRAGEN, FRAGEN_NACH_SCAN, FRAGEN_NACH_AUFNAHME, FRAGEN_PA_SKANIM, FRAGEN_PA_SKANIM_NUMRI,
+  FRAGEN, FRAGEN_NACH_SCAN, fragenNachAufnahme, FRAGEN_PA_SKANIM, FRAGEN_PA_SKANIM_NUMRI,
   FRAGEN_TEXTE, FRAGEN_TEXTE_WEGE, OBERFLAECHE_WEGE, frageFuerWeg, t, fuelle } from "./lifeskin-content.js";
 import { besteGuete, Flaechenkamera, beiFreigabe, KAMERA_HAENGT_MS, BILD_GRENZE_MS, ausDatei as fotoAusDatei } from "./lifeskin-foto.js";
 import { Sitzung } from "./lifeskin-session.js";
@@ -886,11 +886,12 @@ export class Trichter {
       // zurueck und zaehlt nichts doppelt.
       this.fragen.antworten = { ...stand.antworten };
       this.zustand.nachFragen = true;
-      this.#fragenStarten(FRAGEN_NACH_AUFNAHME, {
+      const liste = fragenNachAufnahme(this.weg);
+      this.#fragenStarten(liste, {
         danach: "name",
         einleitung: stand.einleitung === "einleitungNachFoto" ? "einleitungNachFoto" : "einleitungNachScan"
       });
-      const i = Math.max(0, Math.min(FRAGEN_NACH_AUFNAHME.length - 1, Number(stand.fragenI) || 0));
+      const i = Math.max(0, Math.min(liste.length - 1, Number(stand.fragenI) || 0));
       if (i) { this.fragen.i = i; this.#frageZeichnen(); }
       return true;
     }
@@ -1099,6 +1100,15 @@ export class Trichter {
   // (Heart: Fall -> Klickpfad, Zeilen "Technik").
   #technik(text) {
     try { this.klickpfad?.melde("technik", text); } catch { /* nie den Trichter stoeren */ }
+  }
+
+  // Eine Marke fuer Heart (timings.weg, lifeskin-session.js) - je Besuch
+  // einmal, ohne Schritt und ohne Pixel.
+  #wegMarke(name) {
+    this.wegMarken ||= new Set();
+    if (this.wegMarken.has(name)) return;
+    this.wegMarken.add(name);
+    try { this.sitzung.wegMarkeSchreiben?.(name); } catch { /* nie den Trichter stoeren */ }
   }
 
   // Nimmt das Versprechen von fotosSpeichern() - der Upload laeuft im
@@ -1713,6 +1723,8 @@ export class Trichter {
     // ── Die Nummer ───────────────────────────────────────────────────
     for (const ereignisName of ["input", "change", "blur"]) {
       $("#ls-telfeld")?.addEventListener(ereignisName, () => {
+        // "Nummer Feld" in Heart: die erste Ziffer steht im Feld.
+        if (/\d/.test($("#ls-telfeld")?.value || "")) this.#wegMarke("nummerGetippt");
         this.#telPruefen();
         // Der rote Satz verschwindet, sobald getippt wird: Er hat gesagt,
         // was fehlt, und soll nicht stehenbleiben, waehrend es behoben wird.
@@ -2073,6 +2085,9 @@ export class Trichter {
     this.#fotoVorschauZeigen(null);
     this.flaeche ||= new Flaechenkamera({
       video: $("#ls-fotovideo"),
+      // "Foto akzeptiert" in Heart: die Kamera ist freigegeben - wie beim
+      // Scan schon beim Strom, nicht erst beim Bild (das ist "gestartet").
+      beiStrom: () => this.#kameraOkMerken(),
       beiBereit: (bereit) => {
         const buehne = $("#ls-fotobuehne");
         if (buehne) buehne.dataset.bereit = bereit ? "ja" : "nein";
@@ -2088,6 +2103,8 @@ export class Trichter {
     const auf = await this.flaeche.starte();
     if (this.aktiv !== "foto" || !auf) return;
     this.#technik(`Foto-Kamera bereit nach ${Date.now() - fotoAb} ms · ${this.flaeche.richtung === "user" ? "vorne" : "hinten"}`);
+    // "Foto gestartet" in Heart: das Bild ist da, fotografiert werden kann.
+    this.#wegMarke("bildDa");
     // Dieselbe Marke wie beim Scan, aus demselben Grund: Der Schritt
     // davor sagt "hat getippt", diese Marke sagt "hat erlaubt".
     if (auf) this.#kameraOkMerken();
@@ -2688,6 +2705,8 @@ export class Trichter {
         return;
       }
       this.#technik(`Scan-Kamera bereit nach ${Date.now() - this.kamera.startAb} ms · ${video.videoWidth}×${video.videoHeight}`);
+      // "Scan gestartet" in Heart: das Bild ist da, der Scan kann beginnen.
+      this.#wegMarke("bildDa");
     } catch (fehler) {
       // Ein abgeloester Lauf zeigt keinen Fehler an: Der neue ist gerade
       // dabei, und zwei Meldungen uebereinander verwirren nur.
@@ -4215,7 +4234,8 @@ export class Trichter {
   #aufnahmeFragen(weg) {
     if (!$("#ls-fragen")) { this.#nameZeigen(); return; }
     this.zustand.nachFragen = true;
-    this.#fragenStarten(FRAGEN_NACH_AUFNAHME, {
+    // Im Laden drei statt vier (fragenNachAufnahme, lifeskin-content.js).
+    this.#fragenStarten(fragenNachAufnahme(this.weg), {
       danach: "name",
       einleitung: weg === "foto" ? "einleitungNachFoto" : "einleitungNachScan"
     });

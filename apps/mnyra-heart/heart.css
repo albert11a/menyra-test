@@ -4390,17 +4390,20 @@ der Balken zeigt es. */
   margin-top: 10px; padding-top: 10px;
   border-top: 1px solid var(--heart-border, #e6e6e3);
 }
+/* Die Namensspalte ist fuer alle Chips gleich breit (die laengsten Namen
+   stehen bei Scan und Foto) - beim Umschalten springt kein Balken. Die
+   Nummern im Kreis kompakt, auch zweistellig (29.09.). */
 .heart-shopschritt {
   display: grid;
-  grid-template-columns: 20px 5.4rem 1fr 2.2rem;
+  grid-template-columns: 18px 7.2rem 1fr 2.2rem;
   align-items: center; gap: 8px;
   min-height: 26px;
 }
 .heart-shopschritt__nr {
-  width: 20px; height: 20px; border-radius: 50%;
-  border: 1.5px solid #00796a;
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 1.25px solid #00796a;
   display: grid; place-items: center;
-  font-size: 10.5px; font-weight: 700; line-height: 1;
+  font-size: 9px; font-weight: 700; line-height: 1; letter-spacing: -0.4px;
   font-variant-numeric: tabular-nums;
 }
 .heart-shopschritt__name { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
