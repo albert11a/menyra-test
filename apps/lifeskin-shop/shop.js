@@ -11,7 +11,8 @@
  * DIESELBEN FUNKTIONEN WIE DER LADEN DER LANDINGPAGE, und zwar ueber
  * dieselben Aufrufe:
  *   Pixel  meldeKorb (AddToCart), meldeKasse (InitiateCheckout),
- *          schritt("ordered") -> Purchase im Browser, und die Conversions
+ *          schritt("ordered") -> Purchase im Browser (erst, wenn die
+ *          Bestellung gespeichert ist - seit 29.09.), und die Conversions
  *          API meldet denselben Kauf vom Server (functions/lifeskin-capi.js
  *          lauscht auf die Sitzung). PageView und Lead (bei der Nummer in
  *          der Analyse) meldet der Trichter selbst.
@@ -25,7 +26,7 @@
  * Meta-Pixel-Sperre): "/lifeskinshop meldet AddToCart, InitiateCheckout,
  * Purchase (Browser + CAPI) und Lead wie die anderen Wege". */
 import { LIFESKIN_FIRESTORE_BASE, LIFESKIN_TENANT } from "../lifeskin/lifeskin-config.js";
-import { pixelKennungen } from "../lifeskin/lifeskin-pixel.js";
+import { pixelKennungen, browserAngaben } from "../lifeskin/lifeskin-pixel.js";
 import { preisFuer } from "../../shared/lifeskin-preise.js";
 import { ansichtOeffnen, ansichtSchliessen } from "../../shared/lifeskin-ansicht.js";
 import { mittelBauen, holeSammlung, FOTO_PRAEFIX } from "../lifeskin-landing/shop.js";
@@ -278,6 +279,15 @@ export class Dyqan {
     catch { /* Messtechnik darf den Verkauf nie anhalten. */ }
   }
 
+  // Wo der Besucher im Laden gerade ist - fuer Live in Heart (timings.live,
+  // Sitzung.liveMerken): Korb und Kasse "offer" (N'shport), Anschrift
+  // "address" (Adresa). Die letzte Handlung zaehlt, auch wenn vorher ein
+  // Analyse-Schritt stand. Kein Schritt, kein Pixel.
+  #live(wert) {
+    try { this.trichterFn()?.sitzung?.liveMerken?.(wert); }
+    catch { /* Messtechnik darf den Verkauf nie anhalten. */ }
+  }
+
   // ── Laden aus Heart ────────────────────────────────────────────────
   #standardFotos(fotos) {
     for (const [id, bild] of Object.entries(MITTEL_FOTOS_STANDARD)) {
@@ -510,7 +520,10 @@ export class Dyqan {
     // meldet ohnehin nur einmal je Besuch.
     this.trichterFn()?.pixel?.meldeKorb?.(summe(this.korb));
     const stueck = this.korb.ids.length;
-    if (stueck > 0) this.#merke({ imKorb: true }, "imKorb");
+    if (stueck > 0) {
+      this.#merke({ imKorb: true }, "imKorb");
+      this.#live("offer");
+    }
     this.#merke({ korbWert: summe(this.korb), korbStueck: stueck });
   }
 
@@ -553,6 +566,7 @@ export class Dyqan {
       // auf /lifeskin (Laden#oeffnen).
       this.trichterFn()?.pixel?.meldeKasse?.(summe(this.korb));
       this.#merke({ kasseGeoeffnet: true, kasseGeoeffnetAt: new Date().toISOString() }, "kasseGeoeffnet");
+      this.#live("offer");
     }
   }
 
@@ -618,8 +632,12 @@ export class Dyqan {
     if (sitzung) {
       // schritt() setzt den Schritt auf "ordered", haelt die Zeit fest und
       // meldet den Pixel (Purchase) - ueber dieselbe Stelle wie jeder
-      // Schritt, also genau einmal. Die Conversions API meldet denselben
-      // Kauf vom Server. Alles in der Karte "order" (firestore.rules).
+      // Schritt, also genau einmal, und seit dem 29.09. erst, wenn Firestore
+      // die Bestellung angenommen hat (ERST_SPEICHERN, lifeskin-session.js).
+      // Scheitert das Speichern, gilt der Kauf nicht als erreicht, und der
+      // naechste Versuch meldet und schreibt wie der erste. Die Conversions
+      // API meldet denselben Kauf vom Server. Alles in der Karte "order"
+      // (firestore.rules).
       const antwort = await sitzung.schritt("ordered", {
         name: werte.name.slice(0, 80),
         phone: werte.telefon.slice(0, 40),
@@ -634,7 +652,9 @@ export class Dyqan {
           orderId: sitzung.code || "",
           items: bestellZeilen(this.korb, this.mittel),
           ...(s ? { set: { id: s.id, titulli: s.titulli } } : {}),
-          ...pixelKennungen()
+          ...pixelKennungen(),
+          // User-Agent und Seite fuer die Conversions API - siehe browserAngaben().
+          ...browserAngaben()
         }
       }).catch(() => null);
       ok = Boolean(antwort?.ok);
@@ -718,6 +738,7 @@ export class Dyqan {
       // Wer anfaengt, seine Anschrift zu schreiben - die Stufe zwischen
       // Kasse und Kauf, wie auf /lifeskin.
       this.#merke({ adresseBegonnen: true }, "adresseBegonnen");
+      this.#live("address");
     });
   }
 

@@ -14,7 +14,7 @@
 // Was sie NICHT hat: die Warteseite. Ein Fall, der noch nicht freigegeben
 // ist, geht nach /analiza/<kennung> - dort steht sie.
 import { AnalyseDaten, kennungAusPfad, dokument } from "../lifeskin-astra/astra-daten.js";
-import { Pixel, pixelKennungen } from "../lifeskin/lifeskin-pixel.js";
+import { Pixel, pixelKennungen, browserAngaben } from "../lifeskin/lifeskin-pixel.js";
 import { STANDARD_KONFIG } from "../lifeskin/lifeskin-catalog.js";
 import { LIFESKIN_WHATSAPP, LIFESKIN_WHATSAPP_TEXT, LIFESKIN_TELEFON_VORWAHL } from "../lifeskin/lifeskin-config.js";
 import { brauchtAbklaerung } from "../../shared/lifeskin-raport-v3.js";
@@ -1469,7 +1469,9 @@ export class Terapia {
         payment: "nachnahme",
         status: "neu",
         orderId: this.daten.code || this.kennung,
-        ...pixelKennungen()
+        ...pixelKennungen(),
+        // User-Agent und Seite fuer die Conversions API - siehe browserAngaben().
+        ...browserAngaben()
       },
       step: "ordered"
     });
@@ -1705,7 +1707,9 @@ export class Terapia {
         status: "neu",
         orderId: this.daten.code || this.kennung,
         fassung: this.variante,
-        ...pixelKennungen()
+        ...pixelKennungen(),
+        // User-Agent und Seite fuer die Conversions API - siehe browserAngaben().
+        ...browserAngaben()
       },
       step: "ordered"
     };
@@ -1923,11 +1927,17 @@ export class Terapia {
   }
 
   // Jede Marke einmal je Besuch, nie in der Vorschau.
+  //
+  // NACH DEM KAUF NICHTS MEHR AN META (29.09., Pixel-Aenderung erlaubt von
+  // Albert am 29.09.2026). Wer seine Seite nach der Bestellung wieder
+  // oeffnet, hat den Preis noch im Bild - das war ein zweites AddToCart von
+  // jemandem, der schon gekauft hat. Ein zweiter Kauf geht von hier nicht
+  // (mitAngebot). Die Marken fuer Heart bleiben, wie sie sind.
   #marke(feld) {
     if (this.nurVorschau || !feld || this.marken.has(feld)) return;
     this.marken.add(feld);
-    if (feld === "sahPreis") this.pixel.meldeKorb(this.preis);
-    else if (feld === "kasseGeoeffnet") this.pixel.meldeKasse(this.preis);
+    if (feld === "sahPreis" && !this.bestellt) this.pixel.meldeKorb(this.preis);
+    else if (feld === "kasseGeoeffnet" && !this.bestellt) this.pixel.meldeKasse(this.preis);
     this.quelle.merken({ [feld]: true }).then((antwort) => {
       if (!antwort?.ok) this.marken.delete(feld);
     });

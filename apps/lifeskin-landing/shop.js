@@ -60,7 +60,7 @@ import {
   LIFESKIN_TENANT
 } from "../lifeskin/lifeskin-config.js";
 import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
-import { pixelKennungen } from "../lifeskin/lifeskin-pixel.js";
+import { pixelKennungen, browserAngaben } from "../lifeskin/lifeskin-pixel.js";
 import { preisFuer } from "../../shared/lifeskin-preise.js";
 import { ansichtOeffnen, ansichtSchliessen } from "../../shared/lifeskin-ansicht.js";
 
@@ -324,6 +324,17 @@ export class Laden {
       this.gemerkt.add(einmalig);
     }
     try { this.trichterFn()?.sitzung?.ergaenze?.(daten); }
+    catch { /* Messtechnik darf den Verkauf nie anhalten. */ }
+  }
+
+  /* WO DER BESUCHER IM LADEN GERADE IST - fuer Live in Heart
+   * (timings.live, Sitzung.liveMerken). Korb und Kasse "offer" (N'shport),
+   * Anschrift "address" (Adresa). Kein Schritt und kein Pixel, aus dem
+   * Grund oben: Die Warteseite bleibt, wo sie ist. Aber die letzte
+   * Handlung zaehlt - wer vorher einen Analyse-Schritt hatte und dann in
+   * den Korb legt, steht in Live beim Korb (29.09.). */
+  #live(wert) {
+    try { this.trichterFn()?.sitzung?.liveMerken?.(wert); }
     catch { /* Messtechnik darf den Verkauf nie anhalten. */ }
   }
 
@@ -777,7 +788,10 @@ export class Laden {
      * herausnimmt. */
     const stueck = stueckVon(this.korb);
     const summe = summeVon(this.korb, this.mittel);
-    if (stueck > 0) this.#merke({ imKorb: true }, "imKorb");
+    if (stueck > 0) {
+      this.#merke({ imKorb: true }, "imKorb");
+      this.#live("offer");
+    }
     this.#merke({ korbWert: summe, korbStueck: stueck });
   }
 
@@ -807,6 +821,7 @@ export class Laden {
       /* Dieselbe Marke wie auf der Therapieseite - Heart zaehlt sie, und
          die Meldung "An der Kasse" haengt daran. Einmal je Besuch. */
       this.#merke({ kasseGeoeffnet: true, kasseGeoeffnetAt: new Date().toISOString() }, "kasseGeoeffnet");
+      this.#live("offer");
     }
     /* DIE KASSE TRITT AN DIE STELLE DER SEITE (shared/lifeskin-ansicht.js)
        und liegt nicht mehr als festes Fenster mit Scroll-Sperre darueber.
@@ -901,6 +916,7 @@ export class Laden {
        * dem beim Ausfuellen abgebrochen wurde, standen in derselben
        * Zahl - obwohl das zwei verschiedene Gespraeche sind. */
       this.#merke({ adresseBegonnen: true }, "adresseBegonnen");
+      this.#live("address");
     });
   }
 
@@ -952,7 +968,10 @@ export class Laden {
      * setzt den Schritt auf "ordered" (und nur vorwaerts), er haelt die
      * Zeit bis hierher fest, und er meldet den Schritt an den
      * Meta-Pixel - ueber dieselbe Stelle wie alle anderen Schritte, also
-     * genau einmal und nicht daneben noch einmal von Hand.
+     * genau einmal und nicht daneben noch einmal von Hand. Seit dem 29.09.
+     * erst, wenn Firestore die Bestellung angenommen hat (ERST_SPEICHERN
+     * in lifeskin-session.js); scheitert das Speichern, gilt der Kauf nicht
+     * als erreicht, und der naechste Versuch meldet wie der erste.
      *
      * UND ER SAGT, OB ES GEKLAPPT HAT. Die Schreibkette in
      * lifeskin-session.js faengt Fehler ab, damit ein Trichter nicht an
@@ -981,7 +1000,9 @@ export class Laden {
           // IN DER KARTE "order" UND NICHT DANEBEN: firestore.rules laesst
           // in einer Sitzung nur eine feste Feldliste zu; "order" ist als
           // freie Karte erlaubt, ein eigenes Feld waere es nicht.
-          ...pixelKennungen()
+          ...pixelKennungen(),
+          // User-Agent und Seite fuer die Conversions API - siehe browserAngaben().
+          ...browserAngaben()
         }
       }).catch(() => null);
       ok = Boolean(antwort?.ok);
@@ -995,9 +1016,10 @@ export class Laden {
     }
 
     /* Erst jetzt, mit der Antwort in der Hand. Der Meta-Pixel ist schon
-       gemeldet - schritt() geht ueber beiSchritt an dieselbe Stelle wie
-       jeder andere Schritt des Trichters. Ein zweiter Aufruf hier waere
-       eine Bestellung, die zweimal gezaehlt wird. */
+       gemeldet - schritt() hat ihn nach der Antwort ueber beiSchritt
+       gerufen, an derselben Stelle wie jeden anderen Schritt des
+       Trichters. Ein zweiter Aufruf hier waere eine Bestellung, die
+       zweimal gezaehlt wird. */
     /* WOHER DIESE BESTELLUNG KOMMT.
      *
      * Aus dem Laden auf der Landingpage und nicht von der Befundseite -

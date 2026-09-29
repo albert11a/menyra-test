@@ -151,6 +151,23 @@ test("der Bestellschirm zaehlt auch ueber seine Marke", () => {
   assert.equal(live.bestellungen.punkte.find((p) => p.id === "kasse").anzahl, 1);
 });
 
+test("der Laden: wer nach einem Analyse-Schritt in den Korb legt, steht bei N'shport", () => {
+  // Gemessen (29.09.): Wer im Laden erst die Menyra ansah oder den Scan
+  // anfing und dann doch in den Korb legte, stand weiter in der
+  // Analyse-Reihe - die Marke zaehlt nicht, sobald ein Live-Stand da ist.
+  // Jetzt schreibt der Laden seinen Stand (Sitzung.liveMerken).
+  const zahlen = (live) => Object.fromEntries(live.bestellungen.punkte.map((p) => [p.id, p.anzahl]));
+  const korb = baueLive([sitzung("wahl", { imKorb: true, timings: { live: "offer" } })], JETZT);
+  assert.deepEqual(zahlen(korb), { rezultati: 0, kasse: 1, anschrift: 0, bestellt: 0 });
+  assert.equal(korb.analysen.gesamt, 0);
+  const anschrift = baueLive([sitzung("named", { imKorb: true, adresseBegonnen: true, timings: { live: "address" } })], JETZT);
+  assert.deepEqual(zahlen(anschrift), { rezultati: 0, kasse: 0, anschrift: 1, bestellt: 0 });
+  // Und wer danach wieder den Scan anfaengt, steht wieder dort.
+  const scan = baueLive([sitzung("named", { imKorb: true, timings: { live: "named" } })], JETZT);
+  assert.equal(scan.bestellungen.gesamt, 0);
+  assert.equal(scan.analysen.gesamt, 1);
+});
+
 // ---------- Der Chip ----------
 
 test("im Chip steht die Zahl aller gerade Aktiven", () => {

@@ -45,13 +45,32 @@ function sekundenAus(iso) {
 // Besuch in der Herkunft gespeichert (source.fbc, lifeskin-session.js);
 // liegt am Kauf keines, wird dieses genommen. Das des Kauf-Browsers geht
 // vor: Es ist das frischere, wenn der Kauf selbst aus einer Anzeige kam.
+//
+// DER USER-AGENT DES BROWSERS (29.09., Pixel-Aenderung erlaubt von Albert
+// am 29.09.2026). Meta verlangt ihn fuer jedes Website-Ereignis vom Server
+// (client_user_agent). Der Ausloeser kennt die Anfrage des Browsers nicht;
+// der Browser gibt ihn deshalb in der Bestellung mit (order.ua,
+// browserAngaben in apps/lifeskin/lifeskin-pixel.js). Er beschreibt den
+// Browser, nicht den Menschen.
 function besucherDaten(order, herkunft = null) {
   const daten = {};
   const fbp = text(order?.fbp);
   const fbc = text(order?.fbc) || text(herkunft?.fbc);
+  const ua = text(order?.ua).slice(0, 400);
   if (fbp) daten.fbp = fbp;
   if (fbc) daten.fbc = fbc;
+  if (ua) daten.client_user_agent = ua;
   return daten;
+}
+
+// DIE SEITE, AUF DER GEKAUFT WURDE (order.seite) - nur unsere eigene
+// Adresse und ohne Kennung im Pfad; alles andere wird zur festen Adresse.
+// Jeder kann eine Sitzung schreiben: Eine fremde Seite geht nicht an Meta.
+const EIGENE_SEITE = /^https:\/\/(www\.)?mnyra\.com(\/[a-z0-9-]*)?$/i;
+
+function seiteAus(order, ersatz) {
+  const seite = text(order?.seite);
+  return EIGENE_SEITE.test(seite) ? seite : ersatz;
 }
 
 // Die Nutzlast fuer ein Purchase.
@@ -70,7 +89,7 @@ function baueKauf(sitzung, { quelleUrl = "https://mnyra.com/lifeskin" } = {}) {
     // des wirklichen.
     event_id: text(order.orderId),
     action_source: "website",
-    event_source_url: quelleUrl,
+    event_source_url: seiteAus(order, quelleUrl),
     user_data: besucherDaten(order, sitzung?.source),
     custom_data: {
       currency: "EUR",
@@ -103,6 +122,7 @@ module.exports = {
   text,
   sekundenAus,
   besucherDaten,
+  seiteAus,
   baueKauf,
   istKauf
 };

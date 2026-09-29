@@ -187,6 +187,35 @@ export function pixelKennungen(keks) {
   return raus;
 }
 
+// ══ WAS DIE MELDUNG VOM SERVER UEBER DEN BROWSER BRAUCHT ═════════════
+//
+// Pixel-Aenderung erlaubt von Albert am 29.09.2026.
+//
+// Fuer ein Website-Ereignis verlangt Meta von der Conversions API den
+// User-Agent des Browsers (client_user_agent) und die Seite, auf der es
+// geschah (event_source_url). Der Server kennt beides nicht - er meldet
+// aus einem Ausloeser auf Firestore, nicht aus der Anfrage des Browsers.
+// Bisher ging deshalb kein User-Agent mit und immer dieselbe Adresse.
+// Jetzt reist beides mit der Bestellung (order.ua, order.seite), und
+// functions/lifeskin-capi-payload.js nimmt es von dort.
+//
+// DIE SEITE OHNE KENNUNG: nur Adresse und erster Pfadteil -
+// "https://www.mnyra.com/terapia", nicht ".../terapia/<Fall>". Die Kennung
+// eines Falls oeffnet seinen Befund; sie gehoert nicht zu Meta.
+export function browserAngaben({ nav = globalThis.navigator, ort = globalThis.location } = {}) {
+  const raus = {};
+  const ua = String(nav?.userAgent || "").trim().slice(0, 400);
+  if (ua) raus.ua = ua;
+  try {
+    const url = new URL(String(ort?.href || ""));
+    if (url.protocol === "https:" || url.protocol === "http:") {
+      const erster = url.pathname.split("/").filter(Boolean)[0] || "";
+      raus.seite = erster ? `${url.origin}/${erster}` : url.origin;
+    }
+  } catch { /* ohne Seite geht es auch */ }
+  return raus;
+}
+
 export class Pixel {
   // fbq wird durchgereicht, damit der Test nicht das halbe Fenster nachbauen
   // muss. Im Betrieb steht dort nichts und es gilt globalThis.fbq.

@@ -21,7 +21,7 @@ import { GRADES, brauchtAbklaerung } from "../../shared/lifeskin-raport-v3.js";
 import { LIFESKIN_ANBIETER, LIFESKIN_TELEFON_VORWAHL, LIFESKIN_WHATSAPP,
   LIFESKIN_WHATSAPP_TEXT } from "../lifeskin/lifeskin-config.js";
 import { STANDARD_KONFIG, tagespreis } from "../lifeskin/lifeskin-catalog.js";
-import { Pixel, pixelKennungen } from "../lifeskin/lifeskin-pixel.js";
+import { Pixel, pixelKennungen, browserAngaben } from "../lifeskin/lifeskin-pixel.js";
 import { AnalyseDaten, kennungAusPfad } from "./astra-daten.js";
 import { starteKlickpfad } from "../../shared/lifeskin-klickpfad.js";
 import { ikona, ikonenSetzen } from "./astra-ikona.js";
@@ -1959,8 +1959,11 @@ export class Analiza {
     //
     // Der Betrag geht mit, weil Meta daraus den Wert rechnet. Ueber die
     // Person geht nichts mit - kein Name, keine Nummer, kein Befund.
-    if (feld === "sahPreis") this.pixel.meldeKorb(this.preis);
-    else if (feld === "kasseGeoeffnet") this.pixel.meldeKasse(this.preis);
+    //
+    // Nach dem Kauf nicht mehr (29.09., Pixel-Aenderung erlaubt von Albert
+    // am 29.09.2026) - wie auf der Ergebnisseite (terapia.js #marke).
+    if (feld === "sahPreis" && !this.bestellt) this.pixel.meldeKorb(this.preis);
+    else if (feld === "kasseGeoeffnet" && !this.bestellt) this.pixel.meldeKasse(this.preis);
 
     this.quelle.merken({ [feld]: true }).then((antwort) => {
       if (!antwort?.ok) this.markenGesetzt.delete(feld);
@@ -2261,7 +2264,9 @@ export class Analiza {
         orderId: this.daten.code || this.kennung,
         // Metas eigene Browser-Kennungen fuer die Meldung vom Server.
         // Kein Name, keine Nummer - siehe pixelKennungen().
-        ...pixelKennungen()
+        ...pixelKennungen(),
+        // User-Agent und Seite fuer die Conversions API - siehe browserAngaben().
+        ...browserAngaben()
       },
       step: "ordered"
     });

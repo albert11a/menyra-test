@@ -27,12 +27,16 @@ const HINWEIS = "Meta-Pixel/Conversions API geaendert. Das ist gesperrt: nur mit
   + "Erlaubnis des Inhabers (AGENTS.md, Meta-Pixel-Sperre). Aenderung zuruecknehmen oder zuerst fragen.";
 
 // 1. DIE PIXEL-DATEIEN - ganz.
+// Pixel-Aenderung erlaubt von Albert am 29.09.2026: 1 Kauf erst nach dem
+// Speichern melden, 2 Schritt beim zweiten Versuch neu schreiben, 3 User-Agent
+// und Seite fuer die Conversions API vorbereiten, 4 nach dem Kauf keine
+// AddToCart/InitiateCheckout mehr (tests/lifeskin-kauf-nach-speichern.test.mjs).
 const DATEIEN = Object.freeze({
-  "apps/lifeskin/lifeskin-pixel.js": "f4417efb88a10033",
+  "apps/lifeskin/lifeskin-pixel.js": "b824053f8f7f84ca",
   // Pixel-Aenderung erlaubt von Albert (albert11a, Inhaber) am 28.09.2026:
   // Bestellungen aus dem stillen Modus (order.still) gehen nicht an die CAPI.
-  "functions/lifeskin-capi-payload.js": "32e9729e169c59fb",
-  "functions/lifeskin-capi.js": "808f94b1b50256b7"
+  "functions/lifeskin-capi-payload.js": "b6c4397eda969cb8",
+  "functions/lifeskin-capi.js": "f18ba400ba2329ec"
 });
 
 // 2. DIE KENNUNG UND DIE EINWILLIGUNG - genau diese zwei Zeilen.
@@ -63,7 +67,9 @@ const PIXEL_ZEILE = /\bpixel\??\.\w+\(|\bfbq\(|trackCustom|new Pixel\(|pixelKenn
 export function pixelZeilen(pfad) {
   return lies(pfad).split("\n").map((z) => z.trim()).filter((z) => PIXEL_ZEILE.test(z)).join("\n");
 }
-const SEITEN_HASH = "a8d32f596e5eabb0";
+// Neu eingetragen am 29.09.2026 mit der Erlaubnis oben (browserAngaben in den
+// Bestellungen, kein AddToCart/InitiateCheckout nach dem Kauf).
+const SEITEN_HASH = "2eb7f4b9de32d1ac";
 
 test("Meta-Pixel-Sperre: die Pixel-Dateien sind unveraendert", () => {
   for (const [pfad, erwartet] of Object.entries(DATEIEN)) {

@@ -20,6 +20,9 @@ import { meldungAnstossen } from "../../shared/lifeskin-melden.js";
 
 // Nach diesen Schritten geht eine Meldung an Dr. Gashi (api/lifeskin-meldung.js).
 const MELDE_SCHRITTE = new Set("result ordered".split(" "));
+// DER KAUF GEHT ERST AN META, WENN ER GESPEICHERT IST - siehe schritt().
+// Pixel-Aenderung erlaubt von Albert am 29.09.2026.
+const ERST_SPEICHERN = new Set("ordered".split(" "));
 // Und sobald eine dieser Marken zum ersten Mal steht (Warenkorb, Kasse).
 const MELDE_MARKEN = "imKorb kasseGeoeffnet".split(" ");
 import {
@@ -572,32 +575,46 @@ export class Sitzung {
   // Weist Firestore das Gesammelte ab (400/403 - etwa ein Feld, das die
   // Regeln noch nicht kennen), geht jedes Teil noch einmal einzeln: Ein
   // unbekanntes Feld darf nicht die Nummer mitreissen, die daneben stand.
+  //
+  // JEDER AUFRUFER BEKOMMT DIE ANTWORT AUF SEIN EIGENES TEIL (29.09.).
+  // Vorher bekamen alle die letzte gute Antwort der Sammlung: Ging die
+  // Bestellung einzeln nicht durch, das Teil danach aber schon, stand
+  // "bestellt" auf dem Schirm - und Meta bekam einen Kauf, den es nicht
+  // gibt. Das Versprechen jedes Teils loest sich noch IN der Aufgabe: Wer
+  // auf die Kette wartet, findet danach alles erledigt, was an einem Teil
+  // hing.
   #sammeln(daten, maske) {
+    const teil = { daten, maske, antwort: undefined };
+    teil.versprechen = new Promise((fertig) => { teil.fertig = fertig; });
     const offen = this.sammel;
     if (offen && !maskenUeberlappen(offen.maske, maske)) {
       tiefMischen(offen.daten, daten);
       for (const feld of maske) offen.maske.add(feld);
-      offen.teile.push({ daten, maske });
-      return offen.versprechen;
+      offen.teile.push(teil);
+      return teil.versprechen;
     }
-    const neu = { daten: tiefMischen({}, daten), maske: new Set(maske), teile: [{ daten, maske }] };
-    neu.versprechen = this.#reihen(async () => {
+    const neu = { daten: tiefMischen({}, daten), maske: new Set(maske), teile: [teil] };
+    this.#reihen(async () => {
       if (this.sammel === neu) this.sammel = null;
       try {
-        return await this.#schreiben(neu.daten, [...neu.maske]);
+        const antwort = await this.#schreiben(neu.daten, [...neu.maske]);
+        for (const t of neu.teile) t.antwort = antwort;
+        return antwort;
       } catch (fehler) {
         if (neu.teile.length < 2 || !/Firestore 4\d\d/.test(String(fehler?.message))) throw fehler;
         let letzte;
-        for (const teil of neu.teile) {
-          try { letzte = await this.#schreiben(teil.daten, teil.maske); }
+        for (const t of neu.teile) {
+          try { t.antwort = await this.#schreiben(t.daten, t.maske); letzte = t.antwort; }
           catch (einzeln) { globalThis.console?.warn?.("[lifeskin] Teil nicht gespeichert:", einzeln?.message); }
         }
         if (!letzte) throw fehler;
         return letzte;
+      } finally {
+        for (const t of neu.teile) t.fertig(t.antwort);
       }
     });
     this.sammel = neu;
-    return neu.versprechen;
+    return teil.versprechen;
   }
 
   async #schreiben(daten, felderMaske) {
@@ -690,13 +707,16 @@ export class Sitzung {
     if (!SCHRITTE.includes(name)) throw new Error(`Unbekannter Schritt: ${name}`);
     const bisher = SCHRITTE.indexOf(this.stand.step || "opened");
     const neu = SCHRITTE.indexOf(name);
+    const vorwaerts = neu > bisher;
+    const zuvor = { step: this.stand.step, ab: this.letzterSchrittAb };
 
     const vergangen = Date.now() - this.letzterSchrittAb;
     this.zeiten[this.stand.step || "opened"] = vergangen;
     this.letzterSchrittAb = Date.now();
 
     const daten = { updatedAt: jetzt(), timings: { ...this.zeiten, live: name }, ...zusatz };
-    if (neu > bisher) {
+    this.liveStand = name;
+    if (vorwaerts) {
       daten.step = name;
       this.stand.step = name;
       this.#merkeStand();
@@ -705,19 +725,72 @@ export class Sitzung {
 
     // Erst melden, dann schreiben - und in einem eigenen Versuch. Eine
     // Messung, die stolpert, darf die Sitzung nicht mitreissen.
-    if (this.beiSchritt && neu > bisher) {
+    const melden = () => {
+      if (!this.beiSchritt) return;
       try { this.beiSchritt(name, zusatz); }
       catch (fehler) { globalThis.console?.warn?.("[lifeskin] Schrittmeldung:", fehler?.message); }
-    }
+    };
+    // AUSSER BEIM KAUF (ERST_SPEICHERN, 29.09., Pruefung der Kaufwege;
+    // Pixel-Aenderung erlaubt von Albert am 29.09.2026). Im Pruefstand mit
+    // einem Serverfehler beim Bestellen: Der Kunde sah "Porosia nuk u
+    // dërgua", Meta hatte trotzdem ein Purchase - einen Kauf, den es nicht
+    // gibt, und auf Kaeufe optimieren die Anzeigen. Die Ergebnisseite
+    // machte es schon immer so: erst speichern, dann melden. Beim Kauf
+    // steht die Seite ohnehin, bis der Server geantwortet hat; nichts geht
+    // verloren, wenn die Meldung einen Augenblick spaeter hinausgeht.
+    const erstSpeichern = ERST_SPEICHERN.has(name);
+    if (vorwaerts && !erstSpeichern) melden();
 
     const geschrieben = this.#sammeln(daten, Object.keys(daten).flatMap((key) => key === "timings"
       ? Object.keys(daten.timings).map((name) => `timings.${name}`) : [key]));
-    // Analyse abgeschickt oder bestellt: sofort melden - aber erst, wenn
-    // der Schritt in Firestore steht, denn die Meldung liest ihn dort.
-    if (neu > bisher && MELDE_SCHRITTE.has(name)) {
+    if (vorwaerts && (erstSpeichern || MELDE_SCHRITTE.has(name))) {
       const id = this.id;
-      geschrieben.then((antwort) => { if (antwort?.ok) meldungAnstossen(id, this.fetchFn); });
+      geschrieben.then((antwort) => {
+        if (antwort?.ok) {
+          if (erstSpeichern) melden();
+          // Analyse abgeschickt oder bestellt: sofort melden - aber erst,
+          // wenn der Schritt in Firestore steht, denn die Meldung liest ihn dort.
+          if (MELDE_SCHRITTE.has(name)) meldungAnstossen(id, this.fetchFn);
+          return;
+        }
+        // NICHT GESPEICHERT: DER KAUF GILT NICHT ALS ERREICHT (29.09.).
+        //
+        // Der Schritt stand schon vor dem Schreiben im Tab. Scheiterte das
+        // Speichern, schrieb der zweite Versuch deshalb kein step "ordered"
+        // mehr - die Bestellung kam an, aber die Conversions API (sie
+        // braucht den Wechsel auf "ordered") und die Meldung an Dr. Gashi
+        // blieben stumm. Jetzt geht der Tab auf den Stand davor zurueck, und
+        // der naechste Versuch schreibt, meldet und stoesst alles an wie der
+        // erste. Kam der erste doch an (Antwort verloren), schreibt der zweite
+        // dasselbe noch einmal: kein zweiter Kauf - die Conversions API sieht
+        // keinen neuen Wechsel, und Meta legt gleiche Kennungen zusammen.
+        if (erstSpeichern && this.stand.step === name) {
+          this.stand.step = zuvor.step;
+          this.letzterSchrittAb = zuvor.ab;
+          this.#merkeStand();
+        }
+      });
     }
+    return geschrieben;
+  }
+
+  // WO DER BESUCHER GERADE IST - fuer Live in Heart, ohne Schritt und ohne
+  // Pixel (29.09.).
+  //
+  // Der Laden zaehlt keinen Schritt des Trichters; Korb, Kasse und
+  // Anschrift setzen Marken (imKorb, kasseGeoeffnet, adresseBegonnen). Die
+  // Marken zaehlen in Live aber nur, solange kein Live-Stand da ist - und
+  // wer im Laden erst die Analyse angetippt hatte (Menyra, Scan) und dann
+  // doch etwas in den Korb legte, stand mit diesem alten Stand weiter in
+  // der Analyse-Reihe. Jetzt schreibt der Laden seinen Stand wie die
+  // Ergebnisseite: die letzte Handlung zaehlt. Nur timings.live, mit Maske -
+  // die anderen Zeiten bleiben stehen.
+  liveMerken(wert) {
+    const live = String(wert || "");
+    if (!live || this.liveStand === live) return Promise.resolve(null);
+    this.liveStand = live;
+    const geschrieben = this.#sammeln({ updatedAt: jetzt(), timings: { live } }, ["updatedAt", "timings.live"]);
+    geschrieben.then((antwort) => { if (!antwort?.ok && this.liveStand === live) this.liveStand = ""; });
     return geschrieben;
   }
 

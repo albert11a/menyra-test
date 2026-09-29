@@ -26,7 +26,7 @@ bekommen wir die Heart-Stats wie es richtig ist?"
 |---|---|---|---|---|
 | /lifeskinshop, Direktkauf | Set gelegt: AddToCart 39 EUR, einmal je Besuch; Heart: Warenkoerbe 1 (39 €), Live N'shport, Chip Shport | InitiateCheckout 39 EUR; kasseGeoeffnet; Chip Arka | adresseBegonnen; Live Adresa | Purchase 39 EUR, eventID = Fallnummer = order.orderId; CAPI gleiche event_id; Heart: Bestellungen 1, Umsatz 39 €, Live Cash |
 | /lifeskin, Laden der Landing | Shto: AddToCart 29 EUR | InitiateCheckout 29 EUR | adresseBegonnen | Purchase 29 EUR, eventID = orderId |
-| Ergebnisseite (Laden und /lifeskin) | Preis im Bild: AddToCart 39 EUR (Meta), in Heart KEIN Warenkorb | Kaufknopf: InitiateCheckout 39 EUR, Heart-Warenkorb, Live N'shport, Chip Analyse Shport+Arka | Live Adresa, Chip Adresa | Purchase 39 EUR erst NACH dem Speichern, eventID = orderId |
+| Ergebnisseite (Laden und /lifeskin) | Preis im Bild: AddToCart 39 EUR (Meta), in Heart KEIN Warenkorb; Live Rezultati | Kaufknopf: InitiateCheckout 39 EUR, Heart-Warenkorb, Live N'shport, Chip Analyse Shport+Arka | Live Adresa, Chip Adresa | Purchase 39 EUR erst NACH dem Speichern, eventID = orderId |
 
 - Neuladen nach dem Kauf und spaeteres Oeffnen der Ergebnisseite: kein
   zweites Purchase.
@@ -41,32 +41,55 @@ bekommen wir die Heart-Stats wie es richtig ist?"
   (Rezultati · N'shport · Adresa · Cash), unter den Spalten Landing, Fotot,
   Pyetjet, Patient.
 
-## Offen - betrifft Pixel/Conversions API, nur mit Erlaubnis (AGENTS.md)
+- **Live · Kauf im Laden nach einem Analyse-Schritt.** Wer im Laden erst die
+  Analyse antippte (Menyra, Scan) und dann doch in den Korb legte, stand in
+  Live weiter in der Analyse-Reihe: Die Marke `imKorb` zaehlt nur ohne
+  Live-Stand, und der alte ("wahl") stand noch da. Jetzt schreiben beide
+  Laeden ihren Stand (`Sitzung.liveMerken`: Korb und Kasse "offer" =
+  N'shport, Anschrift "address" = Adresa) - die letzte Handlung zaehlt.
+  Nur `timings.live`, kein Schritt, kein Pixel.
 
-1. **Laden (/lifeskinshop und /lifeskin): Purchase geht an Meta, BEVOR die
-   Bestellung gespeichert ist** (`Sitzung.schritt`: "erst melden, dann
-   schreiben"). Scheitert das Speichern, sieht der Kunde "Porosia nuk u
-   dërgua", Meta hat aber schon einen Kauf. Die Ergebnisseite macht es
-   richtig (erst speichern, dann melden). Vorschlag: im Laden genauso.
-2. **Wiederholter Versuch nach einem Fehler: `step: "ordered"` wird nicht
-   mehr geschrieben** (der Schritt galt im Browser schon als erreicht).
-   Heart zaehlt die Bestellung (an order.orderId) - aber die Conversions API
-   (`istKauf` braucht den Schritt) und die Meldung der Bestellung
-   (`meldungAnstossen`) feuern nicht. Vorschlag: den Schritt erneut
-   schreiben, solange er nicht bestaetigt ist.
-3. **Conversions API ohne Browser-Kennung:** `user_data` traegt nur fbp/fbc,
-   kein `client_user_agent`; `event_source_url` ist immer
-   `https://mnyra.com/lifeskin`. Meta verlangt fuer Website-Ereignisse vom
-   Server den User-Agent. Vorschlag: `navigator.userAgent` in `order`
-   mitgeben und senden, dazu die echte Seite. Braucht einen Functions-Deploy.
-4. **Ob die Conversions API ueberhaupt laeuft, ist von hier nicht zu sehen**
-   (Secret `META_CAPI_TOKEN`, Deploy). Pruefen im Ereignismanager: Purchase
-   mit Verbindung "Browser und Server" und Deduplizierung.
-5. Ergebnisseite: AddToCart/InitiateCheckout kommen auch nach dem Kauf noch
-   einmal, wenn der Kunde die Seite wieder oeffnet und den Preis sieht
-   (Rauschen). Vorschlag: nach dem Kauf nicht mehr melden.
-6. Noch nicht deployt (Entscheidung Inhaber): Bestellungen aus dem stillen
-   Modus nicht an die Conversions API.
+## Umgesetzt am 29.09. - Pixel-Aenderung erlaubt von Albert am 29.09.2026
+
+Wortlaut der Erlaubnis: "1 Kauf erst nach dem Speichern melden, 2 Schritt
+beim zweiten Versuch neu schreiben, 3 User-Agent und Seite fuer die
+Conversions API vorbereiten, 4 nach dem Kauf keine
+AddToCart/InitiateCheckout mehr." Tests:
+`tests/lifeskin-kauf-nach-speichern.test.mjs`, Pixel-Sperre neu eingetragen.
+
+1. **Laden (/lifeskinshop und /lifeskin): Purchase erst nach dem Speichern.**
+   War: "erst melden, dann schreiben" - mit einem Serverfehler sah der Kunde
+   "Porosia nuk u dërgua", Meta hatte trotzdem einen Kauf. Jetzt meldet
+   `Sitzung.schritt("ordered")` den Pixel erst, wenn Firestore die
+   Bestellung angenommen hat (`ERST_SPEICHERN`), wie die Ergebnisseite. Alle
+   anderen Schritte melden weiter vor dem Schreiben. Dazu bekommt jeder
+   Aufrufer die Antwort auf sein eigenes Teil eines gesammelten PATCH -
+   vorher die letzte gute der Sammlung.
+2. **Zweiter Versuch nach einem Fehler.** War: `step: "ordered"` wurde nicht
+   mehr geschrieben, Conversions API und Meldung an Dr. Gashi blieben stumm.
+   Jetzt geht der Tab bei einem Fehler auf den Stand davor zurueck; der
+   zweite Versuch schreibt den Schritt, meldet Purchase (einmal) und stoesst
+   die Meldung an. Pruefstand mit 503: Versuch 1 kein Purchase, Versuch 2
+   genau eines, step "ordered", `istKauf` wahr.
+3. **User-Agent und Seite fuer die Conversions API (vorbereitet).** Der
+   Browser gibt `order.ua` (User-Agent) und `order.seite` (Adresse und erster
+   Pfadteil, ohne Fallkennung) mit - in allen fuenf Bestellwegen
+   (`browserAngaben`). Die Function sendet daraus `client_user_agent` und
+   `event_source_url` (nur mnyra.com, sonst die feste Adresse). **Wirkt erst
+   nach einem Functions-Deploy** (Inhaber); bis dahin stehen die Felder nur
+   in der Bestellung.
+4. **Nach dem Kauf keine AddToCart/InitiateCheckout mehr** (Ergebnisseite
+   und Warteseite). Pruefstand: Wiederoeffnen nach dem Kauf mit dem Preis im
+   Bild - nur PageView.
+
+## Weiter offen
+
+- **Ob die Conversions API ueberhaupt laeuft, ist von hier nicht zu sehen**
+  (Secret `META_CAPI_TOKEN`, Deploy). Pruefen im Ereignismanager: Purchase
+  mit Verbindung "Browser und Server" und Deduplizierung.
+- Noch nicht deployt (Entscheidung Inhaber): Bestellungen aus dem stillen
+  Modus nicht an die Conversions API, und Punkt 3 oben. Beides kommt mit dem
+  naechsten Functions-Deploy.
 
 ## Bekannt, klein
 

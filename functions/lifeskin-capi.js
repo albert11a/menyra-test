@@ -174,7 +174,10 @@ exports.lifeskinCapiPurchase = functions
         // Metas eigene Zaehlung dessen, was es angenommen hat.
         received: antwort?.events_received,
         mitFbp: Boolean(nutzlast.user_data.fbp),
-        mitFbc: Boolean(nutzlast.user_data.fbc)
+        mitFbc: Boolean(nutzlast.user_data.fbc),
+        // Seit 29.09. (order.ua) - Meta verlangt ihn fuer Website-Ereignisse.
+        mitUa: Boolean(nutzlast.user_data.client_user_agent),
+        seite: nutzlast.event_source_url
       });
     } catch (error) {
       // Die Marke bleibt stehen, auch wenn das Senden schiefging.
