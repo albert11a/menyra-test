@@ -331,8 +331,11 @@ Scan; vorher erst mit dem Bild, dann waeren 2 und 3 immer gleich gewesen.
 **Analyse** (wer die Analyseseite geoeffnet hat): 1 Përputhja (#terapia) ·
 2 Gjetjet (#pse) · 3 Pakoja (#merrni) · 4 Ndjekja (#ndjekja oder #ditet) ·
 5 Para - Pas (#rezultate) · 6 Oferta (#vendimi) · 7 F.A.Q (#pyetjet) ·
-8 Detajet (#analiza) · 9 Fundi (#ndaje oder #instagram); dann 10 Shport
-(Preis gesehen = AddToCart) · 11 Arka · 12 Adresa · 13 Gotat Nalt - nur,
+8 Detajet (#analiza) · 9 Fundi (#ndaje oder #instagram); dann 10 Çmimi
+(Preis gesehen; Meta bekommt dafuer AddToCart, in Heart ist es kein
+Warenkorb - auf der Analyseseite gibt es keinen Korb, "Porosit" oeffnet
+gleich die Kasse; bis 29.09. mittags hiess der Punkt "Shport") · 11 Arka ·
+12 Adresa · 13 Gotat Nalt - nur,
 was auf der Analyseseite geschah (`timings.kauf`, sonst alte Marken ohne
 Laden-Korb). Gemessen von der Analyseseite im Kleid des Ladens
 (`timings.terapia.sN`, gesehen wie im Laden, nie in der Vorschau);

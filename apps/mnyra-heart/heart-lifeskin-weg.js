@@ -200,8 +200,13 @@ const ohneLadenKorb = (s) => s?.imKorb !== true;
 export const SHOP_ANALYSE_SEITE = Object.freeze(TERAPIA_ABSCHNITTE.map((a) => Object.freeze({
   id: `t${a.nr}`, nr: a.nr, label: a.name, gilt: (s) => terapiaTiefe(s) >= a.nr
 })));
+// PUNKT 10 IST "ÇMIMI", NICHT "SHPORT" (29.09., Rueckfrage Inhaber): Auf der
+// Analyseseite gibt es keinen Korb - "Porosit" oeffnet gleich die Kasse
+// (Arka). Hier steht nur, wer den Preis gesehen hat. Meta bekommt dafuer
+// AddToCart (Pixel, gesperrt); in Heart ist es kein Warenkorb - wie in der
+// Kachel "Warenkoerbe" und in Live.
 export const SHOP_ANALYSE_KAUF = Object.freeze([
-  { nr: 10, id: "korb", label: "Shport", gilt: (s) => s?.sahPreis === true },
+  { nr: 10, id: "preis", label: "Çmimi", gilt: (s) => s?.sahPreis === true },
   { nr: 11, id: "kasse", label: "Arka", gilt: (s) => Boolean(s?.timings?.kauf?.kasse) || (ohneLadenKorb(s) && s?.kasseGeoeffnet === true) },
   { nr: 12, id: "anschrift", label: "Adresa", gilt: (s) => Boolean(s?.timings?.kauf?.eingabe)
     || (ohneLadenKorb(s) && (s?.hatAnschrift === true || s?.adresseBegonnen === true)) },
