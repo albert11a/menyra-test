@@ -93,9 +93,9 @@ html[data-ls-landing="lifeskinshop"] .ls-zurueck {
   border: 1px solid var(--linie);
   color: var(--basis);
 }
-/* Rechts im Kopf: "Pa detyrim" und "Pyetja 1 nga 4" - klein und in
-   Versalien, wie die Nummern der Abschnitte im Laden ("PARA / PAS"). */
-html[data-ls-landing="lifeskinshop"] #ls-wahl .ls-kopf__schild,
+/* Rechts im Kopf: "Pyetja 1 nga 3" - klein und in Versalien, wie die
+   Nummern der Abschnitte im Laden ("PARA / PAS"). "Pa detyrim" steht
+   seit dem 29.09. nicht mehr dort. */
 html[data-ls-landing="lifeskinshop"] .ls-zaehler {
   margin-left: auto;
   padding: 6px 10px;
@@ -254,21 +254,17 @@ html[data-ls-landing="lifeskinshop"] .ls-alter__wahl[aria-pressed="true"] {
 html[data-ls-landing="lifeskinshop"] .ls-whatsapp__schritt { color: var(--basis); font-size: 11px; letter-spacing: 1.6px; }
 html[data-ls-landing="lifeskinshop"] .ls-gesichert { border-color: var(--linie); border-radius: 14px; }
 html[data-ls-landing="lifeskinshop"] .ls-gesichert__titel { color: var(--basis); }
+/* Die Nummer (Fassung 29.09.) im Kleid des Ladens: weniger rund. */
+html[data-ls-landing="lifeskinshop"] .ls-antwortzeit { border-radius: 8px; background: #eef7f3; }
+html[data-ls-landing="lifeskinshop"] #ls-telweiter.ls-knopf--fertig::after {
+  -webkit-mask-image: var(--weg-pfeil);
+  mask-image: var(--weg-pfeil);
+}
 html[data-ls-landing="lifeskinshop"] .ls-viberlink { color: var(--basis); }
 html[data-ls-landing="lifeskinshop"] .ls-anhang__knopf { border-color: #bbc9c7; border-radius: 8px; color: var(--basis); }
 
 /* ── Die drei Fragen ──────────────────────────────────────────────────── */
-/* Der Satz ueber der ersten Frage ist eine kleine Belohnung ("Skanimi
-   mbaroi ✓") - deshalb auf Minze und nicht als graue Zeile. */
-html[data-ls-landing="lifeskinshop"] #ls-frageneinleitung {
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: #eef7f3;
-  color: var(--text);
-  font-size: 13px;
-  line-height: 1.45;
-}
-html[data-ls-landing="lifeskinshop"] #ls-frageneinleitung[hidden] { display: none; }
+/* Ohne Satz ueber der ersten Frage (29.09.): die Frage steht gleich oben. */
 html[data-ls-landing="lifeskinshop"] .ls-wahl__knopf {
   position: relative;
   min-height: 48px;

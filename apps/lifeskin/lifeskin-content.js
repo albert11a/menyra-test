@@ -166,9 +166,13 @@ export const OBERFLAECHE = Object.freeze({
   // DER SATZ UEBER BEIDEN. Er steht da, weil der Bildschirm sonst aus dem
   // Nichts zwei Angaben verlangt: Wer gerade eine halbe Minute den Kopf
   // gedreht hat, soll zuerst lesen, dass dieser Teil vorbei ist.
+  // "EDHE DY GJËRA DHE KENI MBARUAR" STAND HIER BIS ZUM 29.09. - und war
+  // nicht wahr: Nach Name und Alter kommt noch die Nummer. Wie viele
+  // Schritte es noch sind, muss er nicht wissen (Wunsch Inhaber); die
+  // Zeile sagt nur, dass es fast geschafft ist.
   nameVorsatz: {
-    sq: "Skanimi mbaroi. Edhe dy gjëra dhe keni mbaruar.",
-    de: "Der Scan ist fertig. Noch zwei Angaben, dann sind Sie durch."
+    sq: "Skanimi mbaroi. Pothuajse keni mbaruar.",
+    de: "Der Scan ist fertig. Sie sind fast fertig."
   },
   // DERSELBE BILDSCHIRM AUF DREI WEGEN, DREI SAETZE DARUEBER.
   //
@@ -177,14 +181,14 @@ export const OBERFLAECHE = Object.freeze({
   // gescannt wurde, ist eine Behauptung, die der Besucher als Fehler
   // liest.
   nameVorsatzFoto: {
-    sq: "Fotoja u ruajt. Edhe dy gjëra dhe keni mbaruar.",
-    de: "Das Foto ist gespeichert. Noch zwei Angaben, dann sind Sie durch."
+    sq: "Fotoja u ruajt. Pothuajse keni mbaruar.",
+    de: "Das Foto ist gespeichert. Sie sind fast fertig."
   },
   // Nach den vier Fragen: Scan oder Foto hat der Satz davor schon
   // gemeldet - hier nur noch der Dank und das Ende in Sicht.
   nameVorsatzNachFragen: {
-    sq: "Faleminderit! Edhe dy gjëra dhe keni mbaruar.",
-    de: "Danke! Noch zwei Angaben, dann sind Sie durch."
+    sq: "Faleminderit! Pothuajse keni mbaruar.",
+    de: "Danke! Sie sind fast fertig."
   },
   nameVorsatzTrup: {
     sq: "Fillojmë me dy gjëra të shkurtra.",
@@ -416,6 +420,28 @@ export const OBERFLAECHE = Object.freeze({
     de: "nur eine Nachricht auf Viber."
   },
   telKnopfViber: { sq: "Merrni analizën në Viber", de: "Analyse per Viber erhalten" },
+  // DIE NUMMER, FASSUNG 29.09. (/lifeskin und /lifeskinshop, Wunsch
+  // Inhaber - "da verliere ich die meisten"). Die Worte hat er selbst
+  // geschrieben: oben, was er bekommt und von wem; dann, was schon
+  // gespeichert ist; dann das Feld, drei Haken und "Përfundo". Die Zeile
+  // mit der Antwortzeit kommt aus Heart (shared/lifeskin-antwortzeit.js).
+  // Die Seiten /lifeskin2 und /lifeskintrichter behalten die alte Fassung
+  // (die Schluessel darueber).
+  telZiel: { sq: "Merrni rezultatin tuaj nga Dr. Violeta Gashi", de: "Ihr Ergebnis von Dr. Violeta Gashi" },
+  telZielName: {
+    sq: "{name}, merrni rezultatin tuaj nga Dr. Violeta Gashi",
+    de: "{name}, Ihr Ergebnis von Dr. Violeta Gashi"
+  },
+  telGespeichertScan: { sq: "Fotot dhe përgjigjet tuaja janë ruajtur.", de: "Ihre Aufnahmen und Antworten sind gespeichert." },
+  telGespeichertFoto: { sq: "Fotoja dhe përgjigjet tuaja janë ruajtur.", de: "Ihr Foto und Ihre Antworten sind gespeichert." },
+  telGespeichertOhne: { sq: "Të dhënat tuaja janë ruajtur.", de: "Ihre Angaben sind gespeichert." },
+  telPersoenlich: {
+    sq: "Dr. Violeta Gashi do t’i shqyrtojë personalisht dhe do t’jua dërgojë analizën në WhatsApp.",
+    de: "Dr. Violeta Gashi sieht sie sich persönlich an und schickt Ihnen die Analyse auf WhatsApp."
+  },
+  telHakenZweck: { sq: "Vetëm për analizën tuaj", de: "Nur für Ihre Analyse" },
+  telHakenPrivat: { sq: "Numri juaj mbetet privat", de: "Ihre Nummer bleibt privat" },
+  telFertig: { sq: "Përfundo", de: "Abschließen" },
   uebergabeLaeuft: { sq: "Po dërgojmë të dhënat tuaja…", de: "Ihre Angaben werden gesendet…" },
   uebergabeFehler: {
     sq: "Dërgimi nuk është konfirmuar ende. Kontrolloni internetin dhe provoni sërish. Mos e mbyllni këtë faqe; nuk keni nevojë t’i plotësoni të dhënat përsëri.",
@@ -971,7 +997,14 @@ export const FRAGEN = Object.freeze([
       // Und ZULETZT, nicht zuerst: Ein Ausweg, der oben steht, wird zum
       // schnellsten Weg durch die Frage.
       { id: "nukEdi", alleine: true, text: { sq: "Nuk e di", de: "Weiß ich nicht" } }
-    ]
+    ],
+    // IM LADEN ohne "Shkëlqimi" und "Nuk e di" (29.09., Wunsch Inhaber):
+    // Dort kommt die Frage erst nach Scan oder Foto - Dr. Gashi sieht die
+    // Haut, ein Ausweg braucht es nicht. Die Kennungen bleiben im Vorrat,
+    // Heart und Prompt lesen alte Antworten wie immer.
+    wege: {
+      lifeskinshop: { ohne: ["shkelqimi", "nukEdi"] }
+    }
   },
   {
     id: "mosha",
@@ -1079,7 +1112,13 @@ export const FRAGEN = Object.freeze([
       // Zuletzt, wie "Nuk e di": Was oben steht, wird zum schnellsten Weg
       // durch die Frage.
       { id: "asgje", alleine: true, text: { sq: "Asgjë deri tash", de: "Bisher nichts" } }
-    ]
+    ],
+    // Im Laden kuerzer (29.09., Wunsch Inhaber).
+    wege: {
+      lifeskinshop: {
+        titel: { sq: "Çka keni provuar deri tani?", de: "Was haben Sie bisher probiert?" }
+      }
+    }
   },
   {
     // DIE BEREITSCHAFT - und zwar ohne ein "Nein".
@@ -1192,7 +1231,6 @@ export const OBERFLAECHE_WEGE = Object.freeze({
   // wie viel Prozent das Set zu seiner Haut passt. Kein "falas" als
   // Versprechen; der Knopf auf dem Nummernschirm holt genau diese Zahl.
   lifeskinshop: Object.freeze({
-    langPunktFalas: { sq: "Pa detyrim", de: "Unverbindlich" },
     menyraTitel: { sq: "Si ta kontrollojmë lëkurën tuaj?", de: "Wie sollen wir Ihre Haut prüfen?" },
     menyraUnter: {
       sq: "Zgjidhni një mënyrë. Dr. Gashi ju tregon me përqindje sa ju përshtatet Acne Duo.",
@@ -1209,30 +1247,21 @@ export const OBERFLAECHE_WEGE = Object.freeze({
       de: "Damit Dr. Gashi Ihre Haut nach Ihrem Alter beurteilt."
     },
     fotoAnalyseVergleich: { sq: "Mosha {gruppe} u shënua për Dr. Gashin", de: "Altersgruppe {gruppe} für Dr. Gashi vermerkt" },
-    telGesichertUnter: {
-      sq: "Dr. Violeta Gashi e shqyrton vetë dhe ju dërgon përqindjen e përputhjes.",
-      de: "Dr. Violeta Gashi prüft es selbst und schickt Ihnen die Prozentzahl der Übereinstimmung."
+    // Die Nummer-Seite (Fassung 29.09.): dieselben Saetze wie /lifeskin,
+    // nur ohne "Analyse" - der Laden verspricht die Prozentzahl.
+    telPersoenlich: {
+      sq: "Dr. Violeta Gashi do t’i shqyrtojë personalisht dhe do t’jua dërgojë përqindjen e përputhjes në WhatsApp.",
+      de: "Dr. Violeta Gashi sieht sie sich persönlich an und schickt Ihnen die Prozentzahl der Übereinstimmung auf WhatsApp."
     },
-    telKnopf: { sq: "Merrni përqindjen në WhatsApp", de: "Prozentzahl per WhatsApp erhalten" },
-    telKnopfViber: { sq: "Merrni përqindjen në Viber", de: "Prozentzahl per Viber erhalten" }
+    telHakenZweck: { sq: "Vetëm për rezultatin tuaj", de: "Nur für Ihr Ergebnis" }
   })
 });
 
 // DIE SAETZE UEBER DEN FRAGEN IN DEN WORTEN DES WEGS - dieselbe Idee wie
 // OBERFLAECHE_WEGE, fuer FRAGEN_TEXTE. Nur, was sich unterscheidet.
-export const FRAGEN_TEXTE_WEGE = Object.freeze({
-  lifeskinshop: Object.freeze({
-    // Drei Fragen im Laden (FRAGEN_NACH_AUFNAHME_WEGE).
-    einleitungNachScan: {
-      sq: "Skanimi mbaroi ✓ 3 pyetje të shkurtra, vetëm me prekje – që Dr. Gashi ta vlerësojë më saktë përputhjen tuaj.",
-      de: "Der Scan ist fertig ✓ 3 kurze Fragen, nur antippen – damit Dr. Gashi Ihre Übereinstimmung genauer beurteilt."
-    },
-    einleitungNachFoto: {
-      sq: "Fotoja u ruajt ✓ 3 pyetje të shkurtra, vetëm me prekje – që Dr. Gashi ta vlerësojë më saktë përputhjen tuaj.",
-      de: "Das Foto ist gespeichert ✓ 3 kurze Fragen, nur antippen – damit Dr. Gashi Ihre Übereinstimmung genauer beurteilt."
-    }
-  })
-});
+// Der Laden hat seit dem 29.09. KEINEN Satz ueber der ersten Frage (Wunsch
+// Inhaber): Seine Seite hat kein #ls-frageneinleitung mehr.
+export const FRAGEN_TEXTE_WEGE = Object.freeze({});
 
 // DIE FRAGE IN DEN WORTEN DER LANDINGPAGE, UEBER DIE JEMAND KAM.
 //
@@ -1240,15 +1269,20 @@ export const FRAGEN_TEXTE_WEGE = Object.freeze({
 // tragen (frage.wege[weg]). Getauscht werden nur Titel, Unterzeile und die
 // Worte der Antworten - nie ihre Kennungen, nie ihre Reihenfolge. Ohne Weg
 // oder ohne eigene Texte kommt die Frage unveraendert zurueck.
+// "ohne": Antworten, die dieser Weg nicht zeigt (die Kennungen bleiben im
+// Vorrat - Heart und Prompt kennen sie weiter).
 export function frageFuerWeg(frage, weg) {
   const eigen = weg && frage?.wege?.[weg];
   if (!eigen) return frage;
+  const ohne = new Set(Array.isArray(eigen.ohne) ? eigen.ohne : []);
   return {
     ...frage,
     titel: eigen.titel || frage.titel,
     unter: eigen.unter || frage.unter,
     antworten: Array.isArray(frage.antworten)
-      ? frage.antworten.map((a) => (eigen.antworten?.[a.id] ? { ...a, text: eigen.antworten[a.id] } : a))
+      ? frage.antworten
+        .filter((a) => !ohne.has(a.id))
+        .map((a) => (eigen.antworten?.[a.id] ? { ...a, text: eigen.antworten[a.id] } : a))
       : frage.antworten
   };
 }

@@ -60,6 +60,7 @@ import { ladeLifeskin, ladeLifeskinSeit, horcheLive, ladeFotos, ladeErstesFoto, 
   ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX,
   speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder,
   speichereShopSetet, ladeShopSetFoto, speichereShopSetFoto, loescheShopSetFoto, speichereShopHero, loescheShopHero,
+  speichereAntwortzeit,
   ladeMedien, speichereMedien, speichereMedium, loescheMedium, ladeKommentare, setzeKommentarVerborgen, loescheKommentar, schreibeKommentare } from "./heart-lifeskin-adapter.js";
 import { medienListe, mediumNormalisieren, neueMediumId } from "../../shared/lifeskin-medien.js";
 import { kommentarVorschauSetzen } from "./heart-lifeskin-medien.js";
@@ -67,6 +68,7 @@ import { rasteListe, klappSetzen, klappOffen, rastiDom } from "./heart-lifeskin-
 import { shopSetetListe } from "./heart-lifeskin-shopsets.js";
 import { schnittHoeren, schnittErgebnis, schnittZurueck } from "./heart-lifeskin-schnitt.js";
 import { setetNormalisieren, setNormalisieren, neueSetId, SET_PRODUKTE_MAX } from "../../shared/lifeskin-shop-sets.js";
+import { ANTWORTZEITEN, antwortzeitSatz } from "../../shared/lifeskin-antwortzeit.js";
 import { entwurfSchreiben, entwurfLoeschen, entwurfAusBogen, promptMerken } from "./heart-lifeskin-entwurf.js";
 import { befundStandAuffrischen, befundFelderAnpassen } from "./heart-lifeskin-befundstand.js";
 import { bogenMerken, bogenVergessen, bogenWiederherstellen } from "./heart-lifeskin-bogenspeicher.js";
@@ -3915,7 +3917,35 @@ const operations = {
   },
   lifeskinZeitwahl() {
     const stand = store.getState().lifeskin || {};
-    actions.patchLifeskin({ zeitWahl: stand.zeitWahl !== true });
+    actions.patchLifeskin({ zeitWahl: stand.zeitWahl !== true, uhrWahl: false });
+  },
+  // DIE ANTWORTZEIT (Uhr-Knopf links neben dem Datum, 29.09.): dieselbe
+  // Chipreihe im Kopf wie beim Datum. Der gewaehlte Chip rueckt ins Bild.
+  lifeskinUhrwahl() {
+    const stand = store.getState().lifeskin || {};
+    const auf = stand.uhrWahl !== true;
+    actions.patchLifeskin({ uhrWahl: auf, zeitWahl: false });
+    if (auf) {
+      globalThis.requestAnimationFrame?.(() => {
+        globalThis.document?.querySelector?.(".heart-zeitwahl--uhr .heart-zeitwahl__chip--an")
+          ?.scrollIntoView?.({ block: "nearest", inline: "center" });
+      });
+    }
+  },
+  async setLifeskinAntwortzeit(id) {
+    const wahl = String(id || "").trim();
+    const eintrag = ANTWORTZEITEN.find((z) => z.id === wahl);
+    if (!eintrag) return;
+    actions.patchLifeskin({ uhrWahl: false });
+    try {
+      const antwortzeit = await speichereAntwortzeit(wahl);
+      actions.patchLifeskin({ antwortzeit });
+      setToast("Antwortzeit", wahl === "auto"
+        ? "Automatisch: vor 18 Uhr „sot“, danach „nesër në mëngjes“."
+        : `${eintrag.label} – steht jetzt auf der Nummer-Seite und der Warteseite: „${antwortzeitSatz(antwortzeit)}“.`, "success");
+    } catch (fehler) {
+      setToast("Antwortzeit", fehler?.message || "Speichern fehlgeschlagen.", "danger");
+    }
   },
   // Welcher der sechs Trichter unter der Chipreihe steht.
   setLifeskinTrichter(id) {

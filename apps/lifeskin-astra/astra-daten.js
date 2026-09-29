@@ -25,6 +25,7 @@ import { felder } from "../lifeskin/lifeskin-session.js";
 import { pfadPatch } from "../../shared/lifeskin-klickpfad.js";
 import { meldungAnstossen } from "../../shared/lifeskin-melden.js";
 import { kaufPatch } from "../../shared/lifeskin-kaufweg.js";
+import { antwortzeitLaden } from "../../shared/lifeskin-antwortzeit.js";
 
 // Firestore verpackt jeden Wert in seinen Typ. Ausgepackt werden nur die
 // Formen, die im Befund wirklich vorkommen - mehr braucht diese Seite
@@ -120,6 +121,13 @@ export class AnalyseDaten {
     } catch {
       return null;
     }
+  }
+
+  // Wann Dr. Gashi antwortet - eingestellt in Heart (Uhr-Knopf,
+  // config/antwortzeit, shared/lifeskin-antwortzeit.js). null: nie gesetzt
+  // oder nicht erreichbar, dann gilt die alte Regel.
+  antwortzeit() {
+    return antwortzeitLaden({ basis: LIFESKIN_FIRESTORE_BASE, tenant: LIFESKIN_TENANT, fetchFn: this.fetchFn, frist: 3000 });
   }
 
   // Die Miniaturen der Aufnahmen - das, was auf der Warteseite zu sehen ist.

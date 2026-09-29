@@ -42,6 +42,8 @@ import { starteKlickpfad } from "../../shared/lifeskin-klickpfad.js";
 import { Pixel } from "./lifeskin-pixel.js";
 import { untenNachziehenStarten } from "../../shared/lifeskin-unten.js";
 import { starteLandingtiefe } from "./lifeskin-landingtiefe.js";
+import { LIFESKIN_FIRESTORE_BASE, LIFESKIN_TENANT } from "./lifeskin-config.js";
+import { antwortzeitLaden, antwortzeitSatz } from "../../shared/lifeskin-antwortzeit.js";
 
 // Sechs Bildschirme, nicht mehr zehn.
 //
@@ -2323,6 +2325,7 @@ export class Trichter {
     if (!$("#ls-tel")) return false;
     if (melden) this.sitzung.schritt("numri");
     this.#telFehler(null);
+    this.#antwortzeitHolen();
     this.#telKopfFuellen();
     this.zeige("tel");
     // Kein Autofokus: erst Zweck und WhatsApp-Hinweis lesen, dann tippen.
@@ -2334,8 +2337,14 @@ export class Trichter {
   // Ohne Foto (Frage ohne Bild) steht nur die Aerztin da.
   #telKopfFuellen() {
     const name = String(this.zustand.name || "").trim().split(/\s+/)[0];
+    // FASSUNG 29.09. (/lifeskin und Laden): Der Name steht im Titel oben
+    // ("Arta, merrni rezultatin tuaj nga Dr. Violeta Gashi"), das Feld
+    // heisst schlicht "Numri juaj i WhatsApp-it". Die alte Fassung
+    // (/lifeskin2, /lifeskintrichter) hat kein #ls-telziel.
+    const ziel = $("#ls-telziel");
+    if (ziel) schreibe(ziel, name ? this.text("telZielName", { name }) : this.text("telZiel"));
     const titel = $("#ls-teltitel");
-    if (titel) schreibe(titel, name ? this.text("telTitelName", { name }) : this.text("telTitel"));
+    if (titel && !ziel) schreibe(titel, name ? this.text("telTitelName", { name }) : this.text("telTitel"));
     const bild = this.zustand.telBild || "";
     const el = $("#ls-gesichertbild");
     if (el) {
@@ -2346,6 +2355,34 @@ export class Trichter {
     // Nach dem Neuladen ist das Bild weg, das Foto aber gespeichert.
     const mitFoto = Boolean(bild) || Number(this.zustand.fotoAnzahl) > 0;
     if (ueber) schreibe(ueber, this.text(mitFoto ? "telGesichert" : "telGesichertOhne"));
+    // Was gespeichert ist: beim Scan mehrere Aufnahmen (auch bevor die
+    // Miniatur fertig ist), beim Foto eines, sonst nur die Angaben.
+    const gespeichert = $("#ls-telgespeichert");
+    if (gespeichert) {
+      schreibe(gespeichert, this.text(this.zustand.typ === "scan" ? "telGespeichertScan"
+        : mitFoto ? "telGespeichertFoto" : "telGespeichertOhne"));
+    }
+    this.#antwortzeitZeigen();
+  }
+
+  // WANN DR. GASHI ANTWORTET - eingestellt in Heart (Uhr-Knopf), dieselbe
+  // Zeile wie auf der Warteseite (shared/lifeskin-antwortzeit.js). Geholt,
+  // sobald die Fragen beginnen; bis zur Nummer ist es da. Ohne Antwort gilt
+  // die alte Regel (vor 18 Uhr "sot", danach "nesër në mëngjes").
+  #antwortzeitHolen() {
+    if (!$("#ls-telantwortzeit")) return;
+    this.antwortzeitVersprechen ||= antwortzeitLaden({ basis: LIFESKIN_FIRESTORE_BASE, tenant: LIFESKIN_TENANT })
+      .then((einstellung) => {
+        this.antwortzeit = einstellung;
+        this.#antwortzeitZeigen();
+        return einstellung;
+      })
+      .catch(() => null);
+  }
+
+  #antwortzeitZeigen() {
+    const el = $("#ls-telantwortzeittext");
+    if (el) schreibe(el, antwortzeitSatz(this.antwortzeit, { sprache: this.sprache }));
   }
 
   // Dasselbe wie beim Anliegen: Das Feld ist die Wahrheit, nicht der
@@ -2401,7 +2438,10 @@ export class Trichter {
     // Nur Viber: Hinweis und Knopf sprechen von Viber.
     const viber = geprueft.nurViber;
     const knopf = $("#ls-telweiter");
-    const knopfText = this.text(viber ? "telKnopfViber" : "telKnopf");
+    // "Përfundo" (Fassung 29.09.) bleibt, ob WhatsApp oder Viber.
+    const knopfText = knopf?.hasAttribute?.("data-kanalfest")
+      ? this.text(knopf.dataset.text)
+      : this.text(viber ? "telKnopfViber" : "telKnopf");
     if (knopf && knopfText) schreibe(knopf, knopfText);
     if (knopf) knopf.dataset.kanal = viber ? "viber" : "whatsapp";
     const info = $("#ls-telinfo");
@@ -2493,6 +2533,7 @@ export class Trichter {
     // zaehlt deshalb, sobald er zu sehen ist, und die Angaben selbst
     // schreibt #nameWeiter() nach - siehe dort.
     if (melden) this.sitzung.schritt("emri");
+    this.#antwortzeitHolen();
     // Der Satz oben sagt, was gerade vorbei ist - und das ist auf jedem
     // Weg etwas anderes. "Der Scan ist fertig" ueber einem Weg ohne
     // Scan liest sich als Fehler.
@@ -4232,6 +4273,7 @@ export class Trichter {
   // zum Namen - ein Schalter auf einen Bildschirm, den es nicht gibt, waere
   // eine weisse Seite.
   #aufnahmeFragen(weg) {
+    this.#antwortzeitHolen();
     if (!$("#ls-fragen")) { this.#nameZeigen(); return; }
     this.zustand.nachFragen = true;
     // Im Laden drei statt vier (fragenNachAufnahme, lifeskin-content.js).

@@ -31,16 +31,18 @@ const { perputhjaGueltig, perputhjaStufe } = await import("../shared/lifeskin-pe
 
 test("der Laden spricht in eigenen Worten - und nur mit Schluesseln, die es gibt", () => {
   for (const k of Object.keys(OBERFLAECHE_WEGE.lifeskinshop)) assert.ok(OBERFLAECHE[k], `${k} gibt es in OBERFLAECHE nicht`);
-  for (const k of Object.keys(FRAGEN_TEXTE_WEGE.lifeskinshop)) assert.ok(FRAGEN_TEXTE[k], `${k} gibt es in FRAGEN_TEXTE nicht`);
+  for (const k of Object.keys(FRAGEN_TEXTE_WEGE.lifeskinshop || {})) assert.ok(FRAGEN_TEXTE[k], `${k} gibt es in FRAGEN_TEXTE nicht`);
   for (const k of Object.keys(TEXTE_WEGE.lifeskinshop)) assert.ok(TEXTE[k], `${k} gibt es in TEXTE nicht`);
   // Er hat nie eine Analyse versprochen: Keiner seiner Saetze sagt es.
   const saetze = [
     ...Object.values(OBERFLAECHE_WEGE.lifeskinshop),
-    ...Object.values(FRAGEN_TEXTE_WEGE.lifeskinshop),
+    ...Object.values(FRAGEN_TEXTE_WEGE.lifeskinshop || {}),
     ...Object.values(TEXTE_WEGE.lifeskinshop)
   ].map((e) => t(e, "sq"));
   for (const satz of saetze) assert.doesNotMatch(satz, /analiz/i, satz);
-  assert.match(t(OBERFLAECHE_WEGE.lifeskinshop.telKnopf, "sq"), /përqindjen/);
+  // Die Nummer-Seite (Fassung 29.09.) verspricht die Prozentzahl, der Knopf heisst "Përfundo".
+  assert.match(t(OBERFLAECHE_WEGE.lifeskinshop.telPersoenlich, "sq"), /përqindjen e përputhjes/);
+  assert.equal(OBERFLAECHE_WEGE.lifeskinshop.telKnopf, undefined);
   assert.match(t(TEXTE_WEGE.lifeskinshop.pritWarum, "sq"), /vetë Dr\. Gashi/);
 });
 
@@ -52,17 +54,44 @@ test("im Laden drei Fragen nach der Aufnahme - ohne die Bereitschaft (Frage 4)",
   assert.equal(fragenNachAufnahme("lifeskin2").length, 4);
   // Keine Worte mehr fuer eine Frage, die der Laden nicht stellt.
   assert.equal(FRAGEN.find((f) => f.id === "gatishmeria").wege.lifeskinshop, undefined);
-  // Die Einleitung sagt, was kommt: drei.
-  for (const k of ["einleitungNachScan", "einleitungNachFoto"]) {
-    assert.match(t(FRAGEN_TEXTE_WEGE.lifeskinshop[k], "sq"), /3 pyetje/);
-    assert.doesNotMatch(t(FRAGEN_TEXTE_WEGE.lifeskinshop[k], "sq"), /4 pyetje/);
-  }
+  // Keine Karte "Fotoja u ruajt ✓ 3 pyetje …" ueber der ersten Frage (29.09.):
+  // Die Seite des Ladens hat die Stelle dafuer nicht mehr, /lifeskin schon.
+  assert.equal(FRAGEN_TEXTE_WEGE.lifeskinshop, undefined);
+  assert.doesNotMatch(lies("apps/lifeskin-shop/index.html"), /id="ls-frageneinleitung"/);
+  assert.match(lies("apps/lifeskin-landing/index.html"), /id="ls-frageneinleitung"/);
   // Der Prompt weiss, dass Laden-Faelle diese Antwort nicht haben.
   for (const p of ["docs/lifeskin-prompt-v9.txt", "docs/lifeskin-prompt-v9-pa-foto.txt"]) {
     assert.match(lies(p), /keine Antwort: wie unten beschrieben\. So immer bei Fällen aus dem\s+Laden \(\/lifeskinshop\)/, p);
   }
   // Die Therapieseite zeigt den Satz am Kaufknopf nur mit Antwort.
   assert.match(lies("apps/lifeskin-verkauf/terapia.js"), /zeigen\(\$\("#t-gati"\), Boolean\(spiegel\?\.bereit\)\);/);
+});
+
+test("im Laden kuerzer (29.09.): kein Pa detyrim, drei Foto-Regeln, Frage 1 ohne zwei Antworten, Frage 3 kurz", async () => {
+  const laden = lies("apps/lifeskin-shop/index.html");
+  // Kein Schild "Pa detyrim" oben - im ganzen Trichter des Ladens nicht.
+  assert.doesNotMatch(laden, /data-text="langPunktFalas"|ls-kopf__schild/);
+  assert.equal(OBERFLAECHE_WEGE.lifeskinshop.langPunktFalas, undefined);
+  // Foto-Anleitung: ohne Make-up, ohne Filter, ohne Tipp-Karte.
+  const para = laden.slice(laden.indexOf('data-text="fotoParaTitel"'), laden.indexOf('id="ls-fotoweiter"'));
+  assert.deepEqual([...para.matchAll(/data-text="(fotoPara[A-Za-z]+)"/g)].map((m) => m[1]),
+    ["fotoParaTitel", "fotoParaLicht", "fotoParaKlar", "fotoParaNah"]);
+  assert.doesNotMatch(para, /weg-tipp|KËSHILLË PËR FOTON/);
+  // /lifeskin behaelt alle fuenf Regeln.
+  const lifeskin = lies("apps/lifeskin-landing/index.html");
+  assert.match(lifeskin, /data-text="fotoParaMakeup"/);
+  assert.match(lifeskin, /data-text="fotoParaFilter"/);
+  // Frage 1 im Laden ohne "Shkëlqimi" und "Nuk e di", Frage 3 kuerzer.
+  const { FRAGEN, frageFuerWeg } = await import("../apps/lifeskin/lifeskin-content.js");
+  const frage = (id, weg) => frageFuerWeg(FRAGEN.find((f) => f.id === id), weg);
+  assert.deepEqual(frage("anliegen", "lifeskinshop").antworten.map((a) => a.id),
+    ["pucrrat", "poret", "njollat", "skuqja", "thate", "rrudhat"]);
+  assert.deepEqual(frage("anliegen", "").antworten.map((a) => a.id),
+    ["pucrrat", "poret", "shkelqimi", "njollat", "skuqja", "thate", "rrudhat", "nukEdi"], "/lifeskin behaelt alle");
+  assert.equal(t(frage("perdorimi", "lifeskinshop").titel, "sq"), "Çka keni provuar deri tani?");
+  assert.equal(t(frage("perdorimi", "").titel, "sq"), "Çka keni provuar deri tash për lëkurën?");
+  // Der Tipp unter Frage 1 erkennt sie weiter (an "Puçrrat").
+  assert.equal(frageAus(frage("anliegen", "lifeskinshop").antworten.map((a) => a.id)), "anliegen");
 });
 
 test("im Laden kein Weg Trup/Pytje - weder auf der Wahl noch in den stillen Links", async () => {

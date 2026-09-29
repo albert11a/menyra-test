@@ -39,6 +39,7 @@ import { nachWeg, baueLs2Weg, baueShopWeg, dauerText as ls2Dauer } from "./heart
 import { renderShopSetet, renderShopSetEditor, renderShopHero, renderShopHeroEditor } from "./heart-lifeskin-shopsets.js";
 import { wegGueltig } from "../../shared/lifeskin-weg.js";
 import { perputhjaGueltig } from "../../shared/lifeskin-perputhja.js";
+import { ANTWORTZEITEN, antwortzeitWahl } from "../../shared/lifeskin-antwortzeit.js";
 import { entwurfLesen, promptGemacht } from "./heart-lifeskin-entwurf.js";
 import { mitFingerabdruck } from "./heart-morph.js";
 import { renderMedien, renderMediumEditor, renderMedienReaktionen, renderBefundMedienAuswahl } from "./heart-lifeskin-medien.js";
@@ -172,6 +173,20 @@ function renderChips(eintraege, aktiv, aktion, art = "") {
 // DIE ZEITRAEUME IM KOPF VON HEART (heart-render.js): Der Datum-Knopf
 // klappt diese Reihe an die Stelle von Menue, Marke und Aktualisieren.
 export const zeitraumName = (zeitraum) => ZEITRAEUME.find((z) => z.id === zeitraum)?.label || "Heute";
+
+// DIE ANTWORTZEIT IM KOPF (Uhr-Knopf, 29.09.): dieselbe Reihe wie der
+// Zeitraum. Gewaehlt ist, was gespeichert ist und noch gilt - sonst "Auto"
+// (shared/lifeskin-antwortzeit.js). Die Wahl steht sofort auf der
+// Nummer-Seite und der Warteseite.
+export const antwortzeitName = (antwortzeit) =>
+  ANTWORTZEITEN.find((z) => z.id === antwortzeitWahl(antwortzeit))?.label || "Auto";
+export function renderUhrwahl(antwortzeit) {
+  const aktiv = antwortzeitWahl(antwortzeit);
+  return `<div class="heart-zeitwahl heart-zeitwahl--uhr" role="group" aria-label="Antwortzeit">
+            ${ANTWORTZEITEN.map((z) => `<button type="button" class="heart-zeitwahl__chip${z.id === aktiv ? " heart-zeitwahl__chip--an" : ""}"
+                data-action="lifeskin-antwortzeit" data-wert="${escapeHtml(z.id)}" aria-pressed="${z.id === aktiv}">${escapeHtml(z.label)}</button>`).join("")}
+          </div>`;
+}
 export function renderZeitwahl(zeitraum = "heute") {
   return `<div class="heart-zeitwahl" role="group" aria-label="Zeitraum">
             ${ZEITRAEUME.map((z) => `<button type="button" class="heart-zeitwahl__chip${z.id === zeitraum ? " heart-zeitwahl__chip--an" : ""}"

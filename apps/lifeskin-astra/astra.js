@@ -29,6 +29,7 @@ import { TEXTE, TEXTE_WEGE, NDJEKJA, PYETJET, t, fuelle } from "./astra-texte.js
 import { wegAusSuche, wegGueltig } from "../../shared/lifeskin-weg.js";
 import { standardText } from "./astra-texte-plan.js";
 import { meldungAnstossen } from "../../shared/lifeskin-melden.js";
+import { antwortzeitSatz } from "../../shared/lifeskin-antwortzeit.js";
 
 const $ = (auswahl) => document.querySelector(auswahl);
 // Die Bestellung ist einer davon und kein Blatt ueber der Seite:
@@ -207,6 +208,10 @@ export function farbeAusStil(name, ersatz) {
 // Vor achtzehn Uhr: heute. Danach: morgen frueh. Keine Warteschlange,
 // keine Position. Wer nachts kommt und "noch 3 vor Ihnen" liest, weiss,
 // dass es gelogen ist - und glaubt danach auch dem Befund nicht.
+//
+// Seit dem 29.09. ist das nur noch die Regel OHNE Einstellung: In Heart
+// setzt der Inhaber die Antwortzeit (Uhr-Knopf), und die Seite zeigt sie
+// (#dauerZeigen, shared/lifeskin-antwortzeit.js - dort dieselbe Regel).
 export function wartetext(stunde) {
   return stunde < 18 ? TEXTE.pritDauerSot : TEXTE.pritDauerNeser;
 }
@@ -291,8 +296,16 @@ export class Analiza {
     this.#zeige("laedt");
     if (!this.kennung) { this.#wegZeigen(); return; }
 
+    // Die Antwortzeit aus Heart laeuft neben dem Befund her - sie ist klein
+    // und meist zuerst da. Kommt sie spaeter, wird nur die Zeile nachgezogen.
+    const zeitHolen = this.quelle.antwortzeit?.().then((einstellung) => {
+      this.antwortzeit = einstellung;
+      this.#dauerZeigen();
+      return einstellung;
+    }).catch(() => null);
     this.daten = await this.quelle.bericht();
     if (!this.daten) { this.#wegZeigen(); return; }
+    await Promise.race([zeitHolen, new Promise((fertig) => setTimeout(fertig, 400))]);
     this.#kleid();
     // DIE MELDUNG AN DR. GASHI - von hier, der Warteseite. Der Trichter
     // springt direkt nach dem Speichern hierher, und sein eigener Anstoss
@@ -445,6 +458,14 @@ export class Analiza {
     this.#fertigZeigen();
   }
 
+  // WANN DR. GASHI ANTWORTET: dieselbe Zeile wie auf der Nummer-Seite
+  // ("Përgjigja brenda 20 minutave"), eingestellt in Heart. Ohne Einstellung
+  // die alte Regel (wartetext): vor 18 Uhr "sot", danach "nesër në mëngjes".
+  #dauerZeigen() {
+    const el = $("#an-pritdauer");
+    if (el) schreibe(el, antwortzeitSatz(this.antwortzeit, { sprache: this.sprache }));
+  }
+
   // OHNE NEULADEN.
   //
   // Gefragt wird in Abstaenden, nicht gelauscht. Ein echter Horchkanal
@@ -577,7 +598,7 @@ export class Analiza {
     schreibe($("#an-prittitel"), name
       ? this.text(wa ? "pritTitelWa" : "pritTitel", { name })
       : this.text(wa ? "pritTitelWaOhne" : "pritTitelOhne"));
-    schreibe($("#an-pritdauer"), t(wartetext(new Date().getHours()), this.sprache));
+    this.#dauerZeigen();
 
     schreibe($("#an-pritnumrimarke"), this.text("pritNumri"));
     schreibe($("#an-pritnumri"), this.daten.code || "—");

@@ -606,6 +606,15 @@ export function bindHeartEvents({
       operations.lifeskinZeitwahl?.();
       return;
     }
+    // Die Antwortzeit (Uhr-Knopf im Kopf) - wie der Zeitraum daneben.
+    if (action === "lifeskin-uhrwahl") {
+      operations.lifeskinUhrwahl?.();
+      return;
+    }
+    if (action === "lifeskin-antwortzeit") {
+      await operations.setLifeskinAntwortzeit?.(target.getAttribute("data-wert"));
+      return;
+    }
     if (action === "heart-push-einschalten") {
       operations.schalteHeartPushEin?.();
       return;

@@ -223,7 +223,8 @@
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
     </button>
     <span class="ls-marke">Lifeskin</span>
-    <span class="ls-kopf__schild" data-text="langPunktFalas">Falas</span>
+    <!-- Kein Schild "Pa detyrim" oben rechts (29.09., Wunsch Inhaber):
+         im ganzen Trichter des Ladens nicht. -->
   </div>
 
   <div class="ls-inhalt">
@@ -292,12 +293,9 @@
   <div class="ls-inhalt ls-inhalt--mitte">
     <h2 data-text="fotoParaTitel"></h2>
     <div class="ls-regeln">
-      <div class="ls-regel">
-        <span class="ls-regel__zeichen" aria-hidden="true">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20c1.8-4.2 4.5-6.3 8-6.3s6.2 2.1 8 6.3"/><circle cx="12" cy="7.5" r="3.6"/><path d="m4.5 4.5 15 15"/></svg>
-        </span>
-        <span class="ls-regel__text" data-text="fotoParaMakeup"></span>
-      </div>
+      <!-- Im Laden nur drei Regeln (29.09., Wunsch Inhaber): ohne
+           "Pa makeup", ohne "Mos përdorni filter" und ohne den Tipp
+           darunter. /lifeskin behaelt alle fuenf. -->
       <div class="ls-regel">
         <span class="ls-regel__zeichen" aria-hidden="true">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
@@ -312,21 +310,11 @@
       </div>
       <div class="ls-regel">
         <span class="ls-regel__zeichen" aria-hidden="true">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.5" cy="9.5" r="5.5"/><circle cx="14.5" cy="14.5" r="5.5"/><path d="m3.5 3.5 17 17"/></svg>
-        </span>
-        <span class="ls-regel__text" data-text="fotoParaFilter"></span>
-      </div>
-      <div class="ls-regel">
-        <span class="ls-regel__zeichen" aria-hidden="true">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="6" width="17" height="13" rx="2.5"/><circle cx="12" cy="12.5" r="3.2"/><path d="M8 6.2 9.2 4h5.6L16 6.2"/></svg>
         </span>
         <span class="ls-regel__text" data-text="fotoParaNah"></span>
       </div>
     </div>
-    <aside class="weg-tipp" aria-label="Këshillë për foton">
-      <span class="weg-tipp__zeichen" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg></span>
-      <span><span class="weg-tipp__marke">KËSHILLË PËR FOTON</span><span class="weg-tipp__text"><b>Dritë dite, pranë dritares.</b> Pa blic – kështu Dr. Gashi i sheh qartë edhe puçrrat e vogla.</span></span>
-    </aside>
   </div>
   <div class="ls-fuss">
     <button type="button" class="ls-knopf" id="ls-fotoweiter" data-text="fotoParaKnopf"></button>
@@ -601,24 +589,30 @@
     <span class="ls-marke">Lifeskin</span>
   </div>
   <div class="ls-inhalt">
-    <div class="ls-feld ls-whatsapp">
-      <!-- Was schon geschafft ist: das eigene Foto, gespeichert, und die
-           Aerztin, die es ansieht. Ohne Foto nur die Aerztin. -->
+    <!-- DIE NUMMER, FASSUNG 29.09. (Wunsch Inhaber - hier gehen die
+         meisten): zuerst, was er bekommt und von wem ("Arta, merrni
+         rezultatin tuaj nga Dr. Violeta Gashi"), dann was schon gespeichert
+         ist und wann die Antwort kommt (Heart, Uhr-Knopf), dann das Feld,
+         drei Haken und "Përfundo". Name, gespeicherter Stand und
+         Antwortzeit kommen aus lifeskin-app.js (#telKopfFuellen). -->
+    <div class="ls-feld ls-whatsapp ls-whatsapp--ziel">
+      <p class="ls-whatsapp__schritt" data-text="telSchritt"></p>
+      <h2 class="ls-whatsapp__ziel" id="ls-telziel" data-text="telZiel"></h2>
       <div class="ls-gesichert" id="ls-gesichert">
         <div class="ls-gesichert__bilder">
           <img class="ls-gesichert__eigen" id="ls-gesichertbild" alt="" hidden />
           <img class="ls-gesichert__arzt" src="/apps/lifeskin/dr-gashi.jpg" alt="" width="68" height="68" decoding="async" />
         </div>
         <div>
-          <p class="ls-gesichert__titel"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg><span id="ls-gesicherttitel" data-text="telGesichert"></span></p>
-          <p class="ls-gesichert__unter" data-text="telGesichertUnter"></p>
+          <p class="ls-gesichert__titel"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg><span id="ls-telgespeichert" data-text="telGespeichertFoto"></span></p>
+          <p class="ls-gesichert__unter" data-text="telPersoenlich"></p>
         </div>
       </div>
-      <p class="ls-whatsapp__schritt" data-text="telSchritt"></p>
-      <h2 id="ls-teltitel" data-text="telTitel"></h2>
+      <p class="ls-antwortzeit" id="ls-telantwortzeit"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span id="ls-telantwortzeittext"></span></p>
+      <label class="ls-feldtitel" id="ls-teltitel" for="ls-telfeld" data-text="telTitel"></label>
       <input class="ls-eingabe" id="ls-telfeld" type="tel" name="tel"
              autocomplete="tel" inputmode="tel" enterkeyhint="done"
-             aria-labelledby="ls-teltitel" aria-describedby="ls-telinfo ls-telfehler" data-platzhalter="telPlatzhalter" />
+             aria-labelledby="ls-teltitel" aria-describedby="ls-telhaken ls-telfehler" data-platzhalter="telPlatzhalter" />
       <!-- Kein WhatsApp? Ein Link klappt ein Feld fuer Viber auf. -->
       <button type="button" class="ls-viberlink" id="ls-viberlink" data-text="viberLink"
               aria-expanded="false" aria-controls="ls-viberbox"></button>
@@ -633,11 +627,13 @@
         <p class="ls-klein" id="ls-viberinfo" data-text="viberInfo"></p>
       </div>
       <p class="ls-fragefehler" id="ls-telfehler" role="alert" hidden></p>
-      <button type="button" class="ls-knopf" id="ls-telweiter" data-text="telKnopf" aria-disabled="true"></button>
-      <ul class="ls-vertrauen">
-        <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.1 13.9a14 14 0 0 0 3.732 2.668 1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2 18 18 0 0 1-12.728-5.272"/><path d="M22 2 2 22"/><path d="M4.76 13.582A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 .244.473"/></svg><span><b data-text="telTelefonata"></b> – <span id="ls-telinfo" data-text="telInfo"></span></span></li>
-        <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><span><b data-text="telPrivat"></b> – <span data-text="telPrivatUnter"></span></span></li>
+      <ul class="ls-haken" id="ls-telhaken">
+        <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-text="telTelefonata"></span></li>
+        <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-text="telHakenZweck"></span></li>
+        <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-text="telHakenPrivat"></span></li>
       </ul>
+      <!-- "Përfundo →" - derselbe Text fuer WhatsApp und Viber (data-kanalfest). -->
+      <button type="button" class="ls-knopf ls-knopf--fertig" id="ls-telweiter" data-text="telFertig" data-kanalfest aria-disabled="true"></button>
     </div>
   </div>
 </section>
@@ -661,7 +657,9 @@
     <span class="ls-zaehler" id="ls-fragenzaehler"></span>
   </div>
   <div class="ls-inhalt" id="ls-frageblatt">
-    <p class="ls-klein" id="ls-frageneinleitung"></p>
+    <!-- Keine Karte "Fotoja u ruajt ✓ 3 pyetje …" ueber der ersten Frage
+         (29.09., Wunsch Inhaber): Ohne #ls-frageneinleitung laesst der
+         Trichter den Satz weg (lifeskin-app.js #frageZeichnen). -->
     <h2 id="ls-fragetitel"></h2>
     <p class="ls-klein" id="ls-frageunter"></p>
     <div class="ls-wahl" id="ls-fragewahl"></div>

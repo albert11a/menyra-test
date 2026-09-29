@@ -350,3 +350,64 @@ unveraendert.
 fallen im Laden dessen eigene Ereignisse weg (lifeskin_method_body,
 lifeskin_body_problem_completed, lifeskin_question_completed) - vom
 Inhaber so gewuenscht. Frage 4 hatte kein eigenes Ereignis.
+
+## Trichter kuerzer, Nummer-Seite neu, Antwortzeit aus Heart (29.09. mittags)
+
+Wunsch Inhaber, mit Handybildern des Ladens.
+
+**Nur im Laden (/lifeskinshop):**
+
+- Kein Schild "Pa detyrim" oben rechts - im ganzen Trichter nicht (es
+  stand nur auf der Wahl).
+- Foto-Anleitung mit drei Regeln: Dritë e mirë, Foto e qartë, Fotografoni
+  afër problemit. Weg: "Pa makeup ...", "Mos përdorni filter" und die Karte
+  "KËSHILLË PËR FOTON".
+- Keine Karte "Fotoja u ruajt ✓ 3 pyetje ..." ueber der ersten Frage (die
+  Seite hat kein `#ls-frageneinleitung` mehr; der Trichter laesst den Satz
+  dann weg).
+- Frage 1 ohne "Shkëlqimi" und ohne "Nuk e di" (`wege.lifeskinshop.ohne`,
+  frageFuerWeg). Die Kennungen bleiben im Vorrat - Heart und Prompt lesen
+  alte Antworten wie immer.
+- Frage 3 heisst "Çka keni provuar deri tani?".
+
+**/lifeskin und Laden:**
+
+- Namensschirm: "Faleminderit! Pothuajse keni mbaruar." statt "Edhe dy
+  gjëra dhe keni mbaruar." - danach kommt noch die Nummer, das muss er
+  nicht wissen. Gilt auch fuer die Saetze nach Scan und Foto ohne Fragen
+  und auf den Seiten, die denselben Text teilen (/lifeskin2,
+  /lifeskintrichter).
+- Nummer-Seite (nur /lifeskin und Laden; /lifeskin2 und /lifeskintrichter
+  behalten ihre Fassung): HAPI I FUNDIT · "Arta, merrni rezultatin tuaj
+  nga Dr. Violeta Gashi" · Karte mit Foto und Aerztin: "Fotoja dhe
+  përgjigjet tuaja janë ruajtur." (Scan: "Fotot ...", ohne Bild: "Të
+  dhënat tuaja ...") und "Dr. Violeta Gashi do t’i shqyrtojë personalisht
+  dhe do t’jua dërgojë analizën në WhatsApp." · die Antwortzeit · "Numri
+  juaj i WhatsApp-it" · Feld · drei Haken (Pa telefonata / Vetëm për
+  analizën tuaj / Numri juaj mbetet privat) · Knopf "Përfundo →" (ohne
+  WhatsApp-Zeichen, auch bei Viber). Im Laden ohne "Analyse": "... do t’jua
+  dërgojë përqindjen e përputhjes në WhatsApp." und "Vetëm për rezultatin
+  tuaj".
+
+**Antwortzeit (shared/lifeskin-antwortzeit.js):** In Heart ein runder
+Uhr-Knopf links neben dem Datum (Lifeskin-Uebersicht), angetippt eine
+Chipreihe wie beim Datum: Auto, 10 Min, 20 Min, 30 Min, 1 Std, Heute,
+Heute Abend, Morgen früh, Morgen. Gespeichert in
+`lifeskin/lifeskin/config/antwortzeit { wahl, gesetztAm }` (config: lesen
+jeder, schreiben nur CEO - keine neue Regel). Nummer-Seite und Warteseite
+zeigen dieselbe Zeile: "Përgjigja brenda 20 minutave", "Përgjigja sot",
+"Përgjigja sot në mbrëmje", "Përgjigja nesër në mëngjes", "Përgjigja nesër".
+Auto oder nie gesetzt: die alte Regel der Warteseite (vor 18 Uhr "sot",
+danach "nesër në mëngjes"). Heute/Heute Abend/Morgen früh/Morgen gelten nur
+am Tag, an dem sie gesetzt wurden (Uhrzeit Kosovo) - am naechsten Tag
+waere "nesër" falsch, dann wieder Auto. Minuten und Stunde gelten, bis sie
+geaendert werden. Geholt wird die Einstellung, sobald die Fragen beginnen
+(hoechstens 4 s, auf der Warteseite 3 s); kommt nichts, gilt Auto.
+
+**Pixel:** keine Zeile geaendert, Sperrtest gruen; der Foto-Weg meldet auf
+beiden Seiten dieselben Ereignisse wie vorher (Pruefstand).
+
+**Geprueft:** npm test, Build, Pruefstand (Headless-Chromium 390 px, Foto-Weg
+auf /lifeskinshop mit "20 Min" und auf /lifeskin mit "Morgen früh" bis zur
+Warteseite), Heart-Kopf als Bild (zu und mit offener Uhr-Reihe). Kein
+echtes Handy, Heart nicht angemeldet geoeffnet.

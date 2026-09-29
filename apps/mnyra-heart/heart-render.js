@@ -24,7 +24,7 @@ import {
   renderHeartAnalyticsView
 } from "./heart-analytics-render.js";
 import { renderHeartLandingView } from "./heart-landing-render.js";
-import { renderLifeskin, renderZeitwahl, zeitraumName } from "./heart-lifeskin-render.js";
+import { renderLifeskin, renderZeitwahl, zeitraumName, renderUhrwahl, antwortzeitName } from "./heart-lifeskin-render.js";
 import {
   renderHeartDestinationsView
 } from "./heart-destinations-render.js";
@@ -455,11 +455,15 @@ function renderShell(state, runtime = {}) {
   // steht.
   let isLifeskinDetail = false;
   let zeitWahlOffen = false;
+  let uhrWahlOffen = false;
+  let antwortzeit = null;
   let zeitraum = "heute";
   try {
     isLifeskinDetail = activeView === "lifeskin"
       && String(state.lifeskin?.offen || "").trim() !== "";
     zeitWahlOffen = state.lifeskin?.zeitWahl === true;
+    uhrWahlOffen = state.lifeskin?.uhrWahl === true;
+    antwortzeit = state.lifeskin?.antwortzeit || null;
     zeitraum = String(state.lifeskin?.zeitraum || "heute");
   } catch {
     isLifeskinDetail = false;
@@ -469,6 +473,9 @@ function renderShell(state, runtime = {}) {
   // Menue, Marke und Aktualisieren; eine Wahl (oder ×) bringt den Kopf zurueck.
   const zeitKnopf = activeView === "lifeskin" && !isLifeskinDetail;
   const zeitWahl = zeitKnopf && zeitWahlOffen;
+  // DIE ANTWORTZEIT (29.09.): ein Uhr-Knopf links neben dem Datum, derselbe
+  // Aufbau - angetippt tritt ihre Chipreihe an die Stelle des Kopfes.
+  const uhrWahl = zeitKnopf && uhrWahlOffen && !zeitWahl;
   const navItem = HEART_NAV_ITEMS.find((item) => item.key === activeView);
   const shellClasses = [
     "heart-shell",
@@ -485,6 +492,10 @@ function renderShell(state, runtime = {}) {
         <header class="heart-topbar heart-topbar--zeitwahl">
           ${renderZeitwahl(zeitraum)}
           <button class="heart-icon-button heart-zeitwahl__zu" data-action="lifeskin-zeitwahl" aria-label="Zeitraum schliessen">${renderHeartIcon("x")}</button>
+        </header>` : uhrWahl ? `
+        <header class="heart-topbar heart-topbar--zeitwahl">
+          ${renderUhrwahl(antwortzeit)}
+          <button class="heart-icon-button heart-zeitwahl__zu" data-action="lifeskin-uhrwahl" aria-label="Antwortzeit schliessen">${renderHeartIcon("x")}</button>
         </header>` : `
         <header class="heart-topbar">
           <div class="heart-topbar__left">
@@ -512,6 +523,8 @@ function renderShell(state, runtime = {}) {
                 </button>
               ` : ""}
               ${zeitKnopf ? `
+                <button class="heart-icon-button heart-icon-button--uhr" data-action="lifeskin-uhrwahl"
+                        aria-label="Antwortzeit: ${escapeHtml(antwortzeitName(antwortzeit))}">${renderHeartIcon("clock")}</button>
                 <button class="heart-icon-button heart-icon-button--zeit" data-action="lifeskin-zeitwahl"
                         aria-label="Zeitraum: ${escapeHtml(zeitraumName(zeitraum))}">${renderHeartIcon("calendar")}</button>
               ` : ""}
