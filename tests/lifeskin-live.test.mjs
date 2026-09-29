@@ -133,7 +133,7 @@ test("die Bestellreihe zaehlt die drei Schritte vor dem Geld", () => {
   ], JETZT);
 
   const zahlen = Object.fromEntries(live.bestellungen.punkte.map((p) => [p.id, p.anzahl]));
-  assert.deepEqual(zahlen, { kasse: 1, anschrift: 1, bestellt: 1 });
+  assert.deepEqual(zahlen, { rezultati: 0, kasse: 1, anschrift: 1, bestellt: 1 });
   assert.equal(live.bestellungen.gesamt, 3);
   // Der bei Frage 1 steht in der anderen Reihe.
   assert.equal(live.analysen.gesamt, 1);
@@ -148,7 +148,7 @@ test("der Bestellschirm zaehlt auch ueber seine Marke", () => {
   const kasse = LIVE_BESTELL_PUNKTE.find((p) => p.id === "kasse");
   assert.deepEqual(kasse.marken, ["kasseGeoeffnet", "imKorb"]);
   const live = baueLive([sitzung("result", { kasseGeoeffnet: true })], JETZT);
-  assert.equal(live.bestellungen.punkte[0].anzahl, 1);
+  assert.equal(live.bestellungen.punkte.find((p) => p.id === "kasse").anzahl, 1);
 });
 
 // ---------- Der Chip ----------
@@ -367,8 +367,26 @@ test("der Laden auf der Landingpage steht in derselben Reihe wie die Kasse", () 
   const adresse = { ...sitzung("opened"), imKorb: true, adresseBegonnen: true };
   const live = baueLive([korb, adresse], JETZT);
   const zahlen = Object.fromEntries(live.bestellungen.punkte.map((p) => [p.id, p.anzahl]));
-  assert.deepEqual(zahlen, { kasse: 1, anschrift: 1, bestellt: 0 });
-  assert.deepEqual(LIVE_BESTELL_PUNKTE.map((p) => p.label), ["N'shport", "Adresa", "Cash"]);
+  assert.deepEqual(zahlen, { rezultati: 0, kasse: 1, anschrift: 1, bestellt: 0 });
+  assert.deepEqual(LIVE_BESTELL_PUNKTE.map((p) => p.label), ["Rezultati", "N'shport", "Adresa", "Cash"]);
+});
+
+// WER SEINE ERGEBNISSEITE LIEST, STEHT IN DER KAUFREIHE (29.09.).
+//
+// Die Seite schreibt beim Oeffnen live "fertig". Dieser Schritt lag in
+// keinem Punkt - der Kunde mit dem Preis vor sich war in Live unsichtbar.
+test("wer seine Ergebnisseite liest, steht bei Rezultati - mit dem Kaufknopf bei N'shport", () => {
+  const liest = sitzung("result", { timings: { live: "fertig" } });
+  const kasse = sitzung("result", { kasseGeoeffnet: true, timings: { live: "porosia" } });
+  const tippt = sitzung("result", { kasseGeoeffnet: true, timings: { live: "address" } });
+  const wartet = sitzung("result", { timings: { live: "prit" } });
+  const live = baueLive([liest, kasse, tippt, wartet], JETZT);
+  const kauf = Object.fromEntries(live.bestellungen.punkte.map((p) => [p.id, p.anzahl]));
+  assert.deepEqual(kauf, { rezultati: 1, kasse: 1, anschrift: 1, bestellt: 0 });
+  // Wer noch auf Dr. Gashi wartet, bleibt Patient - und steht nicht doppelt.
+  const analyse = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.anzahl]));
+  assert.equal(analyse.pritja, 1);
+  assert.equal(live.analysen.gesamt + live.bestellungen.gesamt, 4);
 });
 
 // EINE ALTE MARKE MACHT AUS EINEM LAUFENDEN SCAN KEINEN KAUF.

@@ -109,6 +109,12 @@ export const LIVE_ANALYSE_PUNKTE = Object.freeze([
 // Befund gelesen und ueberlegt - das sind die drei Minuten, in denen sich
 // entscheidet, ob heute etwas verkauft wird.
 export const LIVE_BESTELL_PUNKTE = Object.freeze([
+  // WER GERADE SEINE ERGEBNISSEITE LIEST (29.09., Pruefung der Kaufwege):
+  // Die Seite schreibt beim Oeffnen timings.live "fertig" (schrittVon: "report").
+  // Dieser Schritt lag in KEINEM Punkt - wer seinen Befund mit dem Preis vor
+  // sich hatte, fiel aus beiden Reihen, genau in den drei Minuten, um die es
+  // hier geht. Er ist noch kein Warenkorb: erst der Kaufknopf (N'shport).
+  { id: "rezultati", label: "Rezultati", schritte: ["report"] },
   // ZWEI LAEDEN, EINE REIHE.
   //
   // Es gibt den Laden auf der Landingpage (imKorb) und die Kasse auf

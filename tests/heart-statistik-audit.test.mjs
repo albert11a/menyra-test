@@ -81,7 +81,12 @@ test("checkout belongs to just one live row; return to report clears the checkou
   assert.equal(baueLive([s]).analysen.gesamt, 0);
   assert.equal(baueLive([s]).bestellungen.gesamt, 1);
   s.timings = { live: "fertig" };
-  assert.equal(baueLive([s]).bestellungen.gesamt, 0);
+  // Zurueck auf der Ergebnisseite: nicht mehr an der Kasse (N'shport), sondern
+  // bei "Rezultati" - er liest seinen Befund (Punkt seit 29.09.).
+  const zurueck = baueLive([s]).bestellungen;
+  assert.equal(zurueck.punkte.find((p) => p.id === "kasse").anzahl, 0);
+  assert.equal(zurueck.punkte.find((p) => p.id === "rezultati").anzahl, 1);
+  assert.equal(zurueck.gesamt, 1);
 });
 
 test("both premarked and retrospectively marked tests are excluded from live", () => {

@@ -4698,21 +4698,19 @@ der Balken zeigt es. */
   transition: background .25s;
 }
 .heart-live__halt:first-child::before { content: none; }
-/* DER KAUF STEHT IN DENSELBEN SPALTEN WIE DIE ANALYSE.
-   Drei Halte in drei gleichen Dritteln lagen neben den fuenf darueber
-   schief. Jetzt: N'shport unter Landing, Adresa in der Mitte, Cash unter
-   Patient - aussen je ein Fuenftel, in der Mitte drei. Die Striche
-   rechnen deshalb gegen die eigene Breite (Mitte davor: -1/6 bzw. -150 %). */
-.heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(1),
-.heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(3) { flex: 1 1 0; }
-/* Seit dem Punkt "Pyetjet" (27.09.) sind es SECHS Spalten darueber: aussen
-   je ein Sechstel, in der Mitte vier. Mitte davor: -1/8 bzw. -200 %. */
-.heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(2) { flex: 4 1 0; }
-.heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(2)::before {
-  left: calc(-100% / 8 + 21px);
-}
-.heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(3)::before {
-  left: calc(-200% + 21px);
+/* DER KAUF STEHT IN DENSELBEN SPALTEN WIE DIE ANALYSE - sechs darueber.
+   Vier Halte seit dem 29.09. (vorne "Rezultati"): unter Landing, Fotot,
+   Pyetjet und Patient, also in den Spalten 1, 3, 4 und 6. Jeder Halt ist
+   eine Spalte breit; wo eine Spalte dazwischen frei bleibt, reicht der
+   Strich zwei Spalten zurueck (Mitte davor: -150 %). */
+.heart-live__reihe[data-art="bestellungen"] { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(1) { grid-column: 1; }
+.heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(2) { grid-column: 3; }
+.heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(3) { grid-column: 4; }
+.heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(4) { grid-column: 6; }
+.heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(2)::before,
+.heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(4)::before {
+  left: calc(-150% + 21px);
 }
 .heart-live__punkt {
   position: relative; z-index: 1;
