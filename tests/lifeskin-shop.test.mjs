@@ -261,7 +261,10 @@ test("Acne-Duo-Kampagne laesst keine weiteren Sets oder halben Koerbe zu", async
   assert.equal((card.match(/<details/g)||[]).length,3, "ein Aufklapper fuer Anwendung, je ein 'Lexo më shumë'");
   assert.match(card,/Benzoyl peroxide 5 %/);
   assert.match(card,/<s data-preis="vecmas" data-preis-zbritje>58 €<\/s>/);
-  assert.match(card,/45 ditë garanci/);
+  // Seit 30.09. (Inhaber) wie oben im Kopf: 1–3 ditë, Paguani te dera, 4.8/5 vlerësim.
+  assert.match(card,/1–3 ditë/);
+  assert.doesNotMatch(card,/Falas, 1–3 ditë/);
+  assert.match(card,/#Star"><\/use><\/svg>4\.8\/5 vlerësim/);
   assert.match(card,/data-set="custom-acne"/);
   assert.doesNotMatch(card,/data-single/);
   assert.equal((card.match(/<img/g)||[]).length,2, "kleine Produktfotos (Wunsch Inhaber 29.09.)");
