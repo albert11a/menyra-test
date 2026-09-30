@@ -9,7 +9,7 @@
 import { escapeHtml } from "./heart-ui-utils.js";
 import { renderHeartIcon } from "./heart-icons.js";
 import { klappAttr } from "./heart-lifeskin-klapp.js";
-import { SETET_STANDARD, SET_PRODUKTE_MAX, setetNormalisieren, SHOP_HERO_VERHAELTNIS, setPreis } from "../../shared/lifeskin-shop-sets.js";
+import { SETET_STANDARD, SET_PRODUKTE_MAX, setetNormalisieren, SHOP_HERO_VERHAELTNIS, SHOP_HERO_MAX, setPreis } from "../../shared/lifeskin-shop-sets.js";
 import { preisFuer } from "../../shared/lifeskin-preise.js";
 
 // Die Liste, mit der Heart arbeitet: gespeichert, sonst die drei Sets, die
@@ -152,22 +152,36 @@ export function renderShopSetEditor(zustand, produkte) {
 const HERO_STANDARD = "/apps/lifeskin-shop/assets/lf-acne-2.jpg";
 
 export function renderShopHero(zustand) {
-  const eigen = String(zustand?.shopHero || "");
+  const liste = [zustand?.shopHero, ...(Array.isArray(zustand?.shopHeroMehr) ? zustand.shopHeroMehr : [])]
+    .map((f) => String(f || "")).filter(Boolean);
   const status = zustand?.shopHeroStatus || "";
+  const aus = status ? " disabled" : "";
+  const zeilen = liste.map((foto, i) => `
+      <div class="heart-rasti-zeile">
+        <div class="heart-rasti-bilder"><span class="heart-rasti-bild" style="aspect-ratio:${SHOP_HERO_VERHAELTNIS};width:96px"><img src="${escapeHtml(foto)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover" /></span></div>
+        <div class="heart-rasti-leib"><b>Bild ${i + 1}</b><small>${i === 0 ? "steht zuerst da – dann wischen" : "zum Wischen"}</small></div>
+        <div class="heart-rasti-aktionen">
+          <button type="button" class="heart-rasti-mini" data-action="lifeskin-shophero-schieben" data-index="${i}" data-richtung="hoch" aria-label="Nach vorne"${i === 0 || status ? " disabled" : ""}>↑</button>
+          <button type="button" class="heart-rasti-mini" data-action="lifeskin-shophero-schieben" data-index="${i}" data-richtung="runter" aria-label="Nach hinten"${i === liste.length - 1 || status ? " disabled" : ""}>↓</button>
+          <button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-shophero-entfernen" data-index="${i}"${aus}>Entfernen</button>
+        </div>
+      </div>`).join("");
   return `
     <details class="heart-lifeskin-block heart-klapp" ${klappAttr("shophero")}>
       <summary class="heart-klapp__kopf">
         <h3 class="heart-lifeskin-block__titel">Shop-Titelbild</h3>
-        <span class="heart-klapp__zahl">${eigen ? "eigenes Bild" : "Standard"}</span>
+        <span class="heart-klapp__zahl">${liste.length ? `${liste.length} ${liste.length === 1 ? "Bild" : "Bilder"}` : "Standard"}</span>
       </summary>
-      <p class="heart-lifeskin-block__fuss">Das große Bild oben im Shop („The Acne Duo“). Bild wählen, dann verschieben und zoomen –
-        genau dieser Ausschnitt steht im Shop.</p>
-      <div style="aspect-ratio:${SHOP_HERO_VERHAELTNIS};border-radius:6px;overflow:hidden;background:#eee;max-width:420px">
-        <img src="${escapeHtml(eigen || HERO_STANDARD)}" alt="Shop-Titelbild" style="width:100%;height:100%;object-fit:cover;display:block" />
-      </div>
+      <p class="heart-lifeskin-block__fuss">Die Bilder oben im Shop („The Acne Duo“), bis zu ${SHOP_HERO_MAX}. Bild 1 steht zuerst da, die weiteren wischt man zur Seite.
+        Reihenfolge mit ↑ ↓. Jedes Bild wird beim Hinzufügen zugeschnitten.</p>
+      ${status ? `<p class="heart-rasti-hinweis">Wird gespeichert …</p>` : ""}
+      <div class="heart-rasti-liste">${zeilen || `
+        <div style="aspect-ratio:${SHOP_HERO_VERHAELTNIS};border-radius:6px;overflow:hidden;background:#eee;max-width:420px">
+          <img src="${escapeHtml(HERO_STANDARD)}" alt="Shop-Titelbild" style="width:100%;height:100%;object-fit:cover;display:block" />
+        </div>`}</div>
       <div class="heart-lifeskin-editor__fuss">
-        <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-shophero-waehlen" ${status ? "disabled" : ""}>Bild wählen und zuschneiden</button>
-        ${eigen ? `<button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-shophero-weg" ${status ? "disabled" : ""}>Standardbild</button>` : ""}
+        <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-shophero-waehlen"${liste.length >= SHOP_HERO_MAX || status ? " disabled" : ""}>${liste.length ? "Bild hinzufügen" : "Bild wählen und zuschneiden"}</button>
+        ${liste.length ? `<button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-shophero-weg"${aus}>Alle entfernen (Standardbild)</button>` : ""}
       </div>
     </details>`;
 }

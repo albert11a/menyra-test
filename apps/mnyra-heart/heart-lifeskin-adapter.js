@@ -50,7 +50,7 @@ import {
 } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import { LIVE_FENSTER_MS, ohnePfad } from "./heart-lifeskin-live.js";
 import { mediumNormalisieren } from "../../shared/lifeskin-medien.js";
-import { SETET_DOK, SET_FOTO_PRAEFIX, SHOP_HERO_DOK } from "../../shared/lifeskin-shop-sets.js";
+import { SETET_DOK, SET_FOTO_PRAEFIX, SHOP_HERO_DOK, SHOP_HERO_MAX, shopHeroDokId } from "../../shared/lifeskin-shop-sets.js";
 import { ANTWORTZEIT_DOK, antwortzeitGueltig } from "../../shared/lifeskin-antwortzeit.js";
 
 const TENANT = "lifeskin";
@@ -204,6 +204,7 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     .filter((d) => !String(d.id).startsWith(LANDING_FOTOT_PRAEFIX) && !String(d.id).startsWith(ANALYSE_FOTOT_PRAEFIX))
     .filter((d) => d.id !== RASTE_DOK_ID && !String(d.id).startsWith(RASTI_BILD_ID))
     .filter((d) => d.id !== SETET_DOK && d.id !== SHOP_HERO_DOK && !String(d.id).startsWith(SET_FOTO_PRAEFIX))
+    .filter((d) => !String(d.id).startsWith(`${SHOP_HERO_DOK}-`))
     .filter((d) => d.id !== ANTWORTZEIT_DOK)
     .reduce((zusammen, d) => ({ ...zusammen, ...(d.data() || {}) }), {});
   const setPreis = Number.isFinite(Number(konfig.setPreis)) && Number(konfig.setPreis) > 0
@@ -258,6 +259,10 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     shopSetet: Array.isArray(setetDok?.lista) ? setetDok.lista : null,
     // Das Titelbild des Ladens: "" = das Bild der Seite.
     shopHero: typeof heroDok?.foto === "string" && heroDok.foto.startsWith("data:image/") ? heroDok.foto : "",
+    // Titelbild 2-5 in ihrer Reihenfolge (shopHero-2 ...).
+    shopHeroMehr: Array.from({ length: SHOP_HERO_MAX - 1 }, (_, i) => konfigDocs.find((d) => d.id === shopHeroDokId(i + 1))?.data()?.foto)
+      .slice(0, Math.max(0, (Number(heroDok?.anzahl) || 1) - 1))
+      .filter((f) => typeof f === "string" && f.startsWith("data:image/")),
     // null: nie gesetzt - Nummer-Seite und Warteseite nehmen die alte Regel.
     antwortzeit: antwortzeitGueltig(antwortzeitDok?.wahl)
       ? { wahl: antwortzeitDok.wahl, gesetztAm: String(antwortzeitDok.gesetztAm || "") }
@@ -559,6 +564,23 @@ export async function speichereAntwortzeit(wahl) {
 export async function speichereShopHero(foto) {
   await setDoc(doc(db, "lifeskin", TENANT, "config", SHOP_HERO_DOK),
     { foto: String(foto || ""), updatedAt: new Date().toISOString() });
+}
+
+// Alle Titelbilder in dieser Reihenfolge. Erst Bild 2-5, zuletzt Bild 1 mit
+// "anzahl" - so liest der Laden nie eine Anzahl, deren Bilder noch fehlen.
+export async function speichereShopHeroListe(fotos) {
+  const liste = (fotos || []).filter((f) => typeof f === "string" && f.startsWith("data:image/")).slice(0, SHOP_HERO_MAX);
+  for (let i = 1; i < SHOP_HERO_MAX; i += 1) {
+    const ref = doc(db, "lifeskin", TENANT, "config", shopHeroDokId(i));
+    if (i < liste.length) await setDoc(ref, { foto: liste[i] });
+    else await deleteDoc(ref).catch(() => {});
+  }
+  if (liste.length) {
+    await setDoc(doc(db, "lifeskin", TENANT, "config", SHOP_HERO_DOK),
+      { foto: liste[0], anzahl: liste.length, updatedAt: new Date().toISOString() });
+  } else {
+    await deleteDoc(doc(db, "lifeskin", TENANT, "config", SHOP_HERO_DOK));
+  }
 }
 
 export async function loescheShopHero() {

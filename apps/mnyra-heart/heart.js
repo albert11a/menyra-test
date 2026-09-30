@@ -59,7 +59,7 @@ import { ladeLifeskin, ladeLifeskinSeit, horcheLive, ladeFotos, ladeErstesFoto, 
   ladeBericht, setzeVersand, speichereAnbieter,
   ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX,
   speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder,
-  speichereShopSetet, ladeShopSetFoto, speichereShopSetFoto, loescheShopSetFoto, speichereShopHero, loescheShopHero,
+  speichereShopSetet, ladeShopSetFoto, speichereShopSetFoto, loescheShopSetFoto, speichereShopHero, loescheShopHero, speichereShopHeroListe,
   speichereAntwortzeit,
   ladeMedien, speichereMedien, speichereMedium, loescheMedium, ladeKommentare, setzeKommentarVerborgen, loescheKommentar, schreibeKommentare } from "./heart-lifeskin-adapter.js";
 import { medienListe, mediumNormalisieren, neueMediumId } from "../../shared/lifeskin-medien.js";
@@ -67,7 +67,7 @@ import { kommentarVorschauSetzen } from "./heart-lifeskin-medien.js";
 import { rasteListe, klappSetzen, klappOffen, rastiDom } from "./heart-lifeskin-raste.js";
 import { shopSetetListe } from "./heart-lifeskin-shopsets.js";
 import { schnittHoeren, schnittErgebnis, schnittZurueck } from "./heart-lifeskin-schnitt.js";
-import { setetNormalisieren, setNormalisieren, neueSetId, SET_PRODUKTE_MAX } from "../../shared/lifeskin-shop-sets.js";
+import { setetNormalisieren, setNormalisieren, neueSetId, SET_PRODUKTE_MAX, SHOP_HERO_MAX } from "../../shared/lifeskin-shop-sets.js";
 import { ANTWORTZEITEN, antwortzeitSatz } from "../../shared/lifeskin-antwortzeit.js";
 import { entwurfSchreiben, entwurfLoeschen, entwurfAusBogen, promptMerken } from "./heart-lifeskin-entwurf.js";
 import { befundStandAuffrischen, befundFelderAnpassen } from "./heart-lifeskin-befundstand.js";
@@ -2540,20 +2540,67 @@ function shopHeroZu() {
   actions.patchLifeskin({ shopHeroRoh: "", shopHeroStatus: "" });
 }
 
+// Die Titelbilder in ihrer Reihenfolge (Bild 1 = shopHero).
+function shopHeroListe(stand) {
+  return [stand.shopHero, ...(Array.isArray(stand.shopHeroMehr) ? stand.shopHeroMehr : [])]
+    .filter((f) => typeof f === "string" && f.startsWith("data:image/"));
+}
+
+async function shopHeroListeSchreiben(neu, meldung) {
+  actions.patchLifeskin({ shopHeroStatus: "laeuft" });
+  try {
+    await speichereShopHeroListe(neu);
+    actions.patchLifeskin({ shopHero: neu[0] || "", shopHeroMehr: neu.slice(1), shopHeroStatus: "" });
+    if (meldung) setToast("Shop-Titelbild", meldung, "success");
+    return true;
+  } catch (fehler) {
+    actions.patchLifeskin({ shopHeroStatus: "" });
+    setToast("Shop-Titelbild", fehler?.message || "Speichern fehlgeschlagen.", "danger");
+    return false;
+  }
+}
+
+async function shopHeroSchieben(index, richtung) {
+  const stand = store.getState().lifeskin || {};
+  if (stand.shopHeroStatus) return;
+  const liste = shopHeroListe(stand);
+  const i = Number(index);
+  const ziel = richtung === "hoch" ? i - 1 : i + 1;
+  if (!(i >= 0 && ziel >= 0 && ziel < liste.length)) return;
+  [liste[i], liste[ziel]] = [liste[ziel], liste[i]];
+  await shopHeroListeSchreiben(liste, "");
+}
+
+async function shopHeroEntfernen(index) {
+  const stand = store.getState().lifeskin || {};
+  if (stand.shopHeroStatus) return;
+  const liste = shopHeroListe(stand);
+  const i = Number(index);
+  if (!(i >= 0 && i < liste.length)) return;
+  liste.splice(i, 1);
+  await shopHeroListeSchreiben(liste, liste.length ? "Bild entfernt." : "Wieder das Standardbild.");
+}
+
 async function shopHeroSpeichern() {
   const stand = store.getState().lifeskin || {};
   if (!stand.shopHeroRoh || stand.shopHeroStatus) return;
+  if (shopHeroListe(stand).length >= SHOP_HERO_MAX) {
+    setToast("Shop-Titelbild", `Höchstens ${SHOP_HERO_MAX} Bilder – bitte zuerst eines entfernen.`, "danger");
+    return;
+  }
   let foto;
   try { foto = schnittErgebnis(1400, 450000); }
   catch (fehler) { setToast("Shop-Titelbild", fehler?.message || "Zuschneiden fehlgeschlagen.", "danger"); return; }
   actions.patchLifeskin({ shopHeroStatus: "laeuft" });
   try {
-    await speichereShopHero(foto);
+    // Ein neues Bild kommt ans Ende; die Reihenfolge aendern die Pfeile.
+    const neu = [...shopHeroListe(stand), foto];
+    await speichereShopHeroListe(neu);
     schnittZurueck();
     klappSetzen("mehr", true);
     klappSetzen("shophero", true);
-    actions.patchLifeskin({ shopHero: foto, shopHeroRoh: "", shopHeroStatus: "" });
-    setToast("Shop-Titelbild", "Gespeichert – steht jetzt oben im Shop.", "success");
+    actions.patchLifeskin({ shopHero: neu[0], shopHeroMehr: neu.slice(1), shopHeroRoh: "", shopHeroStatus: "" });
+    setToast("Shop-Titelbild", neu.length > 1 ? `Gespeichert – Bild ${neu.length} im Shop.` : "Gespeichert – steht jetzt oben im Shop.", "success");
   } catch (fehler) {
     actions.patchLifeskin({ shopHeroStatus: "" });
     setToast("Shop-Titelbild", fehler?.message || "Speichern fehlgeschlagen.", "danger");
@@ -2565,8 +2612,8 @@ async function shopHeroWeg() {
   if (stand.shopHeroStatus) return;
   actions.patchLifeskin({ shopHeroStatus: "laeuft" });
   try {
-    await loescheShopHero();
-    actions.patchLifeskin({ shopHero: "", shopHeroStatus: "" });
+    await speichereShopHeroListe([]);
+    actions.patchLifeskin({ shopHero: "", shopHeroMehr: [], shopHeroStatus: "" });
     setToast("Shop-Titelbild", "Wieder das Standardbild.", "success");
   } catch (fehler) {
     actions.patchLifeskin({ shopHeroStatus: "" });
@@ -3999,6 +4046,8 @@ const operations = {
   shopHeroZu() { shopHeroZu(); },
   shopHeroSpeichern() { return shopHeroSpeichern(); },
   shopHeroWeg() { return shopHeroWeg(); },
+  shopHeroSchieben(index, richtung) { return shopHeroSchieben(index, richtung); },
+  shopHeroEntfernen(index) { return shopHeroEntfernen(index); },
   neuesShopSet() {
     actions.patchLifeskin({ shopSetOffen: "__neu", shopSetEntwurf: null, shopSetLoeschen: false, shopSetStatus: "", shopSetBildStatus: "" });
   },

@@ -28,6 +28,14 @@ export const SETET_MAX = 12;
 // Zugeschnitten wird im Verhaeltnis 7:5 (auf dem Telefon 350 x 250); steht
 // ein eigenes Bild da, hat sein Rahmen im Shop genau dieses Verhaeltnis.
 export const SHOP_HERO_DOK = "shopHero";
+// MEHRERE TITELBILDER (30.09., Inhaber): Bild 1 bleibt in shopHero (schnell,
+// auf dem Geraet gemerkt, traegt "anzahl"), Bild 2-5 je ein Dokument
+// shopHero-2 ... shopHero-5 - ein Bild sind bis zu ~450 KB, mehrere
+// passten nicht in ein Firestore-Dokument.
+export const SHOP_HERO_MAX = 5;
+export function shopHeroDokId(index) {
+  return index === 0 ? SHOP_HERO_DOK : `${SHOP_HERO_DOK}-${index + 1}`;
+}
 export const SHOP_HERO_VERHAELTNIS = 7 / 5;
 export const SET_PRODUKTE_MAX = 4;
 

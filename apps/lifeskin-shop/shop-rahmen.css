@@ -391,3 +391,14 @@ body:has(#ls-einstieg[data-aktiv="ja"]) { font-size: 16px; line-height: normal; 
 /* Beim ersten Zeichnen kein Aufblenden (Neuladen ohne weissen Moment). */
 html[data-ls-landing="lifeskinshop"] #ls-einstieg[data-aktiv="ja"]{animation:none}
 #ls-einstieg [data-preis-zbritje][hidden]{display:none!important}
+
+/* 30.09. TITELBILD 2-5 ZUM WISCHEN: eine Bahn ueber Bild 1, erstes Feld leer.
+   Schild und Satz bleiben darueber und lassen das Wischen durch. */
+#ls-einstieg .hero-bahn{position:absolute;inset:0;z-index:1;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+#ls-einstieg .hero-bahn::-webkit-scrollbar{display:none}
+#ls-einstieg .hero-slide{flex:0 0 100%;width:100%;height:100%;object-fit:cover;scroll-snap-align:start;scroll-snap-stop:always;display:block}
+#ls-einstieg .hero-slide--leer{background:transparent}
+#ls-einstieg .hero-photo .photo-label,#ls-einstieg .hero-photo .photo-caption{z-index:2;pointer-events:none}
+#ls-einstieg .hero-pikat{position:absolute;z-index:2;right:12px;bottom:12px;display:flex;gap:5px;pointer-events:none}
+#ls-einstieg .hero-pikat i{width:6px;height:6px;border-radius:99px;background:#ffffff8c;transition:width .2s,background .2s}
+#ls-einstieg .hero-pikat i[data-an="ja"]{width:16px;background:#fff}

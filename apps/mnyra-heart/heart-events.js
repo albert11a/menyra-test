@@ -523,6 +523,11 @@ export function bindHeartEvents({
     if (action === "lifeskin-shophero-zu") { operations.shopHeroZu?.(); return; }
     if (action === "lifeskin-shophero-speichern") { await operations.shopHeroSpeichern?.(); return; }
     if (action === "lifeskin-shophero-weg") { await operations.shopHeroWeg?.(); return; }
+    if (action === "lifeskin-shophero-schieben") {
+      await operations.shopHeroSchieben?.(target.getAttribute("data-index"), target.getAttribute("data-richtung"));
+      return;
+    }
+    if (action === "lifeskin-shophero-entfernen") { await operations.shopHeroEntfernen?.(target.getAttribute("data-index")); return; }
     // Die Sets des Ladens (heart-lifeskin-shopsets.js).
     if (action === "lifeskin-shopset") { operations.openShopSet?.(target.getAttribute("data-id")); return; }
     if (action === "lifeskin-shopset-neu") { operations.neuesShopSet?.(); return; }

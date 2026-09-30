@@ -33,7 +33,7 @@
     (function () {
       try {
         if (!localStorage.getItem("lifeskin:shopHero") || !localStorage.getItem("lifeskin:shopHeroStand")) return;
-        var url = "https://firestore.googleapis.com/v1/projects/menyra-c0e68/databases/(default)/documents/lifeskin/lifeskin/config/shopHero?mask.fieldPaths=updatedAt";
+        var url = "https://firestore.googleapis.com/v1/projects/menyra-c0e68/databases/(default)/documents/lifeskin/lifeskin/config/shopHero?mask.fieldPaths=updatedAt&mask.fieldPaths=anzahl";
         var antwort = fetch(url);
         antwort.catch(function () {});
         window.__lsTitelbild = { url: url, antwort: antwort };

@@ -32,7 +32,7 @@ import { ansichtOeffnen, ansichtSchliessen } from "../../shared/lifeskin-ansicht
 import { mittelBauen, holeSammlung, FOTO_PRAEFIX } from "../lifeskin-landing/shop.js";
 import { rasteLaden, rasteFuer, rasteMitBildern } from "../../shared/lifeskin-raste.js";
 import {
-  SETET_DOK, SET_FOTO_PRAEFIX, SHOP_HERO_DOK, SETET_STANDARD, MITTEL_FOTOS_STANDARD, MITTEL_NENTITUJ,
+  SETET_DOK, SET_FOTO_PRAEFIX, SHOP_HERO_DOK, SHOP_HERO_MAX, shopHeroDokId, SETET_STANDARD, MITTEL_FOTOS_STANDARD, MITTEL_NENTITUJ,
   setetOderStandard, setetNormalisieren, aktiveSetet, nevojaKennung, setPreis
 } from "../../shared/lifeskin-shop-sets.js";
 
@@ -205,7 +205,8 @@ const pause = (ms) => new Promise((fertig) => setTimeout(fertig, ms));
 const HERO_SCHLUESSEL = "lifeskin:shopHero";
 const HERO_STAND_SCHLUESSEL = "lifeskin:shopHeroStand";
 // Nur der Stempel, ohne das Bild: ein paar Bytes statt ~400 KB.
-export const HERO_NUR_STAND = "?mask.fieldPaths=updatedAt";
+// Mit "anzahl": wie viele Titelbilder es gibt (Bild 2-5 kommen spaeter).
+export const HERO_NUR_STAND = "?mask.fieldPaths=updatedAt&mask.fieldPaths=anzahl";
 // Die Adresse, die der Kopf von index.html schon abfragt - beide muessen
 // gleich sein (tests/lifeskin-shop-weg.test.mjs).
 export const HERO_ADRESSE = `${BASIS}/${SHOP_HERO_DOK}`;
@@ -300,6 +301,7 @@ export class Dyqan {
       // Gemerkt und mit Stempel: nur nachsehen, ob Heart ein neues hat.
       if (gemerkt && stand) {
         const kurz = await holeDok(SHOP_HERO_DOK, holen, HERO_NUR_STAND);
+        if (kurz) this.heroAnzahl = Number(kurz.anzahl) || 1;
         if (kurz && String(kurz.updatedAt || "") === stand) return;
         if (!kurz) {
           // In Heart entfernt (404): das Standardbild zurueck.
@@ -310,6 +312,7 @@ export class Dyqan {
       }
       const d = await holeDok(SHOP_HERO_DOK, holen);
       const foto = typeof d?.foto === "string" && d.foto.startsWith("data:image/") ? d.foto : "";
+      this.heroAnzahl = foto ? Number(d.anzahl) || 1 : 0;
       if (!img) return;
       if (!foto) {
         // Heart hat kein eigenes Bild mehr (404 -> null). Fehlt nur das
@@ -430,6 +433,48 @@ export class Dyqan {
     // die es zu kaufen gibt.
     await this.#setetUebernehmen(setDok);
     await faelle;
+    // Zuletzt die weiteren Titelbilder - sie liegen ausserhalb des Blicks
+    // (zum Wischen) und sollen dem Rest die Leitung nicht nehmen.
+    await this.titelbildFertig;
+    await this.#heroGalerie();
+  }
+
+  // TITELBILD 2-5 ZUM WISCHEN (30.09., Inhaber). Bild 1 bleibt, wie es ist
+  // (schnell, gemerkt); die weiteren legen sich als Bahn darueber, deren
+  // erstes Feld leer ist - so steht beim Laden genau Bild 1 da, nichts
+  // springt, und ein Wischen zieht Bild 2 herein.
+  async #heroGalerie() {
+    const n = Math.min(SHOP_HERO_MAX, Number(this.heroAnzahl) || 0);
+    const rahmen = $("#ls-einstieg .hero-photo", this.dok);
+    if (n < 2 || !rahmen || rahmen.querySelector(".hero-bahn")) return;
+    const bilder = [];
+    for (let i = 1; i < n; i += 1) {
+      try {
+        const d = await holeDok(shopHeroDokId(i), this.holen);
+        if (typeof d?.foto === "string" && d.foto.startsWith("data:image/")) bilder.push(d.foto);
+      } catch { /* dann ohne dieses Bild */ }
+    }
+    if (!bilder.length) return;
+    const bahn = this.dok.createElement("div");
+    bahn.className = "hero-bahn";
+    bahn.setAttribute("aria-label", "Fotot e setit");
+    bahn.innerHTML = '<span class="hero-slide hero-slide--leer" aria-hidden="true"></span>'
+      + bilder.map((b, i) => `<img class="hero-slide" src="${e(b)}" alt="LifeSkin Acne Duo, foto ${i + 2}" decoding="async">`).join("");
+    const pikat = this.dok.createElement("div");
+    pikat.className = "hero-pikat";
+    pikat.setAttribute("aria-hidden", "true");
+    pikat.innerHTML = [0, ...bilder].map((_, i) => `<i data-an="${i === 0 ? "ja" : "nein"}"></i>`).join("");
+    rahmen.append(bahn, pikat);
+    let wartet = false;
+    bahn.addEventListener("scroll", () => {
+      if (wartet) return;
+      wartet = true;
+      requestAnimationFrame(() => {
+        wartet = false;
+        const stelle = Math.round(bahn.scrollLeft / Math.max(1, bahn.clientWidth));
+        [...pikat.children].forEach((p, i) => p.setAttribute("data-an", i === stelle ? "ja" : "nein"));
+      });
+    }, { passive: true });
   }
 
   // Die Sets aus Heart, nur mit Mitteln, die es zu kaufen gibt - mit ihrem
