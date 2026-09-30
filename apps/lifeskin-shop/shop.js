@@ -132,12 +132,14 @@ export function acneDuoCart(cart, sets) {
 // kaufen will, muss nicht daran vorbeiscrollen.
 const DUO_HAPAT = [
   { id: 'lf-acne', hapi: 'HAPI 1 · MBRËMJE', aktiv: 'Benzoyl peroxide 5 %',
-    dobi: 'Ul puçrrat · Hap poret',
+    dobi: 'Largon aknet • shenjat • poret',
     si: 'Në mbrëmje, një shtresë e hollë sa një bizele, vetëm në zonat me puçrra, mbi lëkurë të pastër e të thatë. Javën e parë çdo ditë të dytë, pastaj çdo mbrëmje.',
+    kryesore: 'Benzoyl Peroxide (50 mg/g), Glycerin, Aqua',
     perberja: 'Benzoyl Peroxide (50 mg/g), Carbomer, Sodium Olefin Sulfonate, Glycerin, Methacrylate Copolymer, Sodium Hydroxide, Aqua.' },
   { id: 'lf-moistur', hapi: 'HAPI 2 · MËNGJES DHE MBRËMJE', aktiv: 'Ceramide + acid hialuronik',
     dobi: 'Hidraton · Forcon barrierën',
     si: 'Sa një kokërr bathe. Në mëngjes mbi lëkurë të pastër; në mbrëmje pas LF ACNE, kur lëkura e ka thithur.',
+    kryesore: 'Ceramide NP, AP, EOP · Sodium Hyaluronate · Glycerin',
     perberja: 'Aqua, Glycerin, Caprylic/Capric Triglyceride, Cetearyl Alcohol, Cetyl Alcohol, Dimethicone, Phenoxyethanol, Polysorbate 20, Ceteareth-20, Behentrimonium Methosulfate, Polyglyceryl-3 Diisostearate, Sodium Lauroyl Lactylate, Ethylhexylglycerin, Potassium Phosphate, Disodium EDTA, Dipotassium Phosphate, Ceramide NP, Ceramide AP, Phytosphingosine, Cholesterol, Xanthan Gum, Carbomer, Sodium Hyaluronate, Tocopherol, Ceramide EOP.' }
 ];
 export function duoCard(s, mittel) {
@@ -148,7 +150,7 @@ export function duoCard(s, mittel) {
     const foto=m?.fotot?.[0] || MITTEL_FOTOS_STANDARD[h.id] || '';
     return `<div class="duo-hap">${foto ? `<img class="duo-hap-foto" src="${e(foto)}" width="72" height="90" alt="${emri(h)}" loading="lazy" decoding="async">` : ''}<div><small>${h.hapi}</small><h3>${emri(h)} <span>${e(m?.inhalt || '30 ml')}</span></h3><p class="duo-aktiv">${h.aktiv}</p><p class="duo-dobi">${h.dobi}</p></div></div>`;
   }).join('');
-  const detaje=DUO_HAPAT.map(h=>`<h4>${emri(h)}</h4><p><b>Si përdoret:</b> ${h.si}</p><p class="duo-inci"><b>Përbërja:</b> ${h.perberja}</p>`).join('');
+  const detaje=DUO_HAPAT.map(h=>`<h4>${emri(h)}</h4><p><b>Si përdoret:</b> ${h.si}</p><p class="duo-inci"><b>Përbërja kryesore:</b> ${h.kryesore}</p><details class="duo-inci-mehr"><summary>Lexo më shumë</summary><p class="duo-inci">${h.perberja}</p></details>`).join('');
   return `<article class="duo-card"><div class="duo-hapat">${hapat}</div><details class="duo-product"><summary>Përdorimi dhe përbërja ${ikone('Plus')}</summary><div class="duo-product-body">${detaje}<p class="duo-shenim">Pa parfum · Kujdes dermatologjik nga Gjermania</p></div></details><div class="duo-cmimi"><div><span>Çmimi:</span></div><div><s>${2*preisFuer(1)} €</s><strong>${price} €</strong></div></div><button type="button" class="primary" data-set="${e(s.id)}">Porosit setin · ${price} € ${ikone('ArrowUpRight')}</button><ul class="besim"><li>${ikone('Truck')}Dërgesa falas</li><li>${ikone('Banknote')}Paguani te dera</li><li>${ikone('ShieldCheck')}45 ditë garanci</li></ul></article>`;
 }
 

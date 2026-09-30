@@ -305,3 +305,6 @@ body:has(#ls-einstieg[data-aktiv="ja"]) { font-size: 16px; line-height: normal; 
 #ls-einstieg #sheet .klient-spiel:focus{outline:none}
 #ls-einstieg #sheet .klient-buehne{height:min(52vh,480px)}
 #ls-einstieg .duo-cmimi{align-items:center}
+#ls-einstieg .duo-inci-mehr summary{list-style:none;display:inline-block;font-size:12px;font-weight:700;text-decoration:underline;text-underline-offset:3px;padding:6px 0;cursor:pointer;color:var(--ink)}
+#ls-einstieg .duo-inci-mehr summary::-webkit-details-marker{display:none}
+#ls-einstieg .duo-inci-mehr[open] summary{display:none}

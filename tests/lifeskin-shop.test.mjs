@@ -249,7 +249,7 @@ test("Acne-Duo-Kampagne laesst keine weiteren Sets oder halben Koerbe zu", async
   assert.deepEqual(acneDuoCart({ids:["lf-acne","lf-moistur"],set:"old"},sets),{ids:duo.produkte,set:duo.id});
   assert.deepEqual(acneDuoCart({ids:duo.produkte},[]),{ids:[],set:""});
   const card=duoCard(duo,[]);
-  assert.equal((card.match(/<details/g)||[]).length,1);
+  assert.equal((card.match(/<details/g)||[]).length,3, "ein Aufklapper fuer Anwendung, je ein 'Lexo më shumë'");
   assert.match(card,/Benzoyl peroxide 5 %/);
   assert.match(card,/<s>58 €<\/s>/);
   assert.match(card,/45 ditë garanci/);
