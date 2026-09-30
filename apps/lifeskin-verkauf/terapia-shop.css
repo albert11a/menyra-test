@@ -193,3 +193,16 @@ html[data-weg="lifeskinshop"] .ndaje__shenim { margin-top: 12px; font-size: 12px
 @media (prefers-reduced-motion: reduce) {
   html[data-weg="lifeskinshop"] .perputhja__niveli { animation: none; }
 }
+
+/* 30.09. DAS ANGEBOT (Inhaber), wie im Laden: Rabatt gegen die Einzelpreise
+   und "Vetëm edhe pak sete" - eine Zeile unter dem Preis, buendig. */
+html[data-weg="lifeskinshop"] .cmimi { flex-wrap: wrap; }
+html[data-weg="lifeskinshop"] .cmimi .oferta { flex-basis: 100%; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+html[data-weg="lifeskinshop"] .oferta .zbritje { font-style: normal; background: #d62d20; color: #fff; font-size: .75rem; font-weight: 800; padding: 4px 8px; border-radius: 6px; line-height: 1.2; }
+html[data-weg="lifeskinshop"] .oferta s { font-size: .9rem; color: var(--muted); }
+html[data-weg="lifeskinshop"] .oferta .pak-sete { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; font-size: .78rem; font-weight: 700; color: #c62419; }
+html[data-weg="lifeskinshop"] .oferta .pak-sete i { width: 7px; height: 7px; border-radius: 50%; background: #d62d20; box-shadow: 0 0 0 3px #d62d2026; animation: pak-puls 1.6s ease-in-out infinite; }
+@keyframes pak-puls { 50% { box-shadow: 0 0 0 7px #d62d2000; } }
+@media (prefers-reduced-motion: reduce) { html[data-weg="lifeskinshop"] .oferta .pak-sete i { animation: none; } }
+html[data-weg="lifeskinshop"] .zbritje-leiste { color: #d62d20; font-weight: 800; }
+html[data-weg="lifeskinshop"] .cmimi div.oferta { flex-direction: row; justify-content: flex-start; }

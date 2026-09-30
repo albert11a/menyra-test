@@ -17,6 +17,7 @@ import { AnalyseDaten, kennungAusPfad, dokument } from "../lifeskin-astra/astra-
 import { Pixel, pixelKennungen, browserAngaben } from "../lifeskin/lifeskin-pixel.js";
 import { STANDARD_KONFIG } from "../lifeskin/lifeskin-catalog.js";
 import { preisFuer } from "../../shared/lifeskin-preise.js";
+import { PAK_SETE, zbritjaPerqind } from "../../shared/lifeskin-oferta.js";
 import { LIFESKIN_WHATSAPP, LIFESKIN_WHATSAPP_TEXT, LIFESKIN_TELEFON_VORWAHL } from "../lifeskin/lifeskin-config.js";
 import { brauchtAbklaerung } from "../../shared/lifeskin-raport-v3.js";
 import { shitjaLesen } from "../../shared/lifeskin-shitja.js";
@@ -520,6 +521,7 @@ export class Terapia {
     // ist - mit Lieferung (Auftrag, Punkt 9). Der Preis selbst bleibt.
     if (this.neu) schreibe($("#t-cmimi1 [data-dita]"), `gjithsej me dërgesë · ${jeTag} € në ditë`);
     for (const el of $$("[data-porosi]")) schreibe(el, this.kaufWort());
+    this.#oferta();
     schreibe($("#t-dergo"), `Konfirmo porosinë — ${euro(this.preis)}`);
 
     this.#seti();
@@ -997,7 +999,9 @@ export class Terapia {
 
   // Nur was wirklich gilt - aus der Konfiguration, nicht aus dem Text.
   #zusagen() {
-    const [von, bis] = STANDARD_KONFIG.lieferzeitTage || [];
+    // Im Laden (/lifeskinshop) dieselben Zusagen wie auf seiner Seite (30.09.,
+    // Inhaber): Lieferung 1–3 Tage, Garantie erst Anpassung, dann Geld.
+    const [von, bis] = this.shop ? [1, 3] : (STANDARD_KONFIG.lieferzeitTage || []);
     const tage = Number(STANDARD_KONFIG.rueckgabeTage) || 0;
     const nachnahme = (STANDARD_KONFIG.zahlarten || []).includes("nachnahme");
     // DIE VIER ANTWORTEN, DIREKT UNTER DEM PREIS (oben und unten).
@@ -1019,7 +1023,7 @@ export class Terapia {
       ["Për lëkurën tuaj", this.ohneFoto ? "Dr. Gashi e zgjodhi sipas përshkrimit tuaj." : "Dr. Gashi e zgjodhi sipas fotove tuaja."],
       ["Ndryshimi", "Pas disa javësh – ju kontrollojmë çdo javë."],
       nachnahme ? ["Pagesa", "Te dera, kur pakoja është në dorën tuaj."] : null,
-      tage ? ["Garancia", `${tage} ditë – ose ju kthejmë paratë.`] : null
+      tage ? ["Garancia", this.shop ? `${tage} ditë. Së pari e përshtatim terapinë falas, pastaj ju kthejmë paratë.` : `${tage} ditë – ose ju kthejmë paratë.`] : null
     ]).filter(Boolean);
     const antwortenBauen = () => antworten.map(([frage, antwort, link]) => {
       const zelle = element("div");
@@ -1038,7 +1042,7 @@ export class Terapia {
     const zusagen = [
       nachnahme ? ["para", "Paguani te dera", "kur vjen pakoja"] : null,
       g ? ["garanci", `${g.tage} ditë garanci`, "nga marrja e pakos", { text: "Kushtet", href: "#garancia" }]
-        : tage ? ["garanci", `${tage} ditë garanci`, "ose paratë mbrapsht"] : null,
+        : tage ? ["garanci", `${tage} ditë garanci`, this.shop ? "terapi falas ose paratë" : "ose paratë mbrapsht"] : null,
       ["transport", "Transport falas", von && bis ? `dërgesa ${von}–${bis} ditë` : ""]
     ].filter(Boolean);
     const siguria = $("#t-siguria");
@@ -1776,6 +1780,33 @@ export class Terapia {
     schreibe(zeile, text);
     if (zeile) zeile.dataset.art = stand || "";
     zeigen(zeile, Boolean(text));
+  }
+
+  // DAS ANGEBOT DES LADENS (30.09., Inhaber): nur auf dem Weg
+  // /lifeskinshop. Rabatt gegen die Einzelpreise, dazu "Vetëm edhe pak
+  // sete" (shared/lifeskin-oferta.js) - an beiden Preisen und in der Leiste.
+  #oferta() {
+    const einzeln = this.produkte.length * preisFuer(1);
+    const prozent = this.shop && this.produkte.length > 1 ? zbritjaPerqind(this.preis, einzeln) : 0;
+    for (const id of ["#t-cmimi1", "#t-cmimi2"]) {
+      const kasten = $(id);
+      if (!kasten) continue;
+      kasten.querySelector(".oferta")?.remove();
+      if (!prozent) continue;
+      const zeile = document.createElement("div");
+      zeile.className = "oferta";
+      zeile.innerHTML = `<em class="zbritje">ZBRITJE −${prozent} %</em><s>${zahl(einzeln)} €</s>`
+        + (PAK_SETE ? '<b class="pak-sete"><i aria-hidden="true"></i>Vetëm edhe pak sete</b>' : "");
+      kasten.append(zeile);
+    }
+    const leiste = $("#leiste p");
+    leiste?.querySelector(".zbritje-leiste")?.remove();
+    if (prozent && leiste) {
+      const marke = document.createElement("b");
+      marke.className = "zbritje-leiste";
+      marke.textContent = `−${prozent} % · `;
+      leiste.prepend(marke);
+    }
   }
 
   async #bestellenNeu() {

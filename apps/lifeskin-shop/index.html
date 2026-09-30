@@ -184,6 +184,40 @@
 </section>
 <div class="sr-only" id="status" role="status" aria-live="polite"></div>
 </section>
+<!-- NEULADEN OHNE SPRUNG (30.09., Inhaber, Frames vom iPhone): Der Browser
+     zeichnete die Seite erst oben und sprang dann an die alte Stelle - auf
+     dem iPhone mit einem weissen Moment dazwischen. Die Stelle merkt sich der
+     Laden jetzt selbst und setzt sie HIER, direkt nach seinem Aufbau und vor
+     dem ersten Zeichnen. Nur beim Neuladen und beim Zurueck, nur solange der
+     Laden (nicht die Kasse, nicht der Trichter) zu sehen ist. -->
+<script>
+(function () {
+  var SCHLUESSEL = "lifeskinshop:y";
+  try {
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    var nav = (performance.getEntriesByType && performance.getEntriesByType("navigation")[0]) || {};
+    var y = Number(sessionStorage.getItem(SCHLUESSEL) || 0);
+    if (y > 0 && (nav.type === "reload" || nav.type === "back_forward")) {
+      // Sofort, nicht weich: Die Seite scrollt sonst sichtbar dorthin.
+      var html = document.documentElement, alt = html.style.scrollBehavior;
+      html.style.scrollBehavior = "auto";
+      window.scrollTo({ top: y, left: 0, behavior: "instant" });
+      html.style.scrollBehavior = alt;
+    }
+  } catch (e) { /* ohne Speicher: oben anfangen */ }
+  var wartet = false;
+  function merken() {
+    wartet = false;
+    try {
+      var laden = document.getElementById("ls-einstieg");
+      if (!laden || laden.getAttribute("data-aktiv") !== "ja" || document.documentElement.hasAttribute("data-ansicht")) return;
+      sessionStorage.setItem(SCHLUESSEL, String(Math.round(window.scrollY)));
+    } catch (e) { /* egal */ }
+  }
+  window.addEventListener("scroll", function () { if (!wartet) { wartet = true; requestAnimationFrame(merken); } }, { passive: true });
+  window.addEventListener("pagehide", merken);
+})();
+</script>
 
 <!-- 02 MENYRA - die vier Wege.
      DER TEUERSTE BILDSCHIRM DES GANZEN WEGS, und deshalb gibt es ihn.
