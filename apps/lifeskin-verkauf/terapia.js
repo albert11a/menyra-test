@@ -37,7 +37,7 @@ import { KundenMedien } from "./terapia-medien.js";
 import { ansichtOeffnen, ansichtSchliessen } from "./ansicht.js";
 import { NDJEKJA, NDJEKJA_TEXTE, KAUFWEG_VERSION, ndjekjaSichtbar } from "../../shared/lifeskin-ndjekja.js";
 import { garancia } from "../../shared/lifeskin-garancia.js";
-import { telefonPruefen } from "../../shared/lifeskin-telefon.js";
+import { kasseTelefon } from "../../shared/lifeskin-telefon.js";
 import { beispielKarte, ikone } from "./ndjekja-teile.js";
 import { antwortenSpiegel } from "../../shared/lifeskin-antworten.js";
 import { wegAusSuche, wegGueltig } from "../../shared/lifeskin-weg.js";
@@ -1751,7 +1751,8 @@ export class Terapia {
     const fehler = [];
     if (!werte.name) fehler.push(["#t-emri", "Shkruani emrin dhe mbiemrin."]);
     if (!this.numriNgaAnaliza) {
-      const nummer = telefonPruefen(wert("#t-telefon"), LIFESKIN_TELEFON_VORWAHL);
+      // Die Kasse nimmt jede Eingabe (kasseTelefon) - nur leer geht nicht.
+      const nummer = kasseTelefon(wert("#t-telefon"), LIFESKIN_TELEFON_VORWAHL);
       if (nummer.ok) werte.telefon = nummer.nummer;
       else fehler.push(["#t-telefon", "Shkruani numrin e telefonit."]);
     }

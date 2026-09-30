@@ -80,10 +80,11 @@ export function summe(korb) {
   return korb.cmimi > 0 ? korb.cmimi : preisFuer(korb.ids.length);
 }
 
-// Die Pflichtfelder der Kasse. Dieselbe Regel wie auf /lifeskin: alle vier.
+// Die Pflichtfelder der Kasse. Dieselbe Regel wie auf /lifeskin: alle vier
+// ausgefuellt - und sonst nichts. Seit 30.09. (Inhaber) keine Mindestzahl
+// an Ziffern mehr: Jede Eingabe geht durch, geklaert wird am Telefon.
 export function kasseFehler(werte) {
   if (!werte.name || !werte.telefon || !werte.strasse || !werte.ort) return "Ju lutemi plotësoni të gjitha fushat.";
-  if (werte.telefon.replace(/\D/g, "").length < 7) return "Ju lutemi shkruani një numër telefoni të saktë.";
   return "";
 }
 

@@ -158,6 +158,24 @@ function vereinheitlichen(ziffern, vorwahl) {
 // weiter in ihren Zuordnungen - sie laufen jetzt ins Leere und fallen
 // auf "leer" zurueck. Nichts daran ist kaputt, und wenn eine Grenze je
 // wiederkommt, steht ihr Satz noch da.
+// DIE KASSE NIMMT ALLES (30.09., Inhaber).
+//
+// Wer bestellen will, darf nie an der Nummer scheitern: "+383 44…",
+// "044…", "44…", "kdkekei8272€" - alles geht durch. Angerufen wird
+// ohnehin vorher; was nicht stimmt, klaert der Anruf, nicht das Formular.
+// Sieht es aus wie eine Nummer (nur Ziffern und Zierat), wird sie wie
+// ueberall vereinheitlicht. Sonst bleibt stehen, was getippt wurde - aus
+// "kdkekei8272€" nur "8272" zu machen, wuerde verschweigen, was dort stand.
+// Nur ein leeres Feld ist leer.
+const NUMMERN_ZIERAT = /[\p{Nd}\s+\-().\/\u200B-\u200F\u202A-\u202E\u2066-\u2069\u00AD\uFEFF\u2010-\u2015\u2212\uFE58\uFE63\uFF0D\uFF08\uFF09\uFF0B]/gu;
+export function kasseTelefon(roh, vorwahl = "") {
+  const getippt = String(roh ?? "").trim();
+  if (!getippt) return { ok: false, grund: "leer" };
+  const geprueft = telefonPruefen(getippt, vorwahl);
+  if (geprueft.ok && !getippt.replace(LINKKOPF, "").replace(NUMMERN_ZIERAT, "")) return geprueft;
+  return { ok: true, nummer: getippt.slice(0, SPEICHER_MAX) };
+}
+
 export function telefonPruefen(roh, vorwahl = "") {
   // Erst das Unsichtbare weg, DANN trimmen: Sonst bleibt eine
   // Laufrichtungsmarke am Rand stehen, die trim() nicht als Leerraum

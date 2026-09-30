@@ -540,3 +540,26 @@ test("das Wiederaufnehmen zaehlt keinen Schritt ein zweites Mal", () => {
       `${schritt} laesst sich nicht stummschalten`);
   }
 });
+
+// DIE KASSE NIMMT ALLES (30.09., Inhaber) - /lifeskin und /lifeskinshop.
+test("Kasse: jede Eingabe geht durch, nur ein leeres Feld nicht", async () => {
+  const { kasseTelefon } = await import("../shared/lifeskin-telefon.js");
+  // Sieht es aus wie eine Nummer, wird sie wie ueberall vereinheitlicht.
+  assert.equal(kasseTelefon("044 123 456", "+383").nummer, "+38344123456");
+  assert.equal(kasseTelefon("+383 44 123 456", "+383").nummer, "+38344123456");
+  assert.equal(kasseTelefon("44123456", "+383").nummer, "44123456");
+  assert.equal(kasseTelefon("0038344123456", "+383").nummer, "+38344123456");
+  // Alles andere bleibt stehen, wie es getippt wurde.
+  for (const roh of ["kdkekei8272€", "nuk e di", "abc", "12", "€€€", "044 ose 045"]) {
+    const g = kasseTelefon(roh, "+383");
+    assert.equal(g.ok, true, roh);
+    assert.equal(g.nummer, roh);
+  }
+  assert.equal(kasseTelefon("  ", "+383").ok, false);
+  assert.equal(kasseTelefon("", "+383").ok, false);
+  assert.equal(kasseTelefon("x".repeat(99)).nummer.length, 40);
+  // Die Therapieseite (beide Wege) prueft mit kasseTelefon, nicht strenger.
+  const terapia = readFileSync(join(wurzel, "apps/lifeskin-verkauf/terapia.js"), "utf8");
+  assert.match(terapia, /kasseTelefon\(wert\("#t-telefon"\), LIFESKIN_TELEFON_VORWAHL\)/);
+  assert.doesNotMatch(terapia, /telefonPruefen\(/);
+});

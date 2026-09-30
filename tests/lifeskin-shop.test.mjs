@@ -80,7 +80,10 @@ test("Korb, Summe, Pflichtfelder und Zeilen der Bestellung", async () => {
   assert.equal(summe({ ids: ["a", "b"] }), 39);
   assert.equal(summe({ ids: ["a", "b", "c"] }), 49);
   assert.match(kasseFehler({ name: "", telefon: "1", strasse: "x", ort: "y" }), /të gjitha fushat/);
-  assert.match(kasseFehler({ name: "A", telefon: "12", strasse: "x", ort: "y" }), /numër telefoni/);
+  // Seit 30.09. (Inhaber): jede Eingabe geht durch, nur leer nicht.
+  for (const telefon of ["12", "044123456", "44123456", "+38344123456", "kdkekei8272€", "nuk e di"]) {
+    assert.equal(kasseFehler({ name: "A", telefon, strasse: "x", ort: "y" }), "", telefon);
+  }
   assert.equal(kasseFehler({ name: "A", telefon: "+383 44 000 000", strasse: "x", ort: "y" }), "");
   assert.deepEqual(bestellZeilen({ ids: ["lf-acne"] }, [{ id: "lf-acne", name: "LF ACNE" }]),
     [{ id: "lf-acne", name: "LF ACNE", cmimi: 29, sasia: 1 }]);
