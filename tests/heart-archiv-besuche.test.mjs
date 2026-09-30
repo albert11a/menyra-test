@@ -2,7 +2,7 @@
 // Inhaber) - rueckwirkend aus dem Klickpfad der Therapieseite.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { analyseBesuche, kasseAbsicht, kaufStufe, kaufChancen } from "../apps/mnyra-heart/heart-lifeskin-berechnung.js";
+import { analyseBesuche, kasseAbsicht, kaufStufe, kaufChancen, hatGekauft } from "../apps/mnyra-heart/heart-lifeskin-berechnung.js";
 
 const pfad = (liste) => ({ timings: { pfad: Object.fromEntries(liste.map(([t, e, s = "Therapieseite"], i) => [`p${i}`, { t, e, s, d: "" }])) } });
 
@@ -79,4 +79,35 @@ test("Kaufchance: gezaehlt je Stufe, zur Gesamtquote hingezogen", () => {
   assert.ok(Math.abs(c.get("e").p - 1.5 / 8) < 1e-9);
   // Ohne Klickpfad zaehlt der Fall nicht mit, bekommt aber seine Stufe.
   assert.equal(c.get("alt").stufe, 1);
+});
+
+test("alle Besuche zusammen: Anzahl, Minuten und Stufe ueber jeden Besuch der Therapieseite", () => {
+  // Drei Besuche an drei Tagen, je 1 Minute - zusammen 3 Minuten, Stufe 3.
+  const tag = (d, m, s = 0) => new Date(Date.UTC(2026, 8, d, 10, m, s)).toISOString();
+  const s = ereignisse([
+    [tag(25, 0), "geoeffnet"], [tag(25, 1), "gesehen"], [tag(25, 1, 5), "verlassen"],
+    [tag(27, 0), "geoeffnet"], [tag(27, 1), "scroll", "25 %"], [tag(27, 1, 5), "verlassen"],
+    [tag(30, 0), "geoeffnet"], [tag(30, 1), "klick"]
+  ]);
+  const b = analyseBesuche(s);
+  assert.equal(b.anzahl, 3);
+  assert.equal(b.ms, (65 + 65 + 60) * 1000);
+  assert.equal(b.zuletzt, tag(30, 1));
+  // Jeder Besuch fuer sich waere nur Stufe 1 - zusammen ist es Stufe 3.
+  assert.equal(kaufStufe(s), 3);
+});
+
+test("in Heart eingetragene Bestellung zaehlt als Kauf - und nur was davor war", () => {
+  const bestellt = { id: "w", bestelltAt: T(2), ...ereignisse([[T(0), "geoeffnet"], [T(1), "kasse", "x"], [T(1, 5), "klick", "Kthehu · Bestellschirm"],
+    [T(3), "geoeffnet"], [T(4), "kasse", "x"], [T(4, 30), "verlassen"]]) };
+  // Vor der Bestellung nur einmal kurz an der Kasse; das Nachschauen danach zaehlt nicht.
+  assert.equal(kasseAbsicht(bestellt).art, "kurz");
+  assert.equal(kaufStufe(bestellt), 4);
+  const offen = { id: "o", ...ereignisse([[T(0), "geoeffnet"], [T(1), "kasse", "x"], [T(1, 5), "klick", "Kthehu · Bestellschirm"]]) };
+  const c = kaufChancen([bestellt, offen], { w: { status: "versandt" } });
+  assert.equal(c.get("o").stufe, 4);
+  assert.equal(c.get("o").n, 2);
+  assert.equal(c.get("o").k, 1);
+  assert.equal(hatGekauft({}, { status: "zugestellt" }), true);
+  assert.equal(hatGekauft({}, { status: "fertig" }), false);
 });

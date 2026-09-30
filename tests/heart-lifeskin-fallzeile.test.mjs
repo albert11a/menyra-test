@@ -173,6 +173,13 @@ test("jedes Fach zeigt seine Chips - Datum und Uhrzeit ueberall", () => {
   const archiv = archivAlles.slice(0, 5);
   assert.deepEqual(archiv.slice(0, -2), ["39 €", "Open", "Arka"]);
   assert.deepEqual(archivAlles.slice(5, 9), ["Analiza", "– dita", "1×", "0 min"]);
+  // Auch ohne "Will starten" und "Scroll", wenn es sie gaebe.
+  const extra = { typ: "scan", berichtGeoeffnet: true, anamnese: { gatishmeria: "tani" }, timings: { landing: { v: 2, s1: true, weg: "scroll", ab: 2 } } };
+  const zeileIn = (fach) => zeileVon(zeichne({ sitzungen: [sitzung("c1", extra)], fach,
+    berichte: { c1: { status: "fertig", freigabeAt: "x", preis: 39, archiviert: fach === "archiviert" } } }), "c1");
+  assert.match(zeileIn("seen"), /Will starten/);
+  assert.match(zeileIn("seen"), />Scroll</);
+  assert.doesNotMatch(zeileIn("archiviert"), /Will starten|>Scroll<|>Scan</);
   const spaeter = chipsIn("spaeter", {}, { status: "fertig", freigabeAt: "x", spaeter: true });
   assert.deepEqual(spaeter.slice(0, -2), ["Scan", "Geöffnet", "Kasse"]);
   for (const liste of [seen, kasse, bestellt, archiv, spaeter]) assert.ok(zeit(liste), `Datum/Uhrzeit fehlen: ${liste}`);

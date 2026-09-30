@@ -1425,15 +1425,19 @@ function kasseAus(ereignisse, sitzung) {
   return { art: "kurz", grund: `Kasse auf und wieder zu${dort ? ` (${Math.round(dort / 1000)} s)` : ""}` };
 }
 export function kasseAbsicht(sitzung) {
-  return kasseAus(vorDemKauf(therapieEreignisse(sitzung)), sitzung);
+  return kasseAus(vorDemKauf(therapieEreignisse(sitzung), sitzung), sitzung);
 }
 // Bei einem Kaeufer zaehlt nur, was VOR der Bestellung war - sonst waere
 // jeder Kaeufer "bewusst", weil er die Felder zum Bestellen ausfuellen
 // musste, und das Nachschauen danach wuerde als Interesse gezaehlt.
 // Das Ausfuellen selbst bleibt drin: Es gehoert zum Weg zur Bestellung.
-function vorDemKauf(ereignisse) {
+// Die Grenze ist das Ereignis "bestellt" - oder, bei einer Bestellung, die
+// nicht ueber den Schirm kam (WhatsApp, in Heart eingetragen), bestelltAt.
+function vorDemKauf(ereignisse, sitzung) {
   const i = ereignisse.findIndex((e) => e.e === "bestellt");
-  return i < 0 ? ereignisse : ereignisse.slice(0, i);
+  const bis = i < 0 ? ereignisse : ereignisse.slice(0, i);
+  const am = Date.parse(sitzung?.bestelltAt || "");
+  return Number.isFinite(am) ? bis.filter((e) => Date.parse(e.t) <= am) : bis;
 }
 
 // WIE NAH WAR ER AM KAUF? Eine Stufe aus dem, was er auf der
@@ -1449,7 +1453,7 @@ export const KAUF_STUFEN_ANALYSE = Object.freeze([
   "Nie geöffnet", "Nur geöffnet", "Gelesen", "Intensiv gelesen", "Kurz an der Kasse", "Bewusst an der Kasse"
 ]);
 export function kaufStufe(sitzung) {
-  const ereignisse = vorDemKauf(therapieEreignisse(sitzung));
+  const ereignisse = vorDemKauf(therapieEreignisse(sitzung), sitzung);
   const kasse = kasseAus(ereignisse, sitzung);
   if (kasse.art === "bewusst") return 5;
   if (kasse.art) return 4;
@@ -1478,7 +1482,13 @@ export function kaufStufe(sitzung) {
 // eine Obergrenze eher als eine Untergrenze, denn die schnellen Kaeufer
 // sind in der Quote mit drin.
 export const KAUF_GLAETTUNG = 4;
-export function kaufChancen(sitzungen) {
+// Gekauft hat, wer bestellt hat - auch wenn die Bestellung nur in Heart
+// eingetragen ist (Bericht "bestellt", "versandt", "zugestellt").
+const GEKAUFT_STATUS = Object.freeze(["bestellt", "versandt", "zugestellt"]);
+export function hatGekauft(sitzung, bericht) {
+  return sitzung?.hatBestellt === true || GEKAUFT_STATUS.includes(String(bericht?.status || ""));
+}
+export function kaufChancen(sitzungen, berichte = {}) {
   const zaehlung = KAUF_STUFEN_ANALYSE.map(() => ({ n: 0, k: 0 }));
   let n = 0;
   let k = 0;
@@ -1487,7 +1497,7 @@ export function kaufChancen(sitzungen) {
     const stufe = kaufStufe(s);
     stufen.set(s.id, stufe);
     if (!therapieEreignisse(s).length) continue;
-    const gekauft = s?.hatBestellt === true ? 1 : 0;
+    const gekauft = hatGekauft(s, berichte?.[s.id]) ? 1 : 0;
     zaehlung[stufe].n += 1;
     zaehlung[stufe].k += gekauft;
     n += 1;

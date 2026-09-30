@@ -1356,8 +1356,8 @@ function fallMarken(sitzung, fach = "", bericht = null) {
   // zuerst nachgeht. Nach der Bestellung verschwindet die Marke.
   const gati = sitzung.anamnese?.gatishmeria === "tani" && !sitzung.hatBestellt
     ? `<span class="heart-lifeskin-pill heart-lifeskin-pill--gati heart-lifeskin-pill--an" title="Frage 4: Po, dua ta filloj sa më shpejt">Will starten</span>` : "";
-  // Im Archiv ohne Foto/Scan (Wunsch 30.09.).
-  const reihe = gati + (archiv ? landingMarke(sitzung) : artMarke(sitzung) + landingMarke(sitzung))
+  // Im Archiv ohne Foto/Scan, Will starten und Scroll (Wunsch 30.09.).
+  const reihe = (archiv ? "" : gati + artMarke(sitzung) + landingMarke(sitzung))
     + (sitzung.nurBericht ? `<span class="heart-lifeskin-pill heart-lifeskin-pill--paskanim heart-lifeskin-pill--an" title="Die Sitzung kam nicht an, der Bericht schon - Kontaktdaten fehlen">nur Bericht</span>` : "")
     + marken.map((m) => `<span class="heart-lifeskin-pill heart-lifeskin-pill--${m.id}${m.an ? " heart-lifeskin-pill--an" : ""}"${
       m.titel ? ` title="${escapeHtml(m.titel)}"` : ""}>${escapeHtml(m.label)}</span>`).join("");
@@ -1522,7 +1522,7 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
   const gewaehltSet = new Set(waehlen ? auswahl : []);
   // Die Kaufchance zaehlt ueber ALLE Faelle dieses Wegs, auch die
   // gekauften - nur so ergibt sich eine Quote.
-  const chancen = fach === "archiviert" ? kaufChancen(fertige) : null;
+  const chancen = fach === "archiviert" ? kaufChancen(fertige, berichte) : null;
   const zeilen = gewaehlt.map((s) => fallKnopf(s, berichte[s.id], fach, vorschau[s.id], waehlen, gewaehltSet.has(s.id),
     chancen?.get(s.id) || null)).join("");
 
