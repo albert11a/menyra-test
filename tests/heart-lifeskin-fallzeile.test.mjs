@@ -167,8 +167,12 @@ test("jedes Fach zeigt seine Chips - Datum und Uhrzeit ueberall", () => {
   // Bestellt: der Betrag der Bestellung, nicht der vorgeschlagene Preis.
   const bestellt = chipsIn("bestellt", { berichtGeoeffnet: true, hatBestellt: true, order: { orderId: "o", total: 49 } });
   assert.deepEqual(bestellt.slice(0, -2), ["Scan", "49 €"]);
-  const archiv = chipsIn("archiviert", { berichtGeoeffnet: true }, { status: "fertig", freigabeAt: "x", preis: 39, archiviert: true });
-  assert.deepEqual(archiv.slice(0, -2), ["Scan", "Geöffnet", "Kasse", "39 €"]);
+  // Archiv seit 30.09. (Inhaber): ohne Foto/Scan, Preis - Open - Arka,
+  // dann Datum und Uhrzeit; darunter die Reihe "Analiza".
+  const archivAlles = chipsIn("archiviert", { berichtGeoeffnet: true }, { status: "fertig", freigabeAt: "x", preis: 39, archiviert: true });
+  const archiv = archivAlles.slice(0, 5);
+  assert.deepEqual(archiv.slice(0, -2), ["39 €", "Open", "Arka"]);
+  assert.deepEqual(archivAlles.slice(5, 9), ["Analiza", "– dita", "1×", "0 min"]);
   const spaeter = chipsIn("spaeter", {}, { status: "fertig", freigabeAt: "x", spaeter: true });
   assert.deepEqual(spaeter.slice(0, -2), ["Scan", "Geöffnet", "Kasse"]);
   for (const liste of [seen, kasse, bestellt, archiv, spaeter]) assert.ok(zeit(liste), `Datum/Uhrzeit fehlen: ${liste}`);

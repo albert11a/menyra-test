@@ -10325,3 +10325,28 @@ html:where([data-heart-theme="tag"]),
 
 /* Only complete pages are snap targets; individual chips must not intercept a swipe. */
 .heart-shopchip-page .heart-lifeskin-chip { scroll-snap-align: none; }
+
+/* ARCHIV: zweite Reihe "Analiza" - wann zuletzt, wie oft, wie lange, Kaufchance (30.09.). */
+.heart-faelle .heart-lifeskin-pill--besuch-datum.heart-lifeskin-pill--an,
+.heart-faelle .heart-lifeskin-pill--besuch-anzahl.heart-lifeskin-pill--an,
+.heart-faelle .heart-lifeskin-pill--besuch-min.heart-lifeskin-pill--an { background: #b58cf02e; color: #d2b8ff; }
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-pill--besuch-datum.heart-lifeskin-pill--an,
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-pill--besuch-anzahl.heart-lifeskin-pill--an,
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-pill--besuch-min.heart-lifeskin-pill--an { background: #efe6fb; color: #5b2f9a; }
+.heart-faelle .heart-lifeskin-fall__analiza { margin-top: -3px; }
+.heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-pill--analiza {
+  border: 1px solid #b58cf066; background: transparent; color: #d2b8ff;
+}
+/* Bewusst an der Kasse: kraeftiger als nur kurz dort. */
+.heart-faelle .heart-lifeskin-pill--kasse.heart-lifeskin-pill--bewusst.heart-lifeskin-pill--an { background: #f4b942; color: #1d1a12; }
+/* Kaufchance: grau bis Stufe 2, gelb 3, gruen ab der Kasse. */
+.heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-pill--chance { background: #ffffff14; color: var(--heart-text-soft, #c7c7c2); font-variant-numeric: tabular-nums; }
+.heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-pill--chance-3 { background: #f4b9422e; color: #f6cd7a; }
+.heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-pill--chance-4,
+.heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-pill--chance-5 { background: #3ecf8e33; color: #7fe3b4; }
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-pill--analiza { border-color: #b58cf0; color: #5b2f9a; }
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-pill--kasse.heart-lifeskin-pill--bewusst.heart-lifeskin-pill--an { background: #e0a21a; color: #fff; }
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-pill--chance { background: #eeeeea; color: #444; }
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-pill--chance-3 { background: #fdf0d2; color: #8a5a00; }
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-pill--chance-4,
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-pill--chance-5 { background: #dcf5e8; color: #17744a; }

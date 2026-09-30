@@ -20,7 +20,7 @@ import { renderHeartIcon, renderGeraetZeichen } from "./heart-icons.js";
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
 import { LANDING_SCHIRME, landingLesen } from "../../shared/lifeskin-landingtiefe.js";
-import { ZEITRAEUME, TYPEN, typVon, istAnalyse, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueZweige, baueBereitschaft, baueMaintrichter, baueKauftrichter, baueLandingtrichter, ohneScanGelaufen, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
+import { analyseBesuche, kasseAbsicht, kaufChancen, tagesschluessel, ZEITRAEUME, TYPEN, typVon, istAnalyse, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueZweige, baueBereitschaft, baueMaintrichter, baueKauftrichter, baueLandingtrichter, ohneScanGelaufen, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
 // (Die eigenen Texte der alten Analyseseite werden nicht mehr bearbeitet - sie reisen unsichtbar mit.)
 // Die Antworten aus dem Trichter, uebersetzt - aus DERSELBEN Quelle, aus
 // der auch der Prompt gefuellt wird. Eine eigene Tabelle hier waere eine
@@ -1302,15 +1302,45 @@ function landingMarke(sitzung) {
     : `<span class="heart-lifeskin-pill heart-lifeskin-pill--lpdirekt heart-lifeskin-pill--an" title="Direkt von Bildschirm 1 zur Mënyra">No scroll</span>`;
 }
 
+// IM ARCHIV, ZWEITE REIHE (30.09., Inhaber): "Analiza", dann wann
+// zuletzt ("sot" = heute), wie oft und wie lange insgesamt er seine
+// Analyse ansah (analyseBesuche, rueckwirkend aus dem Klickpfad), und die
+// Kaufchance (kaufChancen - gezaehlt aus den eigenen Faellen).
+function analyseReihe(sitzung, chance) {
+  const b = analyseBesuche(sitzung);
+  const tag = b.zuletzt ? tagesschluessel(b.zuletzt) : "";
+  const datum = !tag ? "– dita" : tag === heuteSchluessel() ? "sot" : datumKurz(b.zuletzt).replace(/\.$/, "");
+  const min = b.ms > 0 && b.ms < 60000 ? "<1 min" : `${Math.round(b.ms / 60000)} min`;
+  const pill = (id, label, an, titel = "") => `<span class="heart-lifeskin-pill heart-lifeskin-pill--${id}${an ? " heart-lifeskin-pill--an" : ""}"${
+    titel ? ` title="${escapeHtml(titel)}"` : ""}>${escapeHtml(label)}</span>`;
+  const prozent = chance ? `${Math.round(chance.p * 100)}%` : "";
+  const warum = chance ? `${chance.name}: ${chance.k} von ${chance.n} vergleichbaren Fällen haben gekauft` : "";
+  return `<span class="heart-lifeskin-fall__fuss heart-lifeskin-fall__analiza">${
+    pill("analiza", "Analiza", true)
+    + pill("besuch-datum", datum, Boolean(tag))
+    + pill("besuch-anzahl", `${b.anzahl}×`, b.anzahl > 0)
+    + pill("besuch-min", min, b.ms > 0)
+    + (prozent ? pill(`chance heart-lifeskin-pill--chance-${chance.stufe}`, prozent, true, warum) : "")
+  }</span>`;
+}
+
 function fallMarken(sitzung, fach = "", bericht = null) {
   const wert = fallWert(sitzung, bericht);
+  // Im Archiv: kurze Namen, und die Kasse sagt, ob er bewusst dort war.
+  const archiv = fach === "archiviert";
+  const absicht = archiv ? kasseAbsicht(sitzung) : null;
   const m = {
     prompt: { id: "prompt", label: "Prompt", an: promptGemacht(sitzung.id) },
     // Mit "Bereit" gespeichert: fertig vorbereitet, wartet nur aufs Freigeben.
     bereit: { id: "bereit", label: "Bereit", an: bericht?.bereit === true && bericht?.status === "vorschau" },
     frei: { id: "frei", label: "Freigegeben", an: true },
-    auf: { id: "auf", label: "Geöffnet", an: !!sitzung.berichtGeoeffnet },
-    kasse: { id: "kasse", label: "Kasse", an: !!(sitzung.kasseGeoeffnet || sitzung.hatBestellt) },
+    auf: { id: "auf", label: archiv ? "Open" : "Geöffnet", an: !!sitzung.berichtGeoeffnet },
+    kasse: {
+      id: absicht?.art === "bewusst" ? "kasse heart-lifeskin-pill--bewusst" : "kasse",
+      label: !archiv ? "Kasse" : absicht?.art === "bewusst" ? "Arka ✓" : "Arka",
+      an: !!(sitzung.kasseGeoeffnet || sitzung.hatBestellt),
+      titel: absicht?.art === "bewusst" ? `Bewusst an der Kasse: ${absicht.grund}` : absicht?.grund || ""
+    },
     wert: { id: "wert", label: wert || "– €", an: !!wert }
   };
   const marken = ({
@@ -1319,16 +1349,18 @@ function fallMarken(sitzung, fach = "", bericht = null) {
     seen: [m.auf, m.wert],
     kasse: [m.kasse, m.wert],
     bestellt: [m.wert],
-    archiviert: [m.auf, m.kasse, m.wert]
+    archiviert: [m.wert, m.auf, m.kasse]
   })[fach] || [m.auf, m.kasse];
   // WILL STARTEN: Er hat auf Frage 4 "Po, dua ta filloj sa më shpejt"
   // getippt und noch nicht bestellt - der Fall, dem man auf WhatsApp
   // zuerst nachgeht. Nach der Bestellung verschwindet die Marke.
   const gati = sitzung.anamnese?.gatishmeria === "tani" && !sitzung.hatBestellt
     ? `<span class="heart-lifeskin-pill heart-lifeskin-pill--gati heart-lifeskin-pill--an" title="Frage 4: Po, dua ta filloj sa më shpejt">Will starten</span>` : "";
-  const reihe = gati + artMarke(sitzung) + landingMarke(sitzung)
+  // Im Archiv ohne Foto/Scan (Wunsch 30.09.).
+  const reihe = gati + (archiv ? landingMarke(sitzung) : artMarke(sitzung) + landingMarke(sitzung))
     + (sitzung.nurBericht ? `<span class="heart-lifeskin-pill heart-lifeskin-pill--paskanim heart-lifeskin-pill--an" title="Die Sitzung kam nicht an, der Bericht schon - Kontaktdaten fehlen">nur Bericht</span>` : "")
-    + marken.map((m) => `<span class="heart-lifeskin-pill heart-lifeskin-pill--${m.id}${m.an ? " heart-lifeskin-pill--an" : ""}">${escapeHtml(m.label)}</span>`).join("");
+    + marken.map((m) => `<span class="heart-lifeskin-pill heart-lifeskin-pill--${m.id}${m.an ? " heart-lifeskin-pill--an" : ""}"${
+      m.titel ? ` title="${escapeHtml(m.titel)}"` : ""}>${escapeHtml(m.label)}</span>`).join("");
 
   // OHNE SCAN STEHT ES VORNE UND IMMER AN - ABER NUR NOCH AN EINEM FALL
   // OHNE TYP.
@@ -1362,7 +1394,7 @@ function fallMarken(sitzung, fach = "", bericht = null) {
 // Scan sieht man auf das Bild, bei einer Frage auf den Satz. Ein
 // getrennter Bereich je Art waere viermal dieselbe Liste - und dreimal
 // davon fast immer leer.
-function fallZeile(sitzung, fach = "", bericht = null) {
+function fallZeile(sitzung, fach = "", bericht = null, chance = null) {
   const typ = typVon(sitzung);
   const text = String(sitzung.pyetja || sitzung.problemi || "").trim();
   // Datum und Uhrzeit als eigene Chips, gleich hoch wie die Marken und
@@ -1372,7 +1404,8 @@ function fallZeile(sitzung, fach = "", bericht = null) {
     .map((w) => `<span class="heart-lifeskin-fall__zeit">${escapeHtml(w)}</span>`).join("");
   // Datum und Uhrzeit als Paar: Wird die Reihe zu lang (Archiv), rutschen
   // beide zusammen in die zweite Zeile.
-  const reihe = `<span class="heart-lifeskin-fall__fuss">${fallMarken(sitzung, fach, bericht)}<span class="heart-lifeskin-fall__zeiten">${zeit}</span></span>`;
+  const reihe = `<span class="heart-lifeskin-fall__fuss">${fallMarken(sitzung, fach, bericht)}<span class="heart-lifeskin-fall__zeiten">${zeit}</span></span>`
+    + (fach === "archiviert" ? analyseReihe(sitzung, chance) : "");
   if ((typ === "trup" || typ === "pytje") && text) {
     const kurz = text.length > 110 ? `${text.slice(0, 110).trimEnd()}…` : text;
     return `${reihe}<span class="heart-lifeskin-fall__text">${escapeHtml(kurz)}</span>`;
@@ -1423,11 +1456,13 @@ function renderAuswahlLeiste(fach, ids, auswahl, loeschGefragt) {
 // dieselbe Zeile.
 const zeilenMerker = new WeakMap();
 
-function fallKnopf(s, bericht, fach, bild, waehlen, an) {
+function fallKnopf(s, bericht, fach, bild, waehlen, an, chance = null) {
   const prompt = promptGemacht(s.id);
   const gemerkt = zeilenMerker.get(s);
-  if (gemerkt && gemerkt.bericht === bericht && gemerkt.bild === bild && gemerkt.fach === fach
-    && gemerkt.waehlen === waehlen && gemerkt.an === an && gemerkt.prompt === prompt) {
+  const heute = heuteSchluessel();
+  const chanceText = chance ? `${chance.stufe}:${chance.k}/${chance.n}:${chance.p}` : "";
+  if (gemerkt && gemerkt.chanceText === chanceText && gemerkt.bericht === bericht && gemerkt.bild === bild && gemerkt.fach === fach
+    && gemerkt.waehlen === waehlen && gemerkt.an === an && gemerkt.prompt === prompt && gemerkt.heute === heute) {
     return gemerkt.html;
   }
   // Ohne Leerzeichen - so bleibt neben der Nummer Platz fuer den Namen.
@@ -1442,11 +1477,11 @@ function fallKnopf(s, bericht, fach, bild, waehlen, an) {
           ${s.code ? `<span class="heart-lifeskin-code">${escapeHtml(s.code)}</span>` : ""}
           ${tel ? `<span class="heart-lifeskin-fall__tel">${escapeHtml(tel)}</span>` : ""}
         </span>
-        ${fallZeile(s, fach, bericht)}
+        ${fallZeile(s, fach, bericht, chance)}
       </span>
       ${waehlen ? `<span class="heart-lifeskin-fall__wahl" aria-hidden="true">${an ? renderHeartIcon("check", "heart-lifeskin-fall__haken") : ""}</span>` : ""}
     </button>`);
-  zeilenMerker.set(s, { bericht, bild, fach, waehlen, an, prompt, html });
+  zeilenMerker.set(s, { bericht, bild, fach, waehlen, an, prompt, heute, chanceText, html });
   return html;
 }
 
@@ -1466,6 +1501,12 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
   // "Offen" ist Arbeit - dort wird NIE abgeschnitten. Die anderen Faecher
   // zeigen die neuesten 300 und sagen, wenn es mehr gibt.
   const imGewaehltenFach = fertige.filter((s) => imFach(s, berichte[s.id], fach));
+  // IM ARCHIV STEHT OBEN, WER ZULETZT IN SEINER ANALYSE WAR (30.09.,
+  // Inhaber) - wer nie wieder hineinsah, nach dem Tag des Falls.
+  if (fach === "archiviert") {
+    const wann = (s) => analyseBesuche(s).zuletzt || String(s.createdAt || "");
+    imGewaehltenFach.sort((a, b) => wann(b).localeCompare(wann(a)));
+  }
   const gewaehlt = fach === "alle" ? imGewaehltenFach : imGewaehltenFach.slice(0, 300);
   const mehr = imGewaehltenFach.length - gewaehlt.length;
 
@@ -1479,7 +1520,11 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
 
   const waehlen = Array.isArray(auswahl);
   const gewaehltSet = new Set(waehlen ? auswahl : []);
-  const zeilen = gewaehlt.map((s) => fallKnopf(s, berichte[s.id], fach, vorschau[s.id], waehlen, gewaehltSet.has(s.id))).join("");
+  // Die Kaufchance zaehlt ueber ALLE Faelle dieses Wegs, auch die
+  // gekauften - nur so ergibt sich eine Quote.
+  const chancen = fach === "archiviert" ? kaufChancen(fertige) : null;
+  const zeilen = gewaehlt.map((s) => fallKnopf(s, berichte[s.id], fach, vorschau[s.id], waehlen, gewaehltSet.has(s.id),
+    chancen?.get(s.id) || null)).join("");
 
   const leerFach = {
     alle: "Nichts offen — alles beantwortet, zurueckgelegt oder abgehakt.",

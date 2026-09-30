@@ -1,3 +1,4 @@
+import { pfadLesen } from "../../shared/lifeskin-klickpfad.js";
 import { statistikTag } from "../../shared/lifeskin-statistik.js";
 import { LANDING_SCHIRME, landingLesen } from "../../shared/lifeskin-landingtiefe.js";
 // Die Rechnung hinter dem Lifeskin-Bericht.
@@ -1344,4 +1345,159 @@ export function aktualisiereLifeskinSitzungen(zustand, aenderungen) {
   sitzungen.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   tests.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   return { sitzungen, tests };
+}
+
+// WIE OFT UND WIE LANGE ER SEINE ANALYSE ANGESEHEN HAT (30.09., Inhaber).
+//
+// Aus dem Klickpfad der Therapieseite (timings.pfad, Seite
+// "Therapieseite") - damit gilt es auch rueckwirkend fuer jeden Fall, der
+// seit dem Klickpfad geoeffnet wurde:
+//   anzahl   jedes "geoeffnet" ist ein Besuch (neu laden zaehlt mit)
+//   zuletzt  das letzte Ereignis auf der Seite
+//   ms       aktive Zeit: Abstaende zwischen Ereignissen bis 5 Minuten,
+//            ohne die Zeit nach "verlassen" (App gewechselt, Tab zu)
+// Ohne Klickpfad, aber mit der Marke "geoeffnet": ein Besuch, ohne Zeit.
+export const ANALYSE_PAUSE_MS = 5 * 60 * 1000;
+function therapieEreignisse(sitzung) {
+  return pfadLesen(sitzung).filter((e) => e.s === "Therapieseite" && Number.isFinite(Date.parse(e.t)));
+}
+function besucheAus(ereignisse, sitzung) {
+  let anzahl = 0;
+  let zuletzt = "";
+  let ms = 0;
+  let vorher = null;
+  for (const e of ereignisse) {
+    const t = Date.parse(e.t);
+    if (e.e === "geoeffnet") anzahl += 1;
+    else if (vorher && !vorher.weg) {
+      const abstand = t - vorher.t;
+      if (abstand > 0 && abstand <= ANALYSE_PAUSE_MS) ms += abstand;
+    }
+    vorher = { t, weg: e.e === "verlassen" };
+    if (e.t > zuletzt) zuletzt = e.t;
+  }
+  if (!anzahl && sitzung?.berichtGeoeffnet === true) anzahl = 1;
+  return { anzahl, zuletzt, ms };
+}
+export function analyseBesuche(sitzung) {
+  return besucheAus(therapieEreignisse(sitzung), sitzung);
+}
+
+// WAR ER BEWUSST AN DER KASSE - ODER HAT ER NUR DEN KNOPF GEDRUECKT?
+// (30.09., Inhaber)
+//
+// "Kasse" heisst nur: der Bestellschirm ging auf. Ob jemand dort kaufen
+// wollte, steht im Klickpfad. BEWUSST ist er, wenn mindestens eins davon
+// stimmt:
+//   - er hat ein Feld der Bestellung angetippt (Name, Telefon, Adresse)
+//   - er hat auf Bestellen gedrueckt (auch wenn Felder fehlten)
+//   - er wollte ueber WhatsApp bestellen
+//   - er hat die Kasse zweimal oder oefter geoeffnet
+//   - er blieb mindestens KASSE_BEWUSST_MS auf dem Bestellschirm
+// Sonst KURZ: Schirm auf, wieder zu. Ohne Klickpfad (alte Faelle) laesst
+// es sich nicht sagen - dann "offen".
+export const KASSE_BEWUSST_MS = 20 * 1000;
+function kasseAus(ereignisse, sitzung) {
+  const kassen = ereignisse.filter((e) => e.e === "kasse");
+  if (!kassen.length) {
+    return sitzung?.kasseGeoeffnet === true || sitzung?.hatBestellt === true
+      ? { art: "offen", grund: "an der Kasse, ohne Klickpfad" } : { art: "", grund: "" };
+  }
+  const felder = ereignisse.filter((e) => e.e === "feld" && e.d.includes("Bestellschirm")).length;
+  const versucht = ereignisse.some((e) => e.e === "fehler" && e.d.startsWith("Bestellung"));
+  const whatsapp = ereignisse.some((e) => e.e === "klick" && e.d.includes("(WhatsApp)") && e.d.includes("Bestellschirm"));
+  let dort = 0;
+  for (const k of kassen) {
+    const i = ereignisse.indexOf(k);
+    const naechstes = ereignisse.slice(i + 1).find((e) => e.e !== "kasse");
+    if (!naechstes) continue;
+    const abstand = Date.parse(naechstes.t) - Date.parse(k.t);
+    if (abstand > 0 && abstand <= ANALYSE_PAUSE_MS) dort = Math.max(dort, abstand);
+  }
+  const gruende = [
+    versucht && "auf Bestellen gedrückt",
+    felder > 0 && `${felder} ${felder === 1 ? "Feld" : "Felder"} angetippt`,
+    whatsapp && "WhatsApp-Bestellung angetippt",
+    kassen.length >= 2 && `${kassen.length}× Kasse geöffnet`,
+    dort >= KASSE_BEWUSST_MS && `${Math.round(dort / 1000)} s auf dem Bestellschirm`
+  ].filter(Boolean);
+  if (gruende.length) return { art: "bewusst", grund: gruende.join(", ") };
+  return { art: "kurz", grund: `Kasse auf und wieder zu${dort ? ` (${Math.round(dort / 1000)} s)` : ""}` };
+}
+export function kasseAbsicht(sitzung) {
+  return kasseAus(vorDemKauf(therapieEreignisse(sitzung)), sitzung);
+}
+// Bei einem Kaeufer zaehlt nur, was VOR der Bestellung war - sonst waere
+// jeder Kaeufer "bewusst", weil er die Felder zum Bestellen ausfuellen
+// musste, und das Nachschauen danach wuerde als Interesse gezaehlt.
+// Das Ausfuellen selbst bleibt drin: Es gehoert zum Weg zur Bestellung.
+function vorDemKauf(ereignisse) {
+  const i = ereignisse.findIndex((e) => e.e === "bestellt");
+  return i < 0 ? ereignisse : ereignisse.slice(0, i);
+}
+
+// WIE NAH WAR ER AM KAUF? Eine Stufe aus dem, was er auf der
+// Analyseseite getan und gesehen hat (nur vor einer Bestellung):
+//   0 nie geoeffnet
+//   1 nur geoeffnet (weniger als 1 Minute, kaum gescrollt)
+//   2 gelesen (ab 1 Minute oder bis zur Haelfte gescrollt)
+//   3 intensiv (ab 3 Minuten, oder wiedergekommen und ab 1 Minute,
+//     oder zwei Dinge aufgeklappt / Kundenfotos angesehen)
+//   4 an der Kasse, aber nur kurz (oder ohne Klickpfad)
+//   5 bewusst an der Kasse
+export const KAUF_STUFEN_ANALYSE = Object.freeze([
+  "Nie geöffnet", "Nur geöffnet", "Gelesen", "Intensiv gelesen", "Kurz an der Kasse", "Bewusst an der Kasse"
+]);
+export function kaufStufe(sitzung) {
+  const ereignisse = vorDemKauf(therapieEreignisse(sitzung));
+  const kasse = kasseAus(ereignisse, sitzung);
+  if (kasse.art === "bewusst") return 5;
+  if (kasse.art) return 4;
+  const b = besucheAus(ereignisse, sitzung);
+  if (!b.anzahl) return 0;
+  const tief = Math.max(0, ...ereignisse.filter((e) => e.e === "scroll").map((e) => parseInt(e.d, 10) || 0));
+  const dinge = ereignisse.filter((e) => e.e === "aufgeklappt" || e.e === "kommentar"
+    || (e.e === "klick" && /Kundenfotos|Ergebnisse anderer/.test(e.d))).length;
+  if (b.ms >= 3 * 60000 || (b.anzahl >= 2 && b.ms >= 60000) || dinge >= 2) return 3;
+  if (b.ms >= 60000 || tief >= 50) return 2;
+  return 1;
+}
+
+// DIE KAUFCHANCE - GEZAEHLT, NICHT GESCHAETZT.
+//
+// Keine ausgedachten Gewichte: Fuer jede Stufe wird gezaehlt, wie viele
+// der eigenen Faelle mit dieser Stufe gekauft haben. Gezaehlt werden nur
+// Faelle mit Klickpfad auf der Analyseseite (sonst ist die Stufe geraten).
+// Wenige Faelle in einer Stufe geben eine wackelige Quote - sie wird
+// deshalb zur Gesamtquote hingezogen, als haette die Stufe KAUF_GLAETTUNG
+// Faelle mehr mit der Gesamtquote (so springt 1 von 1 nicht auf 100 %).
+//
+// Die Zahl sagt: "Von den Leuten, die so weit waren wie er, haben so
+// viele gekauft." Fuer jemanden, der noch nicht gekauft hat, ist das die
+// beste ehrliche Schaetzung, was ein erneutes Anschreiben bringen kann -
+// eine Obergrenze eher als eine Untergrenze, denn die schnellen Kaeufer
+// sind in der Quote mit drin.
+export const KAUF_GLAETTUNG = 4;
+export function kaufChancen(sitzungen) {
+  const zaehlung = KAUF_STUFEN_ANALYSE.map(() => ({ n: 0, k: 0 }));
+  let n = 0;
+  let k = 0;
+  const stufen = new Map();
+  for (const s of sitzungen || []) {
+    const stufe = kaufStufe(s);
+    stufen.set(s.id, stufe);
+    if (!therapieEreignisse(s).length) continue;
+    const gekauft = s?.hatBestellt === true ? 1 : 0;
+    zaehlung[stufe].n += 1;
+    zaehlung[stufe].k += gekauft;
+    n += 1;
+    k += gekauft;
+  }
+  const basis = n ? k / n : 0;
+  const quote = zaehlung.map((z) => (z.k + KAUF_GLAETTUNG * basis) / (z.n + KAUF_GLAETTUNG));
+  const ergebnis = new Map();
+  for (const [id, stufe] of stufen) {
+    ergebnis.set(id, { stufe, name: KAUF_STUFEN_ANALYSE[stufe], p: quote[stufe], n: zaehlung[stufe].n, k: zaehlung[stufe].k });
+  }
+  return ergebnis;
 }
