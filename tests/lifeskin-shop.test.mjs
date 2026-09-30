@@ -25,7 +25,7 @@ test("die Seite: Laden als Einstieg, darunter die Bildschirme der Analyse", () =
   assert.match(HTML, /<html lang="sq" data-ls-variante="kurz" data-ls-landing="lifeskinshop">/);
   assert.match(HTML, /<script src="\/shared\/lifeskin-still\.js"><\/script>/, "ohne stillen Modus zaehlen eigene Tests");
   assert.equal((HTML.match(/id="ls-start"/g) || []).length, 1, "genau ein Startknopf fuer den Trichter");
-  assert.match(HTML, /id="ls-start" data-ls-start data-ls-quelle="shop">Zbuloni nëse seti ju përshtatet/);
+  assert.match(HTML, /id="ls-start" data-ls-start data-ls-quelle="shop">Zbuloni përqindjen tuaj/);
   for (const id of ["ls-einstieg", "ls-wahl", "ls-vorbereitung", "ls-kamera", "ls-fotopara", "ls-foto", "ls-name", "ls-tel", "ls-fragen", "ls-analyse"]) {
     assert.ok(HTML.includes(`id="${id}"`), `#${id} fehlt`);
   }
@@ -249,10 +249,13 @@ test("Acne-Duo-Kampagne laesst keine weiteren Sets oder halben Koerbe zu", async
   assert.deepEqual(acneDuoCart({ids:["lf-acne","lf-moistur"],set:"old"},sets),{ids:duo.produkte,set:duo.id});
   assert.deepEqual(acneDuoCart({ids:duo.produkte},[]),{ids:[],set:""});
   const card=duoCard(duo,[]);
-  assert.equal((card.match(/<details/g)||[]).length,2);
-  assert.match(card,/Për vetëm 10 € më shumë/);
+  assert.equal((card.match(/<details/g)||[]).length,1);
+  assert.match(card,/Benzoyl peroxide 5 %/);
+  assert.match(card,/<s>58 €<\/s>/);
+  assert.match(card,/45 ditë garanci/);
   assert.match(card,/data-set="custom-acne"/);
-  assert.doesNotMatch(card,/data-single|<img/);
+  assert.doesNotMatch(card,/data-single/);
+  assert.equal((card.match(/<img/g)||[]).length,2, "kleine Produktfotos (Wunsch Inhaber 29.09.)");
   assert.doesNotMatch(HTML,/class="singles"|data-filter|data-single/);
 });
 
@@ -265,8 +268,9 @@ test("customer gallery follows Heart visibility and order, escapes content and d
     {id:'movie',art:'video',video:'https://media.example/video.mp4',bild:'/poster.jpg',reihe:1},
     {id:'unsafe',bild:'javascript:alert(1)'}
   ]);
-  assert.ok(html.indexOf('<video') < html.indexOf('<img'));
-  assert.match(html, /controls playsinline preload="none"/);
+  assert.ok(html.indexOf('/poster.jpg') < html.indexOf('/photo.jpg'));
+  assert.doesNotMatch(html, /<video/, "in der Reihe nur das Standbild; das Video entsteht im Blatt");
+  assert.match(html, /klient-kachel__spiel/);
   assert.match(html, /&lt;b&gt;ACNE&lt;\/b&gt;/);
   assert.doesNotMatch(html, /hidden.jpg|javascript:|autoplay/);
   assert.equal(kundenGalerie([{id:'off',aktiv:false,bild:'/off.jpg'}]), '');

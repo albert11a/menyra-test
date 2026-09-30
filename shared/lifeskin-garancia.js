@@ -14,6 +14,10 @@
 // herein, damit dieses Modul nichts aus einer App importiert.
 //
 // Die Frist beginnt an EINEM klaren Tag: dem, an dem das Paket ankommt.
+//
+// Fassung 30.09. (Inhaber): Angepasst wird die Therapie mit zusaetzlichen
+// Produkten, kostenlos; erst wenn der Kunde dann noch nicht zufrieden ist,
+// gibt es das Geld zurueck. Waehrend der Anwendung 24/7 Begleitung.
 
 export const GARANCIA_START = "nga dita kur merrni pakon";
 
@@ -25,12 +29,13 @@ export function garancia(tage, { nachnahme = true } = {}) {
     // Fuer Leiste, Kasse und Kacheln: nur die Zahl, kein Ablauf.
     kurz: `${t} ditë garanci`,
     // Die Zusammenfassung - kurz, aber mit demselben Ablauf wie unten.
-    permbledhje: `${t} ditë nga marrja e pakos. Së pari e përshtatim rutinën; nëse nuk shihni ndryshim, ju kthejmë paratë.`,
+    permbledhje: `${t} ditë nga marrja e pakos. Së pari e përshtatim terapinë me produkte shtesë – falas; nëse edhe atëherë nuk jeni të kënaqur, ju kthejmë paratë.`,
     // Die vollstaendigen Bedingungen.
     kushtet: Object.freeze([
       `Afati është ${t} ditë ${GARANCIA_START}.`,
       "Mjafton një mesazh te ne brenda afatit – pa formularë.",
-      "Së pari shohim si ka reaguar lëkura dhe e përshtatim rutinën pa pagesë. Nëse edhe pas kësaj nuk shihni ndryshim, ju kthejmë shumën e paguar.",
+      "Së pari shohim si ka reaguar lëkura dhe e përshtatim terapinë me produkte shtesë – falas. Nëse edhe pas kësaj nuk jeni të kënaqur, ju kthejmë shumën e paguar.",
+      "Gjatë gjithë përdorimit jemi me ju 24/7.",
       "Garancia mbulon shumën e paguar; nuk është garanci për një rezultat mjekësor.",
       ...(nachnahme ? ["Pagesa bëhet te dera, kur e merrni pakon – sot nuk jepni asnjë kartë."] : [])
     ])

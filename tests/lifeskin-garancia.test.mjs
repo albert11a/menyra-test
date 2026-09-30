@@ -10,14 +10,15 @@ import { STANDARD_KONFIG } from "../apps/lifeskin/lifeskin-catalog.js";
 
 const TAGE = STANDARD_KONFIG.rueckgabeTage;
 
-test("die Garantie: 45 Tage ab Erhalt des Pakets, erst anpassen, dann Geld", () => {
+test("die Garantie: 45 Tage ab Erhalt, erst Therapie mit Zusatzprodukten gratis, dann Geld (Fassung 30.09.)", () => {
   const g = garancia(TAGE);
   assert.equal(g.tage, 45);
   assert.equal(g.kurz, "45 ditë garanci");
   assert.match(g.permbledhje, /nga marrja e pakos/);
-  assert.match(g.permbledhje, /Së pari e përshtatim rutinën/);
+  assert.match(g.permbledhje, /Së pari e përshtatim terapinë me produkte shtesë – falas/);
   assert.equal(g.kushtet[0], `Afati është 45 ditë ${GARANCIA_START}.`);
   assert.ok(g.kushtet.some((k) => /Së pari shohim si ka reaguar lëkura/.test(k)));
+  assert.ok(g.kushtet.some((k) => /24\/7/.test(k)));
   assert.ok(g.kushtet.some((k) => /nuk është garanci për një rezultat mjekësor/.test(k)));
   assert.equal(garancia(0), null);
   assert.equal(garancia(TAGE, { nachnahme: false }).kushtet.some((k) => /te dera/.test(k)), false);
@@ -36,8 +37,8 @@ test("die Landingpage beschreibt denselben Ablauf - dieselbe Frist, derselbe Sta
   const abschnitt = html.slice(html.indexOf('id="garancia"'), html.indexOf("PYETJET"));
   assert.match(abschnitt, new RegExp(`Afati është ${TAGE} ditë ${GARANCIA_START}`));
   assert.match(abschnitt, /Së pari/);
-  assert.match(abschnitt, /rutin/);
-  assert.match(abschnitt, /Nëse edhe pas kësaj nuk shihni ndryshim/);
+  assert.match(abschnitt, /terapi/);
+  assert.match(abschnitt, /Nëse edhe pas kësaj nuk jeni të kënaqur/);
 });
 
 test("die neue Fassung der Therapieseite nimmt Garantie aus dieser einen Quelle", () => {

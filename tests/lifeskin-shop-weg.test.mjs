@@ -471,13 +471,13 @@ test("das Titelbild springt nicht: Rahmen von Anfang an 7:5, das eigene Bild kom
   assert.equal(lager.has("lifeskin:shopHero"), false);
 });
 
-test("der Abschnitt #zgjedhja steht wieder wie vor dem 28.09. abends", () => {
+test("der Abschnitt #zgjedhja spricht den Zweifel vor der Bestellung an (29.09., Wunsch Inhaber)", () => {
   const html = lies("apps/lifeskin-shop/index.html");
   const abschnitt = html.slice(html.indexOf('id="zgjedhja"'), html.indexOf("</section>", html.indexOf('id="zgjedhja"')));
-  assert.match(abschnitt, /ZGJEDHJE PERSONALE/);
-  assert.match(abschnitt, /A është ky set për ju\?<br><span>Qartë para porosisë\.<\/span>/);
-  assert.match(abschnitt, /<p class="selection-note">LF ACNE \+ LF MOISTUR · 39 €<\/p>/);
-  assert.doesNotMatch(abschnitt, /kontrolli|përqindje/);
+  assert.match(abschnitt, /ENDE NUK JENI TË SIGURT\?/);
+  assert.match(abschnitt, /A ju përshtatet Acne Duo\?<br><span>Dr\. Gashi jua thotë para porosisë\.<\/span>/);
+  assert.match(abschnitt, /Çfarë ju duhet\?/);
+  assert.doesNotMatch(abschnitt, /data-set=/, "hier nur der Weg zu Dr. Gashi, gekauft wird oben");
   assert.doesNotMatch(lies("apps/lifeskin-shop/shop-weg.css"), /kontrolli/);
 });
 

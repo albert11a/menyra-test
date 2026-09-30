@@ -186,3 +186,84 @@ body:has(#ls-einstieg[data-aktiv="ja"]) { font-size: 16px; line-height: normal; 
 #ls-einstieg .customer-card figcaption>span{font-size:9px;letter-spacing:1px;color:var(--muted)}
 #ls-einstieg .customer-card strong{display:block;font-size:14px;margin-top:7px}
 #ls-einstieg .customer-card p{font-size:12px;color:var(--muted);line-height:1.5;margin-top:6px}
+
+/* 29.09. KLARER FUER KALTE BESUCHER (docs/lifeskin-shop-conversion-analyse-2026-09-29.md).
+   Ein Raster fuer alle Abstaende: 4 / 8 / 12 / 16 / 20 / 24 px. Kein Text
+   mit Inhalt unter 12 px - Lieferung, Zahlung und Garantie sind
+   Kaufgruende, keine Fussnoten. */
+#ls-einstieg .hero h1.hero-klar{font-size:38px;line-height:1.08;letter-spacing:-1.4px;margin:12px 0 12px}
+#ls-einstieg .hero h1.hero-klar span{color:#6b8480}
+#ls-einstieg .hero-heading>p:last-child{font-size:15px;line-height:1.5}
+#ls-einstieg .price span s{text-decoration-thickness:1px}
+#ls-einstieg .besim{list-style:none;margin:16px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:12px;line-height:1.3;color:var(--ink);text-align:center}
+#ls-einstieg .besim li{display:flex;flex-direction:column;align-items:center;gap:6px}
+#ls-einstieg .besim .icon{width:20px;height:20px;flex-shrink:0}
+#ls-einstieg .hero .text-link{margin-top:16px}
+
+/* Die Karte des Sets, kompakt: je Mittel eine Zeile mit kleinem Foto. */
+#ls-einstieg #set-grid{margin-top:20px}
+#ls-einstieg .duo-card{padding:16px;border-radius:16px}
+#ls-einstieg .duo-hap{display:flex;gap:12px;align-items:flex-start}
+#ls-einstieg .duo-hap+.duo-hap{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+#ls-einstieg .duo-hap-foto{width:72px;height:90px;border-radius:10px;object-fit:cover;flex-shrink:0;background:var(--wash)}
+#ls-einstieg .duo-hap small{display:block;font-size:10px;letter-spacing:1px;font-weight:700;color:var(--muted)}
+#ls-einstieg .duo-hap h3{font-size:17px;line-height:1.2;margin:4px 0 6px;font-weight:700}
+#ls-einstieg .duo-hap h3 span{font-size:12px;font-weight:400;color:var(--muted)}
+#ls-einstieg .duo-aktiv{display:inline-block;background:var(--accent);font-size:12px;font-weight:700;padding:4px 8px;border-radius:999px}
+#ls-einstieg .duo-dobi{font-size:13px;line-height:1.45;margin-top:6px;color:var(--ink)}
+#ls-einstieg .duo-card>.duo-product{margin-top:8px;border-top:1px solid var(--line)}
+#ls-einstieg .duo-card>.duo-product summary{min-height:44px;padding:10px 0;gap:8px;justify-content:space-between;font-size:13px;font-weight:600}
+#ls-einstieg .duo-card>.duo-product summary>.icon{width:16px;height:16px}
+#ls-einstieg .duo-card .duo-product-body{padding:0 0 8px}
+#ls-einstieg .duo-card .duo-product-body h4{font-size:13px;margin:8px 0 4px}
+#ls-einstieg .duo-card .duo-product-body p{font-size:13px;line-height:1.55;color:var(--ink)}
+#ls-einstieg .duo-card .duo-product-body p+p{margin-top:6px}
+#ls-einstieg .duo-card .duo-inci{font-size:12px!important;color:var(--muted)!important}
+#ls-einstieg .duo-shenim{font-size:12px;color:var(--muted);margin-top:12px}
+#ls-einstieg .duo-cmimi{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--wash);border-radius:12px;padding:12px 16px;margin:8px 0 12px}
+#ls-einstieg .duo-cmimi span{display:block;font-size:13px}
+#ls-einstieg .duo-cmimi s{display:block;font-size:13px;color:var(--muted);margin-top:4px}
+#ls-einstieg .duo-cmimi div:last-child{text-align:right}
+#ls-einstieg .duo-cmimi strong{display:block;font-size:28px;line-height:1;letter-spacing:-1px}
+#ls-einstieg .duo-cmimi em{display:inline-block;font-style:normal;font-size:12px;font-weight:700;background:var(--accent);padding:3px 8px;border-radius:999px;margin-top:6px}
+#ls-einstieg .duo-card>.primary{font-size:15px}
+#ls-einstieg .duo-card .besim{margin-top:12px}
+
+/* Ende Zweifel: drei Gruende ohne Risiko, dann der Kauf. Die Frage an
+   Dr. Gashi bleibt als leiser zweiter Weg (#ls-start, Lead). */
+#ls-einstieg .selection h2{font-size:30px;margin:12px 0 12px}
+#ls-einstieg .selection>p:not(.eyebrow){font-size:15px;line-height:1.55}
+#ls-einstieg .siguria{list-style:none;padding:0;margin:20px 0;display:grid;gap:16px}
+#ls-einstieg .siguria li{display:flex;gap:12px;align-items:flex-start;font-size:14px;line-height:1.45;color:#d1e0dd}
+#ls-einstieg .siguria .icon{width:22px;height:22px;color:var(--accent);margin-top:1px}
+#ls-einstieg .siguria b{display:block;color:#fff;font-size:15px;margin-bottom:2px}
+#ls-einstieg .selection .doctor{margin:20px 0 4px;padding-top:16px}
+#ls-einstieg .selection .doctor img{width:44px;height:44px}
+#ls-einstieg .selection-pyetje{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px;background:none;border:1px solid #ffffff40;border-radius:8px;color:#fff;font:inherit;font-size:14px;font-weight:600;margin-top:8px}
+#ls-einstieg .selection-pyetje .icon{width:16px;height:16px}
+
+/* Kundenbilder als kleine Kacheln, wie auf der Therapieseite. */
+#ls-einstieg .customer-rail{gap:8px;margin:16px -20px 0;padding:0 20px 4px;scroll-padding:0 20px;scrollbar-width:none}
+#ls-einstieg .customer-rail::-webkit-scrollbar{display:none}
+#ls-einstieg .klient-kachel{position:relative;flex:0 0 104px;aspect-ratio:9/16;padding:0;border:0;border-radius:12px;overflow:hidden;scroll-snap-align:start;background:var(--wash);color:#fff}
+#ls-einstieg .klient-kachel img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 25%}
+#ls-einstieg .klient-kachel:after{content:'';position:absolute;inset:55% 0 0;background:linear-gradient(to top,#0000008c,transparent)}
+#ls-einstieg .klient-kachel__emri{position:absolute;left:8px;right:8px;bottom:7px;z-index:1;font-size:11px;font-weight:700;line-height:1.2;text-align:left;text-shadow:0 1px 2px #0006}
+#ls-einstieg .klient-kachel__spiel{position:absolute;top:7px;right:7px;z-index:1;width:22px;height:22px;border-radius:50%;background:#00000061;display:grid;place-items:center}
+#ls-einstieg .klient-kachel__spiel:before{content:'';margin-left:2px;border-style:solid;border-width:5px 0 5px 8px;border-color:transparent transparent transparent #fff}
+#ls-einstieg .customer-stories{padding:32px 20px 24px}
+#ls-einstieg .customer-stories h2{font-size:24px}
+#ls-einstieg #sheet .klient-medium{display:block;width:100%;max-height:60vh;object-fit:contain;background:#000;border-radius:12px;margin-bottom:16px}
+#ls-einstieg .faq h2{font-size:29px}
+#ls-einstieg .sticky span{font-size:12px}
+#ls-einstieg .selection-pyetja{font-size:17px;color:#fff;margin:20px 0 6px}
+#ls-einstieg .duo-kura{font-size:13px;font-weight:700;text-align:center;margin-top:12px}
+#ls-einstieg #zgjedhja h2{font-size:26px;line-height:1.15}
+#ls-einstieg #zgjedhja .doctor{margin:20px 0 16px}
+/* Abschnitt 4 kuerzer (Wunsch Inhaber 30.09.): kleinere Ueberschrift, dichterer Text. */
+#ls-einstieg #zgjedhja{padding:24px 20px}
+#ls-einstieg #zgjedhja h2{font-size:21px;line-height:1.2;letter-spacing:-.5px;margin:8px 0 10px}
+#ls-einstieg #zgjedhja>p:not(.eyebrow):not(.selection-note){font-size:14px;line-height:1.5}
+#ls-einstieg #zgjedhja .selection-pyetja{font-size:15px;margin:14px 0 4px}
+#ls-einstieg #zgjedhja .doctor{margin:16px 0 12px;padding-top:14px}
+#ls-einstieg #zgjedhja .doctor img{width:44px;height:44px}

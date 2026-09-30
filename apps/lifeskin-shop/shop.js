@@ -125,19 +125,48 @@ export function acneDuoCart(cart, sets) {
   const complete=duo && cart.ids?.length===2 && duo.produkte.every(id=>cart.ids.includes(id));
   return complete ? {ids:[...duo.produkte],set:duo.id} : {ids:[],set:''};
 }
+// Die Karte des Acne Duo, KOMPAKT (Wunsch Inhaber 29.09.): je Mittel eine
+// Zeile mit kleinem Foto, Wirkstoff und drei Nutzen in einer Zeile.
+// Anwendung und volle Zusammensetzung (Angaben des Inhabers) stehen fuer
+// beide zusammen hinter EINEM Aufklapper - wer sie sucht, findet sie; wer
+// kaufen will, muss nicht daran vorbeiscrollen.
+const DUO_HAPAT = [
+  { id: 'lf-acne', hapi: 'HAPI 1 · MBRËMJE', aktiv: 'Benzoyl peroxide 5 %',
+    dobi: 'Ul bakterin e puçrrave · Hap poret · Qetëson skuqjen',
+    si: 'Në mbrëmje, një shtresë e hollë sa një bizele, vetëm në zonat me puçrra, mbi lëkurë të pastër e të thatë. Javën e parë çdo ditë të dytë, pastaj çdo mbrëmje. Zbardh peshqirët dhe jastëkët.',
+    perberja: 'Benzoyl Peroxide (50 mg/g), Carbomer, Sodium Olefin Sulfonate, Glycerin, Methacrylate Copolymer, Sodium Hydroxide, Aqua.' },
+  { id: 'lf-moistur', hapi: 'HAPI 2 · MËNGJES DHE MBRËMJE', aktiv: '3 ceramide + acid hialuronik',
+    dobi: 'Hidraton · Forcon barrierën · Ul thatësinë nga trajtimi',
+    si: 'Sa një kokërr bathe. Në mëngjes mbi lëkurë të pastër; në mbrëmje pas LF ACNE, kur lëkura e ka thithur.',
+    perberja: 'Aqua, Glycerin, Caprylic/Capric Triglyceride, Cetearyl Alcohol, Cetyl Alcohol, Dimethicone, Phenoxyethanol, Polysorbate 20, Ceteareth-20, Behentrimonium Methosulfate, Polyglyceryl-3 Diisostearate, Sodium Lauroyl Lactylate, Ethylhexylglycerin, Potassium Phosphate, Disodium EDTA, Dipotassium Phosphate, Ceramide NP, Ceramide AP, Phytosphingosine, Cholesterol, Xanthan Gum, Carbomer, Sodium Hyaluronate, Tocopherol, Ceramide EOP.' }
+];
 export function duoCard(s, mittel) {
-  const price=preisFuer(2), extra=price-preisFuer(1), saving=2*preisFuer(1)-price;
-  const roles=[['lf-acne','Target','01','Kujdesi për aknet','Kujdes i përqendruar për lëkurën me akne.'],['lf-moistur','Droplets','02','Hidratimi që e plotëson','Kujdes për hidratimin dhe barrierën e lëkurës.']];
-  return `<article class="duo-card"><div class="duo-products">${roles.map(([id,icon,n,title,description])=>{
-    const m=mittel.find(m=>m.id===id);
-    return `<details class="duo-product"><summary><span class="duo-product-icon">${ikone(icon)}</span><span class="duo-product-label"><small>${n} · ${e(m?.name || id.toUpperCase().replace('LF-','LF '))}</small><strong>${title}</strong></span>${ikone('Plus')}</summary><div class="duo-product-body"><p>${description}</p><p class="duo-origin">Kujdes dermatologjik i zhvilluar në Gjermani.</p><dl><div><dt>Përmbajtja</dt><dd>${e(m?.inhalt || '30 ml')}</dd></div><div><dt>Në set</dt><dd>1 produkt</dd></div></dl><p class="duo-use">Ndiqni udhëzimet e produktit dhe rekomandimin për lëkurën tuaj.</p></div></details>`;
-  }).join('')}</div><div class="duo-value"><span class="duo-value-label">PSE T'I MERRNI SË BASHKU?</span><p>LF ACNE veçmas kushton ${preisFuer(1)} €. <strong>Për vetëm ${extra} € më shumë, merrni edhe LF MOISTUR.</strong></p><div class="duo-total"><span>Seti i plotë · 2 × 30 ml<small>Veçmas ${2*preisFuer(1)} € · Kurseni ${saving} €</small></span><strong>${price} €</strong></div></div><button type="button" class="primary" data-set="${e(s.id)}">Porosit setin e plotë · ${price} € ${ikone('ArrowUpRight')}</button><p class="duo-payment">Dërgesa e përfshirë · Paguani kur merrni pakon</p></article>`;
+  const price=preisFuer(2), saving=2*preisFuer(1)-price;
+  const emri=(h)=>e(mittel.find(m=>m.id===h.id)?.name || h.id.toUpperCase().replace('LF-','LF '));
+  const hapat=DUO_HAPAT.map(h=>{
+    const m=mittel.find(m=>m.id===h.id);
+    const foto=m?.fotot?.[0] || MITTEL_FOTOS_STANDARD[h.id] || '';
+    return `<div class="duo-hap">${foto ? `<img class="duo-hap-foto" src="${e(foto)}" width="72" height="90" alt="${emri(h)}" loading="lazy" decoding="async">` : ''}<div><small>${h.hapi}</small><h3>${emri(h)} <span>${e(m?.inhalt || '30 ml')}</span></h3><p class="duo-aktiv">${h.aktiv}</p><p class="duo-dobi">${h.dobi}</p></div></div>`;
+  }).join('');
+  const detaje=DUO_HAPAT.map(h=>`<h4>${emri(h)}</h4><p><b>Si përdoret:</b> ${h.si}</p><p class="duo-inci"><b>Përbërja:</b> ${h.perberja}</p>`).join('');
+  return `<article class="duo-card"><div class="duo-hapat">${hapat}</div><details class="duo-product"><summary>Përdorimi dhe përbërja ${ikone('Plus')}</summary><div class="duo-product-body">${detaje}<p class="duo-shenim">Pa parfum · Kujdes dermatologjik nga Gjermania</p></div></details><p class="duo-kura">Një set mjafton për gjithë kurën prej 4 javësh.</p><div class="duo-cmimi"><div><span>Seti i plotë · 2 × 30 ml</span><s>${2*preisFuer(1)} €</s></div><div><strong>${price} €</strong><em>Kurseni ${saving} €</em></div></div><button type="button" class="primary" data-set="${e(s.id)}">Porosit setin · ${price} € ${ikone('ArrowUpRight')}</button><ul class="besim"><li>${ikone('Truck')}Dërgesa falas</li><li>${ikone('Banknote')}Paguani te dera</li><li>${ikone('ShieldCheck')}45 ditë garanci</li></ul></article>`;
 }
 
+// KLEINE KACHELN WIE AUF DER THERAPIESEITE (Wunsch Inhaber 29.09.): eine
+// schmale Reihe im Hochformat, Antippen zeigt Foto oder Video gross im
+// Blatt, mit Text und Kaufknopf. Das Video selbst entsteht erst dort -
+// in der Reihe steht nur sein Standbild.
+export function kundenAuswahl(roh) {
+  return medienListe(roh).filter(m => m.aktiv && (m.art === 'video' ? m.video : m.bild));
+}
 export function kundenGalerie(roh) {
-  return medienListe(roh).filter(m => m.aktiv && (m.art === 'video' ? m.video : m.bild)).map(m => `<figure class="customer-card">
-    ${m.art === 'video' ? `<video src="${e(m.video)}"${m.bild ? ` poster="${e(m.bild)}"` : ''} controls playsinline preload="none" aria-label="${e(m.produkt || 'Video LifeSkin')}"></video>` : `<img src="${e(m.bild)}" alt="${e(m.produkt || 'LifeSkin')}" loading="lazy" decoding="async" width="480" height="600">`}
-    <figcaption><span>${m.art === 'video' ? 'VIDEO' : 'FOTO'} · LIFESKIN</span>${m.produkt ? `<strong>${e(m.produkt)}</strong>` : ''}${m.text ? `<p>${e(m.text)}</p>` : ''}</figcaption></figure>`).join('');
+  return kundenAuswahl(roh).map((m, i) => `<button type="button" class="klient-kachel" data-klient="${i}" aria-label="${m.art === 'video' ? 'Shikoni videon' : 'Shikoni foton'}${m.produkt ? ` · ${e(m.produkt)}` : ''}">${m.bild ? `<img src="${e(m.bild)}" alt="" loading="lazy" decoding="async" width="104" height="185">` : ''}${m.art === 'video' ? '<span class="klient-kachel__spiel" aria-hidden="true"></span>' : ''}${m.produkt ? `<span class="klient-kachel__emri">${e(m.produkt)}</span>` : ''}</button>`).join('');
+}
+export function klientBlatt(m) {
+  const medium = m.art === 'video'
+    ? `<video class="klient-medium" src="${e(m.video)}"${m.bild ? ` poster="${e(m.bild)}"` : ''} controls playsinline preload="metadata"></video>`
+    : `<img class="klient-medium" src="${e(m.bild)}" alt="${e(m.produkt || 'LifeSkin')}">`;
+  return `${medium}${m.produkt ? `<h2 id="sheet-title">${e(m.produkt)}</h2>` : ''}${m.text ? `<p>${e(m.text)}</p>` : ''}`;
 }
 
 const pause = (ms) => new Promise((fertig) => setTimeout(fertig, ms));
@@ -171,6 +200,7 @@ export class Dyqan {
     korbSchreiben(this.speicher, this.korb);
     this.setFotos = new Map();
     this.gemerkt = new Set();
+    this.klienten = kundenAuswahl(null);
     this.filter = "all";
     this.sendet = false;
     this.opener = null;
@@ -303,6 +333,7 @@ export class Dyqan {
     void holeSammlung("medien", this.holen).then(medien => {
       const rail = $("#customer-media", this.dok);
       if (!rail) return;
+      this.klienten = kundenAuswahl(medien);
       rail.innerHTML = kundenGalerie(medien);
       $("#klientet", this.dok)?.toggleAttribute("hidden", !rail.children.length);
       rail.addEventListener("play", event => {
@@ -385,7 +416,7 @@ export class Dyqan {
     const raster = $("#set-grid", this.dok);
     if (!raster) return;
     const available = this.setet.length > 0;
-    for (const button of this.dok.querySelectorAll('.hero [data-set], #sticky-buy')) button.disabled = !available;
+    for (const button of this.dok.querySelectorAll('.hero [data-set], #zgjedhja [data-set], #sticky-buy')) button.disabled = !available;
     if (!available) { raster.innerHTML = '<p class="section-intro">Seti nuk është aktualisht i disponueshëm.</p>'; return; }
     raster.innerHTML = this.setet.map(s => duoCard(s, this.mittel)).join('');
     const numri = $("#set-numri", this.dok);
@@ -401,7 +432,7 @@ export class Dyqan {
     this.filter = "all";
     // Oben und in der Leiste: das erste Set.
     const erstes = this.setet[0];
-    for (const knopf of this.dok.querySelectorAll(".hero [data-set], #sticky-buy")) knopf.dataset.set = erstes.id;
+    for (const knopf of this.dok.querySelectorAll(".hero [data-set], #zgjedhja [data-set], #sticky-buy")) knopf.dataset.set = erstes.id;
     const label = $("#sticky-label", this.dok);
     if (label) label.textContent = erstes.titulli;
     const preis = $("#sticky-price", this.dok);
@@ -687,6 +718,11 @@ export class Dyqan {
       if (!knopf) return;
       const d = knopf.dataset;
       if ("set" in d) { this.setLegen(d.set); return; }
+      if ("klient" in d) {
+        const m = this.klienten?.[Number(d.klient)];
+        if (m) this.#blatt(`${klientBlatt(m)}<button type="button" class="primary" data-set="${e(this.setet[0]?.id || "")}">Porosit setin · ${preisFuer(2)} € ${ikone("ArrowUpRight")}</button>`, "NGA KLIENTËT TANË");
+        return;
+      }
       if ("single" in d) { this.mittelLegen(d.single); return; }
       if ("remove" in d) {
         this.mittelNehmen(d.remove);
@@ -721,6 +757,7 @@ export class Dyqan {
 
     // Ein Tipp neben das Blatt schliesst es.
     const blatt = $("#sheet", this.dok);
+    blatt?.addEventListener("close", () => blatt.querySelector("video")?.pause?.());
     blatt?.addEventListener("click", (ereignis) => {
       if (ereignis.target !== blatt) return;
       const r = blatt.getBoundingClientRect();
