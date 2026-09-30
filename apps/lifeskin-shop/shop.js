@@ -142,6 +142,10 @@ const DUO_HAPAT = [
     kryesore: 'Ceramide NP, AP, EOP · Sodium Hyaluronate · Glycerin',
     perberja: 'Aqua, Glycerin, Caprylic/Capric Triglyceride, Cetearyl Alcohol, Cetyl Alcohol, Dimethicone, Phenoxyethanol, Polysorbate 20, Ceteareth-20, Behentrimonium Methosulfate, Polyglyceryl-3 Diisostearate, Sodium Lauroyl Lactylate, Ethylhexylglycerin, Potassium Phosphate, Disodium EDTA, Dipotassium Phosphate, Ceramide NP, Ceramide AP, Phytosphingosine, Cholesterol, Xanthan Gum, Carbomer, Sodium Hyaluronate, Tocopherol, Ceramide EOP.' }
 ];
+// "Vetëm edhe pak sete" - Aussage des Inhabers ueber seinen Bestand
+// (30.09.). Sobald wieder genug da ist: auf false setzen.
+export const PAK_SETE = true;
+const PAK_SETE_ZEILE = '<span class="pak-sete"><i aria-hidden="true"></i>Vetëm edhe pak sete</span>';
 export function duoCard(s, mittel) {
   const price=preisFuer(2);
   const emri=(h)=>e(mittel.find(m=>m.id===h.id)?.name || h.id.toUpperCase().replace('LF-','LF '));
@@ -151,7 +155,7 @@ export function duoCard(s, mittel) {
     return `<div class="duo-hap">${foto ? `<img class="duo-hap-foto" src="${e(foto)}" width="72" height="90" alt="${emri(h)}" loading="lazy" decoding="async">` : ''}<div><small>${h.hapi}</small><h3>${emri(h)} <span>${e(m?.inhalt || '30 ml')}</span></h3><p class="duo-aktiv">${h.aktiv}</p><p class="duo-dobi">${h.dobi}</p></div></div>`;
   }).join('');
   const detaje=DUO_HAPAT.map(h=>`<h4>${emri(h)}</h4><p><b>Si përdoret:</b> ${h.si}</p><p class="duo-inci"><b>Përbërja kryesore:</b> ${h.kryesore}</p><details class="duo-inci-mehr"><summary>Lexo më shumë</summary><p class="duo-inci">${h.perberja}</p></details>`).join('');
-  return `<article class="duo-card"><div class="duo-hapat">${hapat}</div><details class="duo-product"><summary>Përdorimi dhe përbërja ${ikone('Plus')}</summary><div class="duo-product-body">${detaje}<p class="duo-shenim">Pa parfum · Kujdes dermatologjik nga Gjermania</p></div></details><p class="duo-ndjekje">${ikone('Stethoscope')}<span><b>Përfshirë në çmim:</b> Dr. Violeta Gashi ju ndjek 24/7 gjatë gjithë kurës.</span></p><div class="duo-cmimi"><div><span>Çmimi:</span></div><div><s>${2*preisFuer(1)} €</s><strong>${price} €</strong></div></div><button type="button" class="primary" data-set="${e(s.id)}">Porosit setin · ${price} € ${ikone('ArrowUpRight')}</button><ul class="besim"><li>${ikone('Truck')}Falas, 1–3 ditë</li><li>${ikone('Banknote')}Paguani te dera</li><li>${ikone('ShieldCheck')}45 ditë garanci</li></ul></article>`;
+  return `<article class="duo-card"><div class="duo-hapat">${hapat}</div><details class="duo-product"><summary>Përdorimi dhe përbërja ${ikone('Plus')}</summary><div class="duo-product-body">${detaje}<p class="duo-shenim">Pa parfum · Kujdes dermatologjik nga Gjermania</p></div></details><p class="duo-ndjekje">${ikone('Stethoscope')}<span><b>Përfshirë në çmim:</b> Dr. Violeta Gashi ju ndjek 24/7 gjatë gjithë kurës.</span></p><div class="duo-cmimi"><span class="duo-cmimi-etiketa">Çmimi:</span><span class="duo-cmimi-vlera"><s>${2*preisFuer(1)} €</s><strong>${price} €</strong></span><em class="zbritje">ZBRITJE −${Math.round((1-price/(2*preisFuer(1)))*100)} %</em>${PAK_SETE ? PAK_SETE_ZEILE : "<span></span>"}</div><button type="button" class="primary" data-set="${e(s.id)}">Porosit setin · ${price} € ${ikone('ArrowUpRight')}</button><ul class="besim"><li>${ikone('Truck')}Falas, 1–3 ditë</li><li>${ikone('Banknote')}Paguani te dera</li><li>${ikone('ShieldCheck')}45 ditë garanci</li></ul></article>`;
 }
 
 // KLEINE KACHELN WIE AUF DER THERAPIESEITE (Wunsch Inhaber 29.09.): eine
@@ -212,6 +216,7 @@ export class Dyqan {
   }
 
   starte() {
+    if (!PAK_SETE) this.dok.querySelectorAll(".pak-sete").forEach((z) => z.remove());
     this.#zeichneSetet();
     this.#zeichneMittel();
     this.#korbZahl();

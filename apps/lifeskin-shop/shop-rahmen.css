@@ -330,3 +330,45 @@ body:has(#ls-einstieg[data-aktiv="ja"]) { font-size: 16px; line-height: normal; 
 #ls-einstieg .kasa__fushe input{min-height:46px;height:46px;padding-top:0;padding-bottom:0}
 #ls-einstieg .kasa__premtime{margin:0 0 10px}
 #ls-einstieg .besim li{white-space:nowrap}
+
+/* 30.09. RABATT SICHTBAR (Inhaber): Set-Rabatt gegenueber den Einzelpreisen. */
+#ls-einstieg .zbritje{display:inline-block;font-style:normal;background:#d62d20;color:#fff;font-size:12px;font-weight:800;letter-spacing:.3px;padding:4px 8px;border-radius:6px;line-height:1.2}
+#ls-einstieg .price .zbritje{margin-bottom:4px}
+#ls-einstieg .duo-cmimi .zbritje{display:table;margin-top:6px}
+#ls-einstieg .zbritje--vogel{font-size:11px;padding:2px 6px;margin-left:6px;vertical-align:middle}
+#ls-einstieg .sticky strong{display:inline-block}
+#ls-einstieg .zbritje-leiste{color:#ffb4a8;font-weight:800}
+#ls-einstieg .duo-cmimi em.zbritje{background:#d62d20;color:#fff;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:800;margin-top:6px}
+
+/* "Vetëm edhe pak sete" (Inhaber, 30.09.): eine rote Zeile ueber dem Kaufknopf. */
+#ls-einstieg .pak-sete{display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:700;color:#c62419;margin:0 0 10px}
+#ls-einstieg .pak-sete i{width:8px;height:8px;border-radius:50%;background:#d62d20;box-shadow:0 0 0 4px #d62d2026;animation:pak-puls 1.6s ease-in-out infinite}
+@keyframes pak-puls{50%{box-shadow:0 0 0 7px #d62d2000}}
+@media(prefers-reduced-motion:reduce){#ls-einstieg .pak-sete i{animation:none}}
+#ls-einstieg .pak-sete{justify-content:flex-start;font-size:12px;margin:6px 0 0;gap:6px}
+#ls-einstieg .pak-sete i{width:7px;height:7px;box-shadow:0 0 0 3px #d62d2026}
+#ls-einstieg .duo-cmimi .pak-sete{margin-top:8px}
+#ls-einstieg .duo-cmimi span.pak-sete{display:flex;font-size:12px;font-weight:700}
+#ls-einstieg .pak-sete i{flex:none;display:block}
+
+/* 30.09. BUENDIG (Inhaber): links und rechts auf denselben Zeilen - ein Raster
+   mit zwei Spalten statt zwei Stapeln verschiedener Hoehe. */
+#ls-einstieg .hero-offer.oferta-rrjete{display:grid;grid-template-columns:1fr auto;column-gap:12px;row-gap:6px;align-items:center;padding:18px 0}
+#ls-einstieg .oferta-rrjete>*{margin:0}
+#ls-einstieg .oferta-rrjete>:nth-child(even){justify-self:end;text-align:right}
+#ls-einstieg .oferta-rrjete .zbritje{margin:0}
+#ls-einstieg .oferta-rrjete h2{margin:0;font-size:16px}
+#ls-einstieg .oferta-cmimi{font-size:29px;letter-spacing:-1px;line-height:1}
+#ls-einstieg .oferta-vecmas{font-size:12px;color:var(--muted);white-space:nowrap}
+#ls-einstieg .oferta-rrjete .meta{font-size:13px;color:var(--muted)}
+#ls-einstieg .oferta-rrjete .pak-sete{grid-column:1/-1;margin-top:4px}
+#ls-einstieg .duo-card .duo-cmimi{display:grid;grid-template-columns:1fr auto;column-gap:12px;row-gap:8px;align-items:center}
+#ls-einstieg .duo-cmimi>:nth-child(even){justify-self:end}
+#ls-einstieg .duo-cmimi .duo-cmimi-etiketa{font-size:13px;font-weight:600;margin:0}
+#ls-einstieg .duo-cmimi-vlera{display:flex;align-items:baseline;gap:8px}
+#ls-einstieg .duo-cmimi-vlera s{display:inline;margin:0}
+#ls-einstieg .duo-cmimi em.zbritje{justify-self:start;margin:0}
+#ls-einstieg .duo-cmimi span.pak-sete{margin:0}
+#ls-einstieg .pak-sete i{margin-left:3px}
+#ls-einstieg .duo-cmimi span.duo-cmimi-vlera{display:flex;align-items:baseline;gap:8px}
+#ls-einstieg .duo-cmimi span.duo-cmimi-vlera s{display:inline;margin:0;font-size:14px}
