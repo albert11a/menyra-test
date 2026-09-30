@@ -849,7 +849,9 @@ function renderNachfassen(sitzungen) {
       + (danach.mehr ? `<span class="heart-nachfass-korb__mehr">+ ${danach.mehr} weitere</span>` : "");
     const danachText = danach.eintraege.length
       ? `<span class="heart-nachfass-korb__danach">${weiter}</span>`
-      : `<span class="heart-nachfass-korb__nichts">${danach.ohnePfad ? "Kein Klickpfad (vor dem 23.09.)" : "Danach nichts mehr getippt."}</span>`;
+      : `<span class="heart-nachfass-korb__nichts">${danach.ohnePfad ? "Kein Klickpfad (vor dem 23.09.)"
+        : danach.ohneZeitpunkt ? "Der Warenkorb-Klick steht nicht im Klickpfad – ganzer Verlauf im Fall."
+          : "Danach nichts mehr getippt."}</span>`;
     return `
     <button type="button" class="heart-nachfass-korb" data-action="lifeskin-sitzung" data-id="${escapeHtml(sitzung.id)}">
       <span class="heart-nachfass-korb__kopf">

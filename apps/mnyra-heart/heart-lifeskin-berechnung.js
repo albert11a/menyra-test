@@ -1603,7 +1603,12 @@ const KASSE_ZU = /^(Kthehu|Në rregull)/;
 function schliesstKasse(e) {
   return e.e === "klick" && KASSE_ABSCHNITTE.has(abschnittVonEreignis(e)) && KASSE_ZU.test(e.d);
 }
+// Der alte Laden auf der Landingpage /lifeskin hat seine Kasse (#shporta)
+// ohne eigenen Abschnittsnamen - dort erkennt man sie an ihren vier Feldern.
+const LANDING_KASSE_FELDER = new Set(["name", "tel", "street-address", "city"]);
 function inDerKasse(e) {
+  if (e.e === "feld" && e.s === "Landing/Trichter" && abschnittVonEreignis(e) === "Landingpage"
+    && LANDING_KASSE_FELDER.has(String(e.d).split(" · ")[0])) return true;
   return e.e === "kasse" || KASSE_ABSCHNITTE.has(abschnittVonEreignis(e))
     || (e.e === "fehler" && e.d.startsWith("Bestellung"));
 }
@@ -1643,17 +1648,27 @@ export function kasseInfo(sitzung) {
   return { ms: gemessen ? Math.max(gesehenMs, spanneMs) : null, felder, oeffnungen: auf.length || 1 };
 }
 
-// WANN KAM ER IN DEN WARENKORB? Im Laden das erste Tippen auf einen
-// Set-Knopf ("Porosit setin", "Zgjidh këtë set"), auf der Therapieseite
-// der Warenkorb oder die Kasse. Ohne Klickpfad: als die Kasse aufging.
-const KORB_KNOPF = /^(Porosit setin|Zgjidh këtë set)/;
+// WANN KAM ER IN DEN WARENKORB? Das erste Tippen auf einen Korb-Knopf:
+// im Laden /lifeskinshop "Porosit setin" / "Zgjidh këtë set", im alten Laden
+// der Landingpage /lifeskin "Shto …", auf der Therapieseite der Warenkorb
+// oder die Kasse. Steht keiner im Pfad, gilt der Zeitpunkt, als die Kasse
+// aufging - und fehlt auch der, bleibt der Zeitpunkt offen (index -1).
+const KORB_KNOPF = /^(Porosit setin|Zgjidh këtë set|Shto[\s·])/;
 export function korbZeitpunkt(sitzung) {
   const pfad = pfadLesen(sitzung);
   const i = pfad.findIndex((e) => (e.e === "klick" && KORB_KNOPF.test(e.d))
     || (e.s === "Therapieseite" && (e.e === "kasse" || abschnittVonEreignis(e) === "Warenkorb")));
   if (i >= 0) return { t: pfad[i].t, index: i };
   const kasse = String(sitzung?.kasseGeoeffnetAt || "");
-  return { t: kasse, index: -1 };
+  const ab = Date.parse(kasse);
+  if (Number.isFinite(ab)) {
+    // Das letzte Ereignis vor dem Oeffnen der Kasse - danach kommt, was er
+    // ab der Kasse tat.
+    let j = -1;
+    pfad.forEach((e, k) => { if (Date.parse(e.t) <= ab) j = k; });
+    return { t: kasse, index: j, ausKasse: true };
+  }
+  return { t: "", index: -1 };
 }
 
 // WAS ER DANACH GETIPPT HAT - ohne Lesezeiten und Scrollen, die gehoeren in
@@ -1661,9 +1676,11 @@ export function korbZeitpunkt(sitzung) {
 const DANACH_ARTEN = new Set(["klick", "aufgeklappt", "feld", "kasse", "bestellt", "fehler", "verlassen", "zurueck", "bildschirm", "geoeffnet"]);
 export function nachDemKorb(sitzung, max = 8) {
   const pfad = pfadLesen(sitzung);
-  const { index } = korbZeitpunkt(sitzung);
-  if (index < 0) return { eintraege: [], mehr: 0, ohnePfad: !pfad.length };
-  const danach = pfad.slice(index + 1).filter((e) => DANACH_ARTEN.has(e.e));
+  const korb = korbZeitpunkt(sitzung);
+  if (!pfad.length) return { eintraege: [], mehr: 0, ohnePfad: true };
+  // Ohne Zeitpunkt nicht "nichts getippt" behaupten - das waere geraten.
+  if (korb.index < 0 && !korb.ausKasse) return { eintraege: [], mehr: 0, ohnePfad: false, ohneZeitpunkt: true };
+  const danach = pfad.slice(korb.index + 1).filter((e) => DANACH_ARTEN.has(e.e));
   return { eintraege: danach.slice(0, max), mehr: Math.max(0, danach.length - max), ohnePfad: false };
 }
 

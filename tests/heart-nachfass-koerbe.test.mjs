@@ -82,3 +82,34 @@ test("die Liste: jeder Korb, sofort, neueste oben; Bestellte bleiben mit Marke",
   assert.equal(jetzt.danach.ohnePfad, true);
   assert.equal(liste.find((k) => k.sitzung.id === "alt").kasse, null);
 });
+
+test("rueckwirkend auch der alte Laden auf /lifeskin: Shto-Knopf, Kasse an ihren Feldern", () => {
+  const s = {
+    id: "alt", imKorb: true, kasseGeoeffnet: true, kasseGeoeffnetAt: T(3),
+    ...pfad([
+      [T(0), L, "geoeffnet"],
+      [T(1), L, "klick", "Shto LF ACNE në shportë · 33 € · Landing: Produkte"],
+      [T(2), L, "klick", "Shto në shportë · 33 € · Landingpage"],
+      [T(3, 20), L, "feld", "tel · Landingpage"],
+      [T(3, 50), L, "klick", "Kthehu · Landingpage"],
+      [T(4), L, "verlassen"]
+    ])
+  };
+  assert.equal(korbZeitpunkt(s).t, T(1));
+  const k = kasseInfo(s);
+  assert.deepEqual(k.felder, ["Telefoni"]);
+  assert.equal(k.ms, 50 * 1000);
+  assert.equal(nachDemKorb(s).eintraege.length, 4);
+  // Das Namensfeld im Trichter (Bildschirm "Emri & Mosha") ist keine Kasse.
+  assert.equal(kasseInfo({ ...pfad([[T(0), L, "feld", "name · Emri & Mosha"]]) }), null);
+});
+
+test("ohne Korb-Klick im Pfad: ab der Kasse - und ohne beides keine erfundene Aussage", () => {
+  const abKasse = { id: "k", kasseGeoeffnet: true, kasseGeoeffnetAt: T(2),
+    ...pfad([[T(0), L, "geoeffnet"], [T(1), L, "klick", "Etwas · Landingpage"], [T(2, 10), L, "klick", "Kthehu · kasa"]]) };
+  assert.deepEqual(nachDemKorb(abKasse).eintraege.map((e) => e.d), ["Kthehu · kasa"]);
+  const ohne = { id: "o", imKorb: true, ...pfad([[T(0), L, "geoeffnet"], [T(1), L, "verlassen"]]) };
+  const d = nachDemKorb(ohne);
+  assert.equal(d.ohneZeitpunkt, true);
+  assert.equal(d.eintraege.length, 0);
+});
