@@ -1,6 +1,6 @@
 # LifeSkin landing template — /lifeskinlifeskin
 
-Scope: a separate, mobile-first Albanian landing page for cold Instagram/Facebook visitors. Existing /lifeskin, customer reports, checkout, Meta Pixel and CAPI remain untouched. Route the primary CTA to the existing photo entry at /lifeskintrichter?ls_weg=foto. This uses the existing direct-entry handler and its camera/gallery fallback. No new tracking, backend writes, fabricated reviews, patient outcomes or success percentages.
+Scope: a separate, mobile-first Albanian landing page for cold Instagram/Facebook visitors. Existing /lifeskin, customer reports, checkout, Meta Pixel and CAPI remain untouched. Route the primary CTA to the existing photo entry at /lifeskin?ls_weg=foto. This uses the existing direct-entry handler and its camera/gallery fallback. No new tracking, backend writes, fabricated reviews, patient outcomes or success percentages.
 
 Design: system typography, white/sage palette, large existing brand photos, short sections, one primary action, a small doctor identity block and clear product prices before starting. Product photography is editorial imagery, never patient proof. Prices read the existing shared price helper; HTML has the current fallback prices. Preserve incoming attribution parameters on the same-origin funnel link, including silent preview mode. Native links and FAQ work without JavaScript.
 
