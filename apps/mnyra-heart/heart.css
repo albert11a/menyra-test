@@ -10371,13 +10371,18 @@ html:where([data-heart-theme="tag"]),
 .heart-topbar .heart-nachfass-knopf { width: 40px; height: 40px; }
 .heart-nachfass-knopf .heart-icon { width: 19px; height: 19px; }
 .heart-nachfass-knopf--an { background: #22c55e; border-color: #22c55e; color: #fff; }
+/* Genau so hoch wie die Schrift daneben: von der Oberkante der Grossbuchstaben
+   und Ziffern bis zur Grundlinie (1cap), und auf derselben Grundlinie - ein
+   Kasten ohne Text steht mit seiner Unterkante auf ihr. */
 .heart-faelle .heart-nachfass-punkt {
-  position: relative; top: -2px;
-  display: inline-grid; place-items: center; flex: none; align-self: center;
-  width: 22px; height: 22px; border-radius: 50%;
-  border: 1px solid var(--heart-line, #3a3e40); color: var(--heart-text-soft, #8b8b86);
+  display: inline-block; position: relative; flex: none; align-self: baseline;
+  box-sizing: border-box; width: 0.72em; height: 0.72em; width: 1cap; height: 1cap;
+  border-radius: 50%; border: 1px solid var(--heart-line, #3a3e40); color: var(--heart-text-soft, #8b8b86);
+  font-size: 14px;
 }
-.heart-faelle .heart-nachfass-punkt__icon { width: 12px; height: 12px; }
+/* Das Zeichen liegt absolut: So hat der Kasten keine eigene Grundlinie, und
+   seine Unterkante steht auf der Grundlinie der Schrift. */
+.heart-faelle .heart-nachfass-punkt__icon { position: absolute; inset: 18%; width: 64%; height: 64%; }
 .heart-faelle .heart-nachfass-punkt--an { background: #22c55e; border-color: #22c55e; color: #fff; }
 :where(html[data-heart-theme="tag"]) .heart-nachfass-knopf { border-color: #d6d6d0; color: #555; }
 :where(html[data-heart-theme="tag"]) .heart-nachfass-knopf--an,
