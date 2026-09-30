@@ -308,3 +308,25 @@ body:has(#ls-einstieg[data-aktiv="ja"]) { font-size: 16px; line-height: normal; 
 #ls-einstieg .duo-inci-mehr summary{list-style:none;display:inline-block;font-size:12px;font-weight:700;text-decoration:underline;text-underline-offset:3px;padding:6px 0;cursor:pointer;color:var(--ink)}
 #ls-einstieg .duo-inci-mehr summary::-webkit-details-marker{display:none}
 #ls-einstieg .duo-inci-mehr[open] summary{display:none}
+
+/* 30.09. Mehrwert sichtbar: die Begleitung durch Dr. Gashi gehoert zum Preis. */
+#ls-einstieg .duo-ndjekje{display:flex;gap:10px;align-items:flex-start;background:var(--wash);border-radius:10px;padding:12px;margin:12px 0 0;font-size:13px;line-height:1.45}
+#ls-einstieg .duo-ndjekje .icon{width:20px;height:20px;margin-top:1px;color:#2f7d62}
+#ls-einstieg .duo-cmimi{margin-top:12px}
+
+/* 30.09. DIE KASSE: Bestellknopf im ersten Bildschirm (390 x 844). Kompakte
+   Korbzeilen, keine Sparzeile (die Summe steht darueber), niedrigere Felder. */
+#ls-einstieg .kasa__koka{margin-bottom:8px}
+#ls-einstieg .kasa__koka h2{font-size:21px}
+#ls-einstieg #kasa-lista .basket-row{padding:8px 0;gap:12px;min-height:0}
+#ls-einstieg #kasa-lista .basket-row img{width:44px;height:56px;border-radius:8px}
+#ls-einstieg #kasa-lista .basket-row h3{font-size:14px}
+#ls-einstieg #kasa-lista .basket-row p{font-size:12px;margin-top:2px}
+#ls-einstieg #kasa-totali{padding:10px 0;margin:0}
+#ls-einstieg #kasa-totali strong{font-size:24px}
+#ls-einstieg #kasa-kursim{display:none!important}
+#ls-einstieg .kasa__forma{gap:8px;margin:4px 0 10px}
+#ls-einstieg .kasa__fushe{gap:4px}
+#ls-einstieg .kasa__fushe input{min-height:46px;height:46px;padding-top:0;padding-bottom:0}
+#ls-einstieg .kasa__premtime{margin:0 0 10px}
+#ls-einstieg .besim li{white-space:nowrap}

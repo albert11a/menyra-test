@@ -1989,6 +1989,11 @@ export class Trichter {
   // Schriften und die ersten Schreibvorgaenge der Sitzung gehen vor.
   #netzAufDerLanding() {
     if (!this.#liveKameraMoeglich()) return;
+    // IM LADEN (/lifeskinshop) NICHT (30.09., Inhaber): Dort wollen die
+    // meisten kaufen, nicht scannen - 15 MB fuer jeden Besucher kosteten
+    // Datenvolumen und Leitung fuer die Bilder. Wer auf "Zbuloni" tippt,
+    // bekommt das Netz ueber #netzVormerken.
+    if (globalThis.document?.documentElement?.dataset?.lsLanding === "lifeskinshop") return;
     const los = () => {
       this.netzLandingUhr = setTimeout(() => {
         this.netzLandingUhr = 0;
