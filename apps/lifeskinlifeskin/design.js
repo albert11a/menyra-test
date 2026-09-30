@@ -14,7 +14,7 @@
   const stylesheet = document.createElement("link");
   stylesheet.rel = "stylesheet";
   stylesheet.href = "/apps/lifeskinlifeskin/flow.css";
-  document.head.append(stylesheet);
+  if (location.pathname.replace(/\/$/, "") !== "/lifeskinlifeskin") document.head.append(stylesheet);
   const script = document.createElement("script");
   script.src = "/apps/lifeskinlifeskin/flow.js";
   script.defer = true;

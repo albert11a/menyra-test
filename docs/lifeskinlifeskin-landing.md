@@ -27,3 +27,5 @@ The new final therapy presentation brings the problem/product explanation and co
 - `npm run build`: erfolgreich; vorhandene Social-Bundle-Warnungen bleiben, keine getrackten Bundle-Änderungen.
 - 32 gezielte Prüfungen erfolgreich: Design-Opt-in, Rückkehr zu Classic, URL-Weitergabe, interne Demo-Isolation, unveränderte Pixel-Aufrufe, Service Worker und In-App-Funnel.
 - Echte iPhone-/Android- und Instagram-/Facebook-Webview-Prüfung steht noch aus. Browseransicht wird auf Telefonbreite begrenzt; das ersetzt keine Prüfung auf einem echten Smartphone.
+
+Manuell in der Vercel-Vorschau geprüft: Einstieg → Fotoanleitung → Methodenauswahl sowie interner Warte-Button → Ergebnis → Produktangebot → Warenkorb → Adressformular. Telefonbreite 480 px innerhalb des Desktop-Browsers; kein echter Geräte-/Webview-Test. Ein im Review gefundener Stylesheet-Konflikt auf dem Template wurde korrigiert: die native Flow-CSS lädt nur auf den bestehenden Folgeseiten. Fiktives Duo verwendet 39 €, Vorher/Nachher-Fälle werden nur in der internen Demo ausgeblendet.

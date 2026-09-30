@@ -46,7 +46,7 @@ const products = {
   "demo-moistur": { name: "LF MOISTUR", inhalt: "50 ml", kurztext: "Hidratim për lëkurën.", photoRef: await photo("/apps/lifeskin-shop/assets/lf-moistur.jpg") }
 };
 const report = {
-  status: "vorschau", name: "Shembull", code: "DEMO", sprache: "sq", preis: 29, weg: "foto", ohneBild: true,
+  status: "vorschau", name: "Shembull", code: "DEMO", sprache: "sq", preis: 39, weg: "foto", typ: "foto", photos: 0, ohneBild: true,
   produkte: [
     { id: "demo-acne", satz: "Kujdes për zonat me puçrra." },
     { id: "demo-moistur", satz: "Hidratim për zonat e thata." }
@@ -92,4 +92,8 @@ document.addEventListener("click", event => {
 }, true);
 document.addEventListener("submit", event => { event.preventDefault(); event.stopImmediatePropagation(); }, true);
 await new (analysis ? Terapia : Analiza)({ fetchFn: mockFetch, ort, pixel }).starte();
+if (analysis) {
+  const subtitle = document.querySelector("#t-setinen");
+  if (subtitle) subtitle.textContent = "Shembull i paketës — pa kontroll mjekësor";
+}
 await import("./flow.js");
