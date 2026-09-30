@@ -10350,3 +10350,36 @@ html:where([data-heart-theme="tag"]),
 :where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-pill--chance-3 { background: #fdf0d2; color: #8a5a00; }
 :where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-pill--chance-4,
 :where(html[data-heart-theme="tag"]) .heart-faelle .heart-lifeskin-fall__fuss > .heart-lifeskin-pill--chance-5 { background: #dcf5e8; color: #17744a; }
+
+/* NACHGEFASST (30.09., Inhaber): rund, neben "Analysen" - grau, bis er
+   angetippt ist, dann gruen. Im Archiv derselbe Punkt klein hinter der
+   Nummer. */
+.heart-nachfass-knopf {
+  display: inline-grid; place-items: center; flex: none;
+  width: 44px; height: 44px; padding: 0; border-radius: 50%;
+  border: 1px solid var(--heart-line, #3a3e40); background: transparent;
+  color: var(--heart-text-soft, #c7c7c2); cursor: pointer;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  transition: transform 90ms ease, background 120ms ease;
+}
+.heart-nachfass-knopf:active { transform: scale(0.94); }
+/* Mit dem Knopf stehen rechts vier Dinge - enger, damit LIFESKIN SHOP
+   auf einem 375er-Telefon ganz bleibt. */
+.heart-topbar:has(.heart-nachfass-knopf) { gap: 6px; }
+.heart-topbar__right:has(.heart-nachfass-knopf) { gap: 5px; }
+.heart-topbar__right:has(.heart-nachfass-knopf) .heart-topbar-back { padding: 0 10px; gap: 4px; }
+.heart-topbar .heart-nachfass-knopf { width: 40px; height: 40px; }
+.heart-nachfass-knopf .heart-icon { width: 19px; height: 19px; }
+.heart-nachfass-knopf--an { background: #22c55e; border-color: #22c55e; color: #fff; }
+.heart-faelle .heart-nachfass-punkt {
+  position: relative; top: -2px;
+  display: inline-grid; place-items: center; flex: none; align-self: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1px solid var(--heart-line, #3a3e40); color: var(--heart-text-soft, #8b8b86);
+}
+.heart-faelle .heart-nachfass-punkt__icon { width: 12px; height: 12px; }
+.heart-faelle .heart-nachfass-punkt--an { background: #22c55e; border-color: #22c55e; color: #fff; }
+:where(html[data-heart-theme="tag"]) .heart-nachfass-knopf { border-color: #d6d6d0; color: #555; }
+:where(html[data-heart-theme="tag"]) .heart-nachfass-knopf--an,
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-nachfass-punkt--an { background: #16a34a; border-color: #16a34a; color: #fff; }
+:where(html[data-heart-theme="tag"]) .heart-faelle .heart-nachfass-punkt { border-color: #d6d6d0; color: #888; }

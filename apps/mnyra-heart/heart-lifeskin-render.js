@@ -1456,6 +1456,14 @@ function renderAuswahlLeiste(fach, ids, auswahl, loeschGefragt) {
 // dieselbe Zeile.
 const zeilenMerker = new WeakMap();
 
+// IM ARCHIV statt der Fallnummer: der runde Punkt "nachgefasst" - gruen,
+// wenn er erneut angeschrieben wurde (Knopf neben "Analysen" im Fall).
+function nachfassPunkt(bericht) {
+  const an = bericht?.nachgefasst === true;
+  return `<span class="heart-nachfass-punkt${an ? " heart-nachfass-punkt--an" : ""}" role="img"
+    aria-label="${an ? "Nachgefasst" : "Noch nicht nachgefasst"}">${renderHeartIcon("message", "heart-nachfass-punkt__icon")}</span>`;
+}
+
 function fallKnopf(s, bericht, fach, bild, waehlen, an, chance = null) {
   const prompt = promptGemacht(s.id);
   const gemerkt = zeilenMerker.get(s);
@@ -1474,8 +1482,9 @@ function fallKnopf(s, bericht, fach, bild, waehlen, an, chance = null) {
       <span class="heart-lifeskin-fall__leib">
         <span class="heart-lifeskin-fall__kopf">
           <b>${escapeHtml(s.name || "—")}</b>
-          ${s.code ? `<span class="heart-lifeskin-code">${escapeHtml(s.code)}</span>` : ""}
+          ${s.code && fach !== "archiviert" ? `<span class="heart-lifeskin-code">${escapeHtml(s.code)}</span>` : ""}
           ${tel ? `<span class="heart-lifeskin-fall__tel">${escapeHtml(tel)}</span>` : ""}
+          ${fach === "archiviert" ? nachfassPunkt(bericht) : ""}
         </span>
         ${fallZeile(s, fach, bericht, chance)}
       </span>

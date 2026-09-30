@@ -1781,6 +1781,8 @@ async function markiereLifeskinSitzung(id, marken = {}) {
     await lifeskinBerichteNachlesen([kennung]);
     const wort = "test" in marken
       ? (marken.test ? "Als eigener Test markiert - zaehlt in keiner Zahl mehr mit." : "Zaehlt wieder mit.")
+      : "nachgefasst" in marken
+        ? (marken.nachgefasst ? "Als nachgefasst markiert." : "Nachgefasst zurückgenommen.")
       : "spaeter" in marken
         ? (marken.spaeter ? "Fuer spaeter zurueckgelegt." : "Zurueck in der Liste.")
         : (marken.archiviert ? "Abgehakt." : "Zurueck in der Liste.");

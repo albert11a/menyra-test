@@ -692,6 +692,15 @@ export function bindHeartEvents({
         { spaeter: target.getAttribute("data-wert") === "ja" });
       return;
     }
+    // NACHGEFASST (30.09., Inhaber): der runde Knopf neben "Analysen" -
+    // gruen, sobald der Kunde erneut angeschrieben wurde; nochmal tippen
+    // nimmt es zurueck.
+    if (action === "lifeskin-nachgefasst") {
+      const an = target.getAttribute("data-wert") === "ja";
+      await operations.markiereLifeskinSitzung?.(target.getAttribute("data-id"),
+        { nachgefasst: an, nachgefasstAt: an ? new Date().toISOString() : "" });
+      return;
+    }
     if (action === "lifeskin-archivieren") {
       await operations.markiereLifeskinSitzung?.(target.getAttribute("data-id"),
         { archiviert: target.getAttribute("data-wert") === "ja" });

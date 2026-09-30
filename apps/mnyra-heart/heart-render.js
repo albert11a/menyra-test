@@ -454,13 +454,16 @@ function renderShell(state, runtime = {}) {
   // genau der Fall, gegen den tests/heart-view-error-boundary.test.mjs
   // steht.
   let isLifeskinDetail = false;
+  let nachgefasst = false;
+  let offeneId = "";
   let zeitWahlOffen = false;
   let uhrWahlOffen = false;
   let antwortzeit = null;
   let zeitraum = "heute";
   try {
-    isLifeskinDetail = activeView === "lifeskin"
-      && String(state.lifeskin?.offen || "").trim() !== "";
+    offeneId = String(state.lifeskin?.offen || "").trim();
+    isLifeskinDetail = activeView === "lifeskin" && offeneId !== "";
+    nachgefasst = state.lifeskin?.berichte?.[offeneId]?.nachgefasst === true;
     zeitWahlOffen = state.lifeskin?.zeitWahl === true;
     uhrWahlOffen = state.lifeskin?.uhrWahl === true;
     antwortzeit = state.lifeskin?.antwortzeit || null;
@@ -517,6 +520,9 @@ function renderShell(state, runtime = {}) {
                 </button>
               ` : ""}
               ${isLifeskinDetail ? `
+                <button class="heart-nachfass-knopf${nachgefasst ? " heart-nachfass-knopf--an" : ""}" data-action="lifeskin-nachgefasst"
+                        data-id="${escapeHtml(offeneId)}" data-wert="${nachgefasst ? "nein" : "ja"}" aria-pressed="${nachgefasst}"
+                        aria-label="${nachgefasst ? "Nachgefasst - nochmal tippen zum Zurücknehmen" : "Als nachgefasst markieren"}">${renderHeartIcon("message")}</button>
                 <button class="heart-topbar-back" data-action="lifeskin-sitzung-zu" aria-label="Zurueck zu allen Analysen">
                   ${renderHeartIcon("arrowLeft")}
                   <span>Analysen</span>

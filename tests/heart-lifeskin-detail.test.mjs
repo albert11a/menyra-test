@@ -310,3 +310,44 @@ test("die finale Nachricht: Anrede, Text, Link, direkt bestellen", async () => {
     + "Porosinë mund ta bëni direkt në faqe, ose më shkruani këtu dhe e rregullojmë bashkë.");
   assert.equal(whatsappNachricht({ id: "x1" }, {}), "");
 });
+
+// NACHGEFASST (30.09., Inhaber): runder Knopf neben "Analysen", gruen
+// erst nach dem Tippen; im Archiv statt der Fallnummer als Punkt.
+test("Nachgefasst: Knopf neben Analysen schaltet die Marke am Bericht", async () => {
+  const shell = lies("apps/mnyra-heart/heart-render.js");
+  assert.ok(shell.indexOf('data-action="lifeskin-nachgefasst"') > -1);
+  assert.ok(shell.indexOf('data-action="lifeskin-nachgefasst"') < shell.indexOf('data-action="lifeskin-sitzung-zu"'),
+    "der Knopf steht nicht direkt vor Analysen");
+  assert.match(shell, /heart-nachfass-knopf--an/);
+
+  const gerufen = [];
+  const knopf = (wert) => ({
+    getAttribute: (n) => (n === "data-action" ? "lifeskin-nachgefasst" : n === "data-id" ? "abc" : n === "data-wert" ? wert : null),
+    hasAttribute: (n) => ["data-action", "data-id", "data-wert"].includes(n),
+    closest: function () { return this; },
+    id: ""
+  });
+  const wurzel = { addEventListener: (art, fn) => { wurzel[art] = fn; }, removeEventListener: () => {} };
+  bindHeartEvents({ root: wurzel, operations: { markiereLifeskinSitzung: (id, m) => gerufen.push([id, m]) } });
+  await wurzel.click({ target: knopf("ja"), preventDefault: () => {} });
+  await wurzel.click({ target: knopf("nein"), preventDefault: () => {} });
+  assert.equal(gerufen[0][0], "abc");
+  assert.equal(gerufen[0][1].nachgefasst, true);
+  assert.ok(gerufen[0][1].nachgefasstAt);
+  assert.deepEqual(gerufen[1][1], { nachgefasst: false, nachgefasstAt: "" });
+});
+
+test("Archiv: ohne Fallnummer, mit dem Nachfass-Punkt - gruen, wenn nachgefasst", () => {
+  const eine = { ...EINE, id: "abc", code: "LS-1809-ZBCTL", phone: "+38344123456", berichtGeoeffnet: true };
+  const zweite = { ...eine, id: "def", code: "LS-1809-QQQQQ" };
+  delete eine.order; delete zweite.order;
+  const berichte = {
+    abc: { status: "fertig", freigabeAt: "x", archiviert: true, nachgefasst: true },
+    def: { status: "fertig", freigabeAt: "x", archiviert: true }
+  };
+  const html = renderLifeskin(zustandMit([{ ...eine, step: "result" }, { ...zweite, step: "result" }], { fach: "archiviert", berichte }));
+  assert.doesNotMatch(html, /LS-1809-ZBCTL|LS-1809-QQQQQ/);
+  assert.match(html, /\+38344123456/);
+  assert.equal((html.match(/heart-nachfass-punkt--an/g) || []).length, 1);
+  assert.equal((html.match(/class="heart-nachfass-punkt[ "]/g) || []).length, 2);
+});
