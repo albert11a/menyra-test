@@ -1397,10 +1397,13 @@ export function analyseBesuche(sitzung) {
 // Sonst KURZ: Schirm auf, wieder zu. Ohne Klickpfad (alte Faelle) laesst
 // es sich nicht sagen - dann "offen".
 export const KASSE_BEWUSST_MS = 20 * 1000;
-function kasseAus(ereignisse, sitzung) {
+function kasseAus(ereignisse, sitzung, mitMarken = true) {
   const kassen = ereignisse.filter((e) => e.e === "kasse");
   if (!kassen.length) {
-    return sitzung?.kasseGeoeffnet === true || sitzung?.hatBestellt === true
+    // Die Marken sagen "war an der Kasse", auch wenn der Pfad es nicht
+    // hat (alte Faelle, verlorener Stapel). Nicht aber fuer den Stand VOR
+    // dem Kaufbesuch: Die Marke setzte erst der Kaufbesuch.
+    return mitMarken && (sitzung?.kasseGeoeffnet === true || sitzung?.hatBestellt === true)
       ? { art: "offen", grund: "an der Kasse, ohne Klickpfad" } : { art: "", grund: "" };
   }
   const felder = ereignisse.filter((e) => e.e === "feld" && e.d.includes("Bestellschirm")).length;
@@ -1453,8 +1456,10 @@ export const KAUF_STUFEN_ANALYSE = Object.freeze([
   "Nie geöffnet", "Nur geöffnet", "Gelesen", "Intensiv gelesen", "Kurz an der Kasse", "Bewusst an der Kasse"
 ]);
 export function kaufStufe(sitzung) {
-  const ereignisse = vorDemKauf(therapieEreignisse(sitzung), sitzung);
-  const kasse = kasseAus(ereignisse, sitzung);
+  return stufeAus(vorDemKauf(therapieEreignisse(sitzung), sitzung), sitzung);
+}
+function stufeAus(ereignisse, sitzung, mitMarken = true) {
+  const kasse = kasseAus(ereignisse, sitzung, mitMarken);
   if (kasse.art === "bewusst") return 5;
   if (kasse.art) return 4;
   const b = besucheAus(ereignisse, sitzung);
@@ -1467,20 +1472,40 @@ export function kaufStufe(sitzung) {
   return 1;
 }
 
-// DIE KAUFCHANCE - GEZAEHLT, NICHT GESCHAETZT.
+// DIE KAUFCHANCE BEIM ERNEUTEN ANSCHREIBEN - GEZAEHLT, NICHT GESCHAETZT.
 //
-// Keine ausgedachten Gewichte: Fuer jede Stufe wird gezaehlt, wie viele
-// der eigenen Faelle mit dieser Stufe gekauft haben. Gezaehlt werden nur
-// Faelle mit Klickpfad auf der Analyseseite (sonst ist die Stufe geraten).
-// Wenige Faelle in einer Stufe geben eine wackelige Quote - sie wird
-// deshalb zur Gesamtquote hingezogen, als haette die Stufe KAUF_GLAETTUNG
-// Faelle mehr mit der Gesamtquote (so springt 1 von 1 nicht auf 100 %).
+// Die Frage ist: Er ist gegangen, ohne zu kaufen - wie wahrscheinlich
+// kauft er noch? Verglichen wird deshalb mit Leuten, die AUCH erst ohne
+// Kauf gegangen sind:
+//   - wer nicht gekauft hat: sein ganzer Stand, alle Besuche zusammen
+//   - wer spaeter gekauft hat: sein Stand VOR dem Besuch, in dem er
+//     kaufte (alles, was vor einer Pause von KAUF_RUECKKEHR_MS lag)
+//   - wer gleich beim ersten Mal kaufte, ist nie ohne Kauf gegangen und
+//     zaehlt hier nicht mit.
+// (Bis 30.09. zaehlte jeder Kaeufer mit seinem Stand direkt vor dem Kauf -
+// und da war er immer an der Kasse. Jede Stufe darunter kam so auf 0
+// Kaeufer und damit auf 1-2 %, egal was wirklich geschah.)
 //
-// Die Zahl sagt: "Von den Leuten, die so weit waren wie er, haben so
-// viele gekauft." Fuer jemanden, der noch nicht gekauft hat, ist das die
-// beste ehrliche Schaetzung, was ein erneutes Anschreiben bringen kann -
-// eine Obergrenze eher als eine Untergrenze, denn die schnellen Kaeufer
-// sind in der Quote mit drin.
+// Gezaehlt werden nur Faelle mit Klickpfad auf der Therapieseite (sonst ist
+// die Stufe geraten). Wenige Faelle in einer Stufe geben eine wackelige
+// Quote - sie wird zur Gesamtquote hingezogen, als haette die Stufe
+// KAUF_GLAETTUNG Faelle mehr mit der Gesamtquote.
+//
+// Wer erst gestern kam, kann noch kaufen und zaehlt heute als "nicht
+// gekauft" - die Zahl ist darum eher etwas zu niedrig als zu hoch.
+export const KAUF_RUECKKEHR_MS = 30 * 60 * 1000;
+function standVorDemKaufbesuch(sitzung) {
+  const alle = therapieEreignisse(sitzung);
+  const bestellt = alle.find((e) => e.e === "bestellt");
+  const vor = vorDemKauf(alle, sitzung);
+  const kaufZeit = bestellt ? Date.parse(bestellt.t) : Date.parse(sitzung?.bestelltAt || "");
+  // Ohne Zeitpunkt (in Heart eingetragen): gekauft nach dem letzten Besuch.
+  const zeiten = [...vor.map((e) => Date.parse(e.t)), Number.isFinite(kaufZeit) ? kaufZeit : Infinity];
+  for (let i = zeiten.length - 1; i > 0; i -= 1) {
+    if (zeiten[i] - zeiten[i - 1] > KAUF_RUECKKEHR_MS) return vor.slice(0, i);
+  }
+  return null;
+}
 export const KAUF_GLAETTUNG = 4;
 // Gekauft hat, wer bestellt hat - auch wenn die Bestellung nur in Heart
 // eingetragen ist (Bericht "bestellt", "versandt", "zugestellt").
@@ -1494,10 +1519,12 @@ export function kaufChancen(sitzungen, berichte = {}) {
   let k = 0;
   const stufen = new Map();
   for (const s of sitzungen || []) {
-    const stufe = kaufStufe(s);
-    stufen.set(s.id, stufe);
+    stufen.set(s.id, kaufStufe(s));
     if (!therapieEreignisse(s).length) continue;
     const gekauft = hatGekauft(s, berichte?.[s.id]) ? 1 : 0;
+    const stand = gekauft ? standVorDemKaufbesuch(s) : null;
+    if (gekauft && !stand) continue;
+    const stufe = gekauft ? stufeAus(stand, s, false) : stufen.get(s.id);
     zaehlung[stufe].n += 1;
     zaehlung[stufe].k += gekauft;
     n += 1;

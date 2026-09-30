@@ -1314,7 +1314,7 @@ function analyseReihe(sitzung, chance) {
   const pill = (id, label, an, titel = "") => `<span class="heart-lifeskin-pill heart-lifeskin-pill--${id}${an ? " heart-lifeskin-pill--an" : ""}"${
     titel ? ` title="${escapeHtml(titel)}"` : ""}>${escapeHtml(label)}</span>`;
   const prozent = chance ? `${Math.round(chance.p * 100)}%` : "";
-  const warum = chance ? `${chance.name}: ${chance.k} von ${chance.n} vergleichbaren Fällen haben gekauft` : "";
+  const warum = chance ? `${chance.name}: Von ${chance.n}, die so weit waren und ohne Kauf gingen, kauften später ${chance.k}` : "";
   return `<span class="heart-lifeskin-fall__fuss heart-lifeskin-fall__analiza">${
     pill("analiza", "Analiza", true)
     + pill("besuch-datum", datum, Boolean(tag))

@@ -64,50 +64,45 @@ test("beim Kaeufer zaehlt nur, was vor der Bestellung war", () => {
   assert.equal(analyseBesuche(s).ms > 4 * 60000, true);
 });
 
-test("Kaufchance: gezaehlt je Stufe, zur Gesamtquote hingezogen", () => {
-  const bewusst = (id, gekauft) => ({ id, hatBestellt: gekauft, ...ereignisse([[T(0), "geoeffnet"], [T(1), "kasse", "x"], [T(1, 5), "feld", "Qyteti · Bestellschirm"]]) });
-  const nur = (id) => ({ id, ...ereignisse([[T(0), "geoeffnet"], [T(0, 10), "verlassen"]]) });
-  const faelle = [bewusst("a", true), bewusst("b", true), bewusst("c", true), bewusst("d", false),
-    nur("e"), nur("f"), nur("g"), nur("h"), { id: "alt", berichtGeoeffnet: true }];
+test("Kaufchance: verglichen wird mit Leuten, die auch erst ohne Kauf gingen", () => {
+  const tag = (d, m, sek = 0) => new Date(Date.UTC(2026, 8, d, 10, m, sek)).toISOString();
+  // Kam am 25. nur kurz, kam am 27. wieder und kaufte: sein Stand beim
+  // Gehen war "Nur geoeffnet" - das zaehlt, nicht die Kasse am 27.
+  const spaeter = (id) => ({ id, hatBestellt: true, ...ereignisse([[tag(25, 0), "geoeffnet"], [tag(25, 0, 20), "verlassen"],
+    [tag(27, 0), "geoeffnet"], [tag(27, 1), "kasse", "x"], [tag(27, 1, 5), "feld", "Qyteti · Bestellschirm"], [tag(27, 2), "bestellt", "39 €"]]) });
+  // Kaufte gleich beim ersten Mal: ist nie ohne Kauf gegangen - zaehlt nicht.
+  const sofort = (id) => ({ id, hatBestellt: true, ...ereignisse([[tag(26, 0), "geoeffnet"], [tag(26, 1), "kasse", "x"], [tag(26, 2), "bestellt", "39 €"]]) });
+  const nur = (id) => ({ id, ...ereignisse([[tag(25, 0), "geoeffnet"], [tag(25, 0, 10), "verlassen"]]) });
+  const faelle = [spaeter("a"), spaeter("b"), sofort("c"), sofort("d"), nur("e"), nur("f"), nur("g"), nur("h"), nur("i"), nur("j"),
+    { id: "alt", berichtGeoeffnet: true }];
   const c = kaufChancen(faelle);
-  // Gesamt 3 von 8 mit Klickpfad; Stufe 5: 3 von 4 -> (3 + 4 * 3/8) / 8.
-  assert.equal(c.get("d").stufe, 5);
-  assert.equal(c.get("d").n, 4);
-  assert.equal(c.get("d").k, 3);
-  assert.ok(Math.abs(c.get("d").p - (3 + 1.5) / 8) < 1e-9);
-  // Stufe 1: 0 von 4 -> (0 + 1.5) / 8.
-  assert.ok(Math.abs(c.get("e").p - 1.5 / 8) < 1e-9);
+  // Stufe 1 (nur geoeffnet): 2 von 8 kauften spaeter; gesamt 2 von 8 -> 25 %.
+  assert.equal(c.get("e").stufe, 1);
+  assert.equal(c.get("e").n, 8);
+  assert.equal(c.get("e").k, 2);
+  assert.ok(Math.abs(c.get("e").p - 0.25) < 1e-9);
+  // Die Sofortkaeufer stehen mit ihrer eigenen Stufe da, zaehlen aber nicht.
+  assert.equal(c.get("c").stufe, 4);
+  assert.equal(c.get("c").n, 0);
   // Ohne Klickpfad zaehlt der Fall nicht mit, bekommt aber seine Stufe.
   assert.equal(c.get("alt").stufe, 1);
 });
 
-test("alle Besuche zusammen: Anzahl, Minuten und Stufe ueber jeden Besuch der Therapieseite", () => {
-  // Drei Besuche an drei Tagen, je 1 Minute - zusammen 3 Minuten, Stufe 3.
-  const tag = (d, m, s = 0) => new Date(Date.UTC(2026, 8, d, 10, m, s)).toISOString();
-  const s = ereignisse([
-    [tag(25, 0), "geoeffnet"], [tag(25, 1), "gesehen"], [tag(25, 1, 5), "verlassen"],
-    [tag(27, 0), "geoeffnet"], [tag(27, 1), "scroll", "25 %"], [tag(27, 1, 5), "verlassen"],
-    [tag(30, 0), "geoeffnet"], [tag(30, 1), "klick"]
-  ]);
-  const b = analyseBesuche(s);
-  assert.equal(b.anzahl, 3);
-  assert.equal(b.ms, (65 + 65 + 60) * 1000);
-  assert.equal(b.zuletzt, tag(30, 1));
-  // Jeder Besuch fuer sich waere nur Stufe 1 - zusammen ist es Stufe 3.
-  assert.equal(kaufStufe(s), 3);
-});
-
-test("in Heart eingetragene Bestellung zaehlt als Kauf - und nur was davor war", () => {
-  const bestellt = { id: "w", bestelltAt: T(2), ...ereignisse([[T(0), "geoeffnet"], [T(1), "kasse", "x"], [T(1, 5), "klick", "Kthehu · Bestellschirm"],
-    [T(3), "geoeffnet"], [T(4), "kasse", "x"], [T(4, 30), "verlassen"]]) };
-  // Vor der Bestellung nur einmal kurz an der Kasse; das Nachschauen danach zaehlt nicht.
-  assert.equal(kasseAbsicht(bestellt).art, "kurz");
-  assert.equal(kaufStufe(bestellt), 4);
-  const offen = { id: "o", ...ereignisse([[T(0), "geoeffnet"], [T(1), "kasse", "x"], [T(1, 5), "klick", "Kthehu · Bestellschirm"]]) };
-  const c = kaufChancen([bestellt, offen], { w: { status: "versandt" } });
+test("in Heart eingetragene Bestellung zaehlt als Kauf - der Stand beim Gehen zaehlt", () => {
+  // Las am 28. lange, war kurz an der Kasse, ging; bestellte am 29. per WhatsApp.
+  const tag = (d, m, sek = 0) => new Date(Date.UTC(2026, 8, d, 10, m, sek)).toISOString();
+  const whatsapp = { id: "w", bestelltAt: tag(29, 0), ...ereignisse([[tag(28, 0), "geoeffnet"], [tag(28, 4), "gesehen"],
+    [tag(28, 5), "kasse", "x"], [tag(28, 5, 5), "klick", "Kthehu · Bestellschirm"], [tag(30, 0), "geoeffnet"], [tag(30, 3), "gesehen"]]) };
+  // Nach der Bestellung zaehlt nichts mehr.
+  assert.equal(kasseAbsicht(whatsapp).art, "kurz");
+  assert.equal(kaufStufe(whatsapp), 4);
+  const offen = { id: "o", ...ereignisse([[tag(28, 0), "geoeffnet"], [tag(28, 1), "kasse", "x"], [tag(28, 1, 5), "klick", "Kthehu · Bestellschirm"]]) };
+  const c = kaufChancen([whatsapp, offen], { w: { status: "versandt" } });
   assert.equal(c.get("o").stufe, 4);
   assert.equal(c.get("o").n, 2);
   assert.equal(c.get("o").k, 1);
   assert.equal(hatGekauft({}, { status: "zugestellt" }), true);
   assert.equal(hatGekauft({}, { status: "fertig" }), false);
+  // Fehlt die Kasse im Pfad, sagt es die Marke.
+  assert.equal(kasseAbsicht({ kasseGeoeffnet: true, ...ereignisse([[T(0), "geoeffnet"]]) }).art, "offen");
 });
