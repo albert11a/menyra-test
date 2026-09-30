@@ -254,6 +254,7 @@ export class Terapia {
   }
   // Das Wort auf jedem Kaufknopf.
   kaufWort(betrag = this.preis) {
+    if (document.documentElement.dataset.lsDesign === "mobile") return `Porosit produktet — ${euro(betrag)}`;
     if (this.mitUrteil) return `Rezervo setin tim — ${euro(betrag)}`;
     return this.perputhja !== null ? `Filloj rutinën time — ${euro(betrag)}` : `Fillo terapinë — ${euro(betrag)}`;
   }
@@ -493,6 +494,9 @@ export class Terapia {
       : mitProdukten
         ? (name ? `${name}, kjo është terapia juaj për ${WOCHEN} javë.` : `Terapia juaj për ${WOCHEN} javë është gati.`)
         : (name ? `${name}, ${fertigWort.toLowerCase()} juaj është gati.` : `${fertigWort} juaj është gati.`));
+    if (document.documentElement.dataset.lsDesign === "mobile" && d.sprache !== "de") {
+      schreibe($("#t-titulli"), mitProdukten ? "Ja çfarë të përdorësh për lëkurën tënde." : "Analiza e lëkurës tënde është gati.");
+    }
     this.#mjeku();
     // Fielen Karten weg, weil ihr Produkt nicht im Set ist, nennt der Satz
     // der Analyse Probleme, die diese Therapie nicht behandelt. Dann wird

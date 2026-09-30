@@ -10,7 +10,7 @@ for (const [name, count] of [["duo", 2], ["single", 1]]) {
 // Preserve attribution and the owner's silent review flag across the handoff.
 // Do not forward funnel-control query parameters supplied to the template.
 const incoming = new URLSearchParams(location.search);
-for (const link of document.querySelectorAll("[data-analysis]")) {
+for (const link of document.querySelectorAll("[data-analysis], [data-method]")) {
   const destination = new URL(link.getAttribute("href"), location.origin);
   for (const [key, value] of incoming) {
     if (/^utm_[a-z_]+$/.test(key) || ["fbclid", "gclid", "still"].includes(key)) {
@@ -32,5 +32,5 @@ if (dock && "IntersectionObserver" in window) {
     // Never remove keyboard focus from a visitor already using the dock.
     dock.hidden = visible.size > 0 && !dock.contains(document.activeElement);
   }, { threshold: 0 });
-  for (const link of document.querySelectorAll("main .button[data-analysis]")) observer.observe(link);
+  for (const link of document.querySelectorAll("main .button[data-analysis], [data-method]")) observer.observe(link);
 }
