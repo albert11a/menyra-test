@@ -1500,7 +1500,7 @@ export class Terapia {
     const zeile = $("#t-korbkursim");
     schreibe(zeile, kursim);
     zeigen(zeile, Boolean(kursim));
-    schreibe($("#t-korbvazhdo"), `Vazhdo me porosinë · ${euro(this.preis)}`);
+    schreibe($("#t-korbvazhdo"), "Vazhdo me të dhënat");
   }
 
   #porosia(auf) {

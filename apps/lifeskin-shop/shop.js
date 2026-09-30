@@ -644,7 +644,7 @@ export class Dyqan {
   #korbBlatt() {
     const n = this.korb.ids.length;
     const kursim = this.#kursim();
-    this.#blatt(`<h2 id="sheet-title">${n ? "U shtua në shportë." : "Shporta juaj."}</h2><p>${n ? "Kontrolloni produktet dhe vazhdoni me porosinë." : "Zgjidhni një set ose produkt për të filluar."}</p>${this.#korbZeilen()}${n ? `<div class="total"><span>Gjithsej · dërgesa e përfshirë</span><strong>${summe(this.korb)} €</strong></div>${kursim ? `<p class="cart-saving">${e(kursim)}</p>` : ""}` : ""}<div class="sheet-actions">${n ? `<button type="button" class="primary" data-kasa>Vazhdo me porosinë · ${summe(this.korb)} € ${ikone("ArrowRight")}</button>` : ""}<button type="button" class="secondary" data-continue>${n ? "Vazhdo blerjet" : "Zgjidhni setin tuaj"} ${ikone("ArrowUpRight")}</button></div>`);
+    this.#blatt(`<h2 id="sheet-title">${n ? "U shtua në shportë." : "Shporta juaj."}</h2><p>${n ? "Vetëm edhe një hap drejt një lëkure të pastër." : "Zgjidhni një set ose produkt për të filluar."}</p>${this.#korbZeilen()}${n ? `<div class="total"><span>Gjithsej · dërgesa e përfshirë</span><strong>${summe(this.korb)} €</strong></div>${kursim ? `<p class="cart-saving">${e(kursim)}</p>` : ""}` : ""}<div class="sheet-actions">${n ? `<button type="button" class="primary" data-kasa>Vazhdo me të dhënat ${ikone("ArrowRight")}</button>` : `<button type="button" class="secondary" data-continue>Zgjidhni setin tuaj ${ikone("ArrowUpRight")}</button>`}</div>`);
   }
 
   #setDetail(s) {

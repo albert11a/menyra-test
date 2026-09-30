@@ -287,3 +287,12 @@ test("customer gallery follows Heart visibility and order, escapes content and d
   assert.doesNotMatch(html, /hidden.jpg|javascript:|autoplay/);
   assert.equal(kundenGalerie([{id:'off',aktiv:false,bild:'/off.jpg'}]), '');
 });
+
+test("Warenkorb im Laden (30.09., Inhaber): kurzer Satz, ein Knopf ohne Preis", () => {
+  const js = lies("apps/lifeskin-shop/shop.js");
+  const blatt = js.slice(js.indexOf("#korbBlatt() {"), js.indexOf("#setDetail(s)"));
+  assert.match(blatt, /Vetëm edhe një hap drejt një lëkure të pastër\./);
+  assert.match(blatt, /data-kasa>Vazhdo me të dhënat \$\{ikone\("ArrowRight"\)\}/);
+  assert.doesNotMatch(blatt, /Vazhdo blerjet/);
+  assert.doesNotMatch(blatt, /Vazhdo me porosinë/);
+});

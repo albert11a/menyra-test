@@ -446,3 +446,11 @@ html[data-ls-landing="lifeskinshop"] #ls-einstieg[data-aktiv="ja"]{animation:non
 #ls-einstieg .hero-photo .photo-label{padding:7px 12px}
 #ls-einstieg .hero-photo .photo-caption{font-size:17px;line-height:1.12;letter-spacing:-.3px;left:16px;bottom:16px}
 #ls-einstieg .hero-karte .besim .icon[aria-hidden]{flex:none}
+/* 30.09. (Inhaber): weniger Schatten an der Angebotskarte; der Korb-Knopf
+   im Kopf so hoch wie das Logo daneben (oben und unten buendig) und
+   kleiner; Follower-Zahlen an den Instagram-Karten. */
+#ls-einstieg .hero-karte{box-shadow:0 4px 14px -10px #123b3e33}
+#ls-einstieg .header .bag{width:36px;height:36px}
+#ls-einstieg .header .bag .icon{width:17px;height:17px}
+#ls-einstieg .header .bag span{top:-5px;right:-6px;min-width:17px;font-size:10px;padding:2px 4px;line-height:13px}
+#ls-einstieg .social-profiles small{display:block;margin-top:4px;font-size:12px;letter-spacing:0;color:var(--muted)}
