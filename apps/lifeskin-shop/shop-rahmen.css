@@ -267,3 +267,41 @@ body:has(#ls-einstieg[data-aktiv="ja"]) { font-size: 16px; line-height: normal; 
 #ls-einstieg #zgjedhja .selection-pyetja{font-size:15px;margin:14px 0 4px}
 #ls-einstieg #zgjedhja .doctor{margin:16px 0 12px;padding-top:14px}
 #ls-einstieg #zgjedhja .doctor img{width:44px;height:44px}
+
+/* 30.09. (Inhaber): Karte ruhiger - keine gruenen Pillen mehr, Foto so hoch
+   wie der Text daneben, Preis in einer Zeile. */
+#ls-einstieg .duo-hap{align-items:stretch}
+#ls-einstieg .duo-hap-foto{width:76px;height:auto;min-height:0;align-self:stretch;border-radius:10px}
+#ls-einstieg .duo-hap>div{flex:1;min-width:0;padding:2px 0}
+#ls-einstieg .duo-hap h3{margin:3px 0 4px}
+#ls-einstieg .duo-aktiv{display:block;background:none;padding:0;border-radius:0;font-size:13px;font-weight:700;color:#2f7d62}
+#ls-einstieg .duo-dobi{font-size:13px;color:var(--muted);margin-top:2px}
+#ls-einstieg .duo-hap+.duo-hap{margin-top:14px;padding-top:14px}
+#ls-einstieg .duo-cmimi{background:none;border-top:1px solid var(--line);border-radius:0;padding:14px 0 0;margin:0 0 14px;align-items:flex-end}
+#ls-einstieg .duo-cmimi span{font-size:13px;font-weight:600}
+#ls-einstieg .duo-cmimi em{background:none;padding:0;margin-top:4px;color:#2f7d62;font-size:12px}
+#ls-einstieg .duo-cmimi div:last-child{display:flex;align-items:baseline;gap:8px}
+#ls-einstieg .duo-cmimi s{margin:0;font-size:14px}
+#ls-einstieg .duo-card .besim{font-size:12px;color:var(--muted)}
+#ls-einstieg .duo-card .besim .icon{width:18px;height:18px;color:var(--ink)}
+#ls-einstieg #zgjedhja .selection-pyetja{margin:14px 0 0;border-top:1px solid #ffffff2a;border-bottom:1px solid #ffffff2a}
+#ls-einstieg #zgjedhja .selection-pyetja summary{list-style:none;display:flex;justify-content:space-between;align-items:center;min-height:48px;font-size:15px;font-weight:700;color:#fff;cursor:pointer}
+#ls-einstieg #zgjedhja .selection-pyetja summary::-webkit-details-marker{display:none}
+#ls-einstieg #zgjedhja .selection-pyetja summary .icon{width:18px;height:18px}
+#ls-einstieg #zgjedhja .selection-pyetja[open] summary .icon{transform:rotate(45deg)}
+#ls-einstieg #zgjedhja .selection-pyetja p{font-size:14px;line-height:1.5;color:#d1e0dd;padding:0 0 14px}
+#ls-einstieg #zgjedhja .doctor{border-top:0;padding-top:0}
+#ls-einstieg .duo-cmimi>div:first-child{flex:1;min-width:0}
+#ls-einstieg .duo-cmimi>div:last-child{flex:none;white-space:nowrap}
+
+/* 30.09. (Inhaber): kein Rahmen nach dem Antippen, keine schwarzen Raender,
+   Video ohne Systemsteuerung - nur Play/Pause oben rechts. */
+#ls-einstieg .customer-rail:focus,#ls-einstieg .klient-kachel:focus,#ls-einstieg #close-sheet:focus{outline:none;box-shadow:none}
+#ls-einstieg #sheet .klient-buehne{position:relative;height:min(62vh,560px);aspect-ratio:9/16;max-width:100%;margin:0 auto 16px;border-radius:14px;overflow:hidden;background:var(--wash)}
+#ls-einstieg #sheet .klient-medium{display:block;width:100%;height:100%;max-height:none;object-fit:cover;background:none;border-radius:0;margin:0}
+#ls-einstieg #sheet .klient-spiel{position:absolute;top:10px;right:10px;width:40px;height:40px;border-radius:50%;border:0;background:#00000066;display:grid;place-items:center;padding:0}
+#ls-einstieg #sheet .klient-spiel:before{content:'';margin-left:3px;border-style:solid;border-width:8px 0 8px 13px;border-color:transparent transparent transparent #fff}
+#ls-einstieg #sheet .klient-buehne[data-stand="spielt"] .klient-spiel:before{margin:0;width:12px;height:14px;border:0;border-left:4px solid #fff;border-right:4px solid #fff;box-sizing:border-box}
+#ls-einstieg #sheet .klient-spiel:focus{outline:none}
+#ls-einstieg #sheet .klient-buehne{height:min(52vh,480px)}
+#ls-einstieg .duo-cmimi{align-items:center}
