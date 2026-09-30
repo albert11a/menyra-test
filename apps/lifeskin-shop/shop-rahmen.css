@@ -372,3 +372,19 @@ body:has(#ls-einstieg[data-aktiv="ja"]) { font-size: 16px; line-height: normal; 
 #ls-einstieg .pak-sete i{margin-left:3px}
 #ls-einstieg .duo-cmimi span.duo-cmimi-vlera{display:flex;align-items:baseline;gap:8px}
 #ls-einstieg .duo-cmimi span.duo-cmimi-vlera s{display:inline;margin:0;font-size:14px}
+
+/* 30.09. KEIN SPRINGEN BEIM NEULADEN: Bis Heart antwortet, stehen ruhige
+   Flaechen gleicher Groesse da statt fremder Fotos, die dann wechseln. */
+#ls-einstieg .duo-hap-foto--leer,#ls-einstieg .leer-bild,#ls-einstieg .klient-kachel--leer{display:block;background:linear-gradient(100deg,#eef3f2 40%,#f7faf9 50%,#eef3f2 60%) 0 0/300% 100%;animation:leer-laedt 1.4s linear infinite}
+#ls-einstieg .duo-hap-foto--leer{width:76px;min-height:90px;border-radius:10px;flex-shrink:0}
+#ls-einstieg .leer-bild{aspect-ratio:3/4;width:100%}
+#ls-einstieg .klient-kachel--leer{flex:0 0 104px;aspect-ratio:9/16;border-radius:12px}
+@keyframes leer-laedt{to{background-position:-150% 0}}
+@media(prefers-reduced-motion:reduce){#ls-einstieg .duo-hap-foto--leer,#ls-einstieg .leer-bild,#ls-einstieg .klient-kachel--leer{animation:none}}
+#ls-einstieg .duo-hap-foto,#ls-einstieg .proof-pair img,#ls-einstieg .klient-kachel img{animation:bild-rein .35s ease-out}
+@keyframes bild-rein{from{opacity:0}to{opacity:1}}
+#ls-einstieg .duo-hap-foto--leer{min-height:0;height:auto;align-self:stretch}
+#ls-einstieg .proof-pikat:empty{display:block;min-height:22px}
+#ls-einstieg .proof-pikat:empty{min-height:6px}
+#ls-einstieg .duo-hap-foto--leer{min-height:95px}
+#ls-einstieg .duo-hap-foto{aspect-ratio:4/5;height:auto;min-height:95px;object-fit:cover}

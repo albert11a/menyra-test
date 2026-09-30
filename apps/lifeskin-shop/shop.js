@@ -37,6 +37,7 @@ import {
 } from "../../shared/lifeskin-shop-sets.js";
 
 import { medienListe } from "../../shared/lifeskin-medien.js";
+import { PAK_SETE } from "../../shared/lifeskin-oferta.js";
 import { SHOP_ABSCHNITTE, shopSichtPatch } from "../../shared/lifeskin-shopsicht.js";
 import { schirmGesehen } from "../../shared/lifeskin-landingtiefe.js";
 
@@ -142,17 +143,20 @@ const DUO_HAPAT = [
     kryesore: 'Ceramide NP, AP, EOP · Sodium Hyaluronate · Glycerin',
     perberja: 'Aqua, Glycerin, Caprylic/Capric Triglyceride, Cetearyl Alcohol, Cetyl Alcohol, Dimethicone, Phenoxyethanol, Polysorbate 20, Ceteareth-20, Behentrimonium Methosulfate, Polyglyceryl-3 Diisostearate, Sodium Lauroyl Lactylate, Ethylhexylglycerin, Potassium Phosphate, Disodium EDTA, Dipotassium Phosphate, Ceramide NP, Ceramide AP, Phytosphingosine, Cholesterol, Xanthan Gum, Carbomer, Sodium Hyaluronate, Tocopherol, Ceramide EOP.' }
 ];
-// "Vetëm edhe pak sete" - Aussage des Inhabers ueber seinen Bestand
-// (30.09.). Sobald wieder genug da ist: auf false setzen.
-export const PAK_SETE = true;
+// "Vetëm edhe pak sete": ein Schalter fuer Laden und Therapieseite
+// (shared/lifeskin-oferta.js).
+export { PAK_SETE };
 const PAK_SETE_ZEILE = '<span class="pak-sete"><i aria-hidden="true"></i>Vetëm edhe pak sete</span>';
-export function duoCard(s, mittel) {
+export function duoCard(s, mittel, { fotos = true } = {}) {
   const price=preisFuer(2);
   const emri=(h)=>e(mittel.find(m=>m.id===h.id)?.name || h.id.toUpperCase().replace('LF-','LF '));
   const hapat=DUO_HAPAT.map(h=>{
     const m=mittel.find(m=>m.id===h.id);
-    const foto=m?.fotot?.[0] || MITTEL_FOTOS_STANDARD[h.id] || '';
-    return `<div class="duo-hap">${foto ? `<img class="duo-hap-foto" src="${e(foto)}" width="72" height="90" alt="${emri(h)}" loading="lazy" decoding="async">` : ''}<div><small>${h.hapi}</small><h3>${emri(h)} <span>${e(m?.inhalt || '30 ml')}</span></h3><p class="duo-aktiv">${h.aktiv}</p><p class="duo-dobi">${h.dobi}</p></div></div>`;
+    const foto=fotos ? (m?.fotot?.[0] || MITTEL_FOTOS_STANDARD[h.id] || '') : '';
+    // KEIN FREMDES FOTO VORAB (30.09.): Bis Heart antwortet, steht ein
+    // ruhiger Platzhalter gleicher Groesse da - sonst sprang das
+    // Standardfoto beim Neuladen auf das Foto aus Heart.
+    return `<div class="duo-hap">${foto ? `<img class="duo-hap-foto" src="${e(foto)}" width="72" height="90" alt="${emri(h)}" loading="lazy" decoding="async">` : '<span class="duo-hap-foto duo-hap-foto--leer" aria-hidden="true"></span>'}<div><small>${h.hapi}</small><h3>${emri(h)} <span>${e(m?.inhalt || '30 ml')}</span></h3><p class="duo-aktiv">${h.aktiv}</p><p class="duo-dobi">${h.dobi}</p></div></div>`;
   }).join('');
   const detaje=DUO_HAPAT.map(h=>`<h4>${emri(h)}</h4><p><b>Si përdoret:</b> ${h.si}</p><p class="duo-inci"><b>Përbërja kryesore:</b> ${h.kryesore}</p><details class="duo-inci-mehr"><summary>Lexo më shumë</summary><p class="duo-inci">${h.perberja}</p></details>`).join('');
   return `<article class="duo-card"><div class="duo-hapat">${hapat}</div><details class="duo-product"><summary>Përdorimi dhe përbërja ${ikone('Plus')}</summary><div class="duo-product-body">${detaje}<p class="duo-shenim">Pa parfum · Kujdes dermatologjik nga Gjermania</p></div></details><p class="duo-ndjekje">${ikone('Stethoscope')}<span><b>Përfshirë në çmim:</b> Dr. Violeta Gashi ju ndjek 24/7 gjatë gjithë kurës.</span></p><div class="duo-cmimi"><span class="duo-cmimi-etiketa">Çmimi:</span><span class="duo-cmimi-vlera"><s>${2*preisFuer(1)} €</s><strong>${price} €</strong></span><em class="zbritje">ZBRITJE −${Math.round((1-price/(2*preisFuer(1)))*100)} %</em>${PAK_SETE ? PAK_SETE_ZEILE : "<span></span>"}</div><button type="button" class="primary" data-set="${e(s.id)}">Porosit setin · ${price} € ${ikone('ArrowUpRight')}</button><ul class="besim"><li>${ikone('Truck')}Falas, 1–3 ditë</li><li>${ikone('Banknote')}Paguani te dera</li><li>${ikone('ShieldCheck')}45 ditë garanci</li></ul></article>`;
@@ -210,6 +214,8 @@ export class Dyqan {
     this.setFotos = new Map();
     this.gemerkt = new Set();
     this.klienten = kundenAuswahl(null);
+    // Erst wenn Heart geantwortet hat (oder nicht), kommen Fotos in die Karte.
+    this.fotosBereit = false;
     this.filter = "all";
     this.sendet = false;
     this.opener = null;
@@ -349,7 +355,13 @@ export class Dyqan {
       rail.addEventListener("play", event => {
         rail.querySelectorAll("video").forEach(video => { if (video !== event.target) video.pause(); });
       }, true);
-    }).catch(() => { /* keep the same standard photos as the therapy page */ });
+    }).catch(() => {
+      // Ohne Antwort: die Standardfotos statt der Platzhalter.
+      const rail = $("#customer-media", this.dok);
+      if (!rail) return;
+      this.klienten = kundenAuswahl(null);
+      rail.innerHTML = kundenGalerie(null);
+    });
     // ZUERST, WAS OBEN STEHT UND KLEIN IST - dann die grossen Daten.
     //
     // Gemessen am 28.09. (Pruefstand, 1,6 Mbit/s, Erstbesuch): Produkte
@@ -367,11 +379,14 @@ export class Dyqan {
     // fuer sich (hoechstens 6 s gewartet - haengt es, geht es trotzdem weiter).
     await Promise.race([this.titelbildFertig, pause(6000)]);
     // Die Faelle mit Ort "Shop" - sie zeichnen sich, sobald ihre Bilder da sind.
+    // Bis dahin stehen Platzhalter da; hat Heart keinen Fall (oder antwortet
+    // nicht), kommt der eine dokumentierte Fall - nie erst er, dann andere.
+    const RUECKWEG = [{ para: "/apps/lifeskin/fall-vorher.jpg", pas: "/apps/lifeskin/fall-nachher.jpg", gjetja: "" }];
     const faelle = raste
       ? rasteMitBildern(rasteFuer(raste, "shop"), BASIS)
-        .then((liste) => { if (liste.length) this.#zeichneFaelle(liste); })
-        .catch(() => { /* dann bleibt der Fall aus dem Aufbau stehen */ })
-      : Promise.resolve();
+        .then((liste) => this.#zeichneFaelle(liste.length ? liste : RUECKWEG))
+        .catch(() => this.#zeichneFaelle(RUECKWEG))
+      : Promise.resolve(this.#zeichneFaelle(RUECKWEG));
     await this.#setetUebernehmen(setDok);
 
     const [produkte, konfig] = await Promise.all([
@@ -387,6 +402,7 @@ export class Dyqan {
       fotos.set(doku.id.slice(FOTO_PRAEFIX.length), liste.filter((f) => typeof f === "string" && f.startsWith("data:image/")));
     }
     this.mittel = mittelBauen(produkte || [], this.#standardFotos(fotos));
+    this.fotosBereit = true;
     // Noch einmal, jetzt mit den Mitteln aus Heart: nur Sets mit Mitteln,
     // die es zu kaufen gibt.
     await this.#setetUebernehmen(setDok);
@@ -428,7 +444,7 @@ export class Dyqan {
     const available = this.setet.length > 0;
     for (const button of this.dok.querySelectorAll('.hero [data-set], #zgjedhja [data-set], #sticky-buy')) button.disabled = !available;
     if (!available) { raster.innerHTML = '<p class="section-intro">Seti nuk është aktualisht i disponueshëm.</p>'; return; }
-    raster.innerHTML = this.setet.map(s => duoCard(s, this.mittel)).join('');
+    raster.innerHTML = this.setet.map(s => duoCard(s, this.mittel, { fotos: this.fotosBereit })).join('');
     const numri = $("#set-numri", this.dok);
     if (numri) numri.textContent = `01 — ${String(this.setet.length).padStart(2, "0")}`;
     // Die Filter: ein Knopf je Bedarf, "Të gjitha" vorn.
