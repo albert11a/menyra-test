@@ -667,7 +667,31 @@ export class Sitzung {
     this.angelegt = true;
     const geschrieben = this.#sammeln(daten, Object.keys(daten));
     this.#sichtbarkeitMerken(dokument);
+    this.#anwesenheitMelden(dokument);
     return geschrieben;
+  }
+
+  // WEG UND WIEDER DA (30.09., Inhaber: "live bleibt viel laenger als live").
+  // Heart hielt jeden drei Minuten nach seinem letzten Schritt fuer "gerade
+  // dabei" - auch wer nach zehn Sekunden gegangen war. Jetzt meldet die
+  // Seite, wenn sie unsichtbar wird (Tab zu, App gewechselt, gesperrt):
+  // timings.weg. Kommt er zurueck, schiebt updatedAt ihn wieder nach vorne.
+  // Heart nimmt ihn beim "weg" sofort aus Live (heart-lifeskin-live.js).
+  #anwesenheitMelden(dokument) {
+    // Am Fenster, nicht am Dokument: visibilitychange steigt bis dorthin auf,
+    // und der Horcher fuer "zum ersten Mal gesehen" bleibt allein am Dokument.
+    const fenster = dokument?.defaultView;
+    if (!fenster?.addEventListener || this.anwesenheitHorcht) return;
+    this.anwesenheitHorcht = true;
+    let zuletztWeg = false;
+    const melden = (weg) => {
+      if (!this.angelegt || weg === zuletztWeg) return;
+      zuletztWeg = weg;
+      if (weg) this.#sammeln({ timings: { weg: jetzt() } }, ["timings.weg"]);
+      else this.#sammeln({ updatedAt: jetzt() }, ["updatedAt"]);
+    };
+    fenster.addEventListener("visibilitychange", () => melden(dokument.visibilityState === "hidden"));
+    fenster.addEventListener("pagehide", () => melden(true));
   }
 
   // Aus "war beim Laden nicht sichtbar" darf nicht "war nie sichtbar"
