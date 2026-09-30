@@ -390,3 +390,4 @@ body:has(#ls-einstieg[data-aktiv="ja"]) { font-size: 16px; line-height: normal; 
 #ls-einstieg .duo-hap-foto{aspect-ratio:4/5;height:auto;min-height:95px;object-fit:cover}
 /* Beim ersten Zeichnen kein Aufblenden (Neuladen ohne weissen Moment). */
 html[data-ls-landing="lifeskinshop"] #ls-einstieg[data-aktiv="ja"]{animation:none}
+#ls-einstieg [data-preis-zbritje][hidden]{display:none!important}

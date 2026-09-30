@@ -33,7 +33,7 @@ import { mittelBauen, holeSammlung, FOTO_PRAEFIX } from "../lifeskin-landing/sho
 import { rasteLaden, rasteFuer, rasteMitBildern } from "../../shared/lifeskin-raste.js";
 import {
   SETET_DOK, SET_FOTO_PRAEFIX, SHOP_HERO_DOK, SETET_STANDARD, MITTEL_FOTOS_STANDARD, MITTEL_NENTITUJ,
-  setetOderStandard, setetNormalisieren, aktiveSetet, nevojaKennung
+  setetOderStandard, setetNormalisieren, aktiveSetet, nevojaKennung, setPreis
 } from "../../shared/lifeskin-shop-sets.js";
 
 import { medienListe } from "../../shared/lifeskin-medien.js";
@@ -74,8 +74,10 @@ export function korbSchreiben(speicher, korb) {
 }
 
 // Nach der Staffel (shared/lifeskin-preise.js): 1 = 29, 2 = 39, 3 = 49 ...
+// Mit Set: sein Preis aus Heart (korb.cmimi, siehe acneDuoCart).
 export function summe(korb) {
-  return korb.ids.length ? preisFuer(korb.ids.length) : 0;
+  if (!korb.ids.length) return 0;
+  return korb.cmimi > 0 ? korb.cmimi : preisFuer(korb.ids.length);
 }
 
 // Die Pflichtfelder der Kasse. Dieselbe Regel wie auf /lifeskin: alle vier.
@@ -124,7 +126,7 @@ export function acneDuoSets(sets) {
 export function acneDuoCart(cart, sets) {
   const duo=sets[0];
   const complete=duo && cart.ids?.length===2 && duo.produkte.every(id=>cart.ids.includes(id));
-  return complete ? {ids:[...duo.produkte],set:duo.id} : {ids:[],set:''};
+  return complete ? {ids:[...duo.produkte],set:duo.id,cmimi:setPreis(duo)} : {ids:[],set:''};
 }
 // Die Karte des Acne Duo, KOMPAKT (Wunsch Inhaber 29.09.): je Mittel eine
 // Zeile mit kleinem Foto, Wirkstoff und drei Nutzen in einer Zeile.
@@ -148,7 +150,7 @@ const DUO_HAPAT = [
 export { PAK_SETE };
 const PAK_SETE_ZEILE = '<span class="pak-sete"><i aria-hidden="true"></i>Vetëm edhe pak sete</span>';
 export function duoCard(s, mittel, { fotos = true } = {}) {
-  const price=preisFuer(2);
+  const price=setPreis(s), vecmas=(s.produkte?.length||2)*preisFuer(1), zbritje=vecmas>price?Math.round((1-price/vecmas)*100):0;
   const emri=(h)=>e(mittel.find(m=>m.id===h.id)?.name || h.id.toUpperCase().replace('LF-','LF '));
   const hapat=DUO_HAPAT.map(h=>{
     const m=mittel.find(m=>m.id===h.id);
@@ -159,13 +161,27 @@ export function duoCard(s, mittel, { fotos = true } = {}) {
     return `<div class="duo-hap">${foto ? `<img class="duo-hap-foto" src="${e(foto)}" width="72" height="90" alt="${emri(h)}" loading="lazy" decoding="async">` : '<span class="duo-hap-foto duo-hap-foto--leer" aria-hidden="true"></span>'}<div><small>${h.hapi}</small><h3>${emri(h)} <span>${e(m?.inhalt || '30 ml')}</span></h3><p class="duo-aktiv">${h.aktiv}</p><p class="duo-dobi">${h.dobi}</p></div></div>`;
   }).join('');
   const detaje=DUO_HAPAT.map(h=>`<h4>${emri(h)}</h4><p><b>Si përdoret:</b> ${h.si}</p><p class="duo-inci"><b>Përbërja kryesore:</b> ${h.kryesore}</p><details class="duo-inci-mehr"><summary>Lexo më shumë</summary><p class="duo-inci">${h.perberja}</p></details>`).join('');
-  return `<article class="duo-card"><div class="duo-hapat">${hapat}</div><details class="duo-product"><summary>Përdorimi dhe përbërja ${ikone('Plus')}</summary><div class="duo-product-body">${detaje}<p class="duo-shenim">Pa parfum · Kujdes dermatologjik nga Gjermania</p></div></details><p class="duo-ndjekje">${ikone('Stethoscope')}<span><b>Përfshirë në çmim:</b> Dr. Violeta Gashi ju ndjek 24/7 gjatë gjithë kurës.</span></p><div class="duo-cmimi"><span class="duo-cmimi-etiketa">Çmimi:</span><span class="duo-cmimi-vlera"><s>${2*preisFuer(1)} €</s><strong>${price} €</strong></span><em class="zbritje">ZBRITJE −${Math.round((1-price/(2*preisFuer(1)))*100)} %</em>${PAK_SETE ? PAK_SETE_ZEILE : "<span></span>"}</div><button type="button" class="primary" data-set="${e(s.id)}">Porosit setin · ${price} € ${ikone('ArrowUpRight')}</button><ul class="besim"><li>${ikone('Truck')}Falas, 1–3 ditë</li><li>${ikone('Banknote')}Paguani te dera</li><li>${ikone('ShieldCheck')}45 ditë garanci</li></ul></article>`;
+  return `<article class="duo-card"><div class="duo-hapat">${hapat}</div><details class="duo-product"><summary>Përdorimi dhe përbërja ${ikone('Plus')}</summary><div class="duo-product-body">${detaje}<p class="duo-shenim">Pa parfum · Kujdes dermatologjik nga Gjermania</p></div></details><p class="duo-ndjekje">${ikone('Stethoscope')}<span><b>Përfshirë në çmim:</b> Dr. Violeta Gashi ju ndjek 24/7 gjatë gjithë kurës.</span></p><div class="duo-cmimi"><span class="duo-cmimi-etiketa">Çmimi:</span><span class="duo-cmimi-vlera">${zbritje ? `<s data-preis="vecmas" data-preis-zbritje>${vecmas} €</s>` : ""}<strong data-preis="cmimi">${price} €</strong></span>${zbritje ? `<em class="zbritje" data-preis="zbritje-fjale" data-preis-zbritje>ZBRITJE −${zbritje} %</em>` : "<span></span>"}${PAK_SETE ? PAK_SETE_ZEILE : "<span></span>"}</div><button type="button" class="primary" data-set="${e(s.id)}"><span>Porosit setin · <span data-preis="cmimi">${price} €</span></span> ${ikone('ArrowUpRight')}</button><ul class="besim"><li>${ikone('Truck')}Falas, 1–3 ditë</li><li>${ikone('Banknote')}Paguani te dera</li><li>${ikone('ShieldCheck')}45 ditë garanci</li></ul></article>`;
 }
 
 // KLEINE KACHELN WIE AUF DER THERAPIESEITE (Wunsch Inhaber 29.09.): eine
 // schmale Reihe im Hochformat, Antippen zeigt Foto oder Video gross im
 // Blatt, mit Text und Kaufknopf. Das Video selbst entsteht erst dort -
 // in der Reihe steht nur sein Standbild.
+// Schreibt Preis, Einzelpreise und Rabatt in alle markierten Stellen
+// (data-preis="cmimi|vecmas|zbritje|zbritje-fjale"). Dieselbe Funktion
+// laeuft vorab aus dem Kopf von index.html mit dem gemerkten Preis.
+export function preiseAnwenden(dok, { cmimi, vecmas, zbritje }) {
+  for (const el of dok.querySelectorAll?.("[data-preis]") || []) {
+    const art = el.dataset.preis;
+    if (art === "cmimi") el.textContent = `${cmimi} €`;
+    else if (art === "vecmas") el.textContent = `${vecmas} €`;
+    else if (art === "zbritje") el.textContent = `−${zbritje} %`;
+    else if (art === "zbritje-fjale") el.textContent = `ZBRITJE −${zbritje} %`;
+  }
+  for (const el of dok.querySelectorAll?.("[data-preis-zbritje]") || []) el.hidden = !zbritje;
+}
+
 export function kundenAuswahl(roh) {
   return medienListe(roh).filter(m => m.aktiv && (m.art === 'video' ? m.video : m.bild));
 }
@@ -222,6 +238,13 @@ export class Dyqan {
   }
 
   starte() {
+    // Der gemerkte Preis gilt, bis Heart antwortet - sonst sprang die
+    // Karte vom Standardpreis auf den eigenen.
+    try {
+      const gemerkt = JSON.parse(this.dauer?.getItem?.("lifeskinshop:cmimi") || "null");
+      if (gemerkt?.cmimi > 0 && this.setet[0] && !this.setet[0].cmimi) this.setet[0] = { ...this.setet[0], cmimi: gemerkt.cmimi };
+      if (this.korb.ids.length && this.setet[0]) this.korb.cmimi = setPreis(this.setet[0]);
+    } catch { /* ohne Speicher: Staffel */ }
     if (!PAK_SETE) this.dok.querySelectorAll(".pak-sete").forEach((z) => z.remove());
     this.#zeichneSetet();
     this.#zeichneMittel();
@@ -462,7 +485,8 @@ export class Dyqan {
     const label = $("#sticky-label", this.dok);
     if (label) label.textContent = erstes.titulli;
     const preis = $("#sticky-price", this.dok);
-    if (preis) preis.textContent = `${preisFuer(erstes.produkte.length)} €`;
+    if (preis) preis.textContent = `${setPreis(erstes)} €`;
+    this.#preiseZeigen(erstes);
   }
 
   // Einzeln verkauft wird, was in einem Set steht, das im Shop ist (Wunsch
@@ -470,6 +494,19 @@ export class Dyqan {
   // kommen seine Mittel hier dazu. Ohne Sets: alle Mittel.
   einzelMittel() {
     return einzelAusSets(this.mittel, this.setet);
+  }
+
+  // DER PREIS AUS HEART UEBERALL, WO ER FEST IM AUFBAU STEHT (30.09.):
+  // Leiste, Titel-Angebot, Kaufknopf, Hinweis unter Dr. Gashi. Rabatt und
+  // "Veçmas" werden gerechnet; ist der Setpreis nicht unter den
+  // Einzelpreisen, verschwinden sie. Gemerkt auf dem Geraet, damit beim
+  // naechsten Oeffnen sofort der richtige Preis dasteht.
+  #preiseZeigen(set) {
+    const cmimi = setPreis(set);
+    const vecmas = set.produkte.length * preisFuer(1);
+    const zbritje = vecmas > cmimi ? Math.round((1 - cmimi / vecmas) * 100) : 0;
+    try { this.dauer?.setItem?.("lifeskinshop:cmimi", JSON.stringify({ cmimi, vecmas, zbritje })); } catch { /* egal */ }
+    preiseAnwenden(this.dok, { cmimi, vecmas, zbritje });
   }
 
   #zeichneMittel() {
@@ -559,7 +596,7 @@ export class Dyqan {
 
   #setDetail(s) {
     this.#merke({ produkteGesehen: true }, "produkteGesehen");
-    const preis = preisFuer(s.produkte.length);
+    const preis = setPreis(s);
     const figuren = s.produkte.map((id) => this.mittelVon(id)).filter(Boolean)
       .map((m) => `<figure><img src="${e(m.fotot[0])}" alt="${e(m.name)}" width="300" height="375"><figcaption><strong>${e(m.name)}</strong>${e(MITTEL_NENTITUJ[m.id] || m.kurztext || m.nenName || "")}</figcaption></figure>`).join("");
     this.#blatt(`<h2 id="sheet-title">${e(s.titulli)}</h2><p>${e(s.detaje || s.teksti)}</p><div class="detail-products">${figuren}</div><div class="total"><span>Seti me ${s.produkte.length} produkte</span><strong>${preis} €</strong></div><button type="button" class="primary" data-set="${e(s.id)}">Zgjidh këtë set ${ikone("ArrowUpRight")}</button>`, "SETI");
@@ -591,7 +628,7 @@ export class Dyqan {
     if (!s) return;
     // Ein Set ersetzt den Korb: eine Routine auf einmal, keine
     // zufaellige Mischung von Wirkstoffen.
-    this.korb = { ids: [...s.produkte], set: s.id };
+    this.korb = { ids: [...s.produkte], set: s.id, cmimi: setPreis(s) };
     this.#nachLegen();
     this.#korbBlatt();
     const status = $("#status", this.dok);
@@ -764,7 +801,7 @@ export class Dyqan {
       if ("klientSpiel" in d) { this.#klientVideo(knopf.closest(".klient-buehne")); return; }
       if ("klient" in d) {
         const m = this.klienten?.[Number(d.klient)];
-        if (m) this.#blatt(`${klientBlatt(m)}<button type="button" class="primary" data-set="${e(this.setet[0]?.id || "")}">Porosit setin · ${preisFuer(2)} € ${ikone("ArrowUpRight")}</button>`, "NGA KLIENTËT TANË");
+        if (m) this.#blatt(`${klientBlatt(m)}<button type="button" class="primary" data-set="${e(this.setet[0]?.id || "")}">Porosit setin · ${this.setet[0] ? setPreis(this.setet[0]) : preisFuer(2)} € ${ikone("ArrowUpRight")}</button>`, "NGA KLIENTËT TANË");
         return;
       }
       if ("single" in d) { this.mittelLegen(d.single); return; }

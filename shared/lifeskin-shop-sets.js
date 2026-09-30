@@ -17,6 +17,8 @@
 // vorerst nur dieses Set). Njolla und Pore liegen ausgeblendet bereit;
 // Heart schaltet sie mit "Im Shop" ein, die erste Aenderung speichert.
 
+import { preisFuer } from "./lifeskin-preise.js";
+
 export const SETET_DOK = "shopSetet";
 export const SET_FOTO_PRAEFIX = "shopSetFoto-";
 export const SETET_MAX = 12;
@@ -106,8 +108,20 @@ export function setNormalisieren(roh = {}) {
     produkte,
     foto: ortsBild(roh.foto),
     bild: roh.bild === true,
-    aktiv: roh.aktiv !== false
+    aktiv: roh.aktiv !== false,
+    // Eigener Preis des Sets in Euro (Heart, 30.09.). 0 = nach der Staffel.
+    cmimi: setCmimiGueltig(roh.cmimi)
   };
+}
+
+export function setCmimiGueltig(w) {
+  const n = Math.round(Number(w));
+  return Number.isFinite(n) && n >= 1 && n <= 999 ? n : 0;
+}
+
+// Der Preis, zu dem das Set verkauft wird: der eigene aus Heart, sonst die Staffel.
+export function setPreis(s) {
+  return setCmimiGueltig(s?.cmimi) || preisFuer((s?.produkte || []).length);
 }
 
 export function setetNormalisieren(liste) {

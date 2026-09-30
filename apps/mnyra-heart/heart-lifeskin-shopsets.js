@@ -9,7 +9,7 @@
 import { escapeHtml } from "./heart-ui-utils.js";
 import { renderHeartIcon } from "./heart-icons.js";
 import { klappAttr } from "./heart-lifeskin-klapp.js";
-import { SETET_STANDARD, SET_PRODUKTE_MAX, setetNormalisieren, SHOP_HERO_VERHAELTNIS } from "../../shared/lifeskin-shop-sets.js";
+import { SETET_STANDARD, SET_PRODUKTE_MAX, setetNormalisieren, SHOP_HERO_VERHAELTNIS, setPreis } from "../../shared/lifeskin-shop-sets.js";
 import { preisFuer } from "../../shared/lifeskin-preise.js";
 
 // Die Liste, mit der Heart arbeitet: gespeichert, sonst die drei Sets, die
@@ -39,7 +39,7 @@ export function renderShopSetet(zustand, produkte) {
           : `<span class="heart-rasti-bild heart-rasti-bild--leer"><i>Foto</i></span>`}</div>
         <div class="heart-rasti-leib">
           <b>${escapeHtml(s.titulli)}</b>
-          <small>${escapeHtml([s.nevoja, s.produkte.map((id) => produktName(produkte, id)).join(" + "), `${preisFuer(s.produkte.length)} €`].filter(Boolean).join(" · "))}</small>
+          <small>${escapeHtml([s.nevoja, s.produkte.map((id) => produktName(produkte, id)).join(" + "), `${setPreis(s)} €`].filter(Boolean).join(" · "))}</small>
           ${s.aktiv ? "" : `<small class="heart-rasti-aus">Ausgeblendet – steht nicht im Shop</small>`}
         </div>
         <div class="heart-rasti-orte">
@@ -64,7 +64,7 @@ export function renderShopSetet(zustand, produkte) {
       </summary>
       <p class="heart-lifeskin-block__fuss">
         Die Sets auf <b>mnyra.com/lifeskinshop</b> – in dieser Reihenfolge; das erste steht oben und in der Leiste.
-        Der Preis kommt aus der Staffel (1 Produkt ${preisFuer(1)} €, 2 = ${preisFuer(2)} €, 3 = ${preisFuer(3)} €).
+        Preis: eigener Preis im Set (Bearbeiten), sonst die Staffel (1 Produkt ${preisFuer(1)} €, 2 = ${preisFuer(2)} €, 3 = ${preisFuer(3)} €).
         Einzelprodukte = Karte <b>Produkte</b> (mit ihren Bildern), Vorher/Nachher = <b>Ergebnisse</b> mit Ort <b>Shop</b>.
       </p>
       ${gespeichert ? "" : `<p class="heart-rasti-hinweis">Das sind die Sets, die jetzt im Shop stehen. Mit der ersten Änderung werden sie hier gespeichert.</p>`}
@@ -120,9 +120,15 @@ export function renderShopSetEditor(zustand, produkte) {
       ${feld("detaje", "Text in den Details (+)", "LF ACNE për … LF MOISTUR për …", 400, s.detaje, true)}
 
       <div class="heart-lifeskin-feld">
-        <span>Produkte im Set (höchstens ${SET_PRODUKTE_MAX}) – Preis nach Staffel</span>
+        <span>Produkte im Set (höchstens ${SET_PRODUKTE_MAX})</span>
         ${produktHaken || `<p class="heart-lifeskin-leer">Noch keine Produkte – Karte „Produkte“.</p>`}
       </div>
+
+      <label class="heart-lifeskin-feld">
+        <span>Preis des Sets in € – leer = Staffel (${preisFuer((s.produkte || []).length || 2)} €)</span>
+        <input class="heart-lifeskin-eingabe" data-shopsetfeld="cmimi" type="number" inputmode="numeric" min="1" max="999" step="1"
+               placeholder="${preisFuer((s.produkte || []).length || 2)}" value="${s.cmimi ? escapeHtml(String(s.cmimi)) : ""}" />
+      </label>
 
       <div class="heart-lifeskin-feld">
         <span>Zeigen</span>

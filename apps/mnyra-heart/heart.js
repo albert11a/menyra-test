@@ -2460,6 +2460,7 @@ async function speichereShopSet() {
     teksti: e.teksti ?? alt?.teksti,
     detaje: e.detaje ?? alt?.detaje,
     produkte,
+    cmimi: e.cmimi ?? alt?.cmimi,
     aktiv: e.aktiv ?? alt?.aktiv ?? true,
     foto: neuesBild ? "" : alt?.foto,
     bild: neuesBild || alt?.bild === true

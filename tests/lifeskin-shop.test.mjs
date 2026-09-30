@@ -246,12 +246,18 @@ test("Acne-Duo-Kampagne laesst keine weiteren Sets oder halben Koerbe zu", async
   const sets=acneDuoSets([{id:"other",produkte:["lf-pigment","lf-moistur"]},duo,{id:"extra",produkte:["lf-acne","lf-moistur","lf-pore"]}]);
   assert.deepEqual(sets,[duo]);
   assert.deepEqual(acneDuoCart({ids:["lf-acne"],set:""},sets),{ids:[],set:""});
-  assert.deepEqual(acneDuoCart({ids:["lf-acne","lf-moistur"],set:"old"},sets),{ids:duo.produkte,set:duo.id});
+  assert.deepEqual(acneDuoCart({ids:["lf-acne","lf-moistur"],set:"old"},sets),{ids:duo.produkte,set:duo.id,cmimi:39});
+  // Eigener Preis aus Heart (30.09.): Korb, Summe und Karte folgen ihm.
+  const { summe } = await import("../apps/lifeskin-shop/shop.js");
+  const teuer = acneDuoCart({ids:["lf-acne","lf-moistur"]},[{...duo,cmimi:45}]);
+  assert.equal(summe(teuer),45);
+  assert.match(duoCard({...duo,cmimi:45},[]),/data-preis="cmimi">45 €/);
+  assert.doesNotMatch(duoCard({...duo,cmimi:60},[]),/ZBRITJE/, "kein Rabatt ueber den Einzelpreisen");
   assert.deepEqual(acneDuoCart({ids:duo.produkte},[]),{ids:[],set:""});
   const card=duoCard(duo,[]);
   assert.equal((card.match(/<details/g)||[]).length,3, "ein Aufklapper fuer Anwendung, je ein 'Lexo më shumë'");
   assert.match(card,/Benzoyl peroxide 5 %/);
-  assert.match(card,/<s>58 €<\/s>/);
+  assert.match(card,/<s data-preis="vecmas" data-preis-zbritje>58 €<\/s>/);
   assert.match(card,/45 ditë garanci/);
   assert.match(card,/data-set="custom-acne"/);
   assert.doesNotMatch(card,/data-single/);
