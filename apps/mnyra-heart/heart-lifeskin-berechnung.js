@@ -1538,3 +1538,148 @@ export function kaufChancen(sitzungen, berichte = {}) {
   }
   return ergebnis;
 }
+
+// NACHFASSEN: JEDER WARENKORB UND JEDE KASSE, SOFORT (30.09., Inhaber).
+//
+// Bisher standen hier nur Analysefaelle, die ihren Befund gelesen, die Kasse
+// geoeffnet und seit einer halben Stunde nichts getan hatten. Jetzt steht
+// jeder Warenkorb da - im Laden wie auf der Therapieseite -, sofort und
+// egal, ob jemand an der Kasse nur einen Buchstaben getippt hat. Dazu:
+//   - woher er kam (herkunftArt)
+//   - wie lange er an der Kasse war und welche Felder er angetippt hat
+//     (kasseInfo)
+//   - was er nach dem Warenkorb getippt hat (nachDemKorb)
+// Alles rueckwirkend aus Herkunft und Klickpfad (seit 23.09.).
+
+// WOHER: sicher "Anzeige" nur mit Kampagne oder Anzeige in der Adresse
+// (utm_campaign / utm_content - die setzt nur die Anzeige). fbclid allein
+// haengt Meta an JEDEN Link aus Instagram/Facebook, auch an den im Profil:
+// "Meta-Link", nicht "Anzeige".
+const HERKUNFT_NETZ = Object.freeze({
+  ig: "Instagram", instagram: "Instagram", fb: "Facebook", facebook: "Facebook",
+  an: "Audience Network", msg: "Messenger", messenger: "Messenger"
+});
+export function herkunftArt(sitzung) {
+  const q = sitzung?.source || {};
+  const kampagne = String(q.utmCampaign || "").trim();
+  const anzeige = String(q.utmContent || "").trim();
+  const quelle = String(q.utmSource || "").trim();
+  const netz = HERKUNFT_NETZ[quelle.toLowerCase()] || quelle;
+  if (kampagne.toLowerCase() === "test") return { art: "test", label: "Test", detail: "" };
+  if (kampagne || anzeige) {
+    return { art: "anzeige", label: "Anzeige", detail: [netz, kampagne, anzeige].filter(Boolean).join(" · ") };
+  }
+  const ref = String(q.referrer || "").replace(/^https?:\/\/(www\.|m\.|l\.|lm\.)?([^/?#]+).*/i, "$2");
+  const app = String(sitzung?.device?.app || "");
+  const appName = { instagram: "Instagram", facebook: "Facebook", messenger: "Messenger" }[app] || "";
+  if (q.fbc) {
+    return { art: "meta", label: "Meta-Link", detail: `${appName || netz || "Instagram/Facebook"} · ohne Anzeigen-Kennung (Profil, Beitrag – oder Anzeige ohne URL-Parameter)` };
+  }
+  if (netz) return { art: "quelle", label: netz, detail: "" };
+  if (ref) return { art: "verweis", label: ref, detail: "" };
+  if (appName) return { art: "app", label: appName, detail: "in der App geöffnet, ohne Link-Kennung" };
+  return { art: "direkt", label: "Direkt", detail: "Link getippt, kopiert oder aus WhatsApp" };
+}
+
+// DIE KASSE: im Laden der Abschnitt "kasa", auf der Therapieseite der
+// "Bestellschirm". Die Dauer ist das Laengere von zwei Messungen:
+//   - "gesehen": wie lange der Abschnitt wirklich im Bild war (der Klickpfad
+//     misst das selbst, auch wenn jemand die App wechselt)
+//   - die Spanne vom Oeffnen bis zum ersten Tippen ausserhalb der Kasse
+//     (Pausen ueber ANALYSE_PAUSE_MS zaehlen nicht)
+const KASSE_ABSCHNITTE = new Set(["kasa", "Bestellschirm"]);
+const KASSE_FELDER = Object.freeze({
+  name: "Emri", tel: "Telefoni", "street-address": "Adresa", city: "Qyteti",
+  "Emri dhe mbiemri": "Emri", "Numri i telefonit": "Telefoni", "Rruga dhe numri": "Adresa", Qyteti: "Qyteti"
+});
+function abschnittVonEreignis(e) {
+  const teile = String(e.d || "").split(" · ");
+  return teile.length > 1 ? teile[teile.length - 1] : "";
+}
+// Die Knoepfe, die die Kasse schliessen ("Kthehu", "Në rregull", "Kthehu te
+// terapia"): Mit ihnen ist er draussen, auch wenn das Tippen selbst noch in
+// der Kasse lag.
+const KASSE_ZU = /^(Kthehu|Në rregull)/;
+function schliesstKasse(e) {
+  return e.e === "klick" && KASSE_ABSCHNITTE.has(abschnittVonEreignis(e)) && KASSE_ZU.test(e.d);
+}
+function inDerKasse(e) {
+  return e.e === "kasse" || KASSE_ABSCHNITTE.has(abschnittVonEreignis(e))
+    || (e.e === "fehler" && e.d.startsWith("Bestellung"));
+}
+export function kasseInfo(sitzung) {
+  const pfad = pfadLesen(sitzung).filter((e) => Number.isFinite(Date.parse(e.t)));
+  const warDort = sitzung?.kasseGeoeffnet === true || pfad.some(inDerKasse);
+  if (!warDort) return null;
+  let gesehenMs = 0;
+  for (const e of pfad) {
+    if (e.e !== "gesehen") continue;
+    const m = /^(.*) · (\d+) s$/.exec(e.d);
+    if (m && KASSE_ABSCHNITTE.has(m[1])) gesehenMs += Number(m[2]) * 1000;
+  }
+  // Oeffnungen: die Ereignisse "kasse" (Therapieseite), im Laden der
+  // gemerkte Zeitpunkt kasseGeoeffnetAt.
+  const auf = pfad.filter((e) => e.e === "kasse").map((e) => Date.parse(e.t));
+  const ladenAuf = Date.parse(sitzung?.kasseGeoeffnetAt || "");
+  if (!auf.length && Number.isFinite(ladenAuf)) auf.push(ladenAuf);
+  // Das erste Ereignis ausserhalb der Kasse ist der Moment, in dem er sie
+  // verliess - auch ihr eigenes "gesehen", das beim Verlassen kommt.
+  let spanneMs = 0;
+  let gemessen = gesehenMs > 0;
+  for (const ab of auf) {
+    let ende = ab;
+    for (const e of pfad) {
+      const t = Date.parse(e.t);
+      if (t <= ab) continue;
+      if (t - ende > ANALYSE_PAUSE_MS) break;
+      ende = t;
+      gemessen = true;
+      if (!inDerKasse(e) || schliesstKasse(e)) break;
+    }
+    spanneMs += ende - ab;
+  }
+  const felder = [...new Set(pfad.filter((e) => e.e === "feld" && inDerKasse(e))
+    .map((e) => { const name = String(e.d).split(" · ")[0]; return KASSE_FELDER[name] || name; }))];
+  return { ms: gemessen ? Math.max(gesehenMs, spanneMs) : null, felder, oeffnungen: auf.length || 1 };
+}
+
+// WANN KAM ER IN DEN WARENKORB? Im Laden das erste Tippen auf einen
+// Set-Knopf ("Porosit setin", "Zgjidh këtë set"), auf der Therapieseite
+// der Warenkorb oder die Kasse. Ohne Klickpfad: als die Kasse aufging.
+const KORB_KNOPF = /^(Porosit setin|Zgjidh këtë set)/;
+export function korbZeitpunkt(sitzung) {
+  const pfad = pfadLesen(sitzung);
+  const i = pfad.findIndex((e) => (e.e === "klick" && KORB_KNOPF.test(e.d))
+    || (e.s === "Therapieseite" && (e.e === "kasse" || abschnittVonEreignis(e) === "Warenkorb")));
+  if (i >= 0) return { t: pfad[i].t, index: i };
+  const kasse = String(sitzung?.kasseGeoeffnetAt || "");
+  return { t: kasse, index: -1 };
+}
+
+// WAS ER DANACH GETIPPT HAT - ohne Lesezeiten und Scrollen, die gehoeren in
+// den ganzen Klickpfad des Falls.
+const DANACH_ARTEN = new Set(["klick", "aufgeklappt", "feld", "kasse", "bestellt", "fehler", "verlassen", "zurueck", "bildschirm", "geoeffnet"]);
+export function nachDemKorb(sitzung, max = 8) {
+  const pfad = pfadLesen(sitzung);
+  const { index } = korbZeitpunkt(sitzung);
+  if (index < 0) return { eintraege: [], mehr: 0, ohnePfad: !pfad.length };
+  const danach = pfad.slice(index + 1).filter((e) => DANACH_ARTEN.has(e.e));
+  return { eintraege: danach.slice(0, max), mehr: Math.max(0, danach.length - max), ohnePfad: false };
+}
+
+export function nachfassKoerbe(sitzungen) {
+  return (sitzungen || [])
+    .filter(imWarenkorb)
+    .map((s) => {
+      const korb = korbZeitpunkt(s);
+      return {
+        sitzung: s,
+        zeit: korb.t || s.kasseGeoeffnetAt || s.updatedAt || s.createdAt || "",
+        herkunft: herkunftArt(s),
+        kasse: kasseInfo(s),
+        danach: nachDemKorb(s),
+        bestellt: s.hatBestellt === true
+      };
+    })
+    .sort((a, b) => String(b.zeit).localeCompare(String(a.zeit)));
+}

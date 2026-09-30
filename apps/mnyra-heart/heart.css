@@ -10388,3 +10388,44 @@ html:where([data-heart-theme="tag"]),
 :where(html[data-heart-theme="tag"]) .heart-nachfass-knopf--an,
 :where(html[data-heart-theme="tag"]) .heart-faelle .heart-nachfass-punkt--an { background: #16a34a; border-color: #16a34a; color: #fff; }
 :where(html[data-heart-theme="tag"]) .heart-faelle .heart-nachfass-punkt { border-color: #d6d6d0; color: #888; }
+
+/* NACHFASSEN (30.09., Inhaber): jeder Warenkorb als Karte - wer, woher,
+   Kasse, was danach. */
+.heart-nachfass-koerbe { display: grid; gap: 10px; margin-top: 10px; }
+.heart-nachfass-korb {
+  display: grid; gap: 7px; width: 100%; text-align: left; padding: 12px;
+  border: 1px solid var(--heart-line, #34383a); border-radius: 14px;
+  background: #ffffff08; color: var(--heart-text, #f7f7f2); font: inherit; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.heart-nachfass-korb:active { transform: scale(0.99); }
+.heart-nachfass-korb__kopf { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 14px; }
+.heart-nachfass-korb__kopf b { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.heart-nachfass-korb__kopf span { flex: none; color: var(--heart-text-soft, #c7c7c2); font-variant-numeric: tabular-nums; }
+.heart-nachfass-korb__kopf time { margin-left: auto; flex: none; font-size: 12px; color: var(--heart-text-soft, #9a9a95); }
+.heart-nachfass-korb__chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.heart-nachfass-chip {
+  display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 600; white-space: nowrap;
+  background: #ffffff12; color: var(--heart-text-soft, #c7c7c2);
+}
+.heart-nachfass-chip--herkunft-anzeige { background: #3b82f6; color: #fff; }
+.heart-nachfass-chip--herkunft-meta { background: #3b82f633; color: #9cc2ff; }
+.heart-nachfass-chip--kasse { background: #f4b9422e; color: #f6cd7a; }
+.heart-nachfass-chip--felder { background: #f4b942; color: #1d1a12; }
+.heart-nachfass-chip--bestellt { background: #22c55e; color: #fff; }
+.heart-nachfass-korb__herkunft { font-size: 11.5px; color: var(--heart-text-soft, #9a9a95); overflow-wrap: anywhere; }
+.heart-nachfass-korb__titel { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--heart-text-soft, #8b8b86); margin-top: 2px; }
+.heart-nachfass-korb__danach { display: grid; gap: 3px; font-size: 12.5px; line-height: 1.35; }
+.heart-nachfass-korb__danach > span { display: block; padding-left: 12px; position: relative; overflow-wrap: anywhere; }
+.heart-nachfass-korb__danach > span::before { content: "›"; position: absolute; left: 0; color: var(--heart-text-soft, #8b8b86); }
+.heart-nachfass-korb__danach > .heart-nachfass-korb__mehr { color: var(--heart-text-soft, #8b8b86); }
+.heart-nachfass-korb__danach > .heart-nachfass-korb__mehr::before { content: ""; }
+.heart-nachfass-korb__nichts { font-size: 12.5px; color: var(--heart-text-soft, #8b8b86); }
+:where(html[data-heart-theme="tag"]) .heart-nachfass-korb { background: #fff; border-color: #e3e3dd; color: #1c1c1a; }
+:where(html[data-heart-theme="tag"]) .heart-nachfass-chip { background: #efefea; color: #444; }
+:where(html[data-heart-theme="tag"]) .heart-nachfass-chip--herkunft-anzeige { background: #2563eb; color: #fff; }
+:where(html[data-heart-theme="tag"]) .heart-nachfass-chip--herkunft-meta { background: #dbe8ff; color: #1d4ed8; }
+:where(html[data-heart-theme="tag"]) .heart-nachfass-chip--kasse { background: #fdf0d2; color: #8a5a00; }
+:where(html[data-heart-theme="tag"]) .heart-nachfass-chip--felder { background: #e0a21a; color: #fff; }
+:where(html[data-heart-theme="tag"]) .heart-nachfass-chip--bestellt { background: #16a34a; color: #fff; }

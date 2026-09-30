@@ -20,7 +20,7 @@ import { renderHeartIcon, renderGeraetZeichen } from "./heart-icons.js";
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
 import { LANDING_SCHIRME, landingLesen } from "../../shared/lifeskin-landingtiefe.js";
-import { analyseBesuche, kasseAbsicht, kaufChancen, tagesschluessel, ZEITRAEUME, TYPEN, typVon, istAnalyse, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueZweige, baueBereitschaft, baueMaintrichter, baueKauftrichter, baueLandingtrichter, ohneScanGelaufen, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
+import { nachfassKoerbe, analyseBesuche, kasseAbsicht, kaufChancen, tagesschluessel, ZEITRAEUME, TYPEN, typVon, istAnalyse, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueZweige, baueBereitschaft, baueMaintrichter, baueKauftrichter, baueLandingtrichter, ohneScanGelaufen, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
 // (Die eigenen Texte der alten Analyseseite werden nicht mehr bearbeitet - sie reisen unsichtbar mit.)
 // Die Antworten aus dem Trichter, uebersetzt - aus DERSELBEN Quelle, aus
 // der auch der Prompt gefuellt wird. Eine eigene Tabelle hier waere eine
@@ -793,62 +793,84 @@ function renderBestellungen(sitzungen, zeitraum = "heute") {
     </section>`, "bestellungen", { zahl, ton: gewaehlt.length ? "offen" : "" });
 }
 
-// DIE LISTE ZUM ANRUFEN - und nur die.
+// NACHFASSEN (30.09., Inhaber): JEDER WARENKORB, JEDE KASSE - SOFORT.
 //
-// HIER STANDEN FAST ALLE. Aufgenommen wurde, wer eine Anschrift begonnen
-// ODER eine Nummer hinterlassen hat - und die Nummer hinterlaesst im
-// Trichter inzwischen jeder. Damit stand in "Nachfassen" jeder, der
-// nicht gekauft hat, und eine Liste zum Anrufen, in der alle stehen,
-// wird nicht abgearbeitet, sondern weggeklickt.
-//
-// Jetzt steht hier nur, wer WIRKLICH abgebrochen hat: Antwort gesehen,
-// Kasse geoeffnet, nicht bestellt, und lange genug her, dass er nicht
-// mehr tippt (siehe istAbbrecher). Das sind die, bei denen ein Anruf
-// etwas bedeutet - sie wollten kaufen.
-function renderNachfassen(kennzahlen) {
-  const eintraege = [...kennzahlen.abbrecher]
-    .sort((a, b) => String(b.kasseGeoeffnetAt || b.updatedAt)
-      .localeCompare(String(a.kasseGeoeffnetAt || a.updatedAt)))
-    .slice(0, 300);
+// Vorher stand hier nur, wer seinen Befund gelesen, die Kasse geoeffnet
+// und seit einer halben Stunde nichts getan hatte. Jetzt steht jeder
+// Warenkorb da, im Laden wie auf der Therapieseite, sofort - auch wer an
+// der Kasse nur einen Buchstaben getippt hat. Je Korb: woher er kam, wie
+// lange er an der Kasse war, welche Felder er angetippt hat, und was er
+// nach dem Warenkorb getippt hat (nachfassKoerbe, rueckwirkend aus Herkunft
+// und Klickpfad). Wer bestellt hat, bleibt mit "Bestellt" in der Liste -
+// so ist jeder Korb zu sehen -, zaehlt oben aber nicht als offen.
+function sekundenText(ms) {
+  const s = Math.max(0, Math.round(ms / 1000));
+  return s >= 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s} s`;
+}
+
+// Der Schritt in Worten - mit lesbaren Namen fuer die Felder und die Kasse
+// des Ladens ("tel · kasa" -> "Telefoni · Kasse").
+const KORB_WORTE = Object.freeze({ name: "Emri", tel: "Telefoni", "street-address": "Adresa", city: "Qyteti", kasa: "Kasse" });
+function korbSatz(e) {
+  const d = String(e.d || "").split(" · ").map((teil) => KORB_WORTE[teil] || teil).join(" · ");
+  return pfadSatz({ ...e, d });
+}
+
+function renderNachfassen(sitzungen) {
+  const koerbe = nachfassKoerbe(sitzungen).slice(0, 300);
+  const offen = koerbe.filter((k) => !k.bestellt).length;
 
   // Zugeklappt, bis jemand hineinsieht - mit der Zahl im Kopf, damit man
   // auch zugeklappt weiss, ob etwas wartet.
-  const klapp = (zahl, inhalt) => `
+  const klapp = (inhalt) => `
     <details class="heart-lifeskin-block heart-klapp" ${klappAttr("nachfassen")}>
       <summary class="heart-klapp__kopf">
         <h3 class="heart-lifeskin-block__titel">Nachfassen</h3>
-        <span class="heart-klapp__zahl${zahl ? " heart-klapp__zahl--offen" : ""}">${zahl ? `${zahl} offen` : "niemand offen"}</span>
+        <span class="heart-klapp__zahl${offen ? " heart-klapp__zahl--offen" : ""}">${offen ? `${offen} offen` : "niemand offen"}</span>
       </summary>
       ${inhalt}
     </details>`;
 
-  if (!eintraege.length) {
-    return klapp(0, `<p class="heart-lifeskin-block__fuss">Niemand offen — kein angefangener Kauf, der liegen geblieben ist.</p>`);
+  if (!koerbe.length) {
+    return klapp(`<p class="heart-lifeskin-block__fuss">Noch kein Warenkorb.</p>`);
   }
 
-  const zeilen = eintraege.map((sitzung) => {
+  const zeilen = koerbe.map(({ sitzung, zeit, herkunft, kasse, danach, bestellt }) => {
     const nummer = sitzung.phone || sitzung.address?.telefon || "";
-    // Woran er haengengeblieben ist: an der Anschrift oder schon am
-    // Bestellschirm. Zwei verschiedene Gespraeche - beim einen fehlt
-    // das Vertrauen, beim anderen die Adresse.
-    const art = sitzung.hatAnschrift ? "Anschrift" : "Kasse";
+    const wer = sitzung.name || sitzung.address?.name || sitzung.code || "Ohne Namen";
+    const chip = (klasse, text, titel = "") => `<span class="heart-nachfass-chip heart-nachfass-chip--${klasse}"${
+      titel ? ` title="${escapeHtml(titel)}"` : ""}>${escapeHtml(text)}</span>`;
+    const kasseChip = !kasse ? (bestellt ? "" : chip("korb", "Nur Warenkorb"))
+      : chip("kasse", kasse.ms === null ? "Kasse · Dauer ?" : `Kasse ${sekundenText(kasse.ms)}`,
+        kasse.oeffnungen > 1 ? `${kasse.oeffnungen}× geöffnet` : "");
+    const felderChip = !kasse ? ""
+      : kasse.felder.length ? chip("felder", `getippt: ${kasse.felder.join(", ")}`) : chip("leer", "nichts getippt");
+    const weiter = danach.eintraege.map((e) => `<span>${escapeHtml(korbSatz(e))}</span>`).join("")
+      + (danach.mehr ? `<span class="heart-nachfass-korb__mehr">+ ${danach.mehr} weitere</span>` : "");
+    const danachText = danach.eintraege.length
+      ? `<span class="heart-nachfass-korb__danach">${weiter}</span>`
+      : `<span class="heart-nachfass-korb__nichts">${danach.ohnePfad ? "Kein Klickpfad (vor dem 23.09.)" : "Danach nichts mehr getippt."}</span>`;
     return `
-    <button type="button" class="heart-lifeskin-zeile" data-action="lifeskin-sitzung" data-id="${escapeHtml(sitzung.id)}">
-      <span class="heart-lifeskin-zeile__zeit">${escapeHtml(datumKurz(sitzung.kasseGeoeffnetAt || sitzung.updatedAt))} ${escapeHtml(uhrzeit(sitzung.kasseGeoeffnetAt || sitzung.updatedAt))}</span>
-      <span class="heart-lifeskin-zeile__leib">
-        <b>${escapeHtml(sitzung.name || sitzung.address?.name || "—")}</b>
-        <small>${escapeHtml(nummer || "ohne Nummer")} · ${escapeHtml(sitzung.code || "")}</small>
+    <button type="button" class="heart-nachfass-korb" data-action="lifeskin-sitzung" data-id="${escapeHtml(sitzung.id)}">
+      <span class="heart-nachfass-korb__kopf">
+        <b>${escapeHtml(wer)}</b>
+        <span>${escapeHtml(nummer || "ohne Nummer")}</span>
+        <time>${escapeHtml(datumKurz(zeit).replace(/\.$/, ""))} ${escapeHtml(uhrzeit(zeit))}</time>
       </span>
-      <span class="heart-lifeskin-marke heart-lifeskin-marke--offen">${escapeHtml(art)}</span>
+      <span class="heart-nachfass-korb__chips">
+        ${chip(`herkunft-${herkunft.art}`, herkunft.label, herkunft.detail)}${kasseChip}${felderChip}${bestellt ? chip("bestellt", "Bestellt") : ""}
+      </span>
+      ${herkunft.detail ? `<small class="heart-nachfass-korb__herkunft">${escapeHtml(herkunft.detail)}</small>` : ""}
+      <span class="heart-nachfass-korb__titel">Nach dem Warenkorb</span>
+      ${danachText}
     </button>`;
   }).join("");
 
-  return klapp(eintraege.length, `
+  return klapp(`
       <p class="heart-lifeskin-block__fuss">
-        Kasse geoeffnet, nicht bestellt, laenger als eine halbe Stunde her —
-        mit Fallnummer und Kontakt.
+        Jeder Warenkorb, sofort – woher, wie lange an der Kasse, was danach getippt wurde.
       </p>
-      <div class="heart-lifeskin-zeilen">${zeilen}</div>`);
+      <div class="heart-nachfass-koerbe">${zeilen}</div>`);
 }
 
 // JEDE SEITE ANSEHEN, OHNE EINE ZAHL ZU BEWEGEN.
@@ -3575,7 +3597,7 @@ export function renderLifeskin(zustand) {
         zustand.vorschau || {}, { auswahl: zustand.auswahl ?? null, auswahlLoeschen: !!zustand.auswahlLoeschen })}
       ${renderBetreuung(zustandWeg)}
       ${renderBestellungen(alleDesWegs, zustand.bestellZeitraum || "heute")}
-      ${renderNachfassen(zahlen)}
+      ${renderNachfassen(alleDesWegs)}
       ${renderMedienReaktionen(zustand)}
 
       <!-- WAS NICHT JEDEN TAG GELESEN WIRD, STEHT NICHT JEDEN TAG IM WEG.

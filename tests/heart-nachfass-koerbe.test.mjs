@@ -1,0 +1,84 @@
+// NACHFASSEN (30.09., Inhaber): jeder Warenkorb, jede Kasse sofort - woher,
+// wie lange an der Kasse, welche Felder, was nach dem Warenkorb getippt wurde.
+import test from "node:test";
+import assert from "node:assert/strict";
+import { herkunftArt, kasseInfo, korbZeitpunkt, nachDemKorb, nachfassKoerbe } from "../apps/mnyra-heart/heart-lifeskin-berechnung.js";
+
+const T = (min, s = 0) => new Date(Date.UTC(2026, 8, 30, 10, min, s)).toISOString();
+const pfad = (liste) => ({ timings: { pfad: Object.fromEntries(liste.map(([t, s, e, d = ""], i) => [`p${i}`, { t, s, e, d }])) } });
+const L = "Landing/Trichter";
+const TH = "Therapieseite";
+
+test("Herkunft: Anzeige nur mit Kampagne oder Anzeige, fbclid allein ist ein Meta-Link", () => {
+  assert.equal(herkunftArt({ source: { utmSource: "ig", utmCampaign: "LS Kosovo", utmContent: "Video 3" } }).art, "anzeige");
+  assert.match(herkunftArt({ source: { utmSource: "ig", utmCampaign: "LS Kosovo", utmContent: "Video 3" } }).detail, /Instagram · LS Kosovo · Video 3/);
+  assert.equal(herkunftArt({ source: { utmCampaign: "120212345678" } }).art, "anzeige");
+  assert.equal(herkunftArt({ source: { fbc: "fb.1.1.abc" }, device: { app: "instagram" } }).art, "meta");
+  assert.equal(herkunftArt({ source: { referrer: "https://l.instagram.com/?u=x" } }).label, "instagram.com");
+  assert.equal(herkunftArt({ device: { app: "instagram" } }).art, "app");
+  assert.equal(herkunftArt({}).art, "direkt");
+  assert.equal(herkunftArt({ source: { utmCampaign: "test" } }).art, "test");
+});
+
+test("Laden: Warenkorb, danach getippt, Kasse mit Dauer und Feldern - auch nur ein Buchstabe", () => {
+  const s = {
+    id: "a", imKorb: true, kasseGeoeffnet: true, kasseGeoeffnetAt: T(2),
+    ...pfad([
+      [T(0), L, "geoeffnet"],
+      [T(1), L, "klick", "Porosit setin · 39 € · Landing: Produkte"],
+      [T(1, 30), L, "klick", "Vazhdo me porosinë · sheet"],
+      [T(2, 10), L, "feld", "tel · kasa"],
+      [T(2, 40), L, "klick", "Kthehu · kasa"],
+      [T(2, 41), L, "gesehen", "kasa · 38 s"],
+      [T(3), L, "verlassen"]
+    ])
+  };
+  assert.equal(korbZeitpunkt(s).t, T(1));
+  const k = kasseInfo(s);
+  // Offen um 2:00, "Kthehu" um 2:40 schliesst sie -> 40 s (laenger als die
+  // 38 s, die sie ganz im Bild war).
+  assert.equal(k.ms, 40 * 1000);
+  assert.deepEqual(k.felder, ["Telefoni"]);
+  const d = nachDemKorb(s);
+  assert.deepEqual(d.eintraege.map((e) => e.e), ["klick", "feld", "klick", "verlassen"]);
+});
+
+test("der Zurueck-Knopf der Kasse beendet die Kasse", () => {
+  const s = {
+    id: "z", imKorb: true, kasseGeoeffnet: true, kasseGeoeffnetAt: T(2),
+    ...pfad([[T(1), L, "klick", "Porosit setin · 39 € · Landing: Produkte"], [T(2, 30), L, "klick", "Kthehu · kasa"], [T(3, 30), L, "verlassen"]])
+  };
+  assert.equal(kasseInfo(s).ms, 30 * 1000);
+});
+
+test("Therapieseite: Bestellschirm zaehlt als Kasse, gesehen misst mit", () => {
+  const s = {
+    id: "b", berichtGeoeffnet: true, kasseGeoeffnet: true,
+    ...pfad([
+      [T(0), TH, "geoeffnet"],
+      [T(1), TH, "kasse", "Bestellschirm geöffnet · 39 €"],
+      [T(1, 5), TH, "klick", "Kthehu · Bestellschirm"],
+      [T(1, 6), TH, "gesehen", "Bestellschirm · 90 s"]
+    ])
+  };
+  const k = kasseInfo(s);
+  assert.equal(k.ms, 90 * 1000);
+  assert.deepEqual(k.felder, []);
+  assert.equal(korbZeitpunkt(s).t, T(1));
+});
+
+test("die Liste: jeder Korb, sofort, neueste oben; Bestellte bleiben mit Marke", () => {
+  const liste = nachfassKoerbe([
+    { id: "leser", berichtGeoeffnet: true, sahPreis: true },
+    { id: "alt", imKorb: true, updatedAt: T(0) },
+    { id: "jetzt", imKorb: true, kasseGeoeffnet: true, kasseGeoeffnetAt: T(5) },
+    { id: "kauf", hatBestellt: true, imKorb: true, updatedAt: T(3), order: { orderId: "x" } }
+  ]);
+  assert.deepEqual(liste.map((k) => k.sitzung.id), ["jetzt", "kauf", "alt"]);
+  assert.equal(liste.find((k) => k.sitzung.id === "kauf").bestellt, true);
+  // Ohne Klickpfad: Kasse ohne Dauer, kein "danach".
+  const jetzt = liste[0];
+  assert.equal(jetzt.kasse.ms, null, "ohne Klickpfad keine erfundene Dauer");
+  assert.equal(jetzt.danach.ohnePfad, true);
+  assert.equal(liste.find((k) => k.sitzung.id === "alt").kasse, null);
+});
