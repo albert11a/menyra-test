@@ -135,12 +135,6 @@ function zeitAus(wert) {
 export function istGeradeAktiv(sitzung, jetzt = Date.now(), fenster = LIVE_FENSTER_MS) {
   const zuletzt = zeitAus(sitzung?.updatedAt || sitzung?.createdAt);
   if (!zuletzt) return false;
-  // Die Seite hat "weg" gemeldet (Tab zu, App gewechselt) und seither
-  // nichts mehr getan: nicht mehr live - nicht erst nach drei Minuten.
-  const weg = zeitAus(sitzung?.timings?.weg);
-  // 1,5 s Spielraum: Die Therapieseite schreibt updatedAt mit derselben
-  // Meldung (shared/lifeskin-statistik.js), einen Augenblick nach "weg".
-  if (weg && weg >= zuletzt - 1500) return false;
   const alter = jetzt - zuletzt;
   // Auch die Zukunft faellt heraus: Eine Uhr, die vorgeht, machte sonst
   // aus einer alten Sitzung eine ewig aktive.

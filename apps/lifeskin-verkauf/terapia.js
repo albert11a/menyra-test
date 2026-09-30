@@ -319,18 +319,6 @@ export class Terapia {
       });
       if (this.pixel.starte()) this.pixel.melde("opened");
       this.quelle.merken({ timings: { live: this.bestellt ? "ordered" : "fertig" } });
-      // Weg und wieder da, wie im Trichter (lifeskin-session.js
-      // #anwesenheitMelden): Heart nimmt ihn beim "weg" sofort aus Live.
-      if (!this.nurVorschau) {
-        let zuletztWeg = false;
-        const melden = (weg) => {
-          if (weg === zuletztWeg) return;
-          zuletztWeg = weg;
-          this.quelle.merken(weg ? { timings: { weg: new Date().toISOString() } } : {});
-        };
-        document.addEventListener("visibilitychange", () => melden(document.visibilityState === "hidden"));
-        globalThis.addEventListener?.("pagehide", () => melden(true));
-      }
       this.#marke("berichtGeoeffnet");
       this.#kauf("geoeffnet");
       this.#abschnitteMessen();
