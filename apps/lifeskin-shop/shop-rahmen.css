@@ -402,3 +402,7 @@ html[data-ls-landing="lifeskinshop"] #ls-einstieg[data-aktiv="ja"]{animation:non
 #ls-einstieg .hero-pikat{position:absolute;z-index:2;right:12px;bottom:12px;display:flex;gap:5px;pointer-events:none}
 #ls-einstieg .hero-pikat i{width:6px;height:6px;border-radius:99px;background:#ffffff8c;transition:width .2s,background .2s}
 #ls-einstieg .hero-pikat i[data-an="ja"]{width:16px;background:#fff}
+/* Echtes Wischen: Bild 1 liegt in der Bahn, das Bild darunter ist unsichtbar. */
+#ls-einstieg .hero-photo[data-bahn]>img{visibility:hidden}
+#ls-einstieg .hero-bahn{touch-action:pan-x pan-y;scroll-behavior:smooth}
+#ls-einstieg .hero-slide{scroll-snap-stop:always}

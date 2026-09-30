@@ -458,13 +458,20 @@ export class Dyqan {
     const bahn = this.dok.createElement("div");
     bahn.className = "hero-bahn";
     bahn.setAttribute("aria-label", "Fotot e setit");
-    bahn.innerHTML = '<span class="hero-slide hero-slide--leer" aria-hidden="true"></span>'
+    // ECHTES WISCHEN: Bild 1 ist das erste Feld der Bahn (dasselbe Bild,
+    // das schon dasteht) - alle Bilder wandern mit dem Finger. Das Bild
+    // darunter wird erst ausgeblendet, wenn die Bahn gezeichnet ist.
+    const erstes = rahmen.querySelector(":scope > img");
+    bahn.innerHTML = `<img class="hero-slide" src="${e(erstes?.currentSrc || erstes?.src || "")}" alt="${e(erstes?.alt || "LifeSkin Acne Duo")}" decoding="async">`
       + bilder.map((b, i) => `<img class="hero-slide" src="${e(b)}" alt="LifeSkin Acne Duo, foto ${i + 2}" decoding="async">`).join("");
     const pikat = this.dok.createElement("div");
     pikat.className = "hero-pikat";
     pikat.setAttribute("aria-hidden", "true");
     pikat.innerHTML = [0, ...bilder].map((_, i) => `<i data-an="${i === 0 ? "ja" : "nein"}"></i>`).join("");
+    const bild1 = bahn.querySelector("img");
+    await bild1.decode?.().catch(() => {});
     rahmen.append(bahn, pikat);
+    rahmen.setAttribute("data-bahn", "");
     let wartet = false;
     bahn.addEventListener("scroll", () => {
       if (wartet) return;
