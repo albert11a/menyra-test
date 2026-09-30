@@ -406,3 +406,43 @@ html[data-ls-landing="lifeskinshop"] #ls-einstieg[data-aktiv="ja"]{animation:non
 #ls-einstieg .hero-photo[data-bahn]>img{visibility:hidden}
 #ls-einstieg .hero-bahn{touch-action:pan-x pan-y;scroll-behavior:smooth}
 #ls-einstieg .hero-slide{scroll-snap-stop:always}
+/* KOPF UND ANGEBOT, MODERN (30.09., Inhaber): schlanke Kennzeichnung als
+   Pille, kompakte Ueberschrift, Bild mit runden Ecken und Glas-Etikett, das
+   Angebot als eigene Karte (Preis, Knopf, Vertrauen) - ruhig, kein
+   Teleshopping. Nur Gestaltung; Texte, Knoepfe und Messung bleiben. */
+#ls-einstieg .hero{padding-top:22px}
+#ls-einstieg .hero-heading>.eyebrow{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-size:9.5px;letter-spacing:1.3px;color:var(--ink);background:#fff}
+#ls-einstieg .hero-heading>.eyebrow::before{content:"";width:6px;height:6px;border-radius:50%;background:#2bb673;box-shadow:0 0 0 3px #2bb67326}
+#ls-einstieg .hero h1.hero-klar{font-size:31px;font-weight:700;line-height:1.06;letter-spacing:-1.3px;margin:14px 0 10px}
+#ls-einstieg .hero h1.hero-klar span{color:#7d9693}
+#ls-einstieg .hero-heading>p:last-child{font-size:14px;line-height:1.5;max-width:300px;margin:0 auto}
+#ls-einstieg .hero-photo{border-radius:22px;margin-top:20px}
+#ls-einstieg .hero-photo:after{inset:45% 0 0;background:linear-gradient(transparent,#0b1f2155)}
+#ls-einstieg .hero-photo .photo-label{top:14px;left:14px;display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;background:#ffffffc7;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);font-size:9.5px;letter-spacing:1.2px}
+#ls-einstieg .hero-photo .photo-label span{display:inline;margin:0;font-size:9.5px;opacity:.55}
+#ls-einstieg .hero-photo .photo-label span::before{content:"· "}
+#ls-einstieg .hero-photo .photo-caption{left:18px;bottom:18px;right:70px;font-size:20px;line-height:1.15;letter-spacing:-.4px}
+#ls-einstieg .hero-pikat{right:18px;bottom:24px}
+#ls-einstieg .hero-karte{margin-top:14px;padding:16px 16px 14px;background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:0 14px 34px -22px #123b3e73}
+#ls-einstieg .hero-offer.oferta-rrjete{grid-template-rows:auto auto auto;row-gap:5px;padding:0 2px 14px}
+#ls-einstieg .oferta-rrjete .meta{display:none}
+#ls-einstieg .oferta-rrjete .eyebrow{grid-row:1;grid-column:1;color:var(--muted);font-size:9.5px;letter-spacing:1.3px}
+#ls-einstieg .oferta-rrjete .zbritje{grid-row:1;grid-column:2;background:#fdecea;color:#b3261e;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px}
+#ls-einstieg .oferta-rrjete h2{grid-row:2;grid-column:1;font-size:17px;letter-spacing:-.3px}
+#ls-einstieg .oferta-cmimi{grid-row:2;grid-column:2;font-size:30px;letter-spacing:-1.2px}
+#ls-einstieg .oferta-rrjete .pak-sete{grid-row:3;grid-column:1;margin:0;font-size:12px;font-weight:600;color:#b3261e}
+#ls-einstieg .oferta-rrjete .pak-sete i{width:6px;height:6px;margin-left:0;box-shadow:none}
+#ls-einstieg .oferta-vecmas{grid-row:3;grid-column:2}
+#ls-einstieg .hero-karte>.primary{border-radius:14px;min-height:52px}
+#ls-einstieg .hero-karte .besim{margin:14px 0 0;padding-top:12px;border-top:1px solid var(--line);gap:2px;font-size:11px;color:var(--muted)}
+#ls-einstieg .hero-karte .besim li{flex-direction:row;justify-content:center;align-items:center;gap:5px}
+#ls-einstieg .hero-karte .besim .icon{width:15px;height:15px;color:var(--ink)}
+#ls-einstieg .hero .text-link{margin-top:16px;font-size:12.5px}
+@media(max-width:370px){#ls-einstieg .hero-karte{padding:14px 12px 12px}#ls-einstieg .hero-karte .besim{font-size:10.5px}#ls-einstieg .hero-karte .besim li{gap:4px}#ls-einstieg .hero-karte .besim .icon{width:14px;height:14px}}
+/* 30.09. (Inhaber): ohne Kennzeichnung ueber der Ueberschrift, Etikett nur
+   "THE ACNE DUO", Bildtext kompakter, Vertrauen "1–3 ditë", "Paguani te
+   dera", "4.8/5 vlerësim" mit Stern. */
+#ls-einstieg .hero h1.hero-klar{margin-top:4px}
+#ls-einstieg .hero-photo .photo-label{padding:7px 12px}
+#ls-einstieg .hero-photo .photo-caption{font-size:17px;line-height:1.12;letter-spacing:-.3px;left:16px;bottom:16px}
+#ls-einstieg .hero-karte .besim .icon[aria-hidden]{flex:none}
