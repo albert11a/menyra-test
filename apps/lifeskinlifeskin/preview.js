@@ -19,7 +19,7 @@ document.body.replaceChildren(...Array.from(template.body.childNodes).map(node =
 const bar = document.createElement("nav");
 bar.className = "preview-bar";
 bar.setAttribute("aria-label", "Provë e brendshme");
-bar.innerHTML = '<strong>VETËM PËR PROVË · SHEMBULL</strong><span><a href="/lifeskinlifeskin">Landing</a> · <a href="?page=wait">Pritja</a> · <a href="?page=analysis">Analiza</a></span>';
+bar.innerHTML = '<strong>VETËM PËR PROVË · SHEMBULL</strong><span><a href="/lifeskinlifeskin">Landing</a> · <a href="/lifeskin?still=1&schirm=wahl&ls_design=mobile">Mënyrat</a> · <a href="?page=wait">Pritja</a> · <a href="?page=analysis">Analiza</a></span>';
 document.body.prepend(bar);
 const message = document.createElement("p");
 message.className = "preview-message";
