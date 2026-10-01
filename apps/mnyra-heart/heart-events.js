@@ -535,6 +535,9 @@ export function bindHeartEvents({
     // Ohne await davor: Die Dateiwahl muss im Griff des Fingers aufgehen.
     if (action === "lifeskin-shopset-foto") { operations.shopSetFoto?.(); return; }
     if (action === "lifeskin-shopset-speichern") { await operations.speichereShopSet?.(); return; }
+    if (action === "lifeskin-kosten-speichern") { await operations.produktkostenSpeichern?.(); return; }
+    if (action === "lifeskin-krem-neu") { operations.kremNeu?.(); return; }
+    if (action === "lifeskin-krem-weg") { operations.kremWeg?.(target); return; }
     if (action === "lifeskin-shopset-loeschen") { await operations.loescheShopSet?.(); return; }
     if (action === "lifeskin-shopset-aktiv") { await operations.shopSetAktiv?.(target.getAttribute("data-id")); return; }
     if (action === "lifeskin-shopset-schieben") {

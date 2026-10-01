@@ -60,7 +60,8 @@ export async function ladeNdjekja() {
   ]);
   return {
     faelle: faelle.docs.filter((d) => istZugang(d.id)).map((d) => ({ zugang: d.id, ...ndjekjaLesen(d.data()) })),
-    intern: Object.fromEntries(intern.docs.map((d) => [d.id, internLesen(d.data(), d.id)]))
+    // "_..." sind keine Faelle, sondern Heart-Eigenes (_produktkosten).
+    intern: Object.fromEntries(intern.docs.filter((d) => !d.id.startsWith("_")).map((d) => [d.id, internLesen(d.data(), d.id)]))
   };
 }
 

@@ -19,6 +19,7 @@ import { antwortenFuerBericht } from "../../shared/lifeskin-antworten.js";
 import { wegGueltig } from "../../shared/lifeskin-weg.js";
 import { perputhjaGueltig } from "../../shared/lifeskin-perputhja.js";
 import { db } from "/shared/firebase-config.js";
+import { KOSTEN_DOK, kostenNormalisieren } from "./heart-lifeskin-kosten.js";
 import {
   TRICHTER_STUFEN,
   baueTrichter,
@@ -836,4 +837,18 @@ export async function setzeKommentarVerborgen(medium, kommentar, verborgen) {
 
 export async function loescheKommentar(medium, kommentar) {
   await deleteDoc(doc(db, "lifeskin", TENANT, "medien", medium, "kommentare", kommentar));
+}
+
+// PRODUKTKOSTEN (01.10., Inhaber): in ndjekjaIntern - laut firestore.rules
+// nur fuer das CEO-Konto lesbar und schreibbar. Kein oeffentlicher Weg
+// fuehrt dorthin (siehe heart-lifeskin-kosten.js).
+const kostenRef = () => doc(db, "lifeskin", TENANT, "ndjekjaIntern", KOSTEN_DOK);
+export async function ladeProduktkosten() {
+  const snap = await getDoc(kostenRef());
+  return kostenNormalisieren(snap.exists() ? snap.data() : {});
+}
+export async function speichereProduktkosten(kosten) {
+  const sauber = { ...kostenNormalisieren(kosten), updatedAt: new Date().toISOString() };
+  await setDoc(kostenRef(), sauber);
+  return sauber;
 }

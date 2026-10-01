@@ -10429,3 +10429,40 @@ html:where([data-heart-theme="tag"]),
 :where(html[data-heart-theme="tag"]) .heart-nachfass-chip--kasse { background: #fdf0d2; color: #8a5a00; }
 :where(html[data-heart-theme="tag"]) .heart-nachfass-chip--felder { background: #e0a21a; color: #fff; }
 :where(html[data-heart-theme="tag"]) .heart-nachfass-chip--bestellt { background: #16a34a; color: #fff; }
+
+/* PRODUKTKOSTEN (01.10., Inhaber) - nur fuer das CEO-Konto. */
+.heart-kosten__form { display: grid; gap: 8px; margin-top: 10px; }
+.heart-kosten__titel { margin: 12px 0 2px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--heart-text-soft, #8b8b86); }
+.heart-kosten__feld { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
+.heart-kosten__feld > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.heart-kosten__eingabe { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.heart-kosten__eingabe input {
+  width: 96px; height: 40px; padding: 0 10px; text-align: right; font: inherit; font-size: 16px;
+  border: 1px solid var(--heart-line, #3a3e40); border-radius: 10px; background: #ffffff0d; color: var(--heart-text, #f7f7f2);
+}
+.heart-kosten__eingabe em { font-style: normal; color: var(--heart-text-soft, #8b8b86); }
+.heart-kosten__speichern { margin-top: 6px; justify-self: start; }
+.heart-kosten__sets { display: grid; gap: 8px; margin-top: 6px; }
+.heart-kosten__set { display: grid; gap: 3px; padding: 12px; border: 1px solid var(--heart-line, #34383a); border-radius: 12px; font-size: 13px; }
+.heart-kosten__set span { color: var(--heart-text-soft, #c7c7c2); }
+.heart-kosten__set strong { font-size: 15px; color: #4ade80; }
+.heart-kosten__set strong.heart-kosten__minus { color: #f87171; }
+.heart-kosten__set small { color: #f6cd7a; }
+:where(html[data-heart-theme="tag"]) .heart-kosten__eingabe input { background: #fff; border-color: #d6d6d0; color: #1c1c1a; }
+:where(html[data-heart-theme="tag"]) .heart-kosten__set strong { color: #15803d; }
+.heart-kremet { display: grid; gap: 8px; }
+.heart-krem { display: grid; grid-template-columns: 1fr auto; gap: 6px; padding: 10px; border: 1px solid var(--heart-line, #34383a); border-radius: 12px; }
+.heart-krem__name, .heart-krem__produkt, .heart-krem select {
+  height: 40px; padding: 0 10px; font: inherit; font-size: 16px; border: 1px solid var(--heart-line, #3a3e40);
+  border-radius: 10px; background: #ffffff0d; color: var(--heart-text, #f7f7f2); min-width: 0;
+}
+.heart-krem__name { grid-column: 1 / 2; }
+.heart-krem__weg { grid-column: 2; grid-row: 1; width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--heart-line, #3a3e40); background: transparent; color: var(--heart-text-soft, #c7c7c2); font-size: 20px; }
+.heart-krem > .heart-kosten__eingabe { grid-column: 1 / -1; }
+.heart-krem > .heart-kosten__eingabe input { width: 100%; flex: 1; }
+.heart-krem > .heart-kosten__eingabe select { width: 70px; }
+.heart-krem__produkt { grid-column: 1 / -1; }
+.heart-krem__neu { justify-self: start; }
+:where(html[data-heart-theme="tag"]) .heart-krem__name, :where(html[data-heart-theme="tag"]) .heart-krem__produkt, :where(html[data-heart-theme="tag"]) .heart-krem select { background: #fff; border-color: #d6d6d0; color: #1c1c1a; }
+.heart-krem__etikett { flex: none; width: 52px; font-size: 12px; font-weight: 600; color: var(--heart-text-soft, #9a9a95); }
+.heart-krem__fuer .heart-krem__produkt { flex: 1; }
