@@ -41,6 +41,8 @@ import { gesichtsVideo } from "./kamera-attrappe.mjs";
 import { antwortenFuerBericht } from "../../shared/lifeskin-antworten.js";
 import { faelligeMeldungen } from "../../scripts/meldungs-waechter/meldungs-regeln.mjs";
 import { imWarenkorb, korbZeitpunkt, nachDemKorb } from "../../apps/mnyra-heart/heart-lifeskin-berechnung.js";
+import { createRequire } from "node:module";
+const { baueKauf } = createRequire(import.meta.url)("../../functions/lifeskin-capi-payload.js");
 
 const BASIS = process.env.BASIS || "http://127.0.0.1:5173";
 const FILTER = process.argv[2] || "";
@@ -1248,9 +1250,8 @@ async function meldungKam(t, vorher, frist = 6000) {
   return t.meldungen.length > vorher;
 }
 
-szenario("A14 Ganzer Kaufweg · Anzeige → Analyse → Warenkorb → Kasse → Bestellung", async (t) => {
-  await t.oeffnen({ kamera: "gesperrt", ua: UA.androidIG, breite: 390, hoehe: 844, dpr: 2.75 });
-  await landing(t, { suche: "utm_source=ig&utm_campaign=120200000000000001&utm_content=120200000000000002" });
+async function ganzerKaufweg(t, { suche = "utm_source=ig&utm_campaign=120200000000000001&utm_content=120200000000000002", warteseite = null } = {}) {
+  await landing(t, { suche });
   await zurWahl(t);
   await t.tippe('[data-ls-weg="trup"]');
   if (!(await nameUndAlter(t, "Arta"))) return;
@@ -1264,6 +1265,7 @@ szenario("A14 Ganzer Kaufweg · Anzeige → Analyse → Warenkorb → Kasse → 
   t.pruefe(await meldungKam(t, 0), "Analyse abgeschickt: Meldung angestossen", `${t.meldungen.length}×`);
   const quelle = t.sitzung()?.daten?.source || {};
   t.pruefe(quelle.utmCampaign === "120200000000000001" && quelle.utmContent === "120200000000000002", "Anzeige (Kampagne und Anzeige) in der Sitzung", JSON.stringify(quelle));
+  if (warteseite) await warteseite(t);
 
   await freigabeUndTherapie(t, id);
   if (!/^\/terapia\//.test(await t.seite.evaluate(() => location.pathname).catch(() => ""))) return;
@@ -1312,6 +1314,115 @@ szenario("A14 Ganzer Kaufweg · Anzeige → Analyse → Warenkorb → Kasse → 
   const fertig = t.sitzung()?.daten || {};
   t.pruefe(faelligeMeldungen({ ...fertig, updatedAt: new Date().toISOString() }).map((v) => v.type).join(",") === "lifeskin_analyse,lifeskin_porosia",
     "Nach dem Kauf: Bestellmeldung, keine Korb-/Kassenmeldung mehr", faelligeMeldungen(fertig).map((v) => v.type).join(", "));
+  return id;
+}
+
+szenario("A14 Ganzer Kaufweg · Anzeige → Analyse → Warenkorb → Kasse → Bestellung", async (t) => {
+  await t.oeffnen({ kamera: "gesperrt", ua: UA.androidIG, breite: 390, hoehe: 844, dpr: 2.75 });
+  await ganzerKaufweg(t);
+});
+
+// WAS META WIRKLICH BEKOMMT (01.10.) - jeder Aufruf von fbq auf dem ganzen
+// Kaufweg, aufgezeichnet statt ausgeliefert (fbevents.js wird nie geladen),
+// und daneben die Nutzlast, die die Conversions API aus der fertigen
+// Sitzung baut. Geprueft wird, was fuer Meta zaehlt: welches Ereignis, wie
+// oft, mit welchem Betrag - und ob Browser und Server dieselbe eventID
+// tragen (sonst zaehlt Meta den Kauf doppelt).
+async function fbqAufzeichnen(l) {
+  l.fbq = [];
+  await l.kontext.exposeBinding("__fbqProtokoll", (_q, eintrag) => { l.fbq.push(eintrag); });
+  await l.kontext.addInitScript(() => {
+    window.fbq = function (...a) {
+      try { window.__fbqProtokoll({ seite: location.pathname.split("/")[1] || "", a: JSON.parse(JSON.stringify(a)) }); } catch { /* nur Protokoll */ }
+    };
+  });
+  await l.kontext.route(/wa\.me|api\.whatsapp\.com/, (route) => route.fulfill({ status: 200, contentType: "text/html", body: "" }));
+}
+
+const PRIVAT = /044 ?123|Arta Test|Rruga e Pruefstands|Prishtin/;
+
+function metaPruefen(t, { betrag, fbclid, mitLead = true }) {
+  const ereignisse = t.fbq.filter((e) => e.a[0] === "track" || e.a[0] === "trackCustom")
+    .map((e) => ({ seite: e.seite, art: e.a[0], name: e.a[1], daten: e.a[2] || {}, id: e.a[3]?.eventID || "" }));
+  console.log("  ── was der Browser an Meta schickt:");
+  for (const e of ereignisse) {
+    const wert = e.daten.value != null ? ` ${e.daten.value} ${e.daten.currency || ""}` : "";
+    console.log(`     /${e.seite.padEnd(13)} ${e.art === "track" ? "STANDARD" : "eigen   "} ${e.name}${wert}${e.id ? ` · eventID ${e.id}` : ""}`);
+  }
+  const inits = t.fbq.filter((e) => e.a[0] === "init");
+  t.pruefe(inits.length >= 1 && inits.every((e) => e.a[1] === "1347571994123884"), "Jede Seite startet den Pixel mit der richtigen Kennung", inits.map((e) => `/${e.seite}`).join(" "));
+  const std = (name) => ereignisse.filter((e) => e.art === "track" && e.name === name);
+  t.pruefe(std("PageView").length === inits.length, "PageView je geöffneter Seite genau einmal", `${std("PageView").length}× bei ${inits.length} Seiten`);
+  if (mitLead) {
+    const lead = std("Lead");
+    t.pruefe(lead.length === 1, "Lead genau einmal je Person (bei der Nummer)", `${lead.length}× (${lead.map((e) => `/${e.seite}`).join(", ")})`);
+  }
+  const genau = (name, text) => {
+    const liste = std(name);
+    t.pruefe(liste.length === 1 && liste[0].daten.value === betrag && liste[0].daten.currency === "EUR", `${name} einmal, ${betrag} EUR, ${text}`, JSON.stringify(liste.map((e) => e.daten)));
+    return liste;
+  };
+  genau("AddToCart", "beim Warenkorb");
+  genau("InitiateCheckout", "bei der Kasse");
+  const kauf = genau("Purchase", "nach dem Speichern");
+  const s = t.sitzung()?.daten || {};
+  t.pruefe(kauf[0]?.id && kauf[0].id === s.order?.orderId, "Purchase im Browser trägt die Bestellnummer als eventID", `${kauf[0]?.id} / order.orderId ${s.order?.orderId}`);
+  const reihenfolge = ["AddToCart", "InitiateCheckout", "Purchase"].map((n) => ereignisse.findIndex((e) => e.art === "track" && e.name === n));
+  t.pruefe(reihenfolge.every((i, k) => i >= 0 && (k === 0 || i > reihenfolge[k - 1])), "Reihenfolge Warenkorb → Kasse → Kauf");
+  t.pruefe(!ereignisse.some((e) => e.art === "track" && !["PageView", "ViewContent", "Lead", "AddToCart", "InitiateCheckout", "Purchase"].includes(e.name)),
+    "Nur Standardnamen über track, eigene über trackCustom");
+  t.pruefe(!PRIVAT.test(JSON.stringify(t.fbq)), "Kein Name, keine Nummer, keine Anschrift an Meta (Browser)");
+
+  // Der Server: dieselbe Sitzung, wie die Conversions API sie baut.
+  const server = baueKauf(s);
+  console.log(`  ── was die Conversions API daraus baut: ${JSON.stringify({ ...server, user_data: { ...server.user_data, client_user_agent: server.user_data.client_user_agent ? "(da)" : "" } })}`);
+  t.pruefe(server.event_name === "Purchase" && server.event_id && server.event_id === kauf[0]?.id, "Server-Purchase: dieselbe eventID wie im Browser (Deduplizierung)", server.event_id);
+  t.pruefe(server.custom_data.value === betrag && server.custom_data.currency === "EUR", `Server-Purchase: ${betrag} EUR`);
+  t.pruefe(Boolean(server.user_data.client_user_agent), "Server-Purchase: User-Agent (von Meta für Website-Ereignisse verlangt)");
+  t.pruefe(new RegExp(`^fb\\.1\\.\\d+\\.${fbclid}$`).test(server.user_data.fbc || ""), "Server-Purchase: Klick-Kennung der Anzeige (fbc)", server.user_data.fbc);
+  t.pruefe(server.action_source === "website" && /^https:\/\//.test(server.event_source_url), "Server-Purchase: action_source website, event_source_url", server.event_source_url);
+  t.pruefe(!PRIVAT.test(JSON.stringify(server)), "Kein Name, keine Nummer, keine Anschrift an Meta (Server)");
+}
+
+szenario("A15 Meta-Protokoll · Analyse → Therapieseite → Kauf, Browser und Server", async (t) => {
+  await t.oeffnen({ kamera: "gesperrt", ua: UA.androidIG, breite: 390, hoehe: 844, dpr: 2.75, vorher: fbqAufzeichnen });
+  const id = await ganzerKaufweg(t, {
+    suche: "utm_source=ig&utm_campaign=120200000000000001&utm_content=120200000000000002&fbclid=IwPruefstand_ABC123"
+  });
+  if (!id) return;
+  await t.seite.waitForTimeout(500);
+  metaPruefen(t, { betrag: 49, fbclid: "IwPruefstand_ABC123" });
+});
+
+szenario("A16 Meta-Protokoll · Laden /lifeskinshop → Warenkorb → Kasse → Kauf", async (t) => {
+  await t.oeffnen({ kamera: "gesperrt", ua: UA.iosIG, breite: 390, hoehe: 844, dpr: 3, vorher: fbqAufzeichnen });
+  await t.seite.goto(`${BASIS}/lifeskinshop?utm_source=ig&utm_campaign=120200000000000003&utm_content=120200000000000004&fbclid=IwLaden_XYZ789`, { waitUntil: "commit" });
+  t.pruefe(await sichtbar(t, '[data-set="acne"]', 15000) != null, "Laden zeigt den Kaufknopf");
+  await t.seite.waitForFunction(() => window.__lifeskinBereit === true, null, { timeout: 15000 }).catch(() => {});
+  const vorKorb = t.meldungen.length;
+  await t.tippe('[data-set="acne"]');
+  t.pruefe(await sichtbar(t, "[data-kasa]", 6000) != null, "Warenkorb geht auf (Vazhdo me të dhënat)");
+  await t.bild("laden_korb");
+  t.pruefe(await stehtInSitzung(t, (d) => d.imKorb === true), "Warenkorb steht in der Sitzung (imKorb)");
+  t.pruefe(await meldungKam(t, vorKorb), "Warenkorb: Meldung angestossen");
+  const vorKasse = t.meldungen.length;
+  await t.tippe("[data-kasa]");
+  t.pruefe(await sichtbar(t, "#kasa-forma", 6000) != null, "Kasse geht auf");
+  t.pruefe(await meldungKam(t, vorKasse), "Kasse: Meldung angestossen");
+  const vorKauf = t.meldungen.length;
+  await t.seite.fill("#kasa-emri", "Arta Test");
+  await t.seite.fill("#kasa-telefoni", "044 123 456");
+  await t.seite.fill("#kasa-adresa", "Rruga e Pruefstands 1");
+  await t.seite.fill("#kasa-qyteti", "Prishtinë");
+  await t.seite.evaluate(() => document.activeElement?.blur?.());
+  await t.tippe("#kasa-dergo");
+  t.pruefe(await sichtbar(t, "#kasa-faleminderit", 10000) != null, "Bestellung bestätigt (Faleminderit)");
+  await t.bild("laden_bestellt");
+  t.pruefe(await stehtInSitzung(t, (d) => d.step === "ordered" && d.order?.kind === "shop" && d.order?.orderId), "Bestellung in der Sitzung (step ordered, kind shop)",
+    JSON.stringify({ step: t.sitzung()?.daten?.step, total: t.sitzung()?.daten?.order?.total, orderId: t.sitzung()?.daten?.order?.orderId }));
+  t.pruefe(await meldungKam(t, vorKauf), "Bestellung: Meldung angestossen");
+  await t.seite.waitForTimeout(500);
+  metaPruefen(t, { betrag: Number(t.sitzung()?.daten?.order?.total) || 39, fbclid: "IwLaden_XYZ789", mitLead: false });
 });
 
 // ---------------------------------------------------------------------------
