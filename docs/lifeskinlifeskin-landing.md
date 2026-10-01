@@ -1,13 +1,20 @@
-# LifeSkin landing template — /lifeskinlifeskin
+# LifeSkin Kosovo — compact landing only
 
-Scope: a separate, mobile-first Albanian landing page for cold Instagram/Facebook visitors. Existing /lifeskin, customer reports, checkout, Meta Pixel and CAPI remain untouched. Route the primary CTA to the existing photo entry at /lifeskin?ls_weg=foto. This uses the existing direct-entry handler and its camera/gallery fallback. No new tracking, backend writes, fabricated reviews, patient outcomes or success percentages.
+User scope (2026-10-01): redesign ONLY `/lifeskinlifeskin`. Method selection, camera, forms, waiting, report, cart, checkout and tracking remain at the existing baseline. Isolated branch `lifeskin-compact-kosovo` starts before the experimental mobile funnel work. No flow adapter or internal sample report is included in this branch. Existing public patient pages are unchanged.
 
-Design: system typography, white/sage palette, large existing brand photos, short sections, one primary action, a small doctor identity block and clear product prices before starting. Product photography is editorial imagery, never patient proof. Prices read the existing shared price helper; HTML has the current fallback prices. Preserve incoming attribution parameters on the same-origin funnel link, including silent preview mode. Native links and FAQ work without JavaScript.
+## Offer and presentation
 
-Research:
-- Nielsen Norman Group: concise, scannable, objective copy reduces cognitive load. https://www.nngroup.com/articles/concise-scannable-and-objective-how-to-write-for-the-web/
-- Baymard: price transparency and removing unnecessary checkout friction matter. https://baymard.com/blog/reduce-cart-abandonment
+Immediately show the skin concern, free photo analysis with Dr. Gashi, the two product images, the complete 39 € set price, free Kosovo delivery and payment on receipt. Primary CTA opens the verified native photo entry `/lifeskin?ls_weg=foto`; an explicit secondary link leads to the existing shop's `#setet` offer. Clear simple Albanian, system typography, a phone-width layout, no automatic animation or carousel, short physician block and three brief FAQs. No fabricated reviews, medical outcomes, countdowns, scarcity, guarantees of sales or purchases within three seconds.
 
-These support usability choices, not a promised conversion uplift. Evaluate qualified analysis completions and completed purchases; more starts alone are insufficient. This template does not introduce a new analytics implementation because the repository requires explicit permission for Pixel changes.
+Prices come from `shared/lifeskin-preise.js`. Preserve campaign attribution and the destination fragment. `ls_design=classic` explicitly exits a previously stored experimental presentation when reviewing in the same tab. Landing does not import `design.js`. Existing controller IDs, pixel calls, backend logic and purchase state are untouched. Native links and FAQ work without JavaScript.
 
-Release: a separate review branch and Vercel preview. Repository rules prohibit an automatic main merge or production deployment.
+## Research
+
+- NN/g homepage design principles: https://www.nngroup.com/articles/homepage-design-principles/ — clear purpose, value and descriptive actions in the initial view.
+- Baymard shipping visibility: https://baymard.com/research-articles/avoid-banners-only-free-shipping — show delivery cost beside the offer.
+
+These support the usability decisions; they do not establish a Kosovo-specific conversion prediction. Measure completed analyses and paid orders before claiming improvement. No tracking implementation is added.
+
+## Validation and release
+
+`npm run build` passed; tracked Social bundles unchanged. 27 scoped pixel-lock, service-worker and in-app checks passed. `node --check` and `git diff --check` passed. Vercel manual phone-width review required; actual iPhone/Android and Meta in-app browser checks remain outstanding. No production patient records or real orders are used. Draft review only; no automatic main merge or production deployment.
