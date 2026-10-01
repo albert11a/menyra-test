@@ -1,4 +1,4 @@
-// Der Laden auf der Landingpage.
+// Der erhaltene Laden auf /lifeskin2; /lifeskin nutzt die freigegebene Analyse-Landing.
 //
 // Was hier geprueft wird, ist das, was sich beim naechsten Mal still
 // verschieben kann: die Zahl am Produkt, die Stelle, an der die Bilder
@@ -20,7 +20,7 @@ import { preisFuer, preisFuerFall, PREISE_AB } from "../shared/lifeskin-preise.j
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
 const lies = (pfad) => readFileSync(join(wurzel, pfad), "utf8");
 
-const aufbau = lies("apps/lifeskin-landing/index.html");
+const aufbau = lies("apps/lifeskin-2/index.html");
 const blatt = lies("apps/lifeskin-landing/landing.css");
 const laden = lies("apps/lifeskin-landing/shop.js");
 const adapter = lies("apps/mnyra-heart/heart-lifeskin-adapter.js");

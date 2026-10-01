@@ -108,40 +108,23 @@ test("Heart bestimmt, welche Faelle oben stehen - der Tipp findet den Fall ueber
   assert.match(lies("apps/mnyra-heart/heart.js"), /\["landing", "oben", "analiza", "shop"\]\.includes\(ort\)/);
 });
 
-// ══ /lifeskin: DIE FAELLE SELBST STEHEN IM ERSTEN BILD ════════════════
-
-test("/lifeskin: keine zweite Reihe - die Faelle mit Preis stehen gleich unter dem Knopf", () => {
+// /lifeskin: the approved comparison has one frame and shared overlays.
+test("/lifeskin: genau ein Vergleich unter dem ersten Blick, vor den Schritten", () => {
   const html = lies("apps/lifeskin-landing/index.html");
-  assert.doesNotMatch(html, /id="blick"/, "die Reihe oben ist wieder da - dann stehen dieselben Faelle zweimal auf der Seite");
-  assert.doesNotMatch(html, /class="blick"/);
-  const held = html.indexOf('id="held"');
-  const faelle = html.indexOf('id="rezultatet"');
-  const pse = html.indexOf('id="pse"');
-  assert.ok(held < faelle && faelle < pse, "die Faelle stehen nicht gleich unter dem ersten Blick");
-  // Zwischen dem ersten Blick und den Faellen steht kein anderer Abschnitt.
-  const dazwischen = html.slice(held, faelle);
-  assert.equal((dazwischen.match(/<section /g) || []).length, 1);
-  const ohneKommentare = html.replace(/<!--[\s\S]*?-->/g, "");
-  assert.equal((ohneKommentare.match(/RASTE TË DOKUMENTUARA|RASTE REALE · PARA DHE PAS/g) || []).length, 1,
-    "die Ueberschrift der Faelle steht zweimal auf der Seite");
+  assert.ok(html.indexOf('id="held"') < html.indexOf('id="rezultatet"'));
+  assert.ok(html.indexOf('id="rezultatet"') < html.indexOf('id="pse"'));
+  assert.equal((html.match(/class="lf-case-stage"/g) || []).length, 1);
+  assert.equal((html.match(/class="lf-sticker"/g) || []).length, 1);
+  assert.doesNotMatch(html, /id="rastet"|data:image|lf-screenshotcrop/);
 });
 
-test("/lifeskin: die zwei vorderen Karten laden sofort und blenden ohne Flackern ein", async () => {
+test("/lifeskin: beide Fotos laden direkt und teilen sich einen festen Rahmen", () => {
   const html = lies("apps/lifeskin-landing/index.html");
-  assert.match(html, /<div class="rastet" id="rastet" data-wartet /);
-  const karte = (n) => html.slice(html.indexOf(`data-rasti="${n}"`), html.indexOf("</article>", html.indexOf(`data-rasti="${n}"`)));
-  assert.doesNotMatch(karte(1) + karte(2), /loading="lazy"/, "die Karten im ersten Bild laden erst beim Scrollen");
-  assert.match(karte(3), /loading="lazy"/);
-  const css = lies("apps/lifeskin-landing/landing.css");
-  assert.match(css, /\.js \.rastet\[data-wartet\] \.gjysma img \{ opacity: 0; \}/);
-  const raste = lies("apps/lifeskin-landing/raste.js");
-  assert.match(raste, /bahn\.removeAttribute\("data-wartet"\)/);
-  assert.match(lies("apps/lifeskin-landing/landing.js"), /if \(bahn\.hasAttribute\("data-wartet"\)\) bahn\.removeAttribute\("data-wartet"\)/,
-    "ohne Modul bliebe die Bahn leer");
-  const { rastiKarte, obenZuerst } = await import("../apps/lifeskin-landing/raste.js");
-  const r = { id: "x", para: "/a.jpg", pas: "/b.jpg", produkte: [], cmimi: "" };
-  assert.doesNotMatch(rastiKarte(r, 0), /loading="lazy"/);
-  assert.match(rastiKarte(r, 2), /loading="lazy"/);
-  assert.deepEqual(obenZuerst([{ id: "a" }, { id: "b" }, { id: "c" }], new Set(["c"])).map((f) => f.id), ["c", "a", "b"],
-    "was in Heart 'Oben' traegt, steht auf /lifeskin nicht vorn");
+  const comparison = html.slice(html.indexOf('class="lf-case-stage"'), html.indexOf('class="lf-casebar"'));
+  assert.equal((comparison.match(/<img /g) || []).length, 2);
+  assert.doesNotMatch(comparison, /loading="lazy"/);
+  const css = lies("apps/lifeskin-landing/approved.css");
+  assert.match(css, /aspect-ratio:1104\/645/);
+  assert.match(css, /\.lf-casebuttons button\{width:14.25cqw/);
+  assert.match(lies("apps/lifeskin-landing/approved.js"), /await load\(key\)/);
 });

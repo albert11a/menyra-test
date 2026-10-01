@@ -4,8 +4,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-test("jede eigene Fallaufnahme hat eine WebP daneben und steht in <picture>", () => {
-  const html = fs.readFileSync("apps/lifeskin-landing/index.html", "utf8");
+test("/lifeskin2: jede eigene Fallaufnahme hat eine WebP daneben und steht in <picture>", () => {
+  const html = fs.readFileSync("apps/lifeskin-2/index.html", "utf8");
   const jpgs = [...html.matchAll(/<img src="\/apps\/lifeskin-landing\/fotot\/(rasti-[a-z0-9-]+)\.jpg"/g)].map((m) => m[1]);
   assert.ok(jpgs.length >= 8);
   for (const name of jpgs) {

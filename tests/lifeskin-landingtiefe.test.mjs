@@ -10,15 +10,16 @@ import { baueLandingtrichter } from "../apps/mnyra-heart/heart-lifeskin-berechnu
 
 const lies = (pfad) => readFileSync(new URL(`../${pfad}`, import.meta.url), "utf8");
 
-test("die neun Bildschirme stehen in der Reihenfolge der Seite und gibt es alle", () => {
+test("die freigegebenen Abschnitte behalten ihre bestehenden Messkennungen", () => {
   assert.deepEqual(LANDING_SCHIRME.map((s) => s.nr), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
   const html = lies("apps/lifeskin-landing/index.html");
-  let vorher = -1;
-  for (const s of LANDING_SCHIRME) {
-    const stelle = html.indexOf(`id="${s.id}"`);
-    assert.ok(stelle > -1, `Bildschirm ${s.nr} (#${s.id}) fehlt auf der Landingpage`);
-    assert.ok(stelle > vorher, `Bildschirm ${s.nr} steht nicht an seiner Stelle`);
-    vorher = stelle;
+  const ids = ["held", "rezultatet", "pse", "mjekja", "produktet", "garancia", "fund"];
+  let previous = -1;
+  for (const id of ids) {
+    assert.ok(LANDING_SCHIRME.some((section) => section.id === id));
+    const position = html.indexOf(`id="${id}"`);
+    assert.ok(position > previous, `${id} fehlt oder steht in falscher Reihenfolge`);
+    previous = position;
   }
 });
 
