@@ -492,3 +492,17 @@ html[data-ls-landing="lifeskinshop"] #ls-einstieg[data-aktiv="ja"]{animation:non
 #ls-einstieg .duo-product-teksti small{display:block;margin-top:3px;font-size:12px;font-weight:400;color:var(--muted)}
 #ls-einstieg .duo-card>.duo-product summary>.icon{width:18px;height:18px;flex:none}
 #ls-einstieg .duo-card>.duo-product[open] .duo-product-body{padding:0 0 14px}
+/* 01.10. (Inhaber): Pfeile links und rechts im Titelbild, senkrecht mittig. */
+#ls-einstieg .hero-pfeil{position:absolute;z-index:3;top:50%;transform:translateY(-50%);width:30px;height:30px;padding:0;border:0;border-radius:50%;display:grid;place-items:center;background:#ffffffd9;color:var(--ink);box-shadow:0 2px 8px #0000001f;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);cursor:pointer}
+#ls-einstieg .hero-pfeil .icon{width:16px;height:16px;stroke-width:2.2}
+#ls-einstieg .hero-pfeil--links{left:10px}
+#ls-einstieg .hero-pfeil--rechts{right:10px}
+#ls-einstieg .hero-pfeil[hidden]{display:none!important}
+#ls-einstieg .closing>.primary{width:100%}
+/* 01.10. (Inhaber): Pfeile links und rechts im Titelbild, senkrecht mittig. */
+#ls-einstieg .hero-pfeil{position:absolute;z-index:3;top:50%;transform:translateY(-50%);width:30px;height:30px;padding:0;border:0;border-radius:50%;display:grid;place-items:center;background:#ffffffd9;color:var(--ink);box-shadow:0 2px 8px #0000001f;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);cursor:pointer}
+#ls-einstieg .hero-pfeil .icon{width:16px;height:16px;stroke-width:2.2}
+#ls-einstieg .hero-pfeil--links{left:10px}
+#ls-einstieg .hero-pfeil--rechts{right:10px}
+#ls-einstieg .hero-pfeil[hidden]{display:none!important}
+#ls-einstieg .closing>.primary{width:100%}

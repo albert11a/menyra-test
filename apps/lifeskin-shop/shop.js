@@ -471,8 +471,26 @@ export class Dyqan {
     pikat.innerHTML = [0, ...bilder].map((_, i) => `<i data-an="${i === 0 ? "ja" : "nein"}"></i>`).join("");
     const bild1 = bahn.querySelector("img");
     await bild1.decode?.().catch(() => {});
-    rahmen.append(bahn, pikat);
+    // PFEILE LINKS UND RECHTS (01.10., Inhaber): kleine runde Knoepfe,
+    // senkrecht mittig - damit sofort klar ist, dass man wischen kann.
+    const pfeil = (richtung) => {
+      const k = this.dok.createElement("button");
+      k.type = "button";
+      k.className = `hero-pfeil hero-pfeil--${richtung}`;
+      k.setAttribute("aria-label", richtung === "links" ? "Foto e mëparshme" : "Foto tjetër");
+      k.innerHTML = ikone(richtung === "links" ? "ChevronLeft" : "ChevronRight");
+      k.addEventListener("click", () => bahn.scrollBy({ left: (richtung === "links" ? -1 : 1) * bahn.clientWidth, behavior: "smooth" }));
+      return k;
+    };
+    const links = pfeil("links");
+    const rechts = pfeil("rechts");
+    rahmen.append(bahn, pikat, links, rechts);
     rahmen.setAttribute("data-bahn", "");
+    const pfeileSetzen = (stelle) => {
+      links.hidden = stelle <= 0;
+      rechts.hidden = stelle >= bilder.length;
+    };
+    pfeileSetzen(0);
     let wartet = false;
     bahn.addEventListener("scroll", () => {
       if (wartet) return;
@@ -481,6 +499,7 @@ export class Dyqan {
         wartet = false;
         const stelle = Math.round(bahn.scrollLeft / Math.max(1, bahn.clientWidth));
         [...pikat.children].forEach((p, i) => p.setAttribute("data-an", i === stelle ? "ja" : "nein"));
+        pfeileSetzen(stelle);
       });
     }, { passive: true });
   }
@@ -518,7 +537,7 @@ export class Dyqan {
     const raster = $("#set-grid", this.dok);
     if (!raster) return;
     const available = this.setet.length > 0;
-    for (const button of this.dok.querySelectorAll('.hero [data-set], #zgjedhja [data-set], #sticky-buy')) button.disabled = !available;
+    for (const button of this.dok.querySelectorAll('.hero [data-set], #zgjedhja [data-set], .closing [data-set], #sticky-buy')) button.disabled = !available;
     if (!available) { raster.innerHTML = '<p class="section-intro">Seti nuk është aktualisht i disponueshëm.</p>'; return; }
     raster.innerHTML = this.setet.map(s => duoCard(s, this.mittel, { fotos: this.fotosBereit })).join('');
     const numri = $("#set-numri", this.dok);
@@ -534,7 +553,7 @@ export class Dyqan {
     this.filter = "all";
     // Oben und in der Leiste: das erste Set.
     const erstes = this.setet[0];
-    for (const knopf of this.dok.querySelectorAll(".hero [data-set], #zgjedhja [data-set], #sticky-buy")) knopf.dataset.set = erstes.id;
+    for (const knopf of this.dok.querySelectorAll(".hero [data-set], #zgjedhja [data-set], .closing [data-set], #sticky-buy")) knopf.dataset.set = erstes.id;
     const label = $("#sticky-label", this.dok);
     if (label) label.textContent = erstes.titulli;
     const preis = $("#sticky-price", this.dok);
