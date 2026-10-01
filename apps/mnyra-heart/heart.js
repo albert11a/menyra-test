@@ -55,7 +55,7 @@ import {
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
 import { createNdjekjaOperationen } from "./heart-lifeskin-ndjekja.js";
-import { ladeLifeskin, ladeLifeskinSeit, horcheLive, ladeFotos, ladeErstesFoto, loescheAlleSitzungen, loescheSitzung, setzeBerichtMarke, speichereProdukt, loescheProdukt, gibBerichtFrei,
+import { ladeLifeskin, ladeLifeskinSeit, ladeLifeskinSitzung, horcheLive, ladeFotos, ladeErstesFoto, loescheAlleSitzungen, loescheSitzung, setzeBerichtMarke, speichereProdukt, loescheProdukt, gibBerichtFrei,
   ladeBericht, setzeVersand, speichereAnbieter,
   ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX,
   speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder,
@@ -1040,6 +1040,7 @@ async function ladeLifeskinBereich({ force = false, voll = false } = {}) {
   if (store.getState().lifeskin?.ndjekja?.an && force) ndjekjaOps.laden();
   ndjekjaOps.starten();
   const vorher = store.getState().lifeskin || {};
+  if (force && vorher.offen) await lifeskinSitzungAuffrischen(vorher.offen);
   if (!force && vorher.status === "ready" && vorher.loadedFrom === "network") return;
   // Schon einmal vom Server geladen: nur nachholen, was sich seitdem
   // geaendert hat. Scheitert das, geht es unten mit allem weiter.
@@ -1097,6 +1098,18 @@ async function ladeLifeskinBereich({ force = false, voll = false } = {}) {
 // wieder oben.
 let lifeskinListenStelle = 0;
 
+async function lifeskinSitzungAuffrischen(id) {
+  try {
+    const frisch = await ladeLifeskinSitzung(id);
+    if (!frisch) return;
+    const stand = store.getState().lifeskin || {};
+    actions.patchLifeskin(aktualisiereLifeskinSitzungen(stand, [frisch]));
+  } catch (fehler) {
+    // Die vorhandene Akte bleibt sichtbar, aber nicht still als frisch gelten.
+    setToast("Lifeskin", fehler?.message || "Der aktuelle Verlauf konnte nicht geladen werden.", "danger");
+  }
+}
+
 function lifeskinNachOben() {
   try { globalThis.scrollTo?.({ top: 0, left: 0, behavior: "instant" }); } catch { globalThis.scrollTo?.(0, 0); }
 }
@@ -1118,6 +1131,8 @@ async function oeffneLifeskinSitzung(sitzungId = "") {
   lifeskinNachOben();
   // Die Miniaturbilder unter "Ergebnisse auf der Seite" - einmal je Fall.
   lifeskinRasteBilderLaden().catch(() => {});
+
+  await lifeskinSitzungAuffrischen(id);
 
   // Schon geholt? Dann nichts weiter tun - wer zwischen zwei Analysen hin
   // und her springt, soll nicht jedes Mal warten.
