@@ -188,6 +188,33 @@ function baueLead(sitzung, { browser = null, quelleUrl = "https://mnyra.com/life
   };
 }
 
+// Pixel-Aenderung erlaubt von Albert am 02.10.2026: bestehendes
+// Warteseiten-Ereignis zusaetzlich vom Server, gleiche Kennung im Browser.
+function warteKennung(code) {
+  const nummer = text(code);
+  return nummer ? `${nummer}-waiting` : "";
+}
+
+function istWarten(davor, danach) {
+  return text(danach?.step) === "result" && text(davor?.step) !== "result"
+    && danach?.order?.still !== true && Boolean(text(danach?.device?.ua))
+    && Boolean(warteKennung(danach?.code));
+}
+
+function baueWarten(sitzung, { browser = null, quelleUrl = "https://mnyra.com/lifeskin" } = {}) {
+  return {
+    event_name: "lifeskin_waiting_reached",
+    event_id: warteKennung(sitzung?.code),
+    event_time: sekundenAus(sitzung?.updatedAt),
+    action_source: "website",
+    event_source_url: seiteAus({ seite: browser?.seite }, quelleUrl),
+    user_data: {
+      ...besucherDaten({ ua: sitzung?.device?.ua }, sitzung?.source, browser),
+      ...kundenDaten(sitzung)
+    }
+  };
+}
+
 // Ob dieser Uebergang ueberhaupt eine Meldung ist.
 function istKauf(davor, danach) {
   if (text(danach?.step) !== SCHRITT_KAUF) return false;
@@ -215,5 +242,8 @@ module.exports = {
   leadKennung,
   istLead,
   baueLead,
-  istKauf
+  istKauf,
+  warteKennung,
+  istWarten,
+  baueWarten
 };

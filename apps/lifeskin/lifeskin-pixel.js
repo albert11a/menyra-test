@@ -54,6 +54,12 @@ export function leadKennung(code) {
   return nummer ? `${nummer}-lead` : null;
 }
 
+// Pixel-Aenderung erlaubt von Albert am 02.10.2026: Warteseite Browser + Server.
+export function warteKennung(code) {
+  const nummer = String(code || "").trim();
+  return nummer ? `${nummer}-waiting` : null;
+}
+
 // UNSERE EIGENEN EREIGNISSE - eines je Bildschirm, eines je Weg.
 //
 // Die fuenf Standardnamen darueber sind das, worauf Meta optimieren kann,
@@ -331,7 +337,8 @@ export class Pixel {
     const eigen = schritt === "opened"
       ? PIXEL_SEITEN[this.seite]
       : PIXEL_SCHRITTE[schritt];
-    let etwas = eigen ? this.#senden(eigen, {}, null) : false;
+    const eigenKennung = schritt === "result" ? warteKennung(zusatz.code) : null;
+    let etwas = eigen ? this.#senden(eigen, {}, eigenKennung) : false;
     const ereignis = PIXEL_EREIGNISSE[schritt];
     if (ereignis) {
       const { daten, kennung } = pixelDaten(schritt, zusatz);

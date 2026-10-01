@@ -275,6 +275,8 @@ export function geraetAuslesen(
   const ios = /iPad|iPhone|iPod/.test(kennzeichen);
   const android = /Android/.test(kennzeichen);
   return {
+    // Pixel-Aenderung erlaubt von Albert am 02.10.2026: Browserangabe fuer Server-Wartemeldung.
+    ua: kennzeichen.slice(0, 400),
     os: ios ? "ios" : android ? "android" : "andere",
     // Als Teil von device und nicht als eigenes Feld - aus demselben Grund
     // wie "gesehen" unten: Die Regel prueft device nur auf "is map".
@@ -728,7 +730,7 @@ export class Sitzung {
     // Messung, die stolpert, darf die Sitzung nicht mitreissen.
     const melden = () => {
       if (!this.beiSchritt) return;
-      try { this.beiSchritt(name, zusatz); }
+      try { this.beiSchritt(name, name === "result" ? { ...zusatz, code: this.code } : zusatz); }
       catch (fehler) { globalThis.console?.warn?.("[lifeskin] Schrittmeldung:", fehler?.message); }
     };
     // AUSSER BEIM KAUF (ERST_SPEICHERN, 29.09., Pruefung der Kaufwege;
@@ -756,6 +758,7 @@ export class Sitzung {
           // wenn die Bestellung steht. Pixel-Aenderung erlaubt von Albert
           // am 01.10.2026.
           if (name === "ordered") capiAnstossen(id, "kauf", this.fetchFn);
+          if (name === "result") capiAnstossen(id, "warten", this.fetchFn);
           return;
         }
         // NICHT GESPEICHERT: DER KAUF GILT NICHT ALS ERREICHT (29.09.).

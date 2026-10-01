@@ -33,7 +33,7 @@ function seiteOhneKennung(ort) {
 export function capiAnstossen(kennung, art, fetchFn = globalThis.fetch) {
   try {
     const ort = globalThis.location;
-    if (!kennung || !["kauf", "lead"].includes(art) || typeof fetchFn !== "function") return;
+    if (!kennung || !["kauf", "lead", "warten"].includes(art) || typeof fetchFn !== "function") return;
     if (!ort || !/^https?:$/.test(String(ort.protocol || ""))) return;
     if (globalThis.__mnyraStill === true) return;
     const roh = globalThis.document?.cookie || "";

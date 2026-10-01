@@ -37,14 +37,17 @@ const HINWEIS = "Meta-Pixel/Conversions API geaendert. Das ist gesperrt: nur mit
 // stehen seitdem selbst unter der Sperre.
 // Pixel-Aenderung erlaubt von Albert am 02.10.2026: Telefonnummernabgleich
 // fuer Lead/Purchase als SHA-256-Hash, ohne zusaetzlichen UI-Haken.
+// Pixel-Aenderung erlaubt von Albert am 02.10.2026: Warteseite Browser + Server
+// mit gemeinsamer ID und dauerhafte, begrenzte Kauf-Wiederholung.
 const DATEIEN = Object.freeze({
-  "apps/lifeskin/lifeskin-pixel.js": "0ea75304cbf3623a",
+  "apps/lifeskin/lifeskin-pixel.js": "a674a2519a217be8",
   // Pixel-Aenderung erlaubt von Albert (albert11a, Inhaber) am 28.09.2026:
   // Bestellungen aus dem stillen Modus (order.still) gehen nicht an die CAPI.
-  "functions/lifeskin-capi-payload.js": "d50c66423f514ec5",
-  "functions/lifeskin-capi.js": "60cc79d7cce75b1d",
-  "api/lifeskin-capi.js": "b905684c595aa83c",
-  "shared/lifeskin-capi-anstossen.js": "fd7f7fa638f979df"
+  "functions/lifeskin-capi-payload.js": "95e4046e25068ab3",
+  "functions/lifeskin-capi-versand.js": "a9e20d0c8088c119",
+  "functions/lifeskin-capi.js": "e16ca676c501fe89",
+  "api/lifeskin-capi.js": "8d809123318ab7ea",
+  "shared/lifeskin-capi-anstossen.js": "ebd17d59c01e266c"
 });
 
 // 2. DIE KENNUNG UND DIE EINWILLIGUNG - genau diese zwei Zeilen.

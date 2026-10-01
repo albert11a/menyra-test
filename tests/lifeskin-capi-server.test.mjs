@@ -33,7 +33,7 @@ function sitzungKauf(zusatz = {}) {
 
 test("die Schnittstelle ist v26.0, nicht mehr die abgelaufene v21.0", () => {
   assert.equal(capi.API_VERSION, "v26.0");
-  assert.match(lies("functions/lifeskin-capi.js"), /graph\.facebook\.com\/\$\{API_VERSION\}/);
+  assert.match(lies("functions/lifeskin-capi-versand.js"), /graph\.facebook\.com\/\$\{API_VERSION\}/);
 });
 
 test("Lead: dieselbe eventID im Browser und am Server - die Fallnummer, nie die Sitzung", () => {
@@ -358,5 +358,25 @@ test("Diagnose: Token gilt, auch wenn er den Pixel nicht lesen darf - und zeigt 
     assert.equal(d.daten.letzte[0].stand, "gesendet");
     const alles = JSON.stringify(d.daten);
     assert.ok(!alles.includes("LS-0110-ABCDE") && !alles.includes(SITZUNG_ID), "Fallnummer oder Kennung in der oeffentlichen Diagnose");
+  });
+});
+
+test("Warteseite: Vercel liest den gespeicherten Schritt, gleiche ID, eigene Sperre und nur einmal", async () => {
+  await mitUmgebung({ MNYRA_FIREBASE_ADMIN_KEY: SCHLUESSEL, META_CAPI_TOKEN: "tok", META_CAPI_TEST_CODE: null }, async () => {
+    const w = welt();
+    const sitzung = { ...sitzungKauf(), step: "result", device: { ua: "WarteBrowser" } };
+    w.docs.set(SESSION_PFAD, { fields: alsFelder(sitzung), updateTime: "x" });
+    assert.deepEqual(ereignisseFuer(sitzung, "warten"), ["warten"]);
+    assert.deepEqual(ereignisseFuer({ ...sitzung, step: "captured" }, "warten"), []);
+    const body = { id: SITZUNG_ID, art: "warten" };
+    assert.equal((await aufruf(w, body)).status, 200);
+    assert.equal((await aufruf(w, body)).status, 200);
+    assert.equal(w.anMeta.length, 1);
+    const event = w.anMeta[0].koerper.data[0];
+    assert.equal(event.event_name, "lifeskin_waiting_reached");
+    assert.equal(event.event_id, `${sitzung.code}-waiting`);
+    assert.equal(w.docs.get(`${MARKE}_waiting`).fields.status.stringValue, "gesendet");
+    assert.equal(w.docs.get(`${MARKE}_waiting`).fields.sessionId.stringValue, SITZUNG_ID);
+    assert.ok(!JSON.stringify(event).includes(SITZUNG_ID));
   });
 });
