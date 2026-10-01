@@ -3255,3 +3255,139 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   .pyetje__trup { transition: none; }
   .kopf { transition: none; }
 }
+
+/* 2026-10-01: analysis-first upgrade, only the current /lifeskin page.
+   The funnel and other pages that share this sheet retain their styles. */
+html[data-ls-upgrade="analyse"] #ls-einstieg { --rand: 22px; }
+html[data-ls-upgrade="analyse"] #lp { background: #f8faf9; }
+html[data-ls-upgrade="analyse"] #lp .kopf { padding-block: 20px 10px; }
+html[data-ls-upgrade="analyse"] #held {
+  min-height: 0;
+  padding-top: 23px;
+  padding-bottom: 26px;
+  background: linear-gradient(180deg, #f8faf9, #eef5f1);
+}
+html[data-ls-upgrade="analyse"] #held .held__leib { max-width: 440px; }
+html[data-ls-upgrade="analyse"] #held .reja {
+  margin-bottom: 16px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  color: #35634f;
+}
+html[data-ls-upgrade="analyse"] #held .held__titel {
+  margin-top: 0;
+  max-width: 17ch;
+  font-size: clamp(32px, 9.4vw, 40px);
+  line-height: 1.08;
+  letter-spacing: -.04em;
+  text-wrap: balance;
+}
+html[data-ls-upgrade="analyse"] #held .glanz {
+  display: block;
+  color: #39705b;
+  background: none;
+  -webkit-text-fill-color: currentColor;
+}
+html[data-ls-upgrade="analyse"] #held .held__unter {
+  margin-top: 17px;
+  max-width: 36ch;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #43534c;
+}
+html[data-ls-upgrade="analyse"] .analiza-problemet {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 18px;
+}
+html[data-ls-upgrade="analyse"] .analiza-problemet span {
+  padding: 7px 10px;
+  border: 1px solid #dbe6df;
+  border-radius: 9px;
+  background: rgba(255,255,255,.8);
+  color: #345344;
+  font-size: 12px;
+  line-height: 1.3;
+}
+html[data-ls-upgrade="analyse"] #held .held__tat { margin-top: 22px; }
+html[data-ls-upgrade="analyse"] #ls-einstieg .knopf {
+  min-height: 56px;
+  border-radius: 15px;
+}
+html[data-ls-upgrade="analyse"] .analiza-hinweis {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+  color: #52655b;
+}
+html[data-ls-upgrade="analyse"] .analiza-mjekja {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
+  padding: 14px;
+  border: 1px solid #dbe6df;
+  border-radius: 16px;
+  background: #fff;
+}
+html[data-ls-upgrade="analyse"] .analiza-mjekja img {
+  flex: 0 0 52px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+html[data-ls-upgrade="analyse"] .analiza-mjekja strong {
+  display: block;
+  font-size: 14px;
+  color: #243b30;
+}
+html[data-ls-upgrade="analyse"] .analiza-mjekja span span {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #627369;
+}
+html[data-ls-upgrade="analyse"] #rezultatet .rasti__seti,
+html[data-ls-upgrade="analyse"] #rezultatet .rasti__cmim,
+html[data-ls-upgrade="analyse"] #produktet { display: none !important; }
+html[data-ls-upgrade="analyse"] #ls-einstieg .abschnitt { padding-block: 34px; }
+html[data-ls-upgrade="analyse"] #ls-einstieg .titel {
+  font-size: clamp(24px, 6.5vw, 29px);
+  line-height: 1.15;
+  letter-spacing: -.025em;
+}
+html[data-ls-upgrade="analyse"] #ls-einstieg .unter {
+  margin-top: 12px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+/* Immediate readable content, with no waiting for entrance animation. */
+html[data-ls-upgrade="analyse"] #ls-einstieg [data-anim] {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+@media (min-width: 620px) {
+  html[data-ls-upgrade="analyse"] #ls-einstieg { max-width: 480px; margin-inline: auto; }
+  html[data-ls-upgrade="analyse"] #lp :is(.kopf, .held, .abschnitt, .fund, .fuss) { padding-inline: 22px; }
+  html[data-ls-upgrade="analyse"] #lp .innen { max-width: 100%; }
+  html[data-ls-upgrade="analyse"] #held .held__leib { margin-inline: 0; }
+  html[data-ls-upgrade="analyse"] #ls-einstieg .rastet { padding-inline: 22px; }
+}
+@media (max-width: 350px) {
+  html[data-ls-upgrade="analyse"] #ls-einstieg { --rand: 18px; }
+  html[data-ls-upgrade="analyse"] #held .held__titel { font-size: 31px; }
+  html[data-ls-upgrade="analyse"] #held .held__unter { font-size: 15px; }
+  html[data-ls-upgrade="analyse"] .analiza-problemet span { font-size: 11px; }
+}
+html[data-ls-upgrade="analyse"] #ls-einstieg .knopf { width: 100%; max-width: none; }
+@media (min-width: 620px) {
+  html[data-ls-upgrade="analyse"] #rezultatet .innen { padding-inline: 0; }
+  html[data-ls-upgrade="analyse"] #rezultatet .rastet { margin-inline: -22px; }
+  html[data-ls-upgrade="analyse"] #rezultatet .rasti { flex-basis: 86%; }
+}
