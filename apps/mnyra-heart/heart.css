@@ -10472,3 +10472,13 @@ html:where([data-heart-theme="tag"]),
 .heart-kosten__einkauf > .heart-kosten__eingabe em { width: 34px; }
 .heart-kosten__jestueck { font-size: 12.5px; color: #4ade80; }
 :where(html[data-heart-theme="tag"]) .heart-kosten__jestueck { color: #15803d; }
+/* Produktkosten: aufklappbare Teile (Je Produkt, Je Bestellung, Kosten je Produkt). */
+.heart-kosten__teil { border: 1px solid var(--heart-line, #34383a); border-radius: 14px; margin-top: 8px; }
+.heart-kosten__teil-kopf { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px; cursor: pointer; list-style: none; }
+.heart-kosten__teil-kopf::-webkit-details-marker { display: none; }
+.heart-kosten__teil-kopf b { display: block; font-size: 14px; }
+.heart-kosten__teil-kopf small { display: block; margin-top: 3px; font-size: 12px; color: var(--heart-text-soft, #9a9a95); }
+.heart-kosten__teil-kopf i { font-style: normal; font-size: 20px; line-height: 1; color: var(--heart-text-soft, #c7c7c2); transition: transform .15s; flex: none; }
+.heart-kosten__teil[open] > .heart-kosten__teil-kopf i { transform: rotate(45deg); }
+.heart-kosten__teil-inhalt { display: grid; gap: 8px; padding: 0 14px 14px; }
+.heart-kosten__form > .heart-kosten__speichern { margin-top: 10px; }

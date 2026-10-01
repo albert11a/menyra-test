@@ -114,6 +114,11 @@ function feld(schluessel, label, wert, einheit = "€", platzhalter = "0,00") {
         </label>`;
 }
 
+// Kopf eines aufklappbaren Teils: Titel, darunter kurz, was drin ist.
+function teilKopf(titel, unter) {
+  return `<summary class="heart-kosten__teil-kopf"><span><b>${escapeHtml(titel)}</b><small>${escapeHtml(unter)}</small></span><i aria-hidden="true">+</i></summary>`;
+}
+
 // Shishet / Stikerat: was der Einkauf gekostet hat und wie viele Stueck es
 // waren - darunter der Preis je Stueck (nach dem Speichern).
 function einkauf(schluessel, label, preis, stueck) {
@@ -177,7 +182,9 @@ export function renderProduktkosten(zustand = {}, sets = []) {
     <details class="heart-lifeskin-block heart-klapp heart-kosten" ${klappAttr("produktkosten")}>
       ${kopf(zahl)}
       <div class="heart-kosten__form" data-bewahren="produktkosten:${escapeHtml(stempel)}">
-        <h4 class="heart-kosten__titel">Je Produkt</h4>
+        <details class="heart-kosten__teil" ${klappAttr("kosten-produkt")}>
+        ${teilKopf("Je Produkt", "Shishet, Stikerat, Mbushja, Kremet")}
+        <div class="heart-kosten__teil-inhalt">
         ${einkauf("shishe", "Shishet", kosten.shishePreis, kosten.shisheStueck)}
         ${einkauf("stiker", "Stikerat", kosten.stikerPreis, kosten.stikerStueck)}
         ${feld("mbushja", "Mbushja e një produkti", kosten.mbushja, "ml", "30")}
@@ -187,13 +194,20 @@ export function renderProduktkosten(zustand = {}, sets = []) {
         </div>
         <template data-krem-vorlage>${kremZeile({ id: "neu" }, produkte)}</template>
         <button type="button" class="heart-lifeskin-knopf heart-krem__neu" data-action="lifeskin-krem-neu">+ Krem</button>
-        <h4 class="heart-kosten__titel">Je Bestellung</h4>
+        </div>
+        </details>
+        <details class="heart-kosten__teil" ${klappAttr("kosten-bestellung")}>
+        ${teilKopf("Je Bestellung", "Versand, Verpackung, Sonstiges")}
+        <div class="heart-kosten__teil-inhalt">
         ${KOSTEN_JE_BESTELLUNG.map((k) => feld(k.id, k.label, kosten[k.id])).join("")}
+        </div>
+        </details>
         <button type="button" class="heart-lifeskin-knopf heart-kosten__speichern" data-action="lifeskin-kosten-speichern"
                 ${status === "speichert" ? "disabled" : ""}>${status === "speichert" ? "Wird gespeichert …" : "Speichern"}</button>
       </div>
-      ${relevant.length ? `<h4 class="heart-kosten__titel">Kosten je Produkt</h4>
-      <div class="heart-kosten__sets">${relevant.map((p) => {
+      ${relevant.length ? `<details class="heart-kosten__teil" ${klappAttr("kosten-ergebnis")}>
+      ${teilKopf("Kosten je Produkt", relevant.map((p) => `${p.name || p.id} ${euro(produktRechnung(p.id, kosten).summe)}`).join(" · "))}
+      <div class="heart-kosten__sets heart-kosten__teil-inhalt">${relevant.map((p) => {
         const r = produktRechnung(p.id, kosten);
         return `
         <div class="heart-kosten__set">
@@ -204,7 +218,8 @@ export function renderProduktkosten(zustand = {}, sets = []) {
           ${r.mehrere ? `<small>Mehrere Kremet zugeordnet – gerechnet wird mit der ersten.</small>` : ""}
         </div>`;
       }).join("")}
-      </div>` : ""}
+      </div>
+      </details>` : ""}
       ${rechnungen.length ? `<h4 class="heart-kosten__titel">Je Set</h4>
       <div class="heart-kosten__sets">${rechnungen.map(({ s, r }) => `
         <div class="heart-kosten__set">
