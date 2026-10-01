@@ -31,10 +31,11 @@
 // schon (api/lifeskin-meldung.js). Ob alles da ist und das Token gilt,
 // zeigt GET /api/lifeskin-capi.
 
-import { createRequire } from "node:module";
 import crypto from "node:crypto";
-
-const capi = createRequire(import.meta.url)("../functions/lifeskin-capi-payload.js");
+// STATISCH importiert, nicht ueber createRequire: Nur so findet Vercel die
+// Datei beim Buendeln (@vercel/nft) - mit createRequire fehlte sie im Paket,
+// und die Funktion brach beim Laden ab (FUNCTION_INVOCATION_FAILED, 01.10.).
+import capi from "../functions/lifeskin-capi-payload.js";
 
 const PROJEKT = "menyra-c0e68";
 const TENANT = "lifeskin";

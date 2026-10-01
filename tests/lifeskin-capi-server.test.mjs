@@ -312,3 +312,14 @@ test("die Seiten stossen an, sobald Bestellung oder Nummer gespeichert ist", asy
     delete globalThis.location;
   }
 });
+
+// 01.10.: Mit createRequire fand Vercel (@vercel/nft) die Nutzlast-Datei beim
+// Buendeln nicht - die Funktion brach live beim Laden ab. Jede Vercel-Funktion
+// laedt ihre Helfer deshalb mit einem statischen import.
+test("Vercel-Funktionen laden ihre Helfer statisch (sonst fehlen sie im Paket)", () => {
+  for (const datei of ["api/lifeskin-capi.js", "api/lifeskin-meldung.js"]) {
+    const quelle = lies(datei).replace(/^\s*\/\/.*$/gm, "");
+    assert.ok(!/createRequire|require\(/.test(quelle), `${datei}: createRequire/require - Vercel buendelt die Datei dann nicht mit`);
+  }
+  assert.match(lies("api/lifeskin-capi.js"), /^import capi from "\.\.\/functions\/lifeskin-capi-payload\.js";$/m);
+});
