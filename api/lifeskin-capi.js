@@ -150,6 +150,13 @@ export function ereignisseFuer(sitzung, art, { jetzt = Date.now() } = {}) {
     if (!Number.isFinite(gespeichert) || jetzt - gespeichert > KAUF_FENSTER_MS) return [];
     return ["kauf"];
   }
+  if (art === "warten") {
+    const geaendert = Date.parse(String(sitzung.updatedAt || ""));
+    if (!["result", "offer", "address", "ordered"].includes(sitzung.step)
+      || sitzung.order?.still === true || !capi.warteKennung(sitzung.code)) return [];
+    if (!Number.isFinite(geaendert) || jetzt - geaendert > LEAD_FENSTER_MS) return [];
+    return ["warten"];
+  }
   if (art === "lead") {
     const geaendert = Date.parse(String(sitzung.updatedAt || ""));
     const angelegt = Date.parse(String(sitzung.createdAt || ""));
@@ -170,7 +177,7 @@ export function markeUebernehmen(marke) {
 }
 
 export function markenKennung(art, sessionId) {
-  return art === "lead" ? `${sessionId}_lead` : sessionId;
+  return art === "lead" ? `${sessionId}_lead` : art === "warten" ? `${sessionId}_waiting` : sessionId;
 }
 
 // ── Meta ────────────────────────────────────────────────────────────────
@@ -196,14 +203,14 @@ async function anMeta(nutzlast, metaToken) {
 
 // Eine Marke anlegen oder (nach einer Ablehnung) uebernehmen. Gibt die
 // Versuchszahl zurueck oder 0, wenn ein anderer schon sendet oder gesendet hat.
-async function markeNehmen(pfad, docId, nutzlast, token) {
+async function markeNehmen(pfad, docId, nutzlast, token, browser) {
   const jetzt = new Date().toISOString();
   const anlegen = await googleFetch(`${DOKUMENTE}/${pfad}?documentId=${encodeURIComponent(docId)}`, {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify({ fields: {
       ...felder({ status: "laeuft", versuche: 1, leaseUntil: Date.now() + LEASE_MS, eventId: nutzlast.event_id,
-        eventName: nutzlast.event_name, sender: "vercel" }),
+        browser, ...(nutzlast.custom_data ? { value: nutzlast.custom_data.value } : {}), eventName: nutzlast.event_name, eventTime: nutzlast.event_time, sessionId: docId.replace(/_(lead|waiting)$/, ""), sender: "vercel" }),
       createdAt: { timestampValue: jetzt }
     } })
   });
@@ -211,7 +218,10 @@ async function markeNehmen(pfad, docId, nutzlast, token) {
   if (anlegen.status !== 409) throw new Error(`Marke anlegen ${anlegen.status}`);
   const vorhanden = await lies(`${pfad}/${docId}`, token);
   const marke = Object.fromEntries(Object.entries(vorhanden?.fields || {}).map(([k, v]) => [k, wert(v)]));
-  if (!markeUebernehmen(marke) || !vorhanden?.updateTime) return 0;
+  if (!markeUebernehmen(marke) || !vorhanden?.updateTime
+    || marke.eventId !== nutzlast.event_id) return 0;
+  if (Number.isFinite(Number(marke.eventTime))) nutzlast.event_time = Number(marke.eventTime);
+  if (nutzlast.custom_data && Number.isFinite(Number(marke.value))) nutzlast.custom_data.value = Number(marke.value);
   const versuche = Number(marke.versuche || 0) + 1;
   return (await aendern(`${pfad}/${docId}`, { status: "laeuft", versuche, leaseUntil: Date.now() + LEASE_MS }, token, vorhanden.updateTime))
     ? versuche : 0;
@@ -263,7 +273,7 @@ async function letzteMarken() {
         stand: f.status || "von-cloud-function",
         zeit: f.zeit || f.createdAt || "",
         ...(f.fehler ? { fehler: String(f.fehler).slice(0, 160) } : {}),
-        ...(f.status === "gesendet" ? { mitFbc: f.mitFbc === true, mitUa: f.mitUa === true, mitIp: f.mitIp === true } : {})
+        ...(f.status === "gesendet" ? { mitPh: f.mitPh === true, mitFbc: f.mitFbc === true, mitUa: f.mitUa === true, mitIp: f.mitIp === true } : {})
       };
     });
     markenBlick = { bis: Date.now() + 30000, daten };
@@ -323,7 +333,7 @@ export default async function lifeskinCapi(req, res) {
   }
   const id = String(koerper?.id || "").trim();
   const art = String(koerper?.art || "").trim();
-  if (!KENNUNG.test(id) || !["kauf", "lead"].includes(art)) {
+  if (!KENNUNG.test(id) || !["kauf", "lead", "warten"].includes(art)) {
     res.statusCode = 400;
     res.end(JSON.stringify({ ok: false, grund: "anfrage" }));
     return;
@@ -346,11 +356,11 @@ export default async function lifeskinCapi(req, res) {
     });
     const ergebnisse = [];
     for (const ereignis of ereignisseFuer(sitzung, art)) {
-      const nutzlast = ereignis === "kauf" ? capi.baueKauf(sitzung, { browser }) : capi.baueLead(sitzung, { browser });
+      const nutzlast = ereignis === "kauf" ? capi.baueKauf(sitzung, { browser }) : ereignis === "warten" ? capi.baueWarten(sitzung, { browser }) : capi.baueLead(sitzung, { browser });
       if (!nutzlast.event_id) continue;
       const pfad = `lifeskin/${TENANT}/capiEvents`;
       const docId = markenKennung(ereignis, id);
-      const versuch = await markeNehmen(pfad, docId, nutzlast, token);
+      const versuch = await markeNehmen(pfad, docId, nutzlast, token, browser);
       if (!versuch) { ergebnisse.push({ ereignis, stand: "schon" }); continue; }
       const ergebnis = await anMeta(nutzlast, metaToken);
       await aendern(`${pfad}/${docId}`, {

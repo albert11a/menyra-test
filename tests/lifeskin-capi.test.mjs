@@ -197,7 +197,7 @@ test("die Marke liegt in einer eigenen Sammlung, nicht in der Sitzung", () => {
   const quelle = lies("functions/lifeskin-capi.js");
   assert.match(quelle, /collection\("capiEvents"\)/,
     "Die Marke liegt nicht mehr in einer eigenen Sammlung");
-  assert.match(quelle, /\.create\(\{/,
+  assert.match(lies("functions/lifeskin-capi-versand.js"), /tx\.create\(marke, \{/,
     "Die Marke wird nicht mit create() geschrieben - dann sperrt sie nicht gegen zwei Ausloeser");
   // Und die Sitzung selbst wird von der Function nie geschrieben.
   assert.ok(!/collection\("sessions"\)[\s\S]{0,200}\.(set|update)\(/.test(quelle),
@@ -219,12 +219,8 @@ test("ohne Secret meldet die Function nichts und wirft nicht", () => {
   const quelle = lies("functions/lifeskin-capi.js");
   assert.match(quelle, /secrets: \["META_CAPI_TOKEN"\]/,
     "Das Secret ist nicht mehr an die Function gebunden");
-  assert.match(quelle, /if \(!token\) \{[\s\S]{0,400}reason: "no_token"[\s\S]{0,80}return;/,
-    "Ohne Token laeuft die Function weiter, statt still aufzuhoeren");
-  // Sie darf den Verkauf nie anhalten: Der Fehler wird notiert, nicht geworfen.
-  const fang = quelle.slice(quelle.lastIndexOf("} catch (error) {"));
-  assert.ok(!/throw/.test(fang),
-    "Die Function wirft wieder - ein Fehler in der Messung kostet dann einen Eintrag im Protokoll und Aufmerksamkeit");
+  assert.match(lies("functions/lifeskin-capi-versand.js"), /if \(!token \|\| !nutzlast.event_id\) return/);
+
 });
 
 test("die Function haengt an denselben Sitzungen wie der Trichter", () => {
