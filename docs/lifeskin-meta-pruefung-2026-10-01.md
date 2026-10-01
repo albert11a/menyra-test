@@ -34,9 +34,20 @@ dem Ereignismanager (LF WEB -> Einstellungen -> Conversions API). Danach
 einmal neu deployen. Pruefen: `https://www.mnyra.com/api/lifeskin-capi`
 zeigt `metaToken: true` und `meta.tokenGilt: true`.
 
-**Offen:** Functions/Regeln automatisch deployen - nicht umgesetzt, die
-Aenderung am Workflow braucht die Freigabe des Inhabers und das
-GitHub-Geheimnis `FIREBASE_SERVICE_ACCOUNT`.
+**Deploy der Functions und Regeln (01.10. abends, "Ja, Punkt 3"):**
+`mnyra-deploy-functions` laeuft jetzt von selbst bei jedem Push auf main,
+der `functions/`, `firestore.rules` oder `firestore.indexes.json` aendert -
+sonst nie. Regeln nur nach bestandenem Regeltest im Emulator; scheitert ein
+Lauf, oeffnet er ein Issue "Deploy gescheitert". Das Dienstkonto in
+`FIREBASE_SERVICE_ACCOUNT` braucht: Bearbeiter, Secret Manager-Administrator,
+Dienstkontonutzer, Cloud Functions-Administrator (Lauf #5 scheiterte mit
+403 am Secret Manager).
+
+**Diagnose:** `GET /api/lifeskin-capi` prueft den Token ueber `/me` (ein
+Token aus dem Ereignismanager darf den Pixel oft nicht lesen, aber senden)
+und zeigt unter `letzte` die Antworten von Meta auf die letzten echten
+Ereignisse. Stand 01.10. abends: Token gilt, noch keine Sendung - und auch
+keine alte: Die Cloud Function hat nie einen Kauf an Meta geschickt.
 
 ## Browser (Pixel) - in Ordnung
 

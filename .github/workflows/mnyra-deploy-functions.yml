@@ -16,8 +16,12 @@ name: mnyra-deploy-functions
 # Settings -> Secrets and variables -> Actions:
 #
 #   FIREBASE_SERVICE_ACCOUNT  der ganze JSON-Schluessel eines Dienstkontos
-#                             mit den Rollen "Cloud Functions Admin" und
-#                             "Service Account User". Der Admin-SDK-
+#                             mit den Rollen Bearbeiter (Editor), Secret
+#                             Manager-Administrator, Dienstkontonutzer und
+#                             Cloud Functions-Administrator. Mit nur "Cloud
+#                             Functions Admin" + "Service Account User"
+#                             scheiterte der Lauf am 01.10. schon am Secret
+#                             Manager (403 serviceusage). Der Admin-SDK-
 #                             Schluessel der Apps taugt dafuer NICHT - er
 #                             darf Firestore und Push und keine einzige
 #                             Cloud Function.
@@ -29,7 +33,21 @@ name: mnyra-deploy-functions
 # Beide Schritte sagen es, falls etwas fehlt - statt erst nach vier
 # Minuten Installation.
 
+# SEIT DEM 01.10. AUCH VON SELBST - ABER NUR, WENN ES NOETIG IST (Freigabe
+# Inhaber, 01.10.: "Ja, Punkt 3"). Ein Push auf main, der Functions,
+# Firestore-Regeln oder -Indizes aendert, geht damit live wie das Frontend mit
+# Vercel. Bei allen anderen Pushes laeuft hier nichts. Was live geht, bestimmt
+# "Ziele bestimmen"; Regeln gehen nur nach bestandenem Regeltest (Emulator)
+# hinaus. Scheitert ein Lauf, steht es als Issue "Deploy gescheitert" im
+# Repository - mit Grund und dem, was zu tun ist - statt still in einem
+# roten Haken.
 on:
+  push:
+    branches: [main]
+    paths:
+      - "functions/**"
+      - "firestore.rules"
+      - "firestore.indexes.json"
   workflow_dispatch:
     inputs:
       only:
@@ -48,22 +66,57 @@ concurrency:
   group: mnyra-deploy-functions
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # WAS LIVE GEHT. Von Hand: die Auswahl aus dem Formular. Bei einem Push:
+      # was sich zwischen dem Stand davor und jetzt geaendert hat - Functions,
+      # Regeln, Indizes. Sonst nichts.
+      - name: Ziele bestimmen
+        id: ziele
+        env:
+          EREIGNIS: ${{ github.event_name }}
+          AUSWAHL: ${{ inputs.only }}
+          VORHER: ${{ github.event.before }}
+          JETZT: ${{ github.sha }}
+        run: |
+          if [ "$EREIGNIS" = "workflow_dispatch" ]; then
+            ONLY="${AUSWAHL:-functions}"
+          else
+            if [ -n "$VORHER" ] && [ "$VORHER" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$VORHER^{commit}" 2>/dev/null; then
+              GEAENDERT="$(git diff --name-only "$VORHER" "$JETZT")"
+            else
+              GEAENDERT="$(git show --name-only --format= "$JETZT")"
+            fi
+            ZIELE=""
+            if printf '%s\n' "$GEAENDERT" | grep -q '^functions/'; then ZIELE="functions"; fi
+            if printf '%s\n' "$GEAENDERT" | grep -q '^firestore\.rules$'; then ZIELE="${ZIELE:+$ZIELE,}firestore:rules"; fi
+            if printf '%s\n' "$GEAENDERT" | grep -q '^firestore\.indexes\.json$'; then ZIELE="${ZIELE:+$ZIELE,}firestore:indexes"; fi
+            ONLY="$ZIELE"
+          fi
+          echo "only=$ONLY" >> "$GITHUB_OUTPUT"
+          echo "Ziele: ${ONLY:-keine}"
 
       # ZUERST, und ohne Installation davor: Wer das Geheimnis nicht gesetzt
       # hat, soll es nach zehn Sekunden erfahren und nicht nach vier Minuten.
       - name: Schluessel pruefen
+        if: steps.ziele.outputs.only != ''
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
-            echo "::error::Das Geheimnis FIREBASE_SERVICE_ACCOUNT fehlt. Es ist der vollstaendige JSON-Schluessel eines Dienstkontos mit den Rollen 'Cloud Functions Admin' und 'Service Account User'. Einzutragen unter Settings -> Secrets and variables -> Actions."
+            echo "::error::Das Geheimnis FIREBASE_SERVICE_ACCOUNT fehlt. Es ist der vollstaendige JSON-Schluessel eines Dienstkontos mit den Rollen Bearbeiter (Editor), Secret Manager-Administrator, Dienstkontonutzer und Cloud Functions-Administrator. Einzutragen unter Settings -> Secrets and variables -> Actions."
             exit 1
           fi
           if ! printf '%s' "$FIREBASE_SERVICE_ACCOUNT" | grep -q '"private_key"'; then
@@ -76,8 +129,9 @@ jobs:
       # Ziffern und den Trennzeichen von firebase --only hat hier nichts
       # verloren.
       - name: Auswahl pruefen
+        if: steps.ziele.outputs.only != ''
         env:
-          ONLY: ${{ inputs.only }}
+          ONLY: ${{ steps.ziele.outputs.only }}
         run: |
           if ! printf '%s' "$ONLY" | grep -Eq '^[A-Za-z0-9_.:,-]{1,200}$'; then
             echo "::error::Unerlaubte Auswahl: $ONLY"
@@ -85,12 +139,14 @@ jobs:
           fi
 
       - name: Setup Node
+        if: steps.ziele.outputs.only != ''
         uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
 
       - name: Install (Wurzel)
+        if: steps.ziele.outputs.only != ''
         run: npm ci
 
       # Die Firebase-CLI laedt functions/index.js, um zu sehen, welche
@@ -98,9 +154,11 @@ jobs:
       # scheitert dieses Lesen - und zwar mit einer Meldung, die nach
       # allem klingt ausser nach fehlenden Paketen.
       - name: Install (functions)
+        if: steps.ziele.outputs.only != ''
         run: npm ci --prefix functions
 
       - name: Schluessel ablegen
+        if: steps.ziele.outputs.only != ''
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-key.json"
@@ -126,6 +184,7 @@ jobs:
       # Wer es schon von Hand gesetzt hat, soll es nicht ueberschrieben
       # bekommen. Ob es wirklich da ist, prueft der Schritt danach.
       - name: Geheimnisse der Funktionen setzen
+        if: steps.ziele.outputs.only != ''
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-key.json
           META_CAPI_TOKEN: ${{ secrets.META_CAPI_TOKEN }}
@@ -142,6 +201,7 @@ jobs:
       # kaeme. Die Funktion lifeskinCapiPurchase verlangt das Geheimnis;
       # fehlt es, laesst sie sich nicht ausspielen.
       - name: Geheimnisse pruefen
+        if: contains(steps.ziele.outputs.only, 'functions')
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-key.json
         run: |
@@ -152,11 +212,27 @@ jobs:
           fi
           echo "META_CAPI_TOKEN liegt im Secret Manager."
 
+      # REGELN NUR GEPRUEFT. Eine falsche Regel weist jeden Schreibvorgang
+      # des Trichters ab - still, mit 403. Deshalb laufen die Regeltests im
+      # Emulator (Projekt mnyra-local, nie die echte Datenbank), bevor eine
+      # Regel live geht.
+      - name: Setup Java (Regeltest)
+        if: contains(steps.ziele.outputs.only, 'firestore')
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Regeln im Emulator pruefen
+        if: contains(steps.ziele.outputs.only, 'firestore')
+        run: npx firebase emulators:exec --only firestore --project mnyra-local "npm run test:rules"
+
       - name: Deploy
+        if: steps.ziele.outputs.only != ''
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-key.json
           FUNCTIONS_DISCOVERY_TIMEOUT: "120"
-          ONLY: ${{ inputs.only }}
+          ONLY: ${{ steps.ziele.outputs.only }}
           GRUND: ${{ inputs.reason }}
         run: |
           echo "Deploy: $ONLY ${GRUND:+($GRUND)}"
@@ -169,3 +245,32 @@ jobs:
       - name: Schluessel entfernen
         if: always()
         run: rm -f "$RUNNER_TEMP/firebase-key.json"
+
+      # NICHT STILL HAENGEN BLEIBEN: Ein gescheiterter Deploy steht als Issue
+      # da (eines, das bei jedem weiteren Fehlschlag einen Kommentar bekommt),
+      # und ein gelungener schliesst es.
+      - name: Issue bei Fehlschlag
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LAUF: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ONLY: ${{ steps.ziele.outputs.only }}
+        run: |
+          gh label create deploy-gescheitert --color B60205 --description "Functions/Regeln nicht live" 2>/dev/null || true
+          TEXT="Der Deploy ($ONLY) ist gescheitert: $LAUF
+
+          Haeufigster Grund: Dem Dienstkonto in FIREBASE_SERVICE_ACCOUNT fehlt eine Rolle (Bearbeiter, Secret Manager-Administrator, Dienstkontonutzer, Cloud Functions-Administrator) oder das Geheimnis fehlt. Danach: Actions -> mnyra-deploy-functions -> Run workflow.
+
+          Solange das offen ist, laufen Functions und Firestore-Regeln in der alten Fassung."
+          NR="$(gh issue list --label deploy-gescheitert --state open --json number --jq '.[0].number' 2>/dev/null || true)"
+          if [ -n "$NR" ]; then gh issue comment "$NR" --body "$TEXT"; else gh issue create --title "Deploy gescheitert: Functions/Regeln nicht live" --label deploy-gescheitert --body "$TEXT"; fi
+
+      - name: Issue schliessen nach Erfolg
+        if: success() && steps.ziele.outputs.only != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LAUF: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          for NR in $(gh issue list --label deploy-gescheitert --state open --json number --jq '.[].number' 2>/dev/null); do
+            gh issue close "$NR" --comment "Deploy gelungen: $LAUF"
+          done
