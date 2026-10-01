@@ -102,3 +102,26 @@
 #lf-preview button{cursor:pointer}
 #lf-preview img{max-width:100%}
 #lf-preview h1,#lf-preview h2{text-wrap:wrap}
+
+/* Refined case navigation, shared by both photo pairs. */
+#lf-preview .lf-lucide{display:block;flex-shrink:0;width:1.2em;height:1.2em;stroke-width:1.8}
+#lf-preview .lf-button-icon .lf-lucide{width:5cqw;height:5cqw;stroke-width:2}
+#lf-preview .lf-band>span{display:flex;align-items:center;gap:.5em}
+#lf-preview .lf-dark li>span .lf-lucide{width:1.05em;height:1.05em;stroke-width:2.3}
+#lf-preview .lf-navigation{display:flex;align-items:center;gap:2cqw}
+#lf-preview .lf-arrow{display:flex;align-items:center;justify-content:center;padding:0;width:6.7cqw;height:6.7cqw;min-width:44px;min-height:44px;border-radius:50%;border:1px solid #dedee5;background:#fff;color:#17181b;-webkit-appearance:none;appearance:none;transition:background .15s ease,box-shadow .15s ease}
+#lf-preview .lf-arrow .lf-lucide{width:3cqw;height:3cqw;min-width:20px;min-height:20px;stroke-width:1.8}
+#lf-preview .lf-arrow:hover{background:#f0f1f5}
+#lf-preview .lf-arrow-image{position:absolute;top:46%;transform:translateY(-50%);z-index:3;background:#ffffffed;border-color:#ffffffb3;box-shadow:0 4px 18px #17181b18;backdrop-filter:blur(10px)}
+#lf-preview .lf-arrow-prev{left:2.3cqw}
+#lf-preview .lf-arrow-next{right:2.3cqw}
+#lf-preview .lf-case-count{font-size:clamp(11px,1.9cqw,16px);font-weight:500;letter-spacing:.04em;font-variant-numeric:tabular-nums;color:#747780;min-width:4.6em;text-align:center}
+#lf-preview .lf-casebar{height:auto;min-height:10.7cqw;margin-top:1.2cqw;gap:3cqw}
+#lf-preview .lf-casebar .lf-duration{display:flex;align-items:center;gap:1.3cqw;max-width:none;font-size:clamp(12px,2.25cqw,18px);text-align:left;color:#61646b;white-space:nowrap}
+#lf-preview .lf-duration>.lf-lucide{width:3.6cqw;height:3.6cqw;min-width:20px;min-height:20px;color:#3459e6}
+#lf-preview .lf-duration strong{display:block;color:#17181b;font-size:clamp(14px,2.65cqw,21px);font-weight:600;line-height:1.3}
+#lf-preview summary{display:flex;align-items:center;gap:1cqw;list-style:none}
+#lf-preview summary::-webkit-details-marker{display:none}
+#lf-preview summary>.lf-lucide{width:3cqw;height:3cqw;min-width:16px;min-height:16px;transition:transform .18s ease}
+#lf-preview details[open] summary>.lf-lucide{transform:rotate(90deg)}
+@media(prefers-reduced-motion:reduce){#lf-preview .lf-arrow,#lf-preview summary>.lf-lucide{transition:none}}

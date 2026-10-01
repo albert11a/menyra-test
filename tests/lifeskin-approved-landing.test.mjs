@@ -9,18 +9,18 @@ const html = readFileSync("apps/lifeskin-landing/index.html", "utf8");
 function setup() {
   const pending = [];
   const node = (dataset) => ({ dataset, attributes: {}, addEventListener(event, fn) { this[event] = fn; }, setAttribute(key, value) { this.attributes[key] = value; } });
-  const buttons = [node({ case: "one" }), node({ case: "two" })];
-  const problems = [node({ problem: "Puçrra" }), node({ problem: "Njolla" })];
+  const buttons = [node({ caseDirection: "prev" }), node({ caseDirection: "next" })];
+
   const before = { src: "original-before" };
   const after = { src: "original-after" };
-  const note = {};
+  const counter = {};
   const root = {
-    querySelector: (id) => ({ "#lf-before": before, "#lf-after": after, "#lf-problem-text": note })[id],
-    querySelectorAll: (selector) => selector === "[data-case]" ? buttons : problems
+    querySelector: (id) => ({ "#lf-before": before, "#lf-after": after, "#lf-case-count": counter })[id],
+    querySelectorAll: (selector) => selector === "[data-case-direction]" ? buttons : []
   };
   class Image { set src(src) { this.path = src; pending.push(this); } }
   vm.runInNewContext(source, { document: { getElementById: () => root }, Image });
-  return { pending, buttons, problems, before, after, note };
+  return { pending, buttons, before, after, counter };
 }
 
 test("case switching keeps both old photos until the complete next pair loads", async () => {
@@ -34,8 +34,7 @@ test("case switching keeps both old photos until the complete next pair loads", 
   await switching;
   assert.equal(state.before.src, "/apps/lifeskin/fall-vorher.jpg");
   assert.equal(state.after.src, "/apps/lifeskin/fall-nachher.jpg");
-  assert.equal(state.buttons[0].attributes["aria-pressed"], "true");
-  assert.equal(state.buttons[1].attributes["aria-pressed"], "false");
+  assert.equal(state.counter.textContent, "01 / 02");
 });
 
 test("a slow earlier tap cannot overwrite the most recent case choice", async () => {
@@ -49,28 +48,30 @@ test("a slow earlier tap cannot overwrite the most recent case choice", async ()
   state.pending[1].onload();
   await first;
   assert.equal(state.before.src, "/apps/lifeskin-landing/fotot/rasti-2-dita1.webp");
-  assert.equal(state.buttons[1].attributes["aria-pressed"], "true");
+  assert.equal(state.counter.textContent, "02 / 02");
 });
 
-test("a failed photo keeps the current comparison and can be retried", async () => {
+test("a failed next pair keeps the current photos and can be retried", async () => {
   const state = setup();
-  const failed = state.buttons[1].click();
-  state.pending[2].onerror();
+  const failed = state.buttons[0].click();
+  state.pending[0].onerror();
   await failed;
   assert.equal(state.before.src, "original-before");
-  const retry = state.buttons[1].click();
-  state.pending[4].onload();
-  state.pending[5].onload();
+  const retry = state.buttons[0].click();
+  state.pending[2].onload();
+  state.pending[3].onload();
   await retry;
-  assert.equal(state.after.src, "/apps/lifeskin-landing/fotot/rasti-2-dita28.webp");
+  assert.equal(state.after.src, "/apps/lifeskin/fall-nachher.jpg");
 });
 
-test("concern selection updates its accessible state and explanatory text", () => {
-  const state = setup();
-  state.problems[1].click();
-  assert.equal(state.note.textContent, "Njolla");
-  assert.equal(state.problems[1].attributes["aria-pressed"], "true");
-  assert.equal(state.problems[0].attributes["aria-pressed"], "false");
+test("the concern section is removed and both arrow locations navigate the same pair", () => {
+  assert.doesNotMatch(html, /Fillo nga problemi yt|data-problem|data-case="/);
+  assert.equal((html.match(/data-case-direction="prev"/g) || []).length, 2);
+  assert.equal((html.match(/data-case-direction="next"/g) || []).length, 2);
+  assert.match(html, /Kohëzgjatja/);
+  assert.match(html, /4 javë/);
+  assert.equal((html.match(/class="lf-step"/g) || []).length, 3);
+  assert.doesNotMatch(html, /Rezultati ndryshon|↗️|✓/);
 });
 
 test("both analysis CTAs retain the existing funnel entry and all photo assets exist", () => {

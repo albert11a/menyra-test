@@ -126,5 +126,5 @@ test("/lifeskin: beide Fotos laden direkt und teilen sich einen festen Rahmen", 
   const css = lies("apps/lifeskin-landing/approved.css");
   assert.match(css, /aspect-ratio:1104\/645/);
   assert.match(css, /\.lf-casebuttons button\{width:14.25cqw/);
-  assert.match(lies("apps/lifeskin-landing/approved.js"), /await load\(key\)/);
+  assert.match(lies("apps/lifeskin-landing/approved.js"), /await load\(index\)/);
 });
