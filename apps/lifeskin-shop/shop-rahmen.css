@@ -553,3 +553,20 @@ html[data-ls-landing="lifeskinshop"] #ls-einstieg[data-aktiv="ja"]{animation:non
 #ls-einstieg .kasa__premtime{margin:6px 0 14px}
 #ls-einstieg .kasa__arrin{margin:12px 0 0}
 #ls-einstieg .kasa__wa{margin:12px 0 0}
+/* LESBARKEIT (01.10., gemessen auf 390 px): Fliesstext 16 px, kleine Zeilen
+   mindestens 13 px, Ueberschriften in Grossbuchstaben mindestens 11 px. Im
+   ersten Bildschirm statt der Produkterklaerung die echte Reichweite. Der
+   Korb-Knopf behaelt seine Groesse, trifft aber auf 44 px. */
+#ls-einstieg .hero-ig{display:inline-flex;align-items:center;gap:7px;margin:2px auto 0;font-size:14px!important;color:var(--ink)!important;line-height:1.3}
+#ls-einstieg .hero-ig .icon{width:17px;height:17px;color:#c13584}
+#ls-einstieg .hero-ig b{font-weight:700}
+#ls-einstieg .hero-heading{display:flex;flex-direction:column;align-items:center}
+#ls-einstieg .header .bag::after{content:"";position:absolute;inset:-4px}
+#ls-einstieg .faq details p,#ls-einstieg .faq summary,#ls-einstieg #zgjedhja>p:not(.eyebrow):not(.selection-note),
+#ls-einstieg .selection-pyetja p,#ls-einstieg .section-intro,#ls-einstieg .social-presence>p:not(.eyebrow){font-size:16px!important;line-height:1.5}
+#ls-einstieg .duo-card .duo-product-body p,#ls-einstieg .duo-ndjekje li,#ls-einstieg .customer-intro{font-size:15px!important;line-height:1.5}
+#ls-einstieg .duo-dobi,#ls-einstieg .duo-aktiv{font-size:14px!important}
+#ls-einstieg .duo-inci,#ls-einstieg .duo-shenim,#ls-einstieg .selection-note,#ls-einstieg .social-profiles small{font-size:13px!important}
+#ls-einstieg .text-link{font-size:14px!important}
+#ls-einstieg .eyebrow,#ls-einstieg .section-number,#ls-einstieg .photo-label{font-size:11px!important}
+#ls-einstieg .duo-hap small{font-size:11px!important}
