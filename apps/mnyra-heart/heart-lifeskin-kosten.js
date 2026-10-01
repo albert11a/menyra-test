@@ -10,6 +10,8 @@
 //
 // SO WIRD GERECHNET (Wunsch Inhaber):
 //   ein Produkt = 1 Shishe + 1 Stiker + Mbushja (30 ml) Krem
+//   Shishe und Stiker: Gesamtpreis und Stueckzahl des Einkaufs - der Preis
+//   je Stueck wird gerechnet (Gesamtpreis / Stueck).
 //   Krem: beliebig viele, je mit Preis, Menge (ml oder l) und dem Produkt,
 //   in das sie kommt. Preis je ml = Preis / Menge in ml.
 //   ein Set = seine Produkte + Versand + Verpackung + Sonstiges je Bestellung
@@ -47,8 +49,12 @@ export function kremNormalisieren(roh, i = 0) {
 export function kostenNormalisieren(roh) {
   const mbushja = betrag(roh?.mbushja);
   const aus = {
-    shishe: betrag(roh?.shishe),
-    stiker: betrag(roh?.stiker),
+    // Bis 01.10. stand hier ein Feld je Stueck; eingetragen wurde dort der
+    // Gesamtpreis - er wird als Gesamtpreis uebernommen.
+    shishePreis: betrag(roh?.shishePreis ?? roh?.shishe),
+    shisheStueck: betrag(roh?.shisheStueck),
+    stikerPreis: betrag(roh?.stikerPreis ?? roh?.stiker),
+    stikerStueck: betrag(roh?.stikerStueck),
     mbushja: mbushja > 0 ? mbushja : MBUSHJA_STANDARD,
     kreme: (Array.isArray(roh?.kreme) ? roh.kreme : []).slice(0, KREM_MAX).map(kremNormalisieren)
       .filter((k) => k.name || k.preis || k.menge),
@@ -56,6 +62,11 @@ export function kostenNormalisieren(roh) {
   };
   for (const k of KOSTEN_JE_BESTELLUNG) aus[k.id] = betrag(roh?.[k.id]);
   return aus;
+}
+
+// Preis je Stueck aus Gesamtpreis und Stueckzahl; ohne Stueckzahl 0.
+export function jeStueck(preis, stueck) {
+  return stueck > 0 ? preis / stueck : 0;
 }
 
 export function preisJeMl(krem) {
@@ -71,9 +82,11 @@ export function produktRechnung(produktId, kosten) {
   const kreme = k.kreme.filter((x) => x.produkt === produktId);
   const krem = kreme[0] || null;
   const kremKosten = krem ? preisJeMl(krem) * k.mbushja : 0;
+  const shishe = jeStueck(k.shishePreis, k.shisheStueck);
+  const stiker = jeStueck(k.stikerPreis, k.stikerStueck);
   return {
-    shishe: k.shishe, stiker: k.stiker, mbushja: k.mbushja, krem, kremKosten: rund(kremKosten),
-    summe: rund(k.shishe + k.stiker + kremKosten), ohneKrem: !krem, mehrere: kreme.length > 1
+    shishe: rund(shishe), stiker: rund(stiker), mbushja: k.mbushja, krem, kremKosten: rund(kremKosten),
+    summe: rund(shishe + stiker + kremKosten), ohneKrem: !krem, mehrere: kreme.length > 1
   };
 }
 
@@ -100,6 +113,22 @@ function feld(schluessel, label, wert, einheit = "€", platzhalter = "0,00") {
                  data-kosten="${escapeHtml(schluessel)}" value="${escapeHtml(feldWert(wert))}"><em>${escapeHtml(einheit)}</em></span>
         </label>`;
 }
+
+// Shishet / Stikerat: was der Einkauf gekostet hat und wie viele Stueck es
+// waren - darunter der Preis je Stueck (nach dem Speichern).
+function einkauf(schluessel, label, preis, stueck) {
+  const eins = jeStueck(preis, stueck);
+  return `
+        <div class="heart-kosten__einkauf">
+          <span class="heart-kosten__einkauf-titel">${escapeHtml(label)}</span>
+          <span class="heart-kosten__eingabe"><b class="heart-krem__etikett">Gesamt</b><input type="text" inputmode="decimal" autocomplete="off" placeholder="0,00"
+                 data-kosten="${schluessel}Preis" value="${escapeHtml(feldWert(preis))}"><em>€</em></span>
+          <span class="heart-kosten__eingabe"><b class="heart-krem__etikett">Stück</b><input type="text" inputmode="numeric" autocomplete="off" placeholder="0"
+                 data-kosten="${schluessel}Stueck" value="${escapeHtml(feldWert(stueck))}"><em>copë</em></span>
+          <small class="heart-kosten__jestueck">${eins ? `= ${euro4(eins)} je copë` : "Gesamtpreis und Stück eintragen"}</small>
+        </div>`;
+}
+const euro4 = (n) => `${Number(n || 0).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })} €`;
 
 // Eine Krem-Zeile. Auch die Vorlage fuer "+ Krem" (heart.js klont sie).
 export function kremZeile(krem, produkte) {
@@ -149,8 +178,8 @@ export function renderProduktkosten(zustand = {}, sets = []) {
       ${kopf(zahl)}
       <div class="heart-kosten__form" data-bewahren="produktkosten:${escapeHtml(stempel)}">
         <h4 class="heart-kosten__titel">Je Produkt</h4>
-        ${feld("shishe", "Shishe (1 copë)", kosten.shishe)}
-        ${feld("stiker", "Stiker (1 copë)", kosten.stiker)}
+        ${einkauf("shishe", "Shishet", kosten.shishePreis, kosten.shisheStueck)}
+        ${einkauf("stiker", "Stikerat", kosten.stikerPreis, kosten.stikerStueck)}
         ${feld("mbushja", "Mbushja e një produkti", kosten.mbushja, "ml", "30")}
         <h4 class="heart-kosten__titel">Kremet</h4>
         <div class="heart-kremet" data-kremet>

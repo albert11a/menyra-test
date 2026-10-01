@@ -9,7 +9,7 @@ import { kostenNormalisieren, produktRechnung, setRechnung, preisJeMl, renderPro
 
 const lies = (p) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const KOSTEN = {
-  shishe: "0,40", stiker: 0.1, mbushja: "",
+  shishePreis: "400", shisheStueck: "1000", stikerPreis: 50, stikerStueck: "500", mbushja: "",
   kreme: [
     { id: "a", name: "BPO 5 %", preis: "60", menge: "1", einheit: "l", produkt: "lf-acne" },
     { id: "m", name: "Ceramide", preis: 12, menge: 500, einheit: "ml", produkt: "lf-moistur" }
@@ -46,16 +46,24 @@ test("ein Set = seine Produkte + je Bestellung; was bleibt", () => {
   assert.equal(r.marge, 76);
   assert.deepEqual(r.fehlt, []);
   // Unsinn wird 0; leere Kremet fallen weg.
-  const n = kostenNormalisieren({ shishe: "-1", kreme: [{}, { name: "x" }] });
-  assert.equal(n.shishe, 0);
+  const n = kostenNormalisieren({ shishePreis: "-1", kreme: [{}, { name: "x" }] });
+  assert.equal(n.shishePreis, 0);
+  // Shishe/Stiker je Stueck = Gesamt / Stueck; ohne Stueck 0.
+  assert.equal(produktRechnung("lf-x", { shishePreis: 456, stikerPreis: 845 }).summe, 0);
+  assert.equal(produktRechnung("lf-x", { shishePreis: 456, shisheStueck: 1200, stikerPreis: 845, stikerStueck: 5000 }).summe, 0.55);
+  // Alter Stand (ein Feld): als Gesamtpreis uebernommen.
+  assert.equal(kostenNormalisieren({ shishe: 456 }).shishePreis, 456);
   assert.equal(n.kreme.length, 1);
 });
 
 test("die Karte: Shishe, Stiker, Mbushja, Kremet mit Produkt, + Krem, Ergebnis", () => {
   const html = renderProduktkosten({ produkte: [{ id: "lf-acne", name: "LF ACNE" }, { id: "lf-moistur", name: "LF MOISTUR" }], produktkosten: KOSTEN },
     [{ id: "acne", titulli: "Acne Duo", produkte: ["lf-acne", "lf-moistur"], cmimi: 29 }]);
-  assert.match(html, /data-kosten="shishe" value="0,4"/);
-  assert.match(html, /data-kosten="stiker" value="0,1"/);
+  assert.match(html, /data-kosten="shishePreis" value="400"/);
+  assert.match(html, /data-kosten="shisheStueck" value="1000"/);
+  assert.match(html, /data-kosten="stikerPreis" value="50"/);
+  assert.match(html, /= 0,40 € je copë/);
+  assert.match(html, /= 0,10 € je copë/);
   assert.match(html, /data-kosten="mbushja" value="30"/);
   assert.match(html, /data-krem="a"/);
   assert.match(html, /<option value="l" selected>l<\/option>/);

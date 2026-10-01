@@ -10466,3 +10466,9 @@ html:where([data-heart-theme="tag"]),
 :where(html[data-heart-theme="tag"]) .heart-krem__name, :where(html[data-heart-theme="tag"]) .heart-krem__produkt, :where(html[data-heart-theme="tag"]) .heart-krem select { background: #fff; border-color: #d6d6d0; color: #1c1c1a; }
 .heart-krem__etikett { flex: none; width: 52px; font-size: 12px; font-weight: 600; color: var(--heart-text-soft, #9a9a95); }
 .heart-krem__fuer .heart-krem__produkt { flex: 1; }
+.heart-kosten__einkauf { display: grid; gap: 6px; padding: 10px; border: 1px solid var(--heart-line, #34383a); border-radius: 12px; }
+.heart-kosten__einkauf-titel { font-size: 14px; font-weight: 600; }
+.heart-kosten__einkauf > .heart-kosten__eingabe input { width: 100%; flex: 1; }
+.heart-kosten__einkauf > .heart-kosten__eingabe em { width: 34px; }
+.heart-kosten__jestueck { font-size: 12.5px; color: #4ade80; }
+:where(html[data-heart-theme="tag"]) .heart-kosten__jestueck { color: #15803d; }
