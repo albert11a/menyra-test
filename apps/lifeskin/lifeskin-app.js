@@ -34,7 +34,7 @@ import { LIFESKIN_TELEFON_VORWAHL } from "./lifeskin-config.js";
 import { netzVorladen, netzHolen, netzStand, netzArt, netzFehlerFolge, messeNetz, MARKE } from "./lifeskin-netz.js";
 import { STANDARD_KONFIG, ALTERSGRUPPEN } from "./lifeskin-catalog.js";
 import { OBERFLAECHE, EINSTIEG_HINWEIS, EINSTIEG_KARTEN, ARZT_BILD, ARZT_NAME,
-  FRAGEN, FRAGEN_NACH_SCAN, fragenNachAufnahme, FRAGEN_PA_SKANIM, FRAGEN_PA_SKANIM_NUMRI,
+  FRAGEN, FRAGEN_NACH_SCAN, fragenNachAufnahme, pyetjetSatz, FRAGEN_PA_SKANIM, FRAGEN_PA_SKANIM_NUMRI,
   FRAGEN_TEXTE, FRAGEN_TEXTE_WEGE, OBERFLAECHE_WEGE, frageFuerWeg, t, fuelle } from "./lifeskin-content.js";
 import { besteGuete, Flaechenkamera, beiFreigabe, KAMERA_HAENGT_MS, BILD_GRENZE_MS, ausDatei as fotoAusDatei } from "./lifeskin-foto.js";
 import { Sitzung } from "./lifeskin-session.js";
@@ -4387,7 +4387,8 @@ export class Trichter {
       const eigener = FRAGEN_TEXTE_WEGE[this.weg]?.[this.fragen.einleitung] || FRAGEN_TEXTE[this.fragen.einleitung];
       const satz = this.fragen.i !== 0
         ? ""
-        : t(eigener || (knapp ? FRAGEN_TEXTE.einleitungEinzeln : FRAGEN_TEXTE.einleitung), this.sprache);
+        : fuelle(t(eigener || (knapp ? FRAGEN_TEXTE.einleitungEinzeln : FRAGEN_TEXTE.einleitung), this.sprache),
+          { pyetjet: pyetjetSatz(this.fragenListe.length, this.sprache) });
       einleitung.textContent = satz;
       einleitung.hidden = !satz;
     }

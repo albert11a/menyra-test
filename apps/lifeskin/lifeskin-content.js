@@ -312,6 +312,9 @@ export const OBERFLAECHE = Object.freeze({
   // letzte ist die wichtigste, weil sie der Grund ist, warum jemand
   // diesen Weg gewaehlt hat.
   fotoParaTitel: { sq: "Para fotografisë", de: "Vor dem Foto" },
+  // Make-up und Filter stehen seit dem 01.10. auch auf /lifeskin nicht mehr
+  // auf dem Bildschirm (Wunsch Inhaber, wie im Laden); die Worte bleiben fuer
+  // /lifeskin2.
   fotoParaMakeup: { sq: "Pa makeup në zonën që fotografoni", de: "Kein Make-up auf der Stelle" },
   fotoParaLicht: { sq: "Dritë e mirë", de: "Gutes Licht" },
   fotoParaKlar: { sq: "Foto e qartë", de: "Scharfes Foto" },
@@ -1346,8 +1349,24 @@ export const FRAGEN_NACH_AUFNAHME_WEGE = Object.freeze({
   lifeskinshop: Object.freeze(["anliegen", "kohezgjatja", "perdorimi"].map(ausVorrat))
 });
 
+// AUF /lifeskin NUR NOCH DIE ERSTE FRAGE (01.10., Wunsch Inhaber): was ihn
+// stoert. Danach gleich Name und Nummer. /lifeskin hat keine Marke am
+// <html> (wegLesen() gibt dort ""), /lifeskin2 und der Laden behalten ihre
+// Listen. Die Stufen pyetja2 bis pyetja4 werden hier nie erreicht -
+// schritt() geht nie zurueck, und Heart zaehlt wer weiter ist als
+// durchgegangen. Therapieseite und Prompt kommen ohne die drei Antworten
+// aus (shared/lifeskin-antworten.js), wie im Laden schon ohne die vierte.
+export const FRAGEN_NACH_AUFNAHME_LIFESKIN = Object.freeze([ausVorrat("anliegen")]);
+
+// "një pyetje e shkurtër" / "3 pyetje të shkurtra" fuer {pyetjet}.
+export function pyetjetSatz(anzahl, sprache = "sq") {
+  return anzahl === 1 ? t(FRAGEN_TEXTE.pyetjetNje, sprache)
+    : fuelle(t(FRAGEN_TEXTE.pyetjetShume, sprache), { n: anzahl });
+}
+
 // Die Fragen nach der Aufnahme fuer diesen Weg.
 export function fragenNachAufnahme(weg) {
+  if (!weg) return FRAGEN_NACH_AUFNAHME_LIFESKIN;
   return FRAGEN_NACH_AUFNAHME_WEGE[weg] || FRAGEN_NACH_AUFNAHME;
 }
 
@@ -1418,14 +1437,20 @@ export const FRAGEN_TEXTE = Object.freeze({
   // NACH SCAN UND FOTO: was vorbei ist, was jetzt kommt, und dass es
   // schnell geht. "Vetëm me prekje" - keine Tastatur, das ist der Satz, der
   // nach einer halben Minute Kopfdrehen noch jemanden weitermachen laesst.
+  //
+  // {pyetjet} ist die Zahl der Fragen, die wirklich kommen (pyetjetSatz):
+  // "4 pyetje" ueber einer einzigen waere eine Luege (/lifeskin hat seit
+  // dem 01.10. eine, der Laden drei).
   einleitungNachScan: {
-    sq: "Skanimi mbaroi ✓ Ndërsa fotot po i shkojnë Dr. Gashit: 4 pyetje të shkurtra, vetëm me prekje.",
-    de: "Der Scan ist fertig ✓ Während die Fotos zu Dr. Gashi gehen: 4 kurze Fragen, nur antippen."
+    sq: "Skanimi mbaroi ✓ Ndërsa fotot po i shkojnë Dr. Gashit: {pyetjet}, vetëm me prekje.",
+    de: "Der Scan ist fertig ✓ Während die Fotos zu Dr. Gashi gehen: {pyetjet}, nur antippen."
   },
   einleitungNachFoto: {
-    sq: "Fotoja u ruajt ✓ Ndërsa po i shkon Dr. Gashit: 4 pyetje të shkurtra, vetëm me prekje.",
-    de: "Das Foto ist gespeichert ✓ Während es zu Dr. Gashi geht: 4 kurze Fragen, nur antippen."
+    sq: "Fotoja u ruajt ✓ Ndërsa po i shkon Dr. Gashit: {pyetjet}, vetëm me prekje.",
+    de: "Das Foto ist gespeichert ✓ Während es zu Dr. Gashi geht: {pyetjet}, nur antippen."
   },
+  pyetjetNje: { sq: "një pyetje e shkurtër", de: "eine kurze Frage" },
+  pyetjetShume: { sq: "{n} pyetje të shkurtra", de: "{n} kurze Fragen" },
   // Und der Satz ueber der Nummer auf demselben Weg.
   //
   // "Der Scan ist fertig" waere hier schlicht falsch, und "ein paar kurze

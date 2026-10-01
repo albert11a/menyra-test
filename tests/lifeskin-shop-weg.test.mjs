@@ -49,8 +49,10 @@ test("der Laden spricht in eigenen Worten - und nur mit Schluesseln, die es gibt
 test("im Laden drei Fragen nach der Aufnahme - ohne die Bereitschaft (Frage 4)", async () => {
   const { fragenNachAufnahme, FRAGEN } = await import("../apps/lifeskin/lifeskin-content.js");
   assert.deepEqual(fragenNachAufnahme("lifeskinshop").map((f) => f.id), ["anliegen", "kohezgjatja", "perdorimi"]);
-  // Die anderen Wege behalten ihre vier.
-  assert.deepEqual(fragenNachAufnahme("").map((f) => f.id), FRAGEN_NACH_AUFNAHME.map((f) => f.id));
+  // /lifeskin seit dem 01.10. nur noch die erste Frage (Wunsch Inhaber),
+  // /lifeskin2 behaelt seine vier.
+  assert.deepEqual(fragenNachAufnahme("").map((f) => f.id), ["anliegen"]);
+  assert.deepEqual(fragenNachAufnahme("lifeskin2").map((f) => f.id), FRAGEN_NACH_AUFNAHME.map((f) => f.id));
   assert.equal(fragenNachAufnahme("lifeskin2").length, 4);
   // Keine Worte mehr fuer eine Frage, die der Laden nicht stellt.
   assert.equal(FRAGEN.find((f) => f.id === "gatishmeria").wege.lifeskinshop, undefined);
@@ -77,10 +79,12 @@ test("im Laden kuerzer (29.09.): kein Pa detyrim, drei Foto-Regeln, Frage 1 ohne
   assert.deepEqual([...para.matchAll(/data-text="(fotoPara[A-Za-z]+)"/g)].map((m) => m[1]),
     ["fotoParaTitel", "fotoParaLicht", "fotoParaKlar", "fotoParaNah"]);
   assert.doesNotMatch(para, /weg-tipp|KËSHILLË PËR FOTON/);
-  // /lifeskin behaelt alle fuenf Regeln.
+  // /lifeskin seit dem 01.10. ebenfalls ohne Make-up und Filter (Wunsch
+  // Inhaber), aber mit dem Tipp darunter.
   const lifeskin = lies("apps/lifeskin-landing/index.html");
-  assert.match(lifeskin, /data-text="fotoParaMakeup"/);
-  assert.match(lifeskin, /data-text="fotoParaFilter"/);
+  const lifeskinPara = lifeskin.slice(lifeskin.indexOf('data-text="fotoParaTitel"'), lifeskin.indexOf('id="ls-fotoweiter"'));
+  assert.deepEqual([...lifeskinPara.matchAll(/data-text="(fotoPara[A-Za-z]+)"/g)].map((m) => m[1]),
+    ["fotoParaTitel", "fotoParaLicht", "fotoParaKlar", "fotoParaNah"]);
   // Frage 1 im Laden ohne "Shkëlqimi" und "Nuk e di", Frage 3 kuerzer.
   const { FRAGEN, frageFuerWeg } = await import("../apps/lifeskin/lifeskin-content.js");
   const frage = (id, weg) => frageFuerWeg(FRAGEN.find((f) => f.id === id), weg);
@@ -777,4 +781,13 @@ test("die neuen Marken: Bild da, Nummer getippt, Abschnitte der Analyseseite - o
   await daten.sichtSchreiben({ v: 1, s4: true });
   assert.match(urls[0], /updateMask\.fieldPaths=timings\.terapia\.s4/);
   assert.match(urls[0], /currentDocument\.exists=true/);
+});
+
+test("/lifeskin (01.10.): eine Frage nach der Aufnahme, und der Satz darueber sagt genau das", async () => {
+  const { FRAGEN_TEXTE: TEXTE, pyetjetSatz, fuelle } = await import("../apps/lifeskin/lifeskin-content.js");
+  const satz = (key, n, sprache = "sq") => fuelle(t(TEXTE[key], sprache), { pyetjet: pyetjetSatz(n, sprache) });
+  assert.equal(satz("einleitungNachFoto", 1), "Fotoja u ruajt ✓ Ndërsa po i shkon Dr. Gashit: një pyetje e shkurtër, vetëm me prekje.");
+  assert.equal(satz("einleitungNachScan", 3), "Skanimi mbaroi ✓ Ndërsa fotot po i shkojnë Dr. Gashit: 3 pyetje të shkurtra, vetëm me prekje.");
+  assert.equal(satz("einleitungNachFoto", 4, "de"), "Das Foto ist gespeichert ✓ Während es zu Dr. Gashi geht: 4 kurze Fragen, nur antippen.");
+  assert.match(lies("apps/lifeskin/lifeskin-app.js"), /\{ pyetjet: pyetjetSatz\(this\.fragenListe\.length, this\.sprache\) \}/);
 });

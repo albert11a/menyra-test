@@ -50,11 +50,50 @@
       if (current === request) desired = Math.max(0, cases.findIndex((item) => item.id === displayedId));
     }
   }
-  buttons.forEach((button) => button.addEventListener("click", () => {
+  const step = (direction) => {
     if (cases.length < 2) return;
-    desired = (desired + (button.dataset.caseDirection === "prev" ? -1 : 1) + cases.length) % cases.length;
+    desired = (desired + direction + cases.length) % cases.length;
     return show(desired);
+  };
+  // A swipe that starts on an arrow must not also count as its tap.
+  let swipedAt = 0;
+  buttons.forEach((button) => button.addEventListener("click", () => {
+    if (Date.now() - swipedAt < 500) return;
+    return step(button.dataset.caseDirection === "prev" ? -1 : 1);
   }));
+  // Swipe on the photos: left = next case, right = previous. Only a clearly
+  // sideways stroke counts; up and down stay the page scroll (touch-action
+  // pan-y in approved.css hands those to the browser).
+  const stage = root.querySelector(".lf-case-stage");
+  const pair = root.querySelector("#lf-case-pair");
+  if (stage && pair) {
+    let swipe = null;
+    const settle = () => {
+      pair.style.transition = "transform .22s ease";
+      pair.style.transform = "";
+      swipe = null;
+    };
+    stage.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse") return;
+      swipe = { id: event.pointerId, x: event.clientX, y: event.clientY, dx: 0, dy: 0 };
+      pair.style.transition = "none";
+    });
+    stage.addEventListener("pointermove", (event) => {
+      if (!swipe || event.pointerId !== swipe.id) return;
+      swipe.dx = event.clientX - swipe.x;
+      swipe.dy = event.clientY - swipe.y;
+      if (Math.abs(swipe.dx) > Math.abs(swipe.dy) && cases.length > 1) pair.style.transform = `translateX(${swipe.dx * 0.35}px)`;
+    });
+    stage.addEventListener("pointerup", (event) => {
+      if (!swipe || event.pointerId !== swipe.id) return;
+      const { dx, dy } = swipe;
+      settle();
+      if (Math.abs(dx) < 40 || Math.abs(dx) <= Math.abs(dy) * 1.5) return;
+      swipedAt = Date.now();
+      step(dx < 0 ? 1 : -1);
+    });
+    stage.addEventListener("pointercancel", () => { if (swipe) settle(); });
+  }
   root.addEventListener("lifeskin:comparison-cases", (event) => {
     ++request; // Any pending photos from the former list are now obsolete.
     cases = event.detail.filter((entry) => entry.para && entry.pas).map((entry) => ({ ...entry, para: photo(entry.para), pas: photo(entry.pas) }));
