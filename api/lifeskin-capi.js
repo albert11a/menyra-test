@@ -218,7 +218,62 @@ async function markeNehmen(pfad, docId, nutzlast, token) {
 }
 
 // ── Diagnose: GET zeigt, ob alles eingerichtet ist - ohne ein Geheimnis ──
-let pixelBlick = { bis: 0, daten: null };
+//
+// WAS ZAEHLT, IST DAS SENDEN. Bis zum 01.10. fragte die Diagnose, ob der
+// Token den Pixel LESEN darf (Name, letzte Aktivitaet). Ein Token aus dem
+// Ereignismanager darf oft nur senden - "(#100) Missing Permission" hiess
+// dann "kaputt", obwohl jedes Ereignis ankam. Jetzt:
+//   - tokenGilt: Meta kennt den Token (GET /me) - nicht abgelaufen, nicht falsch
+//   - letzte: was Meta bei den letzten echten Ereignissen geantwortet hat
+//     (Stand je Marke in capiEvents: gesendet / fehler mit Grund / unklar).
+//     Ohne Fallnummer, ohne Kennung, ohne Person.
+// Testereignisse werden NICHT gesendet: Auch mit test_event_code zaehlt Meta
+// sie als echte Daten.
+let metaBlick = { bis: 0, daten: null };
+let markenBlick = { bis: 0, daten: null };
+// Fuer Tests: den Zwischenspeicher der Diagnose leeren.
+export function diagnoseVergessen() {
+  metaBlick = { bis: 0, daten: null };
+  markenBlick = { bis: 0, daten: null };
+}
+
+async function letzteMarken() {
+  if (Date.now() < markenBlick.bis) return markenBlick.daten;
+  const k = schluessel();
+  if (!k) return null;
+  try {
+    const token = await zugangHolen(k);
+    const antwort = await googleFetch(`${DOKUMENTE}/lifeskin/${TENANT}:runQuery`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({ structuredQuery: {
+        from: [{ collectionId: "capiEvents" }],
+        orderBy: [{ field: { fieldPath: "createdAt" }, direction: "DESCENDING" }],
+        limit: 10
+      } })
+    });
+    if (!antwort.ok) throw new Error(`Lesen ${antwort.status}`);
+    const zeilen = await antwort.json();
+    const daten = (zeilen || []).filter((z) => z.document).map((z) => {
+      const f = Object.fromEntries(Object.entries(z.document.fields || {}).map(([n, v]) => [n, wert(v)]));
+      return {
+        ereignis: f.eventName || "Purchase",
+        // Ohne Stand legte die Marke die Cloud Function an.
+        sender: f.sender || "cloud-function",
+        stand: f.status || "von-cloud-function",
+        zeit: f.zeit || f.createdAt || "",
+        ...(f.fehler ? { fehler: String(f.fehler).slice(0, 160) } : {}),
+        ...(f.status === "gesendet" ? { mitFbc: f.mitFbc === true, mitUa: f.mitUa === true, mitIp: f.mitIp === true } : {})
+      };
+    });
+    markenBlick = { bis: Date.now() + 30000, daten };
+    return daten;
+  } catch (fehler) {
+    markenBlick = { bis: Date.now() + 15000, daten: { fehler: String(fehler?.message || fehler).slice(0, 120) } };
+    return markenBlick.daten;
+  }
+}
+
 async function diagnose() {
   const metaToken = String(process.env.META_CAPI_TOKEN || "").trim();
   const raus = {
@@ -229,22 +284,24 @@ async function diagnose() {
     metaToken: Boolean(metaToken),
     testModus: Boolean(String(process.env.META_CAPI_TEST_CODE || "").trim())
   };
-  if (!metaToken) return { ...raus, ok: false };
-  if (Date.now() > pixelBlick.bis) {
+  if (!metaToken) return { ...raus, ok: false, letzte: await letzteMarken() };
+  if (Date.now() > metaBlick.bis) {
     try {
-      const antwort = await googleFetch(`https://graph.facebook.com/${capi.API_VERSION}/${capi.PIXEL_ID}?fields=name,last_fired_time,is_unavailable&access_token=${encodeURIComponent(metaToken)}`);
+      const antwort = await googleFetch(`https://graph.facebook.com/${capi.API_VERSION}/me?fields=id&access_token=${encodeURIComponent(metaToken)}`);
       const gelesen = await antwort.json().catch(() => ({}));
-      pixelBlick = {
+      metaBlick = {
         bis: Date.now() + 60000,
         daten: antwort.ok
-          ? { tokenGilt: true, name: gelesen.name || "", zuletzt: gelesen.last_fired_time || "", gesperrt: gelesen.is_unavailable === true }
+          ? { tokenGilt: true }
           : { tokenGilt: false, fehler: String(gelesen?.error?.message || antwort.status).slice(0, 160) }
       };
     } catch (fehler) {
-      pixelBlick = { bis: Date.now() + 15000, daten: { tokenGilt: null, fehler: String(fehler?.message || fehler).slice(0, 120) } };
+      metaBlick = { bis: Date.now() + 15000, daten: { tokenGilt: null, fehler: String(fehler?.message || fehler).slice(0, 120) } };
     }
   }
-  return { ...raus, meta: pixelBlick.daten, ok: pixelBlick.daten?.tokenGilt !== false };
+  const letzte = await letzteMarken();
+  const abgelehnt = Array.isArray(letzte) && letzte.length > 0 && letzte.every((m) => m.stand === "fehler");
+  return { ...raus, meta: metaBlick.daten, letzte, ok: metaBlick.daten?.tokenGilt !== false && !abgelehnt };
 }
 
 export default async function lifeskinCapi(req, res) {

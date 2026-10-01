@@ -12,7 +12,7 @@ import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import lifeskinCapi, { ereignisseFuer, markeUebernehmen, markenKennung } from "../api/lifeskin-capi.js";
+import lifeskinCapi, { ereignisseFuer, markeUebernehmen, markenKennung, diagnoseVergessen } from "../api/lifeskin-capi.js";
 import { leadKennung as leadImBrowser } from "../apps/lifeskin/lifeskin-pixel.js";
 
 const capi = createRequire(import.meta.url)("../functions/lifeskin-capi-payload.js");
@@ -122,6 +122,11 @@ function welt({ meta = () => ({ status: 200, body: { events_received: 1 } }) } =
     }
     const pfad = decodeURIComponent(u.pathname.split("/documents/")[1] || "");
     const methode = optionen.method || "GET";
+    if (pfad.endsWith(":runQuery")) {
+      const liste = [...docs.entries()].filter(([p]) => p.startsWith("lifeskin/lifeskin/capiEvents/"))
+        .map(([, d]) => ({ document: d }));
+      return antwort(200, liste.length ? liste : [{ readTime: "x" }]);
+    }
     if (methode === "GET") {
       const d = docs.get(pfad);
       return d ? antwort(200, d) : antwort(404, {});
@@ -270,6 +275,7 @@ test("nicht eingerichtet: 424 ohne Wiederholung; GET sagt, was fehlt - ohne Gehe
     assert.deepEqual({ firebase: d.daten.firebaseSchluessel, meta: d.daten.metaToken, version: d.daten.version }, { firebase: true, meta: false, version: "v26.0" });
   });
   await mitUmgebung({ MNYRA_FIREBASE_ADMIN_KEY: SCHLUESSEL, META_CAPI_TOKEN: "geheim-123" }, async () => {
+    diagnoseVergessen();
     const d = await aufruf(welt(), undefined, { methode: "GET" });
     assert.equal(d.daten.meta.tokenGilt, true);
     assert.ok(!JSON.stringify(d.daten).includes("geheim-123"), "das Token steht in der Diagnose");
@@ -322,4 +328,34 @@ test("Vercel-Funktionen laden ihre Helfer statisch (sonst fehlen sie im Paket)",
     assert.ok(!/createRequire|require\(/.test(quelle), `${datei}: createRequire/require - Vercel buendelt die Datei dann nicht mit`);
   }
   assert.match(lies("api/lifeskin-capi.js"), /^import capi from "\.\.\/functions\/lifeskin-capi-payload\.js";$/m);
+});
+
+// 01.10. abends: Der Token aus dem Ereignismanager darf den Pixel nicht LESEN
+// ("(#100) Missing Permission"), wohl aber SENDEN. Die Diagnose fragte das
+// Lesen ab und meldete "kaputt". Jetzt zaehlt: kennt Meta den Token (/me), und
+// was kam bei den letzten echten Ereignissen zurueck.
+test("Diagnose: Token gilt, auch wenn er den Pixel nicht lesen darf - und zeigt die letzten Sendungen", async () => {
+  await mitUmgebung({ MNYRA_FIREBASE_ADMIN_KEY: SCHLUESSEL, META_CAPI_TOKEN: "tok-diagnose" }, async () => {
+    const w = welt();
+    const altFetch = w.fetchFn;
+    w.fetchFn = async (url, o = {}) => {
+      const u = new URL(String(url));
+      if (u.hostname === "graph.facebook.com" && (o.method || "GET") === "GET") {
+        if (u.pathname.endsWith("/me")) return { ok: true, status: 200, json: async () => ({ id: "123" }) };
+        return { ok: false, status: 400, json: async () => ({ error: { message: "(#100) Missing Permission" } }) };
+      }
+      return altFetch(url, o);
+    };
+    w.docs.set(SESSION_PFAD, { fields: alsFelder(sitzungKauf()), updateTime: "x" });
+    await aufruf(w, { id: SITZUNG_ID, art: "kauf" });
+    diagnoseVergessen();
+    const d = await aufruf(w, undefined, { methode: "GET" });
+    assert.equal(d.daten.meta.tokenGilt, true);
+    assert.equal(d.daten.ok, true);
+    assert.ok(Array.isArray(d.daten.letzte) && d.daten.letzte.length >= 1, JSON.stringify(d.daten.letzte));
+    assert.equal(d.daten.letzte[0].ereignis, "Purchase");
+    assert.equal(d.daten.letzte[0].stand, "gesendet");
+    const alles = JSON.stringify(d.daten);
+    assert.ok(!alles.includes("LS-0110-ABCDE") && !alles.includes(SITZUNG_ID), "Fallnummer oder Kennung in der oeffentlichen Diagnose");
+  });
 });
