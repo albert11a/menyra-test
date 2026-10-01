@@ -11,8 +11,8 @@
 //      zaehlt Meta DOPPELT, und der gemessene Umsatz waere das Doppelte
 //      des wirklichen - eine Zahl, die nach Erfolg aussieht.
 //   2. Es geht etwas mit, was nicht mitgehen darf. Fuer diese Seite
-//      gilt, dass weder Aufnahmen noch Antworten noch Telefonnummern in
-//      die Messtechnik gehen - auch nicht gehasht.
+//      gilt, dass weder Aufnahmen noch Antworten noch rohe Telefonnummern in
+//      die Messtechnik gehen. Die Nummer wird serverseitig gehasht.
 //
 // Beides steht hier.
 
@@ -75,7 +75,7 @@ test("keine Nummer, kein Name, keine Anschrift, keine Antwort geht an Meta", () 
     "action_source", "custom_data", "event_id", "event_name",
     "event_source_url", "event_time", "user_data"
   ]);
-  assert.deepEqual(Object.keys(nutzlast.user_data), ["fbp"]);
+  assert.deepEqual(Object.keys(nutzlast.user_data), ["fbp", "ph"]);
   assert.deepEqual(Object.keys(nutzlast.custom_data).sort(),
     ["content_type", "currency", "order_id", "value"]);
 });

@@ -357,6 +357,7 @@ export default async function lifeskinCapi(req, res) {
         status: ergebnis.stand, leaseUntil: 0, zeit: new Date().toISOString(),
         ...(ergebnis.angenommen ? { angenommen: ergebnis.angenommen } : {}),
         ...(ergebnis.fehler ? { fehler: ergebnis.fehler } : {}),
+        mitPh: Boolean(nutzlast.user_data.ph?.length),
         mitFbp: Boolean(nutzlast.user_data.fbp), mitFbc: Boolean(nutzlast.user_data.fbc),
         mitUa: Boolean(nutzlast.user_data.client_user_agent), mitIp: Boolean(nutzlast.user_data.client_ip_address)
       }, token).catch(() => {});

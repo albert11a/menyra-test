@@ -1,15 +1,14 @@
 "use strict";
 
+const { createHash } = require("node:crypto");
+
 // Was die Conversions API an Meta schickt - und sonst nichts.
 // ══════════════════════════════════════════════════════════════════════
 //
-// GETRENNT VON DER FUNKTION, weil hier die eine Frage entschieden wird,
-// auf die es ankommt: WAS VERLAESST DAS HAUS. Diese Datei zieht kein
-// firebase-functions und kein Netz; sie laesst sich deshalb ohne
-// Emulator pruefen, und tests/lifeskin-capi.test.mjs tut das - unter
-// anderem mit einer Sitzung, in der Name, Telefonnummer und Anschrift
-// stehen, gegen die Zusicherung, dass nichts davon in der Nutzlast
-// landet.
+// Pixel-Aenderung erlaubt von Albert am 02.10.2026: Telefonnummernabgleich
+// fuer Lead/Purchase, serverseitig normalisiert und SHA-256-gehasht.
+// Auf ausdruecklichen Wunsch ohne zusaetzliche Checkbox oder UI-Aenderung.
+// Keine Aufnahmen, Befunde, Namen, Anschriften oder Antworten uebermitteln.
 
 const PIXEL_ID = "1347571994123884";
 // DIE VERSION DER SCHNITTSTELLE. v21.0 war bei Meta seit dem 09.09.2025
@@ -78,6 +77,27 @@ function besucherDaten(order, herkunft = null, browser = null) {
   return daten;
 }
 
+// Kosovo/Albanien/Oesterreich: internationale Nummern erhalten ihren
+// Laendercode, lokale Kosovo-Nummern bekommen 383. Keine geratenen Fremdnummern.
+function telefonNormalisieren(wert) {
+  const roh = text(wert);
+  if (!roh || !/^[+\d\s().-]+$/.test(roh)) return "";
+  let nummer = roh.replace(/[^\d]/g, "");
+  if (roh.startsWith("+")) {
+    if (!/^\s*\+[^+]*$/.test(roh)) return "";
+  } else if (nummer.startsWith("00")) nummer = nummer.slice(2);
+  else if (/^0[34]\d{7}$/.test(nummer)) nummer = `383${nummer.slice(1)}`;
+  else if (/^[34]\d{7}$/.test(nummer)) nummer = `383${nummer}`;
+  else if (!/^(383|355|43)/.test(nummer)) return "";
+  return /^[1-9]\d{7,14}$/.test(nummer) ? nummer : "";
+}
+
+function kundenDaten(sitzung) {
+  const telefon = telefonNormalisieren(sitzung?.phone);
+  if (!telefon) return {};
+  return { ph: [createHash("sha256").update(telefon).digest("hex")] };
+}
+
 // Was der Browser in seiner Anfrage mitbringt - geprueft, nicht geglaubt.
 // Nur Metas eigene Kennungen in Metas Form, ein User-Agent und eine Adresse,
 // die wie eine aussieht. Alles andere faellt weg.
@@ -123,7 +143,7 @@ function baueKauf(sitzung, { quelleUrl = "https://mnyra.com/lifeskin", browser =
     event_id: text(order.orderId),
     action_source: "website",
     event_source_url: seiteAus(order, quelleUrl),
-    user_data: besucherDaten(order, sitzung?.source, browser),
+    user_data: { ...besucherDaten(order, sitzung?.source, browser), ...kundenDaten(sitzung) },
     custom_data: {
       currency: "EUR",
       value: Number.isFinite(betrag) && betrag > 0 ? betrag : 0,
@@ -164,7 +184,7 @@ function baueLead(sitzung, { browser = null, quelleUrl = "https://mnyra.com/life
     event_id: leadKennung(sitzung?.code),
     action_source: "website",
     event_source_url: seiteAus({ seite: browser?.seite }, quelleUrl),
-    user_data: besucherDaten({}, sitzung?.source, browser)
+    user_data: { ...besucherDaten({}, sitzung?.source, browser), ...kundenDaten(sitzung) }
   };
 }
 
@@ -187,6 +207,8 @@ module.exports = {
   text,
   sekundenAus,
   besucherDaten,
+  telefonNormalisieren,
+  kundenDaten,
   browserAusAnfrage,
   seiteAus,
   baueKauf,

@@ -35,13 +35,15 @@ const HINWEIS = "Meta-Pixel/Conversions API geaendert. Das ist gesperrt: nur mit
 // v26.0, Lead zusaetzlich vom Server (mit derselben eventID wie im Browser),
 // Kauf und Lead ueber api/lifeskin-capi.js (Vercel) - die zwei neuen Dateien
 // stehen seitdem selbst unter der Sperre.
+// Pixel-Aenderung erlaubt von Albert am 02.10.2026: Telefonnummernabgleich
+// fuer Lead/Purchase als SHA-256-Hash, ohne zusaetzlichen UI-Haken.
 const DATEIEN = Object.freeze({
   "apps/lifeskin/lifeskin-pixel.js": "0ea75304cbf3623a",
   // Pixel-Aenderung erlaubt von Albert (albert11a, Inhaber) am 28.09.2026:
   // Bestellungen aus dem stillen Modus (order.still) gehen nicht an die CAPI.
-  "functions/lifeskin-capi-payload.js": "4426a775668d4f93",
-  "functions/lifeskin-capi.js": "c7965e6a83a32877",
-  "api/lifeskin-capi.js": "ff23e5d44f58bd0a",
+  "functions/lifeskin-capi-payload.js": "d50c66423f514ec5",
+  "functions/lifeskin-capi.js": "60cc79d7cce75b1d",
+  "api/lifeskin-capi.js": "b905684c595aa83c",
   "shared/lifeskin-capi-anstossen.js": "fd7f7fa638f979df"
 });
 
