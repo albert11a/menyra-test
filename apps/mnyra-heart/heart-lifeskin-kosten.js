@@ -2,9 +2,9 @@
 // kosten und was davon bleibt.
 //
 // DIE ZAHLEN STEHEN NIRGENDS IM CODE. Sie werden in Heart eingetragen und
-// liegen in Firestore unter lifeskin/lifeskin/ndjekjaIntern/_produktkosten -
-// einer Sammlung, die laut firestore.rules NUR das CEO-Konto lesen und
-// schreiben darf (dieselbe wie die internen Notizen der Begleitung). Keine
+// liegen in Firestore unter landingArchive/lifeskin__produktkosten - einer
+// Sammlung, die laut firestore.rules NUR das CEO-Konto lesen und schreiben
+// darf (die Ablage der Landings in Heart, live seit August). Keine
 // oeffentliche Seite, kein Trichter, kein Bericht liest sie; im Code steht
 // nur, wie gerechnet wird.
 //
@@ -18,7 +18,7 @@ import { escapeHtml } from "./heart-ui-utils.js";
 import { klappAttr } from "./heart-lifeskin-klapp.js";
 import { setPreis } from "../../shared/lifeskin-shop-sets.js";
 
-export const KOSTEN_DOK = "_produktkosten";
+export const KOSTEN_DOK = "lifeskin__produktkosten";
 export const MBUSHJA_STANDARD = 30;
 export const KREM_MAX = 30;
 export const KOSTEN_JE_BESTELLUNG = Object.freeze([

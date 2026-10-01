@@ -68,17 +68,20 @@ test("die Karte: Shishe, Stiker, Mbushja, Kremet mit Produkt, + Krem, Ergebnis",
 });
 
 test("die Zahlen liegen nur dort, wo allein das CEO-Konto liest", () => {
-  assert.equal(KOSTEN_DOK, "_produktkosten");
-  assert.match(lies("apps/mnyra-heart/heart-lifeskin-adapter.js"), /doc\(db, "lifeskin", TENANT, "ndjekjaIntern", KOSTEN_DOK\)/);
-  assert.match(lies("firestore.rules"), /match \/ndjekjaIntern\/\{kennung\} \{\s*allow read, write: if isCeoActor\(\);\s*\}/);
-  assert.match(lies("apps/mnyra-heart/heart-lifeskin-ndjekja-adapter.js"), /filter\(\(d\) => !d\.id\.startsWith\("_"\)\)/);
+  assert.equal(KOSTEN_DOK, "lifeskin__produktkosten");
+  assert.match(lies("apps/mnyra-heart/heart-lifeskin-adapter.js"), /doc\(db, "landingArchive", KOSTEN_DOK\)/);
+  assert.match(lies("firestore.rules"), /match \/landingArchive\/\{documentId\} \{\s*allow read, write: if isCeoActor\(\);\s*\}/);
+  // Die Landing-Ablage nimmt nur Eintraege mit archived/next/wait/reset - die Kosten nicht.
+  const ablage = lies("apps/mnyra-heart/heart-landing-adapter.js");
+  assert.match(ablage, /if \(data\.archived === true\) archived\.push\(eintrag\.id\);/);
+  for (const p of ["next__", "wait__"]) assert.ok(!KOSTEN_DOK.startsWith(p));
   const oeffentlich = ["apps/lifeskin", "apps/lifeskin-shop", "apps/lifeskin-verkauf", "apps/lifeskin-astra", "apps/lifeskin-landing", "apps/lifeskin-bericht", "shared"];
   const dateien = (dir) => readdirSync(dir).flatMap((n) => { const p = join(dir, n); return statSync(p).isDirectory() ? dateien(p) : [p]; });
   for (const dir of oeffentlich) {
     for (const datei of dateien(dir).filter((f) => /\.(js|mjs|html)$/.test(f))) {
       const text = readFileSync(datei, "utf8");
       assert.ok(!/produktkosten/i.test(text), `${datei} erwaehnt die Produktkosten`);
-      assert.ok(!/["'`]ndjekjaIntern["'`]/.test(text), `${datei} greift auf ndjekjaIntern zu`);
+      assert.ok(!/["'`]landingArchive["'`]/.test(text), `${datei} greift auf landingArchive zu`);
     }
   }
 });

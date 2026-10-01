@@ -839,10 +839,12 @@ export async function loescheKommentar(medium, kommentar) {
   await deleteDoc(doc(db, "lifeskin", TENANT, "medien", medium, "kommentare", kommentar));
 }
 
-// PRODUKTKOSTEN (01.10., Inhaber): in ndjekjaIntern - laut firestore.rules
-// nur fuer das CEO-Konto lesbar und schreibbar. Kein oeffentlicher Weg
-// fuehrt dorthin (siehe heart-lifeskin-kosten.js).
-const kostenRef = () => doc(db, "lifeskin", TENANT, "ndjekjaIntern", KOSTEN_DOK);
+// PRODUKTKOSTEN (01.10., Inhaber): in landingArchive - laut firestore.rules
+// nur fuer das CEO-Konto lesbar und schreibbar, und diese Regel ist seit
+// August live (ndjekjaIntern war es noch nicht: "Konnte nicht geladen
+// werden"). Die Landing-Ablage liest dort nur Eintraege mit archived/next/
+// wait/reset - dieser hat keins davon. Kein oeffentlicher Weg fuehrt dorthin.
+const kostenRef = () => doc(db, "landingArchive", KOSTEN_DOK);
 export async function ladeProduktkosten() {
   const snap = await getDoc(kostenRef());
   return kostenNormalisieren(snap.exists() ? snap.data() : {});
