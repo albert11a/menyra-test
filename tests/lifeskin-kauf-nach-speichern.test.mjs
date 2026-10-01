@@ -238,14 +238,15 @@ test("das Blatt: wie im Laden, nur ein Weg weiter", () => {
   assert.ok(blatt, "Kein Warenkorb-Blatt");
   assert.match(blatt, /Zgjedhja juaj/);
   assert.match(blatt, /U shtua në shportë\./);
-  assert.match(blatt, /Kontrolloni produktet dhe vazhdoni me porosinë\./);
+  // Seit 30.09. (Inhaber): kurz, und der Knopf ohne Preis - wie im Laden.
+  assert.match(blatt, /Vetëm edhe një hap drejt një lëkure të pastër\./);
   assert.match(blatt, /Gjithsej · dërgesa e përfshirë/);
   assert.match(blatt, /data-korbvazhdo/);
   assert.match(blatt, /data-korbmbyll/);
   assert.doesNotMatch(blatt, /Vazhdo blerjet/, "Kein zweiter Knopf - der Weg geht nur zur Kasse");
   assert.equal((blatt.match(/<button/g) || []).length, 2, "Schliessen und Weiter, sonst nichts");
   const js = lies("apps/lifeskin-verkauf/terapia.js");
-  assert.match(js, /schreibe\(\$\("#t-korbvazhdo"\), `Vazhdo me porosinë · \$\{euro\(this\.preis\)\}`\);/);
+  assert.match(js, /schreibe\(\$\("#t-korbvazhdo"\), "Vazhdo me të dhënat"\);/);
 });
 
 test("Meta: AddToCart beim Warenkorb, einmal, nie in der Vorschau, nie nach dem Kauf", () => {

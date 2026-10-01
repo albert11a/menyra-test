@@ -61,7 +61,8 @@ import { ladeLifeskin, ladeLifeskinSeit, horcheLive, ladeFotos, ladeErstesFoto, 
   speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder,
   speichereShopSetet, ladeShopSetFoto, speichereShopSetFoto, loescheShopSetFoto, speichereShopHero, loescheShopHero, speichereShopHeroListe,
   speichereAntwortzeit,
-  ladeMedien, speichereMedien, speichereMedium, loescheMedium, ladeKommentare, setzeKommentarVerborgen, loescheKommentar, schreibeKommentare } from "./heart-lifeskin-adapter.js";
+  ladeMedien, speichereMedien, speichereMedium, loescheMedium, ladeKommentare, setzeKommentarVerborgen, loescheKommentar, schreibeKommentare,
+  ladeProduktkosten, speichereProduktkosten } from "./heart-lifeskin-adapter.js";
 import { medienListe, mediumNormalisieren, neueMediumId } from "../../shared/lifeskin-medien.js";
 import { kommentarVorschauSetzen } from "./heart-lifeskin-medien.js";
 import { rasteListe, klappSetzen, klappOffen, rastiDom } from "./heart-lifeskin-raste.js";
@@ -1071,6 +1072,7 @@ async function ladeLifeskinBereich({ force = false, voll = false } = {}) {
     liveRechnen();
     // "Reaktionen" war beim letzten Mal offen: gleich die Kommentare dazu.
     if (klappOffen("reaktionen")) medienKommentareLaden();
+    if (klappOffen("produktkosten")) produktkostenLaden();
   } catch (fehler) {
     // Ein gescheiterter Abgleich darf nicht loeschen, was schon dasteht.
     if (store.getState().lifeskin?.status === "ready") return;
@@ -2798,6 +2800,42 @@ async function lifeskinMediumSchieben(id, richtung) {
   }
 }
 
+// PRODUKTKOSTEN - erst, wenn die Karte aufgeht (heart-lifeskin-kosten.js).
+async function produktkostenLaden() {
+  const stand = store.getState().lifeskin || {};
+  if (stand.produktkostenStatus === "laedt" || stand.produktkostenStatus === "speichert") return;
+  actions.patchLifeskin({ produktkostenStatus: "laedt" });
+  try {
+    actions.patchLifeskin({ produktkosten: await ladeProduktkosten(), produktkostenStatus: "" });
+  } catch {
+    actions.patchLifeskin({ produktkostenStatus: "fehler" });
+  }
+}
+
+async function produktkostenSpeichern() {
+  const stand = store.getState().lifeskin || {};
+  if (stand.produktkostenStatus === "speichert") return;
+  const felder = document.querySelectorAll("[data-kosten]");
+  if (!felder.length) return;
+  const kosten = { kreme: [] };
+  for (const feld of felder) kosten[feld.getAttribute("data-kosten") || ""] = feld.value;
+  // Die Kremet: je Zeile Name, Preis, Menge, Einheit, Produkt.
+  for (const zeile of document.querySelectorAll("[data-kremet] [data-krem]")) {
+    const krem = { id: zeile.getAttribute("data-krem") || "" };
+    for (const feld of zeile.querySelectorAll("[data-krem-feld]")) krem[feld.getAttribute("data-krem-feld")] = feld.value;
+    kosten.kreme.push(krem);
+  }
+  actions.patchLifeskin({ produktkostenStatus: "speichert" });
+  try {
+    const gespeichert = await speichereProduktkosten(kosten);
+    actions.patchLifeskin({ produktkosten: gespeichert, produktkostenStatus: "" });
+    setToast("Produktkosten", "Gespeichert.", "success");
+  } catch (fehler) {
+    actions.patchLifeskin({ produktkostenStatus: "" });
+    setToast("Produktkosten", fehler?.message || "Nicht gespeichert.", "danger");
+  }
+}
+
 // Views frisch und alle Kommentare - erst, wenn "Reaktionen" aufgeht.
 async function medienKommentareLaden() {
   const stand = store.getState().lifeskin || {};
@@ -4040,7 +4078,22 @@ const operations = {
     if (name === "raste" && offen) lifeskinRasteBilderLaden();
     if (name === "shopsetet" && offen) shopSetBilderLaden();
     if (name === "reaktionen" && offen) medienKommentareLaden();
+    if (name === "produktkosten" && offen) produktkostenLaden();
   },
+  produktkostenSpeichern() { return produktkostenSpeichern(); },
+  // "+ Krem": eine leere Zeile aus der Vorlage - nur im DOM, bis gespeichert
+  // wird (der Bereich ist data-bewahren, Heart zeichnet ihn nicht neu).
+  kremNeu() {
+    const liste = document.querySelector("[data-kremet]");
+    const vorlage = document.querySelector("[data-krem-vorlage]");
+    if (!liste || !vorlage) return;
+    const zeile = vorlage.content.firstElementChild?.cloneNode(true);
+    if (!zeile) return;
+    zeile.setAttribute("data-krem", `k${Date.now().toString(36)}`);
+    liste.append(zeile);
+    zeile.querySelector("input")?.focus();
+  },
+  kremWeg(knopf) { knopf?.closest?.("[data-krem]")?.remove(); },
   openLifeskinRasti(id) { oeffneLifeskinRasti(id); },
   // Die Sets des Ladens (/lifeskinshop).
   openShopSet(id) { oeffneShopSet(id); },

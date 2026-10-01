@@ -36,13 +36,14 @@ import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 import { renderRaste, renderRastiEditor, renderBefundRasteAuswahl, rasteListe } from "./heart-lifeskin-raste.js";
 import { klappAttr, alsKlapp } from "./heart-lifeskin-klapp.js";
 import { nachWeg, baueLs2Weg, baueShopWeg, dauerText as ls2Dauer } from "./heart-lifeskin-weg.js";
-import { renderShopSetet, renderShopSetEditor, renderShopHero, renderShopHeroEditor } from "./heart-lifeskin-shopsets.js";
+import { renderShopSetet, renderShopSetEditor, renderShopHero, renderShopHeroEditor, shopSetetListe } from "./heart-lifeskin-shopsets.js";
 import { wegGueltig } from "../../shared/lifeskin-weg.js";
 import { perputhjaGueltig } from "../../shared/lifeskin-perputhja.js";
 import { ANTWORTZEITEN, antwortzeitWahl } from "../../shared/lifeskin-antwortzeit.js";
 import { entwurfLesen, promptGemacht } from "./heart-lifeskin-entwurf.js";
 import { mitFingerabdruck } from "./heart-morph.js";
 import { renderMedien, renderMediumEditor, renderMedienReaktionen, renderBefundMedienAuswahl } from "./heart-lifeskin-medien.js";
+import { renderProduktkosten } from "./heart-lifeskin-kosten.js";
 import { vorschauKasten } from "./heart-lifeskin-vorschau.js";
 import { ohneSeite, ohneSeiteTief } from "../../shared/lifeskin-ohne-seite.js";
 import { renderBetreuung, renderBetreuungFall, renderFallBestellung, renderKaufweg } from "./heart-lifeskin-ndjekja-render.js";
@@ -3601,6 +3602,7 @@ export function renderLifeskin(zustand) {
       ${renderBestellungen(alleDesWegs, zustand.bestellZeitraum || "heute")}
       ${renderNachfassen(alleDesWegs)}
       ${renderMedienReaktionen(zustand)}
+      ${renderProduktkosten(zustand, shopSetetListe(zustand))}
 
       <!-- WAS NICHT JEDEN TAG GELESEN WIRD, STEHT NICHT JEDEN TAG IM WEG.
            Die Hauptflaeche beantwortet drei Fragen: Was ist neu? Was muss
