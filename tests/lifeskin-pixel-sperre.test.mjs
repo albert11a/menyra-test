@@ -31,12 +31,18 @@ const HINWEIS = "Meta-Pixel/Conversions API geaendert. Das ist gesperrt: nur mit
 // Speichern melden, 2 Schritt beim zweiten Versuch neu schreiben, 3 User-Agent
 // und Seite fuer die Conversions API vorbereiten, 4 nach dem Kauf keine
 // AddToCart/InitiateCheckout mehr (tests/lifeskin-kauf-nach-speichern.test.mjs).
+// Pixel-Aenderung erlaubt von Albert am 01.10.2026: CAPI-Version v21.0 ->
+// v26.0, Lead zusaetzlich vom Server (mit derselben eventID wie im Browser),
+// Kauf und Lead ueber api/lifeskin-capi.js (Vercel) - die zwei neuen Dateien
+// stehen seitdem selbst unter der Sperre.
 const DATEIEN = Object.freeze({
-  "apps/lifeskin/lifeskin-pixel.js": "b824053f8f7f84ca",
+  "apps/lifeskin/lifeskin-pixel.js": "0ea75304cbf3623a",
   // Pixel-Aenderung erlaubt von Albert (albert11a, Inhaber) am 28.09.2026:
   // Bestellungen aus dem stillen Modus (order.still) gehen nicht an die CAPI.
-  "functions/lifeskin-capi-payload.js": "b6c4397eda969cb8",
-  "functions/lifeskin-capi.js": "f18ba400ba2329ec"
+  "functions/lifeskin-capi-payload.js": "4426a775668d4f93",
+  "functions/lifeskin-capi.js": "c7965e6a83a32877",
+  "api/lifeskin-capi.js": "5c08879179e8274b",
+  "shared/lifeskin-capi-anstossen.js": "fd7f7fa638f979df"
 });
 
 // 2. DIE KENNUNG UND DIE EINWILLIGUNG - genau diese zwei Zeilen.
@@ -74,7 +80,9 @@ export function pixelZeilen(pfad) {
 // (Warenkorb), nicht mehr beim gesehenen Preis; InitiateCheckout bei
 // "Vazhdo me porosinë" (Kasse). Auch die Warteseite meldet kein AddToCart
 // mehr fuer den blossen Preis.
-const SEITEN_HASH = "485b6255a34667f9";
+// Pixel-Aenderung erlaubt von Albert am 01.10.2026: Lead mit Fallnummer als
+// eventID (meldeLead(code)) im Trichter und auf der Warteseite.
+const SEITEN_HASH = "aaa5aed39cb9ac04";
 
 test("Meta-Pixel-Sperre: die Pixel-Dateien sind unveraendert", () => {
   for (const [pfad, erwartet] of Object.entries(DATEIEN)) {

@@ -298,7 +298,8 @@ test("die Nummer steht zuletzt und auf einem eigenen Bildschirm", () => {
   // jemand meldet. Ohne sie stuende jeder Fall dieser zwei Wege in Heart
   // als "nicht eingewilligt", und niemand duerfte anrufen.
   assert.match(weiter, /this\.sitzung\.ergaenze\(\{ phone: geprueft\.nummer, phoneConsent: true \}\);/);
-  assert.match(weiter, /this\.pixel\.meldeLead\(\);/,
+  // Seit dem 01.10. mit der Fallnummer als eventID (Lead auch vom Server).
+  assert.match(weiter, /this\.pixel\.meldeLead\(this\.sitzung\?\.code\);/,
     "Die Nummer meldet kein Lead - darauf optimieren die Anzeigen");
   // WOHIN ES VON HIER AUS GEHT, HAENGT AM WEG: Mit Aufnahme kommt die
   // Ladeseite, auf dem zusammengefuehrten Weg die Uebergabe.

@@ -1,10 +1,42 @@
 Status: CURRENT
 Last updated: 2026-10-01
 
-# Meta-Pixel und Conversions API - Pruefung vom 01.10.
+# Meta-Pixel und Conversions API - Pruefung und Umbau vom 01.10.
 
-Nur geprueft, nichts am Pixel oder an der Conversions API geaendert
-(Pixel-Sperre gruen).
+Zuerst nur geprueft (Abschnitte unten). Danach, mit Erlaubnis des Inhabers
+("Pixel-Aenderung erlaubt von Albert am 01.10.2026: CAPI-Version v21.0 ->
+v26.0", Lead vom Server: ja), umgebaut - siehe "Umbau".
+
+## Umbau (01.10., erlaubt von Albert)
+
+- **API v26.0** statt der abgelaufenen v21.0 (`functions/lifeskin-capi-payload.js`).
+- **Server-Meldung ueber Vercel** (`api/lifeskin-capi.js`): geht mit jedem
+  Push auf main live, wie die Seite. Die Seite stoesst an, sobald Kauf oder
+  Nummer gespeichert ist (`shared/lifeskin-capi-anstossen.js`); die Funktion
+  liest die Sitzung selbst und sendet Purchase bzw. Lead an Meta mit
+  User-Agent und Adresse des Browsers, fbp/fbc und der Seite ohne
+  Fallkennung.
+- **Lead auch vom Server**, mit derselben eventID wie im Browser
+  (`<Fallnummer>-lead`), damit Meta beide zusammenlegt.
+- **Nie doppelt**: Meta legt zwei gleiche Server-Ereignisse NICHT zusammen.
+  Eine Marke je Ereignis in `lifeskin/lifeskin/capiEvents` (dieselbe wie die
+  Cloud Function); wer sie anlegt, sendet. Neuer Versuch nur nach einer
+  ausdruecklichen Ablehnung durch Meta (hoechstens 3), nie nach einer
+  verlorenen Antwort. Stand je Ereignis: `gesendet`, `fehler`, `unklar`.
+- **Functions auf Node 22** (`functions/package.json`): Google sperrt Node 20
+  am 30.10.2026.
+- Pixel-Sperre neu eingetragen; `api/lifeskin-capi.js` und
+  `shared/lifeskin-capi-anstossen.js` stehen jetzt selbst darunter.
+
+**Einmal einrichten (Inhaber):** Vercel -> Projekt -> Settings ->
+Environment Variables -> `META_CAPI_TOKEN` (Production) = Zugriffstoken aus
+dem Ereignismanager (LF WEB -> Einstellungen -> Conversions API). Danach
+einmal neu deployen. Pruefen: `https://www.mnyra.com/api/lifeskin-capi`
+zeigt `metaToken: true` und `meta.tokenGilt: true`.
+
+**Offen:** Functions/Regeln automatisch deployen - nicht umgesetzt, die
+Aenderung am Workflow braucht die Freigabe des Inhabers und das
+GitHub-Geheimnis `FIREBASE_SERVICE_ACCOUNT`.
 
 ## Browser (Pixel) - in Ordnung
 

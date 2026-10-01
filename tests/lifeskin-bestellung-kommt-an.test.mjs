@@ -164,7 +164,9 @@ test("die feste Kaufleiste verdeckt nie den letzten Knopf der Therapieseite", ()
   assert.match(css, /body:has\(#leiste:not\(\[hidden\]\)\) \{ padding-bottom: calc\(110px/);
   // Und die Bestellformulare lassen den Browser nichts abweisen.
   assert.match(lies("apps/lifeskin-verkauf/terapia.html"), /<form class="porosia__forma" id="forma" novalidate>/);
-  assert.match(lies("apps/lifeskin-landing/index.html"), /<form class="shporta__forme" id="shportaforme" novalidate>/);
+  // Die Landing /lifeskin hat seit dem 01.10. (freigegebene Fassung) keinen
+  // Laden mehr - die Kasse fuer Direktkaeufe steht in /lifeskinshop.
+  assert.match(lies("apps/lifeskin-shop/index.html"), /<form class="kasa__forma" id="kasa-forma" novalidate>/);
 });
 
 test("der Klickpfad der Warte-/Therapieseite legt nie eine leere Sitzung an", () => {

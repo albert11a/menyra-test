@@ -882,7 +882,11 @@ test("/lifeskin liefert die Landingpage aus - im Betrieb wie lokal", () => {
   // anderen beiden Knoepfe mit demselben Wort reichen ihren Tipp weiter.
   assert.equal(landing.split('id="ls-start"').length - 1, 1,
     "Die Kennung ls-start steht nicht genau einmal");
-  assert.ok(landing.split("data-ls-start>").length - 1 >= 2,
+  // Seit der freigegebenen Fassung (01.10.) traegt jeder Knopf zusaetzlich
+  // data-ls-quelle - gezaehlt wird das Merkmal, nicht wo es endet.
+  const weitere = (landing.match(/<button\b[^>]*\sdata-ls-start[\s>][^>]*>/g) || [])
+    .filter((knopf) => !knopf.includes('id="ls-start"'));
+  assert.ok(weitere.length >= 1,
     "Die uebrigen Knoepfe tragen die Marke nicht, an der der Tipp weitergereicht wird");
 
   // DIE BEIDEN FASSUNGEN DAVOR BLEIBEN LIEGEN: Der Weg zurueck ist ein
@@ -1050,37 +1054,15 @@ test("die belegten Faelle zeigen beide Aufnahmen ohne Aufdecker", () => {
     "Die Karten tragen wieder einen Zustand fuer den Aufdecker");
 });
 
-// AN JEDEM BELEGTEN FALL STEHT, WAS ER GEKOSTET HAT.
+// DER PREIS STEHT EINMAL, NICHT ZWEIMAL.
 //
-// Der Preis stand einmal einen Abschnitt hoeher an einem fremden
-// Beispiel-Set; wer wissen wollte, was DIESER Fall gekostet hat, musste
-// zwei Abschnitte zusammenrechnen. Der Abschnitt mit den Beispielen ist
-// weg, und mit ihm die Verdopplung - die Zahl gehoert an den Beweis.
-test("jeder belegte Fall traegt Mittel und Preis", () => {
+// Bis zum 30.09. stand an jedem belegten Fall sein Preis und seine Mittel
+// (article.rasti). Die freigegebene Landing vom 01.10. zeigt die Faelle als
+// Vergleich ohne Preis; welche Faelle und Bilder kommen, prueft
+// tests/lifeskin-approved-landing.test.mjs. Was bleibt: kein zweiter
+// Preisabschnitt, der dasselbe noch einmal sagt.
+test("kein zweiter Preisabschnitt auf der Landing", () => {
   const aufbau = lies("apps/lifeskin-landing/index.html");
   assert.ok(!/id="cmimet"/.test(aufbau),
     "Den zweiten Preisabschnitt gibt es wieder - dann steht dasselbe zweimal");
-
-  const karten = aufbau.match(/<article class="rasti"[\s\S]*?<\/article>/g) || [];
-  assert.equal(karten.length, 4, "Es sind nicht mehr vier Faelle");
-  for (const karte of karten) {
-    assert.match(karte, /class="rasti__kush">Pacienti \d · \d\d vjeç</,
-      "Ein Fall nennt nicht Nummer und Alter");
-    assert.match(karte, /class="rasti__seti">Produktet: <strong>LF /,
-      "Ein Fall nennt seine Mittel nicht");
-    assert.match(karte, /class="rasti__cmim">.*?<strong>\d\d €<\/strong>/,
-      "Ein Fall nennt seinen Preis nicht");
-    // "28 ditë" oder "Terapia 28-ditore" - die Dauer steht seit dem
-    // Umbau am Preis und nicht mehr am Befund.
-    assert.match(karte, /28[ -]dit/, "Ein Fall nennt seine Dauer nicht");
-    assert.match(karte, /class="rasti__cmim__fjala">Terapia 28-ditore</,
-      "Ein Fall verkauft wieder Flaschen statt einer Therapie");
-    // Die Zahl in der Kartenkennung und die Zahl im Text muessen
-    // dasselbe sagen - sonst zeigt die Seite einen Preis, den die
-    // Auszeichnung nicht kennt.
-    const kennung = /data-cmim="(\d+)"/.exec(karte);
-    assert.ok(kennung, "Ein Fall traegt keine Preiskennung");
-    assert.ok(karte.includes("<strong>" + kennung[1] + " €</strong>"),
-      "Preiskennung und angezeigter Preis sagen Verschiedenes");
-  }
 });

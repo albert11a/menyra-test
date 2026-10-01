@@ -12,7 +12,12 @@
 // landet.
 
 const PIXEL_ID = "1347571994123884";
-const API_VERSION = "v21.0";
+// DIE VERSION DER SCHNITTSTELLE. v21.0 war bei Meta seit dem 09.09.2025
+// abgelaufen; auf /events gibt es keine Zusage, dass Meta alte Aufrufe
+// stillschweigend anhebt. v26.0 erschien am 29.07.2026. Pixel-Aenderung
+// erlaubt von Albert am 01.10.2026: CAPI-Version v21.0 -> v26.0.
+// Wenn Meta eine neue Fassung bringt: hier anheben (tests/lifeskin-capi.test.mjs).
+const API_VERSION = "v26.0";
 const SCHRITT_KAUF = "ordered";
 
 function text(wert) {
@@ -52,15 +57,43 @@ function sekundenAus(iso) {
 // der Browser gibt ihn deshalb in der Bestellung mit (order.ua,
 // browserAngaben in apps/lifeskin/lifeskin-pixel.js). Er beschreibt den
 // Browser, nicht den Menschen.
-function besucherDaten(order, herkunft = null) {
+//
+// DER BROWSER, DER GERADE ANFRAGT (01.10., Pixel-Aenderung erlaubt von Albert
+// am 01.10.2026): Meldet api/lifeskin-capi.js, kommt die Anfrage vom Browser
+// des Kunden selbst - Sekunden nach dem Speichern. Seine Adresse und sein
+// User-Agent sind genau das, was der Pixel im Browser ohnehin an Meta
+// schickt; ohne sie ordnet Meta das Ereignis vom Server schlechter zu. Was
+// in der Bestellung steht, geht vor (es ist der Kauf-Browser); die Anfrage
+// fuellt nur, was fehlt.
+function besucherDaten(order, herkunft = null, browser = null) {
   const daten = {};
-  const fbp = text(order?.fbp);
-  const fbc = text(order?.fbc) || text(herkunft?.fbc);
-  const ua = text(order?.ua).slice(0, 400);
+  const fbp = text(order?.fbp) || text(browser?.fbp);
+  const fbc = text(order?.fbc) || text(herkunft?.fbc) || text(browser?.fbc);
+  const ua = (text(order?.ua) || text(browser?.ua)).slice(0, 400);
+  const ip = text(browser?.ip);
   if (fbp) daten.fbp = fbp;
   if (fbc) daten.fbc = fbc;
   if (ua) daten.client_user_agent = ua;
+  if (ip) daten.client_ip_address = ip;
   return daten;
+}
+
+// Was der Browser in seiner Anfrage mitbringt - geprueft, nicht geglaubt.
+// Nur Metas eigene Kennungen in Metas Form, ein User-Agent und eine Adresse,
+// die wie eine aussieht. Alles andere faellt weg.
+const FBP_FORM = /^fb\.\d\.\d{10,16}\.\d{1,24}$/;
+const FBC_FORM = /^fb\.\d\.\d{10,16}\.[\w.-]{1,400}$/;
+const IP_FORM = /^[0-9a-f:.]{3,45}$/i;
+function browserAusAnfrage({ fbp = "", fbc = "", ua = "", ip = "", seite = "" } = {}) {
+  const raus = {};
+  if (FBP_FORM.test(text(fbp))) raus.fbp = text(fbp);
+  if (FBC_FORM.test(text(fbc))) raus.fbc = text(fbc);
+  const agent = text(ua).slice(0, 400);
+  if (agent) raus.ua = agent;
+  const adresse = text(String(ip || "").split(",")[0]);
+  if (IP_FORM.test(adresse)) raus.ip = adresse;
+  if (EIGENE_SEITE.test(text(seite))) raus.seite = text(seite);
+  return raus;
 }
 
 // DIE SEITE, AUF DER GEKAUFT WURDE (order.seite) - nur unsere eigene
@@ -77,7 +110,7 @@ function seiteAus(order, ersatz) {
 //
 // Rein und ohne Nebenwirkung, damit sie sich ohne Netz pruefen laesst -
 // und weil genau hier entschieden wird, was das Haus verlaesst.
-function baueKauf(sitzung, { quelleUrl = "https://mnyra.com/lifeskin" } = {}) {
+function baueKauf(sitzung, { quelleUrl = "https://mnyra.com/lifeskin", browser = null } = {}) {
   const order = sitzung?.order || {};
   const betrag = Number(order.total);
   return {
@@ -90,7 +123,7 @@ function baueKauf(sitzung, { quelleUrl = "https://mnyra.com/lifeskin" } = {}) {
     event_id: text(order.orderId),
     action_source: "website",
     event_source_url: seiteAus(order, quelleUrl),
-    user_data: besucherDaten(order, sitzung?.source),
+    user_data: besucherDaten(order, sitzung?.source, browser),
     custom_data: {
       currency: "EUR",
       value: Number.isFinite(betrag) && betrag > 0 ? betrag : 0,
@@ -100,6 +133,38 @@ function baueKauf(sitzung, { quelleUrl = "https://mnyra.com/lifeskin" } = {}) {
       content_type: "product",
       order_id: text(order.orderId)
     }
+  };
+}
+
+// ══ LEAD VOM SERVER (01.10., Pixel-Aenderung erlaubt von Albert am
+// 01.10.2026: Lead zusaetzlich ueber die Conversions API) ══════════════
+//
+// Lead ist das Ereignis, auf das die Anzeigen lernen - und bisher kam es nur
+// aus dem Browser, wo iOS und Blocker einen Teil verschlucken. Jetzt kommt
+// es zweimal, und Meta legt die zwei an derselben Kennung zusammen.
+//
+// DIE KENNUNG: die Fallnummer mit "-lead" - im Browser (lifeskin-pixel.js,
+// leadKennung) und hier dieselbe Rechnung. Die Kennung der Sitzung geht
+// nie hinaus: Sie oeffnet den Befund.
+function leadKennung(code) {
+  const nummer = text(code);
+  return nummer ? `${nummer}-lead` : "";
+}
+
+// Ein Lead ist: die Nummer mit Einwilligung (Trichter, Warteseite) oder der
+// Griff zu WhatsApp auf der Warteseite (wer dort keine Nummer gab).
+function istLead(sitzung) {
+  return Boolean((sitzung?.phoneConsent === true && text(sitzung?.phone)) || sitzung?.waClick === true);
+}
+
+function baueLead(sitzung, { browser = null, quelleUrl = "https://mnyra.com/lifeskin", jetzt = Date.now() } = {}) {
+  return {
+    event_name: "Lead",
+    event_time: Math.floor(jetzt / 1000),
+    event_id: leadKennung(sitzung?.code),
+    action_source: "website",
+    event_source_url: seiteAus({ seite: browser?.seite }, quelleUrl),
+    user_data: besucherDaten({}, sitzung?.source, browser)
   };
 }
 
@@ -122,7 +187,11 @@ module.exports = {
   text,
   sekundenAus,
   besucherDaten,
+  browserAusAnfrage,
   seiteAus,
   baueKauf,
+  leadKennung,
+  istLead,
+  baueLead,
   istKauf
 };

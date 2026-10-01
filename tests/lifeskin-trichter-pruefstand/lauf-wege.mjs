@@ -42,7 +42,8 @@ import { antwortenFuerBericht } from "../../shared/lifeskin-antworten.js";
 import { faelligeMeldungen } from "../../scripts/meldungs-waechter/meldungs-regeln.mjs";
 import { imWarenkorb, korbZeitpunkt, nachDemKorb } from "../../apps/mnyra-heart/heart-lifeskin-berechnung.js";
 import { createRequire } from "node:module";
-const { baueKauf } = createRequire(import.meta.url)("../../functions/lifeskin-capi-payload.js");
+const { baueKauf, baueLead, browserAusAnfrage } = createRequire(import.meta.url)("../../functions/lifeskin-capi-payload.js");
+const { ereignisseFuer } = await import("../../api/lifeskin-capi.js");
 
 const BASIS = process.env.BASIS || "http://127.0.0.1:5173";
 const FILTER = process.argv[2] || "";
@@ -273,6 +274,13 @@ class Lauf {
     await this.kontext.route(/\/api\/lifeskin-meldung/, (route) => {
       this.meldungen.push(Date.now());
       return json(route, 200, { ok: true });
+    });
+    // Die Meldung an Meta vom Server (api/lifeskin-capi.js): abgefangen und
+    // aufgezeichnet - was die Seite schickt, rechnet metaPruefen nach.
+    this.capi = [];
+    await this.kontext.route(/\/api\/lifeskin-capi/, (route) => {
+      try { this.capi.push({ ...route.request().postDataJSON(), ua: route.request().headers()["user-agent"] || "" }); } catch { /* nur Protokoll */ }
+      return json(route, 200, { ok: true, ergebnisse: [] });
     });
     if (kamera === "ohneApi") {
       await this.kontext.addInitScript(() => {
@@ -1353,9 +1361,24 @@ function metaPruefen(t, { betrag, fbclid, mitLead = true }) {
   t.pruefe(inits.length >= 1 && inits.every((e) => e.a[1] === "1347571994123884"), "Jede Seite startet den Pixel mit der richtigen Kennung", inits.map((e) => `/${e.seite}`).join(" "));
   const std = (name) => ereignisse.filter((e) => e.art === "track" && e.name === name);
   t.pruefe(std("PageView").length === inits.length, "PageView je geöffneter Seite genau einmal", `${std("PageView").length}× bei ${inits.length} Seiten`);
+  const s0 = t.sitzung()?.daten || {};
   if (mitLead) {
     const lead = std("Lead");
     t.pruefe(lead.length === 1, "Lead genau einmal je Person (bei der Nummer)", `${lead.length}× (${lead.map((e) => `/${e.seite}`).join(", ")})`);
+    t.pruefe(lead[0]?.id && lead[0].id === `${s0.code}-lead`, "Lead im Browser trägt die Fallnummer als eventID", `${lead[0]?.id} / ${s0.code}`);
+    const anstoss = t.capi.filter((c) => c.art === "lead");
+    t.pruefe(anstoss.length === 1, "Lead: Server-Meldung genau einmal angestoßen", `${anstoss.length}×`);
+    // Was der Server daraus macht (dieselbe Rechnung wie api/lifeskin-capi.js).
+    const browser = browserAusAnfrage({ ...anstoss[0], ip: "203.0.113.1" });
+    const faellig = ereignisseFuer({ ...s0, updatedAt: new Date().toISOString() }, "lead");
+    const server = baueLead(s0, { browser });
+    console.log(`  ── Lead vom Server: ${JSON.stringify({ ...server, user_data: Object.keys(server.user_data) })}`);
+    t.pruefe(faellig.includes("lead") && server.event_id === lead[0]?.id, "Server-Lead: fällig und dieselbe eventID wie im Browser", server.event_id);
+    t.pruefe(Boolean(server.user_data.client_user_agent) && Boolean(server.user_data.client_ip_address), "Server-Lead: User-Agent und Adresse des Browsers");
+    t.pruefe(/^https?:\/\/[^/]+\/lifeskin$/.test(anstoss[0]?.seite || ""), "Server-Lead: Seite ohne Fallkennung", anstoss[0]?.seite);
+    t.pruefe(!PRIVAT.test(JSON.stringify(server)) && !JSON.stringify(server).includes(t.sitzung()?.id), "Server-Lead: kein Name, keine Nummer, nie die Kennung der Sitzung");
+  } else {
+    t.pruefe(!t.capi.some((c) => c.art === "lead"), "Ohne Nummer im Trichter kein Lead vom Server");
   }
   const genau = (name, text) => {
     const liste = std(name);
@@ -1374,7 +1397,10 @@ function metaPruefen(t, { betrag, fbclid, mitLead = true }) {
   t.pruefe(!PRIVAT.test(JSON.stringify(t.fbq)), "Kein Name, keine Nummer, keine Anschrift an Meta (Browser)");
 
   // Der Server: dieselbe Sitzung, wie die Conversions API sie baut.
-  const server = baueKauf(s);
+  const kaufAnstoss = t.capi.filter((c) => c.art === "kauf");
+  t.pruefe(kaufAnstoss.length === 1, "Kauf: Server-Meldung genau einmal angestoßen (nach dem Speichern)", `${kaufAnstoss.length}×`);
+  t.pruefe(ereignisseFuer(s, "kauf").includes("kauf"), "Kauf: für den Server fällig (frisch, kein Probelauf)");
+  const server = baueKauf(s, { browser: browserAusAnfrage({ ...kaufAnstoss[0], ip: "203.0.113.1" }) });
   console.log(`  ── was die Conversions API daraus baut: ${JSON.stringify({ ...server, user_data: { ...server.user_data, client_user_agent: server.user_data.client_user_agent ? "(da)" : "" } })}`);
   t.pruefe(server.event_name === "Purchase" && server.event_id && server.event_id === kauf[0]?.id, "Server-Purchase: dieselbe eventID wie im Browser (Deduplizierung)", server.event_id);
   t.pruefe(server.custom_data.value === betrag && server.custom_data.currency === "EUR", `Server-Purchase: ${betrag} EUR`);

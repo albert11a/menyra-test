@@ -1017,7 +1017,7 @@ export class Analiza {
 
     if (!antwort?.ok) { melde("pritNrGabimRuajtje"); return; }
 
-    this.pixel.meldeLead();
+    this.pixel.meldeLead(this.daten?.code);
     if (this.daten) this.daten.phone = geprueft.nummer;
     this.#pritTorPruefen();
   }
@@ -2013,7 +2013,7 @@ export class Analiza {
     $("#an-pritwa")?.addEventListener("click", () => {
       this.waGetippt = true;
       if (!this.nurVorschau) this.quelle.merken({ waClick: true });
-      this.pixel.meldeLead();
+      this.pixel.meldeLead(this.daten?.code);
     });
     $("#an-pritwarueckja")?.addEventListener("click", () => {
       zeigen($("#an-pritwarueck"), false);

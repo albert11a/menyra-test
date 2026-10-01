@@ -326,7 +326,9 @@ test("jede Stelle, die phoneConsent setzt, meldet auch Lead", () => {
     // Innerhalb desselben Blocks muss die Meldung stehen: 900 Zeichen
     // reichen fuer den Zweig, in dem die Nummer geprueft wird.
     const umfeld = ohneNotizen.slice(treffer.index, treffer.index + 900);
-    assert.match(umfeld, /meldeLead\(\)/,
-      "Eine Stelle nimmt die Nummer an, ohne Lead zu melden - dort optimiert Meta ins Leere");
+    // Seit dem 01.10. mit der Fallnummer: Daran legt Meta das Lead aus dem
+    // Browser mit dem vom Server zusammen (api/lifeskin-capi.js).
+    assert.match(umfeld, /meldeLead\(this\.sitzung\?\.code\)/,
+      "Eine Stelle nimmt die Nummer an, ohne Lead (mit Fallnummer) zu melden - dort optimiert Meta ins Leere");
   }
 });

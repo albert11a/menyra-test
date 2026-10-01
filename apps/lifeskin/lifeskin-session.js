@@ -17,6 +17,7 @@
 import { LIFESKIN_WEGE, wegGueltig } from "../../shared/lifeskin-weg.js";
 import { pfadPatch } from "../../shared/lifeskin-klickpfad.js";
 import { meldungAnstossen } from "../../shared/lifeskin-melden.js";
+import { capiAnstossen } from "../../shared/lifeskin-capi-anstossen.js";
 
 // Nach diesen Schritten geht eine Meldung an Dr. Gashi (api/lifeskin-meldung.js).
 const MELDE_SCHRITTE = new Set("result ordered".split(" "));
@@ -751,6 +752,10 @@ export class Sitzung {
           // Analyse abgeschickt oder bestellt: sofort melden - aber erst,
           // wenn der Schritt in Firestore steht, denn die Meldung liest ihn dort.
           if (MELDE_SCHRITTE.has(name)) meldungAnstossen(id, this.fetchFn);
+          // Und an Meta vom Server (api/lifeskin-capi.js) - auch erst,
+          // wenn die Bestellung steht. Pixel-Aenderung erlaubt von Albert
+          // am 01.10.2026.
+          if (name === "ordered") capiAnstossen(id, "kauf", this.fetchFn);
           return;
         }
         // NICHT GESPEICHERT: DER KAUF GILT NICHT ALS ERREICHT (29.09.).
@@ -1176,12 +1181,20 @@ export class Sitzung {
   ergaenze(daten) {
     const mit = { updatedAt: jetzt(), ...daten };
     const neu = MELDE_MARKEN.some((f) => daten?.[f] === true && this.stand?.[f] !== true);
+    // Die Nummer mit Einwilligung zum ersten Mal: das Lead, auf das die
+    // Anzeigen lernen - zusaetzlich vom Server, sobald sie in Firestore
+    // steht (Pixel-Aenderung erlaubt von Albert am 01.10.2026).
+    const lead = daten?.phoneConsent === true && this.stand?.phoneConsent !== true;
     Object.assign(this.stand, daten);
     const geschrieben = this.#sammeln(mit, Object.keys(mit));
     // Warenkorb oder Kasse zum ersten Mal: melden, sobald es in Firestore steht.
     if (neu) {
       const id = this.id;
       geschrieben.then((antwort) => { if (antwort?.ok) meldungAnstossen(id, this.fetchFn); });
+    }
+    if (lead) {
+      const id = this.id;
+      geschrieben.then((antwort) => { if (antwort?.ok) capiAnstossen(id, "lead", this.fetchFn); });
     }
     return geschrieben;
   }

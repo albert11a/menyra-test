@@ -24,6 +24,7 @@ import { statistikPatch } from "../../shared/lifeskin-statistik.js";
 import { felder } from "../lifeskin/lifeskin-session.js";
 import { pfadPatch } from "../../shared/lifeskin-klickpfad.js";
 import { meldungAnstossen } from "../../shared/lifeskin-melden.js";
+import { capiAnstossen } from "../../shared/lifeskin-capi-anstossen.js";
 import { kaufPatch } from "../../shared/lifeskin-kaufweg.js";
 import { antwortzeitLaden } from "../../shared/lifeskin-antwortzeit.js";
 
@@ -280,6 +281,15 @@ export class AnalyseDaten {
     if (daten?.step === "ordered" || daten?.kasseGeoeffnet === true) {
       const kennung = this.kennung;
       this.schreibkette.then((ok) => { if (ok) meldungAnstossen(kennung, this.fetchFn); });
+    }
+    // Und an Meta vom Server (api/lifeskin-capi.js): die Bestellung, die
+    // Nummer, der Griff zu WhatsApp - erst, wenn es in Firestore steht.
+    // Pixel-Aenderung erlaubt von Albert am 01.10.2026.
+    const art = daten?.step === "ordered" ? "kauf"
+      : (daten?.phoneConsent === true || daten?.waClick === true) ? "lead" : "";
+    if (art) {
+      const kennung = this.kennung;
+      this.schreibkette.then((ok) => { if (ok) capiAnstossen(kennung, art, this.fetchFn); });
     }
     return this.schreibkette;
   }

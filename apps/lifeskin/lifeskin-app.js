@@ -2483,7 +2483,7 @@ export class Trichter {
       // JEDEM Weg genau einmal - der Pixel sperrt jedes Ereignis nach
       // der ersten Meldung, und die Nummer gibt es je Besuch nur
       // einmal. Ein zweites meldeLead() daneben gibt es nicht.
-      this.pixel.meldeLead();
+      this.pixel.meldeLead(this.sitzung?.code);
     } catch (fehler) {
       globalThis.console?.warn?.("[lifeskin] Nummer nicht gespeichert:", fehler?.message);
     }
@@ -4589,7 +4589,7 @@ export class Trichter {
         // nach der ersten Meldung, und die Nummer gibt es je Besuch nur
         // einmal.
         this.pixel.meldeAbgabe("telefon");
-        this.pixel.meldeLead();
+        this.pixel.meldeLead(this.sitzung?.code);
       }
     }
     if (Object.keys(einzeln).length) this.sitzung.ergaenze(einzeln);

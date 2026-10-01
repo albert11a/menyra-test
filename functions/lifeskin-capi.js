@@ -140,7 +140,10 @@ exports.lifeskinCapiPurchase = functions
       }
 
       // Das zweite Netz. create() wirft, wenn es das Dokument schon gibt -
-      // und genau das ist die Sperre.
+      // und genau das ist die Sperre. DIESELBE MARKE legt seit dem 01.10.
+      // api/lifeskin-capi.js an (Vercel, angestossen von der Seite): Wer
+      // zuerst anlegt, sendet - Meta legt zwei gleiche Server-Ereignisse
+      // nicht zusammen, also darf es nie zwei Sender geben.
       const marke = db
         .collection("lifeskin").doc(tenantId)
         .collection("capiEvents").doc(sessionId);

@@ -43,6 +43,17 @@ export const PIXEL_EREIGNISSE = Object.freeze({
 // laesst sich schreiben - auch wenn er das Formular nie oeffnet.
 export const PIXEL_LEAD = "Lead";
 
+// DIE KENNUNG DES LEADS (01.10., Pixel-Aenderung erlaubt von Albert am
+// 01.10.2026): Lead kommt jetzt auch vom Server (api/lifeskin-capi.js).
+// Meta legt Browser und Server nur zusammen, wenn beide dieselbe eventID
+// tragen - dieselbe Rechnung wie leadKennung in
+// functions/lifeskin-capi-payload.js: die Fallnummer mit "-lead". Nie die
+// Kennung der Sitzung: Sie oeffnet den Befund.
+export function leadKennung(code) {
+  const nummer = String(code || "").trim();
+  return nummer ? `${nummer}-lead` : null;
+}
+
 // UNSERE EIGENEN EREIGNISSE - eines je Bildschirm, eines je Weg.
 //
 // Die fuenf Standardnamen darueber sind das, worauf Meta optimieren kann,
@@ -342,8 +353,9 @@ export class Pixel {
   }
 
   // Die abgegebene Nummer. Das Ereignis, auf das die Anzeigen optimieren.
-  meldeLead() {
-    return this.#senden(PIXEL_LEAD, {}, null);
+  // Mit der Fallnummer, damit Meta es mit dem Lead vom Server zusammenlegt.
+  meldeLead(code = "") {
+    return this.#senden(PIXEL_LEAD, {}, leadKennung(code));
   }
 
   // Etwas in den Korb gelegt - im Laden auf der Landingpage oder, auf der

@@ -32,13 +32,15 @@ test("die kurze Zusage verspricht keinen anderen Ablauf als die Bedingungen", ()
   }
 });
 
+// Die freigegebene Landing vom 01.10. nennt keine Garantie mehr (ihr
+// Abschnitt #garancia sind die Fragen). Nennt sie wieder eine, muss es
+// dieselbe Frist mit demselben Startpunkt sein wie auf Therapieseite und Kasse.
 test("die Landingpage beschreibt denselben Ablauf - dieselbe Frist, derselbe Startpunkt", () => {
   const html = readFileSync(new URL("../apps/lifeskin-landing/index.html", import.meta.url), "utf8");
-  const abschnitt = html.slice(html.indexOf('id="garancia"'), html.indexOf("PYETJET"));
-  assert.match(abschnitt, new RegExp(`Afati është ${TAGE} ditë ${GARANCIA_START}`));
-  assert.match(abschnitt, /Së pari/);
-  assert.match(abschnitt, /terapi/);
-  assert.match(abschnitt, /Nëse edhe pas kësaj nuk jeni të kënaqur/);
+  const text = html.replace(/<!--[\s\S]*?-->/g, "").replace(/<script[\s\S]*?<\/script>/g, "");
+  const fristen = [...text.matchAll(/(\d+)\s*ditë garanci|Afati është (\d+) ditë/g)].map((m) => Number(m[1] || m[2]));
+  for (const tage of fristen) assert.equal(tage, TAGE, "Die Landing nennt eine andere Garantiefrist als die Bedingungen");
+  if (/Afati është/.test(text)) assert.match(text, new RegExp(`Afati është ${TAGE} ditë ${GARANCIA_START}`));
 });
 
 test("die neue Fassung der Therapieseite nimmt Garantie aus dieser einen Quelle", () => {
