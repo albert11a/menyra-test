@@ -916,6 +916,7 @@ export class Dyqan {
       if (!knopf) return;
       const d = knopf.dataset;
       if ("set" in d) { this.setLegen(d.set); return; }
+      if ("zitatBild" in d) { this.#blatt(`<img class="zitat-gross" src="${e(d.zitatBild)}" alt="Mesazhi origjinal i klientit në Instagram">`, "MESAZH NË INSTAGRAM"); return; }
       if ("klientSpiel" in d) { this.#klientVideo(knopf.closest(".klient-buehne")); return; }
       if ("klient" in d) {
         const m = this.klienten?.[Number(d.klient)];

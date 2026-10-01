@@ -576,3 +576,20 @@ html[data-ls-landing="lifeskinshop"] #ls-einstieg[data-aktiv="ja"]{animation:non
 #ls-einstieg .photo-ig .icon{width:14px;height:14px;color:#c13584;flex:none}
 #ls-einstieg .photo-ig b{font-weight:700}
 #ls-einstieg .photo-ig i{width:1px;height:11px;background:currentColor;opacity:.25}
+/* STIMMEN DER KUNDEN (01.10., Inhaber): eigene, schmale Section direkt
+   nach dem ersten Bildschirm. Woertlich aus echten Instagram-Nachrichten,
+   nur gekuerzt - der Dialekt ist der Beleg. Daneben ein Bildchen der echten
+   Nachricht (antippen = gross), damit niemand an ausgedachte Stimmen denkt.
+   Abstaende im 8er-Raster: 24 oben/unten, 12 zwischen den Karten. */
+#ls-einstieg .klient-zitate{padding:24px 0;border-top:1px solid var(--line)}
+#ls-einstieg .klient-zitate .section-top{margin:0 20px 12px}
+#ls-einstieg .klient-zitate ul{list-style:none;margin:0;padding:0 20px 2px;display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding:0 20px;scrollbar-width:none}
+#ls-einstieg .klient-zitate ul::-webkit-scrollbar{display:none}
+#ls-einstieg .klient-zitate li{flex:0 0 84%;max-width:340px;scroll-snap-align:start;display:flex;gap:12px;align-items:stretch;padding:10px 14px 10px 10px;background:#fff;border:1px solid var(--line);border-radius:16px}
+#ls-einstieg .zitat-bild{flex:none;width:56px;height:84px;padding:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--wash)}
+#ls-einstieg .zitat-bild img{width:100%;height:100%;object-fit:cover;object-position:50% 0}
+#ls-einstieg .klient-zitate li>div{display:flex;flex-direction:column;justify-content:space-between;gap:8px;min-width:0;padding:2px 0}
+#ls-einstieg .klient-zitate q{quotes:"\201C" "\201D";font-size:14px;line-height:1.4;color:var(--ink);font-weight:500}
+#ls-einstieg .klient-zitate small{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+#ls-einstieg .klient-zitate small .icon{width:13px;height:13px;color:#c13584;flex:none}
+#ls-einstieg .zitat-gross{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:14px}
