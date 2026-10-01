@@ -15,13 +15,9 @@
 // tragen. Genau die haengt seit jeher am Kauf im Browser
 // (order.orderId), also passt sie ohne Umbau.
 //
-// KEINE TELEFONNUMMER, KEIN NAME, AUCH NICHT GEHASHT. Meta verlangt
-// mindestens eine Angabe darueber, wer das war, sonst verwirft es das
-// Ereignis. Was hier mitgeht, sind zwei Cookies, die Metas eigenes
-// Skript im Browser gesetzt hat (_fbp, _fbc) - sie beschreiben den
-// Browser, stammen von Meta und gehen an Meta zurueck. Das ist der
-// Unterschied zu Advanced Matching, das auf dieser Seite nicht
-// stattfindet.
+// Telefonnummer nur mit separater Zustimmung als SHA-256-Hash (02.10.).
+// Die Nutzlast entscheidet zentral darueber; keine Namen, Anschriften,
+// Aufnahmen oder Gesundheitsangaben gehen an Meta.
 //
 // SIE HAELT NIE EINEN VERKAUF AUF. Sie laeuft NACH dem Schreiben, in
 // einem eigenen Ausloeser; faellt sie aus, steht die Bestellung
@@ -176,6 +172,7 @@ exports.lifeskinCapiPurchase = functions
         value: nutzlast.custom_data.value,
         // Metas eigene Zaehlung dessen, was es angenommen hat.
         received: antwort?.events_received,
+        mitPh: Boolean(nutzlast.user_data.ph?.length),
         mitFbp: Boolean(nutzlast.user_data.fbp),
         mitFbc: Boolean(nutzlast.user_data.fbc),
         // Seit 29.09. (order.ua) - Meta verlangt ihn fuer Website-Ereignisse.

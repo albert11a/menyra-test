@@ -30,7 +30,7 @@ test("die Texte stehen auf Albanisch", async () => {
 test("die Viber-Nummer geht in einem eigenen Schreibvorgang - die Nummer davor bleibt", () => {
   const i = APP.indexOf("  #telWeiter() {");
   const weiter = APP.slice(i, APP.indexOf("\n  }\n", i));
-  const phone = weiter.indexOf("this.sitzung.ergaenze({ phone: geprueft.nummer, phoneConsent: true });");
+  const phone = weiter.indexOf("this.sitzung.ergaenze({ phone: geprueft.nummer, phoneConsent: true,");
   const viber = weiter.indexOf("if (geprueft.viber) this.sitzung.ergaenze({ viber: geprueft.viber });");
   assert.ok(phone > 0 && viber > phone, "Viber steht nicht getrennt nach der Nummer");
 });

@@ -1,3 +1,4 @@
+import { metaAbgleichEinrichten, metaAbgleichAngaben } from "../shared/lifeskin-meta-abgleich.js";
 // DIE WEGE, AN DENEN BESUCHER HAENGEN BLIEBEN - geprueft an den echten
 // Methoden des Trichters, mit nachgebautem Browser, Kamera, Netz und Uhr.
 //
@@ -179,6 +180,7 @@ function probe({ ua = UA.chromeAndroid, gum, mitFoto = true, suche = "" } = {}) 
   let dateiAufnahme = { foto: { jpeg: "data:image/jpeg;base64,QUFB", breite: 1200, hoehe: 1600 },
     mini: { jpeg: "data:image/jpeg;base64,bWluaQ", breite: 120, hoehe: 160 }, vorschau: "data:image/jpeg;base64,bWluaQ" };
   const context = vm.createContext({
+    metaAbgleichEinrichten, metaAbgleichAngaben,
     ...texte, ...pose, ...clock, document, window, getComputedStyle: (node) => node.stil || {},
     MESS_BREITE: 384, STANDARD_KONFIG: { sprache: "sq" }, __LIFESKIN_TEST__: true,
     Pixel: class { meldeWeg() {} melde() {} },

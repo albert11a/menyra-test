@@ -1,3 +1,4 @@
+import { metaAbgleichEinrichten, metaAbgleichAngaben } from "../../shared/lifeskin-meta-abgleich.js";
 // Der Trichter: zehn Bildschirme, ein Zustand, ein Weg.
 //
 // Hier wird nichts gerechnet und nichts entschieden. Und seit die
@@ -627,6 +628,7 @@ export class Trichter {
   // Produkte braucht der Trichter nicht mehr. Er macht den Scan; welche
   // Produkte jemand bekommt, entscheidet Dr. Gashi auf der Befundseite.
   constructor({ konfig = STANDARD_KONFIG, variante = null } = {}) {
+    metaAbgleichEinrichten();
     this.konfig = konfig;
     this.sprache = konfig.sprache || "sq";
     // Steht sie nicht im Aufruf, steht sie im Aufbau - und sonst gilt die
@@ -2472,7 +2474,8 @@ export class Trichter {
     // Marke reist im Bericht mit (siehe #uebergeben).
     this.zustand.nummerGegeben = true;
     try {
-      this.sitzung.ergaenze({ phone: geprueft.nummer, phoneConsent: true });
+      this.sitzung.ergaenze({ phone: geprueft.nummer, phoneConsent: true,
+        timings: { metaMatching: metaAbgleichAngaben(globalThis.document, "ls-telfeld", geprueft.nummer) } });
       // DIE VIBER-NUMMER IN EINEM EIGENEN SCHREIBVORGANG. Kennt die
       // Firestore-Regel das Feld (noch) nicht, weist sie nur diesen
       // Vorgang ab - die Nummer oben steht trotzdem. Ohne WhatsApp ist

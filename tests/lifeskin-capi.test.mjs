@@ -11,8 +11,8 @@
 //      zaehlt Meta DOPPELT, und der gemessene Umsatz waere das Doppelte
 //      des wirklichen - eine Zahl, die nach Erfolg aussieht.
 //   2. Es geht etwas mit, was nicht mitgehen darf. Fuer diese Seite
-//      gilt, dass weder Aufnahmen noch Antworten noch Telefonnummern in
-//      die Messtechnik gehen - auch nicht gehasht.
+//      gilt, dass weder Aufnahmen noch Antworten noch Telefonnummern ohne separate Zustimmung in
+//      die Messtechnik gehen. Mit Zustimmung nur der SHA-256-Hash.
 //
 // Beides steht hier.
 

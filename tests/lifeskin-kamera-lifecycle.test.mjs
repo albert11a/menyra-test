@@ -1,3 +1,4 @@
+import { metaAbgleichEinrichten, metaAbgleichAngaben } from "../shared/lifeskin-meta-abgleich.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -110,6 +111,7 @@ function probe({ gum, breite = 390, hoehe = 844 } = {}) {
   const window = ziel({ innerHeight: hoehe, visualViewport: ziel({ height: hoehe }), scrollTo() {} });
   let anfragen = 0;
   const context = vm.createContext({
+    metaAbgleichEinrichten, metaAbgleichAngaben,
     ...texte, ...pose, ...clock, document, window, getComputedStyle: (node) => node.stil,
     MESS_BREITE: 384, STANDARD_KONFIG: { sprache: "sq" }, __LIFESKIN_TEST__: true,
     Pixel: class {}, Sitzung: class { schritt() {} ergaenze() {} },
