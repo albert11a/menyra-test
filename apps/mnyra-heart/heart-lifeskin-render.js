@@ -1695,7 +1695,7 @@ function leererBlock(titel, text) {
 const PFAD_WORTE = Object.freeze({
   geoeffnet: "Seite geöffnet", bildschirm: "Bildschirm", klick: "Tippt", aufgeklappt: "Klappt auf",
   zugeklappt: "Klappt zu", feld: "Feld angetippt", gesehen: "Liest", scroll: "Scrollt",
-  verlassen: "Verlässt die Seite", zurueck: "Kommt zurück", kasse: "Kasse", bestellt: "BESTELLT",
+  verlassen: "Verlässt die Seite", zurueck: "Kommt zurück", korb: "Warenkorb", kasse: "Kasse", bestellt: "BESTELLT",
   fehler: "Fehler", technik: "Technik"
 });
 
@@ -2115,7 +2115,7 @@ export function renderLandingInhalt(sitzung) {
 // DER KLICKPFAD, lesbar: je Besuch ein Abschnitt, je Ereignis ein Satz.
 const PFAD_ZEICHEN = Object.freeze({
   geoeffnet: "fileText", bildschirm: "fileText", klick: "pointer", aufgeklappt: "chevronDown", zugeklappt: "chevronRight",
-  feld: "pencil", gesehen: "eye", scroll: "arrowUpDown", verlassen: "doorOut", zurueck: "undo", kasse: "cart",
+  feld: "pencil", gesehen: "eye", scroll: "arrowUpDown", verlassen: "doorOut", zurueck: "undo", korb: "cart", kasse: "cart",
   bestellt: "checkCircle", fehler: "alert", technik: "activity"
 });
 const pfadIcon = (e) => renderHeartIcon(PFAD_ZEICHEN[e.e] || "info", "heart-pfad__icon");
@@ -2158,7 +2158,7 @@ function renderKlickpfadInhalt(sitzung) {
   const { oben, auf, klicks } = klickpfadInteressen(pfad);
   const besuche = pfadBesuche(pfad);
   const max = Math.max(1, ...oben.map(([, s]) => s));
-  const wichtig = pfad.filter((e) => ["kasse", "bestellt", "fehler"].includes(e.e));
+  const wichtig = pfad.filter((e) => ["korb", "kasse", "bestellt", "fehler"].includes(e.e));
   return `
     <p class="heart-pfad__kurz">${besuche.length} ${besuche.length === 1 ? "Besuch" : "Besuche"} · ${pfad.length} Ereignisse · ${klicks} Klicks</p>
     ${wichtig.length ? `<div class="heart-pfad__wichtig">${wichtig.map((e) => `<span>${pfadIcon(e)} ${escapeHtml(pfadSatz(e))} · ${escapeHtml(uhrzeit(e.t))}</span>`).join("")}</div>` : ""}
@@ -2174,7 +2174,7 @@ function renderKlickpfadInhalt(sitzung) {
         <div class="heart-pfad__besuch">
           <div class="heart-pfad__seite">Besuch ${i + 1} · ${escapeHtml(b.seite)} · ${escapeHtml(datumKurz(b.von))} ${escapeHtml(uhrzeit(b.von))} · ${escapeHtml(dauerText(b.von, b.bis))}</div>
           ${b.eintraege.map((e) => `
-          <div class="heart-pfad__zeile${["bestellt", "kasse"].includes(e.e) ? " heart-pfad__zeile--wichtig" : ""}">
+          <div class="heart-pfad__zeile${["bestellt", "korb", "kasse"].includes(e.e) ? " heart-pfad__zeile--wichtig" : ""}">
             <span class="heart-pfad__zeit">${escapeHtml(uhrzeitSekunden(e.t))}</span>
             <span class="heart-pfad__zeichen">${pfadIcon(e)}</span>
             <span>${escapeHtml(pfadSatz(e))}</span>

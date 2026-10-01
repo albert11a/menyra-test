@@ -1458,6 +1458,11 @@ export class Terapia {
     }
     blatt.scrollTop = 0;
     if (this.nurVorschau) return;
+    // Der Moment, in dem der Korb aufging, als eigenes Ereignis im
+    // Klickpfad - wie "kasse" beim Bestellschirm. Daran rechnet Heart
+    // (Nachfassen) "nach dem Warenkorb"; der Kaufknopf allein heisst je
+    // nach Stelle anders und war dort nicht zu erkennen.
+    this.klickpfad?.melde("korb", `geöffnet · ${euro(this.preis)}`);
     this.pixel.meldeKorb(this.preis);
     // Live: "shporta" - ein eigener Name, die Kasse dahinter schreibt
     // "porosia" (Heart: Live · Analyse, N'shport und Adresa).

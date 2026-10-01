@@ -317,12 +317,17 @@ export class AnalyseDaten {
     if (!patch) return undefined;
     const maske = [...patch.masken.map((f) => `updateMask.fieldPaths=${encodeURIComponent(f)}`), "currentDocument.exists=true"].join("&");
     try {
-      return await this.fetchFn(this.#sitzung(`?${maske}`), {
+      const antwort = await this.fetchFn(this.#sitzung(`?${maske}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fields: felder(patch.daten) }),
         keepalive: true
       });
+      // DER WARENKORB DER THERAPIESEITE (der Kaufknopf, terapia.js #korb):
+      // sofort melden, sobald er in Firestore steht - wie der Korb im Laden
+      // (imKorb) und die Kasse. Vorher blieb das Telefon hier stumm.
+      if (marke === "knopf" && antwort?.ok) meldungAnstossen(this.kennung, this.fetchFn);
+      return antwort;
     } catch {
       return undefined;
     }

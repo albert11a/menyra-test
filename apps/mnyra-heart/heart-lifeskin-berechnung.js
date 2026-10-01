@@ -1650,36 +1650,49 @@ export function kasseInfo(sitzung) {
 
 // WANN KAM ER IN DEN WARENKORB? Das erste Tippen auf einen Korb-Knopf:
 // im Laden /lifeskinshop "Porosit setin" / "Zgjidh këtë set", im alten Laden
-// der Landingpage /lifeskin "Shto …", auf der Therapieseite der Warenkorb
-// oder die Kasse. Steht keiner im Pfad, gilt der Zeitpunkt, als die Kasse
-// aufging - und fehlt auch der, bleibt der Zeitpunkt offen (index -1).
+// der Landingpage /lifeskin "Shto …", auf der Therapieseite das Ereignis
+// "korb" (seit 01.10.), der Warenkorb oder die Kasse. Dazu die frueheste
+// Marke: der Kaufknopf der Therapieseite (timings.kauf.knopf - so auch
+// rueckwirkend fuer die Koerbe seit dem 29.09.) oder der Zeitpunkt, als die
+// Kasse aufging. Es gilt, was zuerst kam: Ein Tippen IM Korb ("Mbyllni ·
+// Warenkorb") liegt nach dem Kaufknopf. Fehlt beides, bleibt der Zeitpunkt
+// offen (index -1).
+//
+// MARKE_SPIEL: Die Marke wird einen Augenblick VOR dem Ereignis im Pfad
+// geschrieben (terapia.js: erst #kauf, dann #korb) - innerhalb dieser
+// Spanne ist es derselbe Moment, und das Ereignis im Pfad gilt.
 const KORB_KNOPF = /^(Porosit setin|Zgjidh këtë set|Shto[\s·])/;
+const MARKE_SPIEL_MS = 5000;
 export function korbZeitpunkt(sitzung) {
   const pfad = pfadLesen(sitzung);
   const i = pfad.findIndex((e) => (e.e === "klick" && KORB_KNOPF.test(e.d))
-    || (e.s === "Therapieseite" && (e.e === "kasse" || abschnittVonEreignis(e) === "Warenkorb")));
-  if (i >= 0) return { t: pfad[i].t, index: i };
-  const kasse = String(sitzung?.kasseGeoeffnetAt || "");
-  const ab = Date.parse(kasse);
-  if (Number.isFinite(ab)) {
-    // Das letzte Ereignis vor dem Oeffnen der Kasse - danach kommt, was er
-    // ab der Kasse tat.
+    || (e.s === "Therapieseite" && (e.e === "korb" || e.e === "kasse" || abschnittVonEreignis(e) === "Warenkorb")));
+  const marke = [sitzung?.timings?.kauf?.knopf, sitzung?.kasseGeoeffnetAt]
+    .map((t) => String(t || ""))
+    .filter((t) => Number.isFinite(Date.parse(t)))
+    .sort((a, b) => Date.parse(a) - Date.parse(b))[0];
+  const imPfad = i >= 0 ? Date.parse(pfad[i].t) : NaN;
+  if (i >= 0 && !(marke && Date.parse(marke) < imPfad - MARKE_SPIEL_MS)) return { t: pfad[i].t, index: i };
+  if (marke) {
+    // Das letzte Ereignis bis zur Marke - danach kommt, was er ab dem
+    // Warenkorb (oder der Kasse) tat.
+    const ab = Date.parse(marke);
     let j = -1;
     pfad.forEach((e, k) => { if (Date.parse(e.t) <= ab) j = k; });
-    return { t: kasse, index: j, ausKasse: true };
+    return { t: marke, index: j, ausMarke: true };
   }
   return { t: "", index: -1 };
 }
 
 // WAS ER DANACH GETIPPT HAT - ohne Lesezeiten und Scrollen, die gehoeren in
 // den ganzen Klickpfad des Falls.
-const DANACH_ARTEN = new Set(["klick", "aufgeklappt", "feld", "kasse", "bestellt", "fehler", "verlassen", "zurueck", "bildschirm", "geoeffnet"]);
+const DANACH_ARTEN = new Set(["klick", "aufgeklappt", "feld", "korb", "kasse", "bestellt", "fehler", "verlassen", "zurueck", "bildschirm", "geoeffnet"]);
 export function nachDemKorb(sitzung, max = 8) {
   const pfad = pfadLesen(sitzung);
   const korb = korbZeitpunkt(sitzung);
   if (!pfad.length) return { eintraege: [], mehr: 0, ohnePfad: true };
   // Ohne Zeitpunkt nicht "nichts getippt" behaupten - das waere geraten.
-  if (korb.index < 0 && !korb.ausKasse) return { eintraege: [], mehr: 0, ohnePfad: false, ohneZeitpunkt: true };
+  if (korb.index < 0 && !korb.ausMarke) return { eintraege: [], mehr: 0, ohnePfad: false, ohneZeitpunkt: true };
   const danach = pfad.slice(korb.index + 1).filter((e) => DANACH_ARTEN.has(e.e));
   return { eintraege: danach.slice(0, max), mehr: Math.max(0, danach.length - max), ohnePfad: false };
 }

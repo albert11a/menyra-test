@@ -52,8 +52,18 @@ export const MELDUNGEN = Object.freeze([
   // (imKorb aus dem Laden, kasseGeoeffnet von Therapie- und Analyseseite
   // und aus dem Laden). Gemeldet nur, solange noch nicht bestellt wurde:
   // Wer schon bestellt hat, bekommt die Bestellmeldung, nicht diese.
+  //
+  // SEIT DEM 29.09. HAT AUCH DIE THERAPIESEITE EINEN WARENKORB: Ihr
+  // Kaufknopf schreibt timings.kauf.knopf (die Zeit) und bewusst NICHT
+  // imKorb (terapia.js #korb). Ohne diesen Zweig blieb das Telefon bei
+  // jedem Warenkorb auf der Ergebnisseite stumm (01.10.).
+  // Der Knopf zaehlt nur, wenn er selbst frisch ist - ein Korb von vor drei
+  // Tagen ist keine Meldung mehr, auch wenn die Sitzung gerade geschrieben
+  // wurde.
   {
     feld: "imKorb",
+    gesetzt: (daten, { jetzt, fensterMs }) => daten.imKorb === true
+      || frischSeit(daten.timings?.kauf?.knopf, jetzt, fensterMs),
     type: "lifeskin_korb",
     text: (name, daten = {}) => {
       const wert = Number(daten.korbWert) > 0 ? ` (${Math.round(Number(daten.korbWert))} €)` : "";
@@ -62,10 +72,16 @@ export const MELDUNGEN = Object.freeze([
   },
   {
     feld: "kasseGeoeffnet",
+    gesetzt: (daten) => daten.kasseGeoeffnet === true,
     type: "lifeskin_kasse",
     text: (name) => (name ? `An der Kasse, ${name}` : "Jemand ist an der Kasse")
   }
 ]);
+
+function frischSeit(wert, jetzt, fensterMs) {
+  const zeit = zeitAus(wert);
+  return zeit > 0 && jetzt - zeit <= fensterMs;
+}
 
 function schonBestellt(daten) {
   return daten.hatBestellt === true || Boolean(daten.order?.orderId) || schrittIndex(daten.step) >= schrittIndex("ordered");
@@ -138,15 +154,16 @@ export function faelligeMeldungen(sitzung = {}, { jetzt = Date.now(), fensterMs 
   // dahinter ungemeldet.
   const daten = sitzung && typeof sitzung === "object" ? sitzung : {};
   const stand = schrittIndex(daten.step);
-  const mitMarke = MELDUNGEN.some((v) => v.feld && daten[v.feld] === true);
+  const markeGesetzt = (vorlage) => Boolean(vorlage.gesetzt?.(daten, { jetzt, fensterMs }));
+  const mitMarke = MELDUNGEN.some(markeGesetzt);
   if (stand < 0 && !mitMarke) return [];
   const zeit = sitzungsZeit(daten);
   // Ohne Zeit keine Meldung. Eine Sitzung ohne Zeitstempel ist entweder
   // uralt oder kaputt, und beides ist kein Grund, ein Telefon zu wecken.
   if (!zeit) return [];
   if (jetzt - zeit > fensterMs) return [];
-  return MELDUNGEN.filter((vorlage) => (vorlage.feld
-    ? daten[vorlage.feld] === true && !schonBestellt(daten)
+  return MELDUNGEN.filter((vorlage) => (vorlage.gesetzt
+    ? markeGesetzt(vorlage) && !schonBestellt(daten)
     : stand >= 0 && schrittIndex(vorlage.schritt) <= stand));
 }
 

@@ -113,3 +113,58 @@ test("ohne Korb-Klick im Pfad: ab der Kasse - und ohne beides keine erfundene Au
   assert.equal(d.ohneZeitpunkt, true);
   assert.equal(d.eintraege.length, 0);
 });
+
+// 01.10.: Der Warenkorb der Therapieseite stand nur als
+// timings.kauf.knopf in der Sitzung - der Kaufknopf heisst je nach Stelle
+// anders, und Heart fand den Zeitpunkt nicht ("steht nicht im Klickpfad").
+test("Therapieseite: Warenkorb ohne Kasse - ab dem Kaufknopf, auch rueckwirkend", () => {
+  const alt = {
+    id: "therapie-korb", berichtGeoeffnet: true, timings: {
+      kauf: { knopf: T(2) },
+      pfad: pfad([
+        [T(0), TH, "geoeffnet"],
+        [T(1), TH, "gesehen", "Produktet · 40 s"],
+        [T(2), TH, "klick", "Porosit terapinë · 39 € · Leiste"],
+        [T(2, 20), TH, "gesehen", "Warenkorb · 18 s"],
+        [T(2, 21), TH, "klick", "Mbyllni · Warenkorb"],
+        [T(3), TH, "verlassen"]
+      ]).timings.pfad
+    }
+  };
+  const k = korbZeitpunkt(alt);
+  assert.equal(k.t, T(2));
+  assert.equal(k.ausMarke, true);
+  const d = nachDemKorb(alt);
+  assert.notEqual(d.ohneZeitpunkt, true);
+  assert.deepEqual(d.eintraege.map((e) => e.d), ["Mbyllni · Warenkorb", ""]);
+  const [zeile] = nachfassKoerbe([alt]);
+  assert.equal(zeile.zeit, T(2), "die Karte zeigt die Zeit des Warenkorbs");
+  assert.equal(zeile.kasse, null);
+
+  // Neu: das Ereignis "korb" im Klickpfad (terapia.js #korb). Die Marke
+  // steht einen Augenblick davor - derselbe Moment, das Ereignis gilt.
+  const neu = {
+    id: "neu", timings: {
+      kauf: { knopf: T(1, 59) },
+      pfad: pfad([
+        [T(0), TH, "geoeffnet"],
+        [T(2), TH, "klick", "Porosit · 39 € · Produktet"],
+        [T(2), TH, "korb", "geöffnet · 39 €"],
+        [T(2, 30), TH, "kasse", "Bestellschirm geöffnet · 39 €"]
+      ]).timings.pfad
+    }
+  };
+  assert.equal(korbZeitpunkt(neu).index, 2);
+  assert.deepEqual(nachDemKorb(neu).eintraege.map((e) => e.e), ["kasse"]);
+});
+
+test("die frueheste Marke zaehlt: Kaufknopf vor Kasse", () => {
+  const s = { id: "m", kasseGeoeffnet: true, kasseGeoeffnetAt: T(4), timings: { kauf: { knopf: T(3) } } };
+  assert.equal(korbZeitpunkt(s).t, T(3));
+  // Ein Korb im Laden VOR dem Kaufknopf der Therapieseite bleibt der erste.
+  const laden = { id: "l", imKorb: true, timings: {
+    kauf: { knopf: T(9) },
+    pfad: pfad([[T(1), L, "klick", "Porosit setin · 39 € · Landing: Produkte"], [T(9), TH, "klick", "Porosit · Leiste"]]).timings.pfad
+  } };
+  assert.equal(korbZeitpunkt(laden).t, T(1));
+});

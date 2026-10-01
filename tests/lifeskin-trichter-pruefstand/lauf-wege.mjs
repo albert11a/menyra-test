@@ -39,6 +39,8 @@ import { chromium } from "playwright-core";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { gesichtsVideo } from "./kamera-attrappe.mjs";
 import { antwortenFuerBericht } from "../../shared/lifeskin-antworten.js";
+import { faelligeMeldungen } from "../../scripts/meldungs-waechter/meldungs-regeln.mjs";
+import { imWarenkorb, korbZeitpunkt, nachDemKorb } from "../../apps/mnyra-heart/heart-lifeskin-berechnung.js";
 
 const BASIS = process.env.BASIS || "http://127.0.0.1:5173";
 const FILTER = process.argv[2] || "";
@@ -1217,6 +1219,99 @@ szenario("A13 Warteseite im normalen Browser (Link aus WhatsApp) → Therapie", 
   t.pruefe(!/numrin|numër/i.test(await t.seite.evaluate(() => [...document.querySelectorAll("input")].filter((i) => i.offsetParent).map((i) => i.placeholder).join(" "))), "Fragt nicht noch einmal nach der Nummer");
   await freigabeUndTherapie(t, id);
   t.pruefe((await t.querScroll()) <= 1, "Kein seitliches Scrollen");
+});
+
+// DER GANZE KAUFWEG (01.10.: Warenkorb auf der Ergebnisseite,
+// aber keine Meldung aufs Telefon). Von der Anzeige bis zur Bestellung:
+// Analyse abschicken -> Freigabe -> Therapieseite -> Warenkorb -> Kasse ->
+// Bestellung. An jeder Stelle: steht es in der Sitzung, geht die Meldung
+// hinaus (/api/lifeskin-meldung, hier abgefangen), und sieht Heart den Korb?
+async function sichtbar(t, sel, frist = 8000) {
+  return t.warte((s) => {
+    const el = document.querySelector(s);
+    return Boolean(el && !el.hidden && !el.closest("[hidden]") && el.getClientRects().length);
+  }, sel, frist);
+}
+
+async function stehtInSitzung(t, pruefung, frist = 8000) {
+  const ende = Date.now() + frist;
+  while (Date.now() < ende) {
+    if (pruefung(t.sitzung()?.daten || {})) return true;
+    await t.seite.waitForTimeout(150);
+  }
+  return false;
+}
+
+async function meldungKam(t, vorher, frist = 6000) {
+  const ende = Date.now() + frist;
+  while (Date.now() < ende && t.meldungen.length <= vorher) await t.seite.waitForTimeout(100);
+  return t.meldungen.length > vorher;
+}
+
+szenario("A14 Ganzer Kaufweg · Anzeige → Analyse → Warenkorb → Kasse → Bestellung", async (t) => {
+  await t.oeffnen({ kamera: "gesperrt", ua: UA.androidIG, breite: 390, hoehe: 844, dpr: 2.75 });
+  await landing(t, { suche: "utm_source=ig&utm_campaign=120200000000000001&utm_content=120200000000000002" });
+  await zurWahl(t);
+  await t.tippe('[data-ls-weg="trup"]');
+  if (!(await nameUndAlter(t, "Arta"))) return;
+  await t.schirm("ls-anliegen", 8000);
+  await t.seite.fill("#ls-anliegenfeld", "Kam puçrra në faqe prej disa muajsh.");
+  await t.seite.evaluate(() => document.activeElement?.blur?.());
+  await t.tippe("#ls-anliegenweiter");
+  if (!(await nummer(t))) return;
+  const { id } = await bisZurWarteseite(t, { erwartetFotos: 0 });
+  if (!id) return;
+  t.pruefe(await meldungKam(t, 0), "Analyse abgeschickt: Meldung angestossen", `${t.meldungen.length}×`);
+  const quelle = t.sitzung()?.daten?.source || {};
+  t.pruefe(quelle.utmCampaign === "120200000000000001" && quelle.utmContent === "120200000000000002", "Anzeige (Kampagne und Anzeige) in der Sitzung", JSON.stringify(quelle));
+
+  await freigabeUndTherapie(t, id);
+  if (!/^\/terapia\//.test(await t.seite.evaluate(() => location.pathname).catch(() => ""))) return;
+
+  // WARENKORB: der Kaufknopf oben.
+  const vorKorb = t.meldungen.length;
+  await t.seite.evaluate(() => document.getElementById("hero-knopf")?.scrollIntoView({ block: "center", behavior: "instant" }));
+  await t.tippe("#hero-knopf");
+  const korbAuf = await t.warte(() => document.getElementById("korb")?.open === true, null, 6000);
+  await t.bild("warenkorb");
+  t.pruefe(korbAuf != null, "Kaufknopf öffnet den Warenkorb", await t.seite.evaluate(() => document.getElementById("t-korbvazhdo")?.textContent || "").catch(() => ""));
+  t.pruefe(await stehtInSitzung(t, (d) => Boolean(d.timings?.kauf?.knopf)), "Warenkorb steht in der Sitzung (timings.kauf.knopf)");
+  t.pruefe(await meldungKam(t, vorKorb), "Warenkorb: Meldung angestossen", `${t.meldungen.length - vorKorb}×`);
+  t.pruefe(await stehtInSitzung(t, (d) => Object.values(d.timings?.pfad || {}).some((e) => e?.e === "korb"), 9000),
+    "Warenkorb als eigenes Ereignis im Klickpfad");
+  const nachKorb = t.sitzung()?.daten || {};
+  t.pruefe(faelligeMeldungen({ ...nachKorb, updatedAt: new Date().toISOString() }).some((v) => v.type === "lifeskin_korb"),
+    "Die Meldungsfunktion meldet diesen Warenkorb", faelligeMeldungen(nachKorb).map((v) => v.type).join(", "));
+  t.pruefe(imWarenkorb(nachKorb) && korbZeitpunkt(nachKorb).t && !nachDemKorb(nachKorb).ohneZeitpunkt,
+    "Heart: im Warenkorb, mit Zeitpunkt (Nachfassen)", korbZeitpunkt(nachKorb).t);
+
+  // KASSE: "Vazhdo" im Warenkorb.
+  const vorKasse = t.meldungen.length;
+  await t.tippe("#t-korbvazhdo");
+  const kasse = await sichtbar(t, "#forma");
+  await t.bild("kasse");
+  t.pruefe(kasse != null, "Vazhdo öffnet die Kasse");
+  t.pruefe(await stehtInSitzung(t, (d) => d.kasseGeoeffnet === true), "Kasse steht in der Sitzung (kasseGeoeffnet)");
+  t.pruefe(await meldungKam(t, vorKasse), "Kasse: Meldung angestossen", `${t.meldungen.length - vorKasse}×`);
+
+  // BESTELLUNG.
+  const vorKauf = t.meldungen.length;
+  await t.seite.fill("#t-emri", "Arta Test");
+  await t.seite.fill("#t-telefon", "+38349000000");
+  await t.seite.fill("#t-adresa", "Rruga e Pruefstands 1");
+  await t.seite.fill("#t-qyteti", "Prishtinë");
+  await t.seite.evaluate(() => document.activeElement?.blur?.());
+  await t.tippe("#t-dergo");
+  const danke = await sichtbar(t, "#t-faleminderit", 10000);
+  await t.bild("bestellt");
+  t.pruefe(danke != null, "Bestellung bestätigt (Faleminderit)");
+  t.pruefe(await stehtInSitzung(t, (d) => d.step === "ordered" && d.order?.orderId && Number(d.order?.total) > 0 && d.address?.strasse),
+    "Bestellung in der Sitzung (step ordered, Betrag, Anschrift)", JSON.stringify({ step: t.sitzung()?.daten?.step, total: t.sitzung()?.daten?.order?.total }));
+  t.pruefe(t.db.doc(`lifeskin/lifeskin/reports/${id}`)?.status === "bestellt", "Bericht steht auf 'bestellt'");
+  t.pruefe(await meldungKam(t, vorKauf), "Bestellung: Meldung angestossen", `${t.meldungen.length - vorKauf}×`);
+  const fertig = t.sitzung()?.daten || {};
+  t.pruefe(faelligeMeldungen({ ...fertig, updatedAt: new Date().toISOString() }).map((v) => v.type).join(",") === "lifeskin_analyse,lifeskin_porosia",
+    "Nach dem Kauf: Bestellmeldung, keine Korb-/Kassenmeldung mehr", faelligeMeldungen(fertig).map((v) => v.type).join(", "));
 });
 
 // ---------------------------------------------------------------------------

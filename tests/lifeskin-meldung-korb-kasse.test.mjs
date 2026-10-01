@@ -83,3 +83,56 @@ test("zur Laufzeit: Korb und Kasse stossen genau einmal an", async () => {
     delete globalThis.location;
   }
 });
+
+// 01.10.: Der Warenkorb der Therapieseite setzt bewusst nicht
+// imKorb, sondern timings.kauf.knopf - und weckte deshalb kein Telefon.
+test("Warenkorb der Therapieseite: gemeldet, solange der Kaufknopf frisch ist", () => {
+  const s = { step: "result", timings: { kauf: { knopf: frisch } }, updatedAt: frisch };
+  assert.deepEqual(typen(faelligeMeldungen(s, { jetzt })), ["lifeskin_analyse", "lifeskin_korb"]);
+  assert.deepEqual(typen(meldungenFuer(s, jetzt)), ["lifeskin_analyse", "lifeskin_korb"]);
+  const korb = MELDUNGEN.find((v) => v.type === "lifeskin_korb");
+  assert.equal(baueMeldung({ vorlage: korb, sessionId: "s", sitzung: { name: "Arta", ...s } }).text, "Warenkorb, Arta");
+
+  // Ein Korb von vor drei Tagen ist keine Meldung, auch wenn die Sitzung
+  // gerade geschrieben wurde (etwa beim naechsten Besuch).
+  const alt = { step: "result", timings: { kauf: { knopf: new Date(jetzt - 3 * 86400000).toISOString() } }, updatedAt: frisch };
+  assert.deepEqual(typen(faelligeMeldungen(alt, { jetzt })), ["lifeskin_analyse"]);
+  // Schon bestellt: die Bestellmeldung, nicht der Korb.
+  const bestellt = { ...s, step: "ordered", hatBestellt: true };
+  assert.deepEqual(typen(faelligeMeldungen(bestellt, { jetzt })).filter((t) => /korb/.test(t)), []);
+  // Ohne Zeit oder mit Unfug: nichts.
+  assert.deepEqual(typen(faelligeMeldungen({ step: "result", timings: { kauf: { knopf: "x" } }, updatedAt: frisch }, { jetzt })), ["lifeskin_analyse"]);
+});
+
+test("zur Laufzeit: der Kaufknopf der Therapieseite stoesst die Meldung an, die anderen Kaufmarken nicht", async () => {
+  const { AnalyseDaten } = await import("../apps/lifeskin-astra/astra-daten.js");
+  globalThis.location = { protocol: "https:", origin: "https://mnyra.com", pathname: "/terapia/x", search: "" };
+  const warte = () => new Promise((r) => setTimeout(r, 20));
+  const meldungen = (liste) => liste.filter((a) => a.endsWith("/api/lifeskin-meldung")).length;
+  try {
+    const seite = [];
+    const d = new AnalyseDaten({ kennung: "abc123def456", fetchFn: async (url) => { seite.push(String(url)); return { ok: true, status: 200 }; } });
+    await d.kaufMarke("geoeffnet", { version: "v1" });
+    await d.kaufMarke("knopf", { version: "v1" });
+    await warte();
+    assert.equal(meldungen(seite), 1, "Warenkorb auf der Therapieseite: keine Meldung");
+    assert.ok(seite.some((a) => a.includes("timings.kauf.knopf")), "Kaufknopf nicht geschrieben");
+
+    // Nicht gespeichert: keine Meldung - sie laese dort nichts.
+    const fehl = [];
+    const f = new AnalyseDaten({ kennung: "abc123def456", fetchFn: async (url) => { fehl.push(String(url)); return { ok: false, status: 403 }; } });
+    await f.kaufMarke("knopf", { version: "v1" });
+    await warte();
+    assert.equal(meldungen(fehl), 0);
+  } finally {
+    delete globalThis.location;
+  }
+});
+
+test("die Therapieseite schreibt den Warenkorb als eigenes Ereignis in den Klickpfad", () => {
+  const terapia = fs.readFileSync("apps/lifeskin-verkauf/terapia.js", "utf8");
+  const korb = terapia.slice(terapia.indexOf("  #korb(auf) {"), terapia.indexOf("  #korbZeichnen() {"));
+  assert.match(korb, /this\.klickpfad\?\.melde\("korb", /);
+  // Nicht in der Vorschau: das Ereignis steht hinter der Vorschau-Sperre.
+  assert.ok(korb.indexOf('melde("korb"') > korb.indexOf("if (this.nurVorschau) return;"));
+});

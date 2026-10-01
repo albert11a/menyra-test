@@ -18,7 +18,7 @@ reden mit dem Netz. Sie werden von Hand gestartet, wenn jemand fragt.
 | `lauf-kompat.mjs` | Ab welchem Browser laeuft der Trichter - und ab welchem bleibt der Bildschirm leer? (statisch, ohne Browser) |
 | `lauf-e2e.mjs` | Kommt jemand vom Scan bis zur ersten Frage? |
 | `lauf-bytes.mjs` | Was laedt der erste Bildschirm herunter, bevor jemand getippt hat? |
-| `lauf-wege.mjs` | ALLE Wege von A bis Z (25.09.): Scan, Foto, Trup/Pytje, gesperrte Kamera in Instagram/Facebook, Telefonkamera, zaehe Leitung, Zurueck-Taste, Warteseite → Therapie. Mit Kamera-Attrappe (echtes Gesicht) und Firestore im Speicher. |
+| `lauf-wege.mjs` | ALLE Wege von A bis Z (25.09.): Scan, Foto, Trup/Pytje, gesperrte Kamera in Instagram/Facebook, Telefonkamera, zaehe Leitung, Zurueck-Taste, Warteseite → Therapie; A14 (01.10.) weiter bis Warenkorb → Kasse → Bestellung, mit den Meldungen an jeder Stelle. Mit Kamera-Attrappe (echtes Gesicht) und Firestore im Speicher. |
 | `lauf-heart.mjs` | Heart mit einigen tausend Faellen, Telefon-Tempo: Laden, Akte oeffnen (Springen?), Live-Zahl, Live-Reihe richtig?, zweiter Start. Braucht den lokalen Emulator (siehe unten). |
 | `lauf-morph.mjs` | Das Abgleichen von Heart (heart-morph.js) liefert dasselbe wie innerHTML - im Browser geprueft. |
 
