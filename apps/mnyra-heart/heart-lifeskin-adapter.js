@@ -36,6 +36,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocFromServer,
   getDocs,
   getDocsFromCache,
   documentId,
@@ -72,6 +73,15 @@ async function ladeSammlung(pfad, ausSpeicher) {
 }
 
 export { TRICHTER_STUFEN };
+
+// Der Klickpfad aendert updatedAt nicht. Die geoeffnete Akte muss deshalb
+// direkt vom Server gelesen werden, auch ausserhalb des Live-Zeitfensters.
+export async function ladeLifeskinSitzung(sitzungId) {
+  const id = String(sitzungId || "").trim();
+  if (!id) return null;
+  const snapshot = await getDocFromServer(doc(db, "lifeskin", TENANT, "sessions", id));
+  return snapshot.exists() ? normalisiere(snapshot.id, snapshot.data()) : null;
+}
 
 // WER GERADE DABEI IST - und zwar wirklich live.
 //

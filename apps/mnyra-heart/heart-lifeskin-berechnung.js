@@ -907,7 +907,16 @@ export function entdopple(sitzungen) {
   for (const sitzung of sitzungen) {
     const key = sitzung.id || sitzung;
     const alt = ids.get(key);
-    if (!alt || String(sitzung.updatedAt) >= String(alt.updatedAt)) ids.set(key, sitzung);
+    if (!alt) { ids.set(key, sitzung); continue; }
+    const neu = String(sitzung.updatedAt) >= String(alt.updatedAt) ? sitzung : alt;
+    const andere = neu === sitzung ? alt : sitzung;
+    // Pfad-Ereignisse sind unabhaengig von updatedAt und werden angehaengt.
+    // Ein aelterer Live-Snapshot darf den frisch gelesenen Verlauf nicht
+    // wieder durch seine kuerzere Kopie ersetzen.
+    const pfad = { ...(andere.timings?.pfad || {}), ...(neu.timings?.pfad || {}) };
+    const eigenerPfad = neu.timings?.pfad || {};
+    const gleich = Object.keys(pfad).every((id) => pfad[id] === eigenerPfad[id]);
+    ids.set(key, gleich ? neu : { ...neu, timings: { ...neu.timings, pfad } });
   }
   return [...ids.values()];
 }
