@@ -1,4 +1,3 @@
-import { metaAbgleichEinrichten, metaAbgleichAngaben } from "../../shared/lifeskin-meta-abgleich.js";
 // Die Hauptanalyse: mnyra.com/analiza/<kennung>
 //
 // Sie gehoert dem Patienten. Er kommt direkt nach dem Scan hierher, sie
@@ -233,7 +232,6 @@ export function tageszeiten(koha) {
 
 export class Analiza {
   constructor({ fetchFn, ort, pixel } = {}) {
-    metaAbgleichEinrichten();
     this.ort = ort || globalThis.location;
     this.daten = null;
     this.produkte = [];
@@ -1010,7 +1008,6 @@ export class Analiza {
       ? { ok: true }
       : await this.quelle.merken({
         phone: geprueft.nummer,
-        timings: { metaMatching: metaAbgleichAngaben(globalThis.document, "an-pritnr", geprueft.nummer) },
         // Er hat die Nummer selbst und ausdruecklich hierfuer
         // hinterlassen. Das ist die Einwilligung - und Heart liest genau
         // dieses Feld, bevor jemand anruft.
@@ -2268,7 +2265,6 @@ export class Analiza {
         payment: "nachnahme",
         status: "neu",
         orderId: this.daten.code || this.kennung,
-        metaMatching: metaAbgleichAngaben(globalThis.document, "an-telefon", werte.telefon),
         // Metas eigene Browser-Kennungen fuer die Meldung vom Server.
         // Kein Name, keine Nummer - siehe pixelKennungen().
         ...pixelKennungen(),

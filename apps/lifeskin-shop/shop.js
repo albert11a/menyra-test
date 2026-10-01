@@ -1,4 +1,3 @@
-import { metaAbgleichEinrichten, metaAbgleichAngaben } from "../../shared/lifeskin-meta-abgleich.js";
 /* DER LADEN UNTER /lifeskinshop (docs/lifeskin-shop.md).
  * ══════════════════════════════════════════════════════════════════════
  *
@@ -231,7 +230,6 @@ export class Dyqan {
   constructor({ dokument = document, speicher = globalThis.sessionStorage, holen, trichter,
     dauerSpeicher = (() => { try { return globalThis.localStorage || null; } catch { return null; } })() } = {}) {
     this.dok = dokument;
-    metaAbgleichEinrichten(this.dok);
     this.speicher = speicher;
     // Fuer das Titelbild aus Heart: auf dem Geraet gemerkt, damit es beim
     // naechsten Oeffnen sofort dasteht (#titelbild).
@@ -866,7 +864,6 @@ export class Dyqan {
           payment: "nachnahme",
           status: "neu",
           orderId: sitzung.code || "",
-          metaMatching: metaAbgleichAngaben(this.dok, "kasa-telefoni", werte.telefon),
           items: bestellZeilen(this.korb, this.mittel),
           ...(s ? { set: { id: s.id, titulli: s.titulli } } : {}),
           ...pixelKennungen(),

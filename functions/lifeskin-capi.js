@@ -15,7 +15,7 @@
 // tragen. Genau die haengt seit jeher am Kauf im Browser
 // (order.orderId), also passt sie ohne Umbau.
 //
-// Telefonnummer nur mit separater Zustimmung als SHA-256-Hash (02.10.).
+// Telefonnummer normalisiert als SHA-256-Hash (02.10., von Albert erlaubt).
 // Die Nutzlast entscheidet zentral darueber; keine Namen, Anschriften,
 // Aufnahmen oder Gesundheitsangaben gehen an Meta.
 //

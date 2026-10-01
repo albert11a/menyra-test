@@ -9,7 +9,7 @@
 //   - keine Nummer, kein Name, keine Anschrift, nie die Kennung der Sitzung
 import test from "node:test";
 import assert from "node:assert/strict";
-import { generateKeyPairSync } from "node:crypto";
+import { generateKeyPairSync, createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import lifeskinCapi, { ereignisseFuer, markeUebernehmen, markenKennung, diagnoseVergessen } from "../api/lifeskin-capi.js";
@@ -47,7 +47,7 @@ test("Lead: dieselbe eventID im Browser und am Server - die Fallnummer, nie die 
   }
 });
 
-test("Lead-Nutzlast: Metas Kennungen, User-Agent, Adresse - sonst nichts", () => {
+test("Lead-Nutzlast: Metas Kennungen, User-Agent, Adresse und Telefonnummern-Hash", () => {
   const browser = capi.browserAusAnfrage({ fbp: "fb.1.1790000000000.123456789", ua: "Mozilla/5.0 (Lead)", ip: "203.0.113.7, 10.0.0.1", seite: "https://www.mnyra.com/lifeskin" });
   const lead = capi.baueLead(sitzungKauf({}), { browser });
   assert.equal(lead.event_name, "Lead");
@@ -56,7 +56,8 @@ test("Lead-Nutzlast: Metas Kennungen, User-Agent, Adresse - sonst nichts", () =>
   assert.equal(lead.event_source_url, "https://www.mnyra.com/lifeskin");
   assert.deepEqual(lead.user_data, {
     fbp: "fb.1.1790000000000.123456789", fbc: "fb.1.1790000000000.IwErsterBesuch",
-    client_user_agent: "Mozilla/5.0 (Lead)", client_ip_address: "203.0.113.7"
+    client_user_agent: "Mozilla/5.0 (Lead)", client_ip_address: "203.0.113.7",
+    ph: [createHash("sha256").update("38344111222").digest("hex")]
   });
   const alles = JSON.stringify(lead);
   for (const heikel of ["Arta", "Berisha", "044111222", "Rruga", "Prishtin", SITZUNG_ID]) assert.ok(!alles.includes(heikel), heikel);

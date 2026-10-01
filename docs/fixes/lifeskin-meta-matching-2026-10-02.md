@@ -1,8 +1,9 @@
 # LifeSkin Meta-Abgleich
 
-Autorisiert durch Albert am 02.10.2026: fehlende Kundendaten bei Lead und Purchase korrigieren.
-Umfang: freiwillige separate Zustimmung zum Telefonnummernabgleich, serverseitige Normalisierung und SHA-256, bestehende Ereignisse und Deduplizierung beibehalten. Keine Gesundheitsdaten, Namen oder Anschriften uebermitteln. Ohne Zustimmung bleibt die bisherige Nutzlast erhalten. Keine alten Ereignisse erneut senden.
+Albert autorisiert am 02.10.2026 die Korrektur fehlender Kundendaten fuer Lead/Purchase und verlangt ausdruecklich keine neue Zustimmung oder Checkbox.
 
-Arbeit auf separatem Branch, keine Produktionsdaten oder Produktionsdeploys.
+Serverseitig die vorhandene Telefonnummer normalisieren und SHA-256-gehasht als user_data.ph senden. Keine Namen, Anschriften, Bilder, Befunde oder Antworten uebermitteln. Ereignisnamen, Zeitpunkte und Deduplizierung bleiben unveraendert. Fehlende/ungueltige Telefonnummern erzeugen keinen Hash. Keine neuen Eingabefelder, keine Checkbox, keine zusaetzlichen Sitzungsfelder. Die im ersten Entwurf enthaltenen Zustimmungselemente sind vollstaendig entfernt.
 
-Validierung: gezielte CAPI-, Kauf-, Datenschutz- und Pixel-Sperrtests bestanden (53 Tests). `npm test` bestanden. Bestehende VM-Teststaende erhalten die echten neuen Imports; Kontakt-/Viber-Pruefungen behalten ihre bisherigen Anforderungen. `npm run build` bestanden, keine getrackten Bundles geaendert. Keine Browser-, Mobil- oder Produktionspruefung; keine alten Events erneut gesendet. Meta kann fuer Besucher ohne separate Zustimmung weiter fehlende Kundendaten melden. Der automatische Browser-Abgleich im Meta-Konto ist eine separate Einstellung und wird hier nicht aktiviert.
+Keine alten Events erneut senden, keine Produktionsdaten fuer Tests. Automatischer Browser-Abgleich im Meta-Konto bleibt eine separate Einstellung. Arbeit auf separatem Branch, kein Produktionsdeploy.
+
+Validierung: 51 gezielte CAPI-/Kauf-/Hash-/Pixel-Sperrtests und alle 2969 Unit-Tests bestanden. Die Oberflaeche entspricht wieder vollstaendig main; alle Checkboxen und clientseitigen Zustimmungsfelder sind entfernt. Der Build des ersten Entwurfs war erfolgreich, getrackte Bundles waren unveraendert. Kein Produktionsdeploy.

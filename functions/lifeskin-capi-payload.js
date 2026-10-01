@@ -5,10 +5,10 @@ const { createHash } = require("node:crypto");
 // Was die Conversions API an Meta schickt - und sonst nichts.
 // ══════════════════════════════════════════════════════════════════════
 //
-// Kundendaten nur nach separater ausdruecklicher Zustimmung, serverseitig
-// normalisiert und gehasht. Aufnahmen, Befunde und Antworten bleiben draussen.
 // Pixel-Aenderung erlaubt von Albert am 02.10.2026: Telefonnummernabgleich
-// fuer Lead/Purchase nach freiwilliger Zustimmung (meta-phone-v1).
+// fuer Lead/Purchase, serverseitig normalisiert und SHA-256-gehasht.
+// Auf ausdruecklichen Wunsch ohne zusaetzliche Checkbox oder UI-Aenderung.
+// Keine Aufnahmen, Befunde, Namen, Anschriften oder Antworten uebermitteln.
 
 const PIXEL_ID = "1347571994123884";
 // DIE VERSION DER SCHNITTSTELLE. v21.0 war bei Meta seit dem 09.09.2025
@@ -92,13 +92,9 @@ function telefonNormalisieren(wert) {
   return /^[1-9]\d{7,14}$/.test(nummer) ? nummer : "";
 }
 
-function kundenDaten(sitzung, kauf = false) {
-  const zustimmung = kauf && sitzung?.order?.metaMatching !== undefined
-    ? sitzung.order.metaMatching : sitzung?.timings?.metaMatching;
-  if (zustimmung?.allowed !== true || zustimmung?.version !== "meta-phone-v1") return {};
+function kundenDaten(sitzung) {
   const telefon = telefonNormalisieren(sitzung?.phone);
-  const gespeicherteKaufNummer = kauf && zustimmung === sitzung?.order?.metaMatching && zustimmung.storedPhone === true && zustimmung.phone === "";
-  if (!telefon || (!gespeicherteKaufNummer && telefon !== telefonNormalisieren(zustimmung.phone))) return {};
+  if (!telefon) return {};
   return { ph: [createHash("sha256").update(telefon).digest("hex")] };
 }
 
@@ -147,7 +143,7 @@ function baueKauf(sitzung, { quelleUrl = "https://mnyra.com/lifeskin", browser =
     event_id: text(order.orderId),
     action_source: "website",
     event_source_url: seiteAus(order, quelleUrl),
-    user_data: { ...besucherDaten(order, sitzung?.source, browser), ...kundenDaten(sitzung, true) },
+    user_data: { ...besucherDaten(order, sitzung?.source, browser), ...kundenDaten(sitzung) },
     custom_data: {
       currency: "EUR",
       value: Number.isFinite(betrag) && betrag > 0 ? betrag : 0,

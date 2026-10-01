@@ -1186,8 +1186,7 @@ export class Sitzung {
     // steht (Pixel-Aenderung erlaubt von Albert am 01.10.2026).
     const lead = daten?.phoneConsent === true && this.stand?.phoneConsent !== true;
     Object.assign(this.stand, daten);
-    const geschrieben = this.#sammeln(mit, Object.keys(mit).flatMap((key) => key === "timings"
-      ? Object.keys(mit.timings).map((name) => `timings.${name}`) : [key]));
+    const geschrieben = this.#sammeln(mit, Object.keys(mit));
     // Warenkorb oder Kasse zum ersten Mal: melden, sobald es in Firestore steht.
     if (neu) {
       const id = this.id;

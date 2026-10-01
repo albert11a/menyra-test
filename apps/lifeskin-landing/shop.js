@@ -1,4 +1,3 @@
-import { metaAbgleichEinrichten, metaAbgleichAngaben } from "../../shared/lifeskin-meta-abgleich.js";
 /* Der Laden auf der Landingpage.
  * ══════════════════════════════════════════════════════════════════════
  *
@@ -276,7 +275,6 @@ export class Laden {
   constructor({ dokument = document, speicher = globalThis.sessionStorage,
                 holen, trichter } = {}) {
     this.dok = dokument;
-    metaAbgleichEinrichten(this.dok);
     this.speicher = speicher;
     this.holen = holen || ((...a) => fetch(...a));
     /* Der Trichter wird beim Bestellen geholt und nicht hier: Dieses
@@ -995,7 +993,6 @@ export class Laden {
           payment: "nachnahme",
           status: "neu",
           orderId: sitzung.code || "",
-          metaMatching: metaAbgleichAngaben(this.dok, "shporta-telefoni", werte.telefon),
           items: zeilen,
           // Metas eigene Browser-Kennungen, damit die Meldung vom Server
           // (Conversions API) derselben Person zugeordnet wird wie die aus

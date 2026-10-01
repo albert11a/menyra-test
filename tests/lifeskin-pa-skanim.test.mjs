@@ -1,4 +1,3 @@
-import { metaAbgleichEinrichten, metaAbgleichAngaben } from "../shared/lifeskin-meta-abgleich.js";
 // DER WEG OHNE SCAN, VON DER WAHL BIS ZUR WARTESEITE.
 //
 // GEMESSEN, NICHT BEFUERCHTET: 184 von 222 gingen bei "Skanimi" weg. Fuer
@@ -107,7 +106,6 @@ function pruefstand() {
 
   const timer = [];
   const context = vm.createContext({
-    metaAbgleichEinrichten, metaAbgleichAngaben,
     ...texte, ...pose, document, console,
     window: { addEventListener() {}, scrollTo() {} },
     history: { state: null, replaceState() {}, pushState() {} },

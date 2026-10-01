@@ -1,4 +1,3 @@
-import { metaAbgleichEinrichten, metaAbgleichAngaben } from "../../shared/lifeskin-meta-abgleich.js";
 // DIE THERAPIESEITE - /terapia/<kennung>.
 //
 // Sie zeigt den freigegebenen Befund als das, was die Anzeige versprochen
@@ -225,7 +224,6 @@ export function faqNdryshimi(problemet, wochen = 4) {
 
 export class Terapia {
   constructor({ fetchFn, ort, pixel } = {}) {
-    metaAbgleichEinrichten();
     this.ort = ort || globalThis.location;
     this.quelle = new AnalyseDaten({ fetchFn, kennung: kennungAusPfad(this.ort?.pathname) });
     this.pixel = pixel || new Pixel({ seite: "befund" });
@@ -1582,7 +1580,6 @@ export class Terapia {
         payment: "nachnahme",
         status: "neu",
         orderId: this.daten.code || this.kennung,
-        metaMatching: metaAbgleichAngaben(globalThis.document, "t-telefon", werte.telefon),
         ...pixelKennungen(),
         // User-Agent und Seite fuer die Conversions API - siehe browserAngaben().
         ...browserAngaben()
@@ -1848,7 +1845,6 @@ export class Terapia {
         payment: "nachnahme",
         status: "neu",
         orderId: this.daten.code || this.kennung,
-        metaMatching: metaAbgleichAngaben(globalThis.document, "t-telefon", werte.telefon),
         fassung: this.variante,
         ...pixelKennungen(),
         // User-Agent und Seite fuer die Conversions API - siehe browserAngaben().
