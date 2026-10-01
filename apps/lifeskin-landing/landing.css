@@ -3385,3 +3385,9 @@ html[data-ls-upgrade="analyse"] #ls-einstieg [data-anim] {
   html[data-ls-upgrade="analyse"] #held .held__unter { font-size: 15px; }
   html[data-ls-upgrade="analyse"] .analiza-problemet span { font-size: 11px; }
 }
+html[data-ls-upgrade="analyse"] #ls-einstieg .knopf { width: 100%; max-width: none; }
+@media (min-width: 620px) {
+  html[data-ls-upgrade="analyse"] #rezultatet .innen { padding-inline: 0; }
+  html[data-ls-upgrade="analyse"] #rezultatet .rastet { margin-inline: -22px; }
+  html[data-ls-upgrade="analyse"] #rezultatet .rasti { flex-basis: 86%; }
+}
