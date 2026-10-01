@@ -34,3 +34,19 @@ there is no horizontal overflow and arrow targets are at least 44 pixels. Both
 arrow locations switch the pair. These are Chromium mobile emulation checks,
 not a physical iPhone test. Build and 64 relevant tests pass; tracked social
 bundles are unchanged. The user approved committing and pushing these refinements to main on 2026-10-01.
+
+## Landing case connection and step spacing
+
+The steps now use the regular section padding after the lime band. The approved
+comparison reads all Heart cases marked for landing via the existing shared
+case/image loader; the separate oben flag does not exclude landing cases.
+The four standard cases remain available if configuration is absent or offline.
+An explicitly empty Heart selection hides the comparison. Counters and arrow
+wraparound follow the loaded list; the shared frame and photo-load guard remain.
+
+Validation: 82 scoped tests pass, including the pixel lock and mocked Heart
+configuration/image documents. A local Chromium render using five landing cases
+and one excluded analysis-only case reaches every selected case with the arrows.
+The gap above the steps measures 19.8/24.2/27.3 pixels at widths 320/390/440.
+Build passes; tracked social bundle files remain unchanged. No production data
+was used for these checks. Commit/push approved by the user on 2026-10-01.

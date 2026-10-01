@@ -15,8 +15,8 @@ import { renderRaste, renderRastiEditor, renderBefundRaste, rasteListe, klappSet
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
 const lies = (p) => readFileSync(join(wurzel, p), "utf8");
 
-test("der Standard entspricht den vier Faellen, die im HTML der Landingpage stehen", () => {
-  const html = lies("apps/lifeskin-landing/index.html");
+test("der Standard entspricht den vier Faellen im erhaltenen /lifeskin2-HTML", () => {
+  const html = lies("apps/lifeskin-2/index.html");
   assert.equal(RASTE_STANDARD.length, 4);
   for (const r of RASTE_STANDARD) {
     assert.ok(html.includes(r.para), `${r.para} fehlt im HTML`);

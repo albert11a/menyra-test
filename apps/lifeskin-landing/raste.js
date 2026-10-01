@@ -100,7 +100,26 @@ export function obenZuerst(faelle, obenIds) {
   return [...faelle.filter((r) => obenIds.has(r.id)), ...faelle.filter((r) => !obenIds.has(r.id))];
 }
 
+// The approved comparison uses the same Heart list and image documents as the
+// original card rail. Every landing case is included, regardless of "oben".
+export async function vergleichFaelleLaden(basis = BASIS, holen) {
+  try {
+    const liste = await rasteLaden(basis, holen);
+    if (liste === null) return null;
+    return await rasteMitBildern(rasteFuer(liste, "landing"), basis, holen);
+  } catch {
+    return null;
+  }
+}
+
+async function vergleichStarten(root) {
+  const faelle = await vergleichFaelleLaden();
+  if (faelle !== null) root.dispatchEvent(new CustomEvent("lifeskin:comparison-cases", { detail: faelle }));
+}
+
 async function start() {
+  const vergleich = document.getElementById("lf-preview");
+  if (vergleich) vergleichStarten(vergleich);
   const bahn = document.getElementById("rastet");
   if (!bahn) return;
   const blick = document.getElementById("blick");
