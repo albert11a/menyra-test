@@ -506,3 +506,50 @@ html[data-ls-landing="lifeskinshop"] #ls-einstieg[data-aktiv="ja"]{animation:non
 #ls-einstieg .hero-pfeil--rechts{right:10px}
 #ls-einstieg .hero-pfeil[hidden]{display:none!important}
 #ls-einstieg .closing>.primary{width:100%}
+/* KASSE (01.10., Inhaber): Beruhigung ueber den Feldern, die Ersparnis
+   als kurze Zeile, der echte Liefertag und WhatsApp als zweiter Weg. */
+#ls-einstieg #kasa-kursim:not([hidden]){display:block!important;background:none;padding:0;margin:-4px 0 8px;font-size:12.5px;font-weight:600;color:#2f7d62;border-radius:0}
+#ls-einstieg .kasa__siguri{display:flex;align-items:flex-start;gap:9px;margin:2px 0 12px;padding:10px 12px;border-radius:12px;background:var(--wash);font-size:13px;line-height:1.4;color:var(--ink)}
+#ls-einstieg .kasa__siguri .icon{width:16px;height:16px;margin-top:1px;flex:none;color:#2f7d62}
+#ls-einstieg .kasa__arrin{margin:10px 0 0;text-align:center;font-size:12.5px;font-weight:600;color:var(--ink)}
+#ls-einstieg .kasa__arrin:empty{display:none}
+#ls-einstieg .kasa__wa{display:block;margin:12px 0 0;text-align:center;font-size:13px;color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+#ls-einstieg .kasa__wa b{color:#1f8f4e}
+#ls-einstieg .kasa__wa[hidden]{display:none}
+/* KASSE KOMPAKT (01.10., Inhaber): Set in einer Zeile, Preis mit Ersparnis
+   in einer Zeile, Felder mit Platzhalter statt Ueberschrift, Liefertag und
+   Nachnahme in einer Zeile. Die Ueberschriften der Felder bleiben fuer
+   Bildschirmleser. */
+#ls-einstieg #kasa-lista{margin:6px 0 0}
+#ls-einstieg .kasa-set{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:14px}
+#ls-einstieg .kasa-set__bilder{display:flex;flex:none}
+#ls-einstieg .kasa-set__bilder img{width:36px;height:46px;object-fit:cover;border-radius:8px;border:2px solid #fff}
+#ls-einstieg .kasa-set__bilder img+img{margin-left:-12px}
+#ls-einstieg .kasa-set__text{min-width:0}
+#ls-einstieg .kasa-set__text b{display:block;font-size:14px}
+#ls-einstieg .kasa-set__text small{display:block;margin-top:2px;font-size:12px;color:var(--muted)}
+#ls-einstieg #kasa-totali{align-items:center;padding:12px 2px 10px}
+#ls-einstieg #kasa-totali>span:first-child{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13px}
+#ls-einstieg .kasa__kurseni{font-style:normal;font-size:11px;font-weight:700;color:#1f7a4d;background:#e3f4ea;padding:3px 8px;border-radius:999px}
+#ls-einstieg .kasa__kurseni[hidden]{display:none}
+#ls-einstieg .kasa__cmimi{display:flex;align-items:baseline;gap:8px;white-space:nowrap}
+#ls-einstieg .kasa__cmimi s{font-size:13px;color:var(--muted)}
+#ls-einstieg .kasa__cmimi s[hidden]{display:none}
+#ls-einstieg #kasa-kursim:not([hidden]){display:none!important}
+#ls-einstieg .kasa__siguri{margin:0 0 10px;padding:8px 12px;font-size:12.5px;align-items:center}
+#ls-einstieg .kasa__forma>.eyebrow{display:none}
+#ls-einstieg .kasa__fushe>span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+#ls-einstieg .kasa__fushe{position:relative}
+#ls-einstieg .kasa__forma{gap:8px;margin:0 0 10px}
+#ls-einstieg .kasa__fushe input::placeholder{color:#8a9a99}
+#ls-einstieg .kasa__premtime{margin:4px 0 10px}
+#ls-einstieg .kasa__arrin{margin:8px 0 0;font-weight:500;color:var(--muted)}
+#ls-einstieg .kasa__wa{margin:10px 0 0}
+/* 01.10. (Inhaber): etwas mehr Luft zwischen den Teilen der Kasse. */
+#ls-einstieg #kasa-lista{margin:10px 0 0}
+#ls-einstieg #kasa-totali{padding:16px 2px 14px}
+#ls-einstieg .kasa__siguri{margin:0 0 14px;padding:10px 12px}
+#ls-einstieg .kasa__forma{gap:10px;margin:0 0 14px}
+#ls-einstieg .kasa__premtime{margin:6px 0 14px}
+#ls-einstieg .kasa__arrin{margin:12px 0 0}
+#ls-einstieg .kasa__wa{margin:12px 0 0}

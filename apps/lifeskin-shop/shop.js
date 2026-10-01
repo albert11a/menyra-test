@@ -25,7 +25,7 @@
  * Pixel-Aenderung erlaubt vom Inhaber am 28.09.2026 (AGENTS.md,
  * Meta-Pixel-Sperre): "/lifeskinshop meldet AddToCart, InitiateCheckout,
  * Purchase (Browser + CAPI) und Lead wie die anderen Wege". */
-import { LIFESKIN_FIRESTORE_BASE, LIFESKIN_TENANT } from "../lifeskin/lifeskin-config.js";
+import { LIFESKIN_FIRESTORE_BASE, LIFESKIN_TENANT, LIFESKIN_WHATSAPP } from "../lifeskin/lifeskin-config.js";
 import { pixelKennungen, browserAngaben } from "../lifeskin/lifeskin-pixel.js";
 import { preisFuer } from "../../shared/lifeskin-preise.js";
 import { ansichtOeffnen, ansichtSchliessen } from "../../shared/lifeskin-ansicht.js";
@@ -78,6 +78,20 @@ export function korbSchreiben(speicher, korb) {
 export function summe(korb) {
   if (!korb.ids.length) return 0;
   return korb.cmimi > 0 ? korb.cmimi : preisFuer(korb.ids.length);
+}
+
+// DER SPAETESTE LIEFERTAG (01.10., Inhaber): "1–3 ditë" als echter Tag -
+// heute plus drei Tage, Sonntage zaehlen nicht mit. "të premten, 3 tetor".
+const DITET = ["të dielën", "të hënën", "të martën", "të mërkurën", "të enjten", "të premten", "të shtunën"];
+const MUAJT = ["janar", "shkurt", "mars", "prill", "maj", "qershor", "korrik", "gusht", "shtator", "tetor", "nëntor", "dhjetor"];
+export function arrinDeri(heute) {
+  const tag = new Date(heute.getFullYear(), heute.getMonth(), heute.getDate());
+  let offen = 3;
+  while (offen > 0) {
+    tag.setDate(tag.getDate() + 1);
+    if (tag.getDay() !== 0) offen -= 1;
+  }
+  return `${DITET[tag.getDay()]}, ${tag.getDate()} ${MUAJT[tag.getMonth()]}`;
 }
 
 // Die Pflichtfelder der Kasse. Dieselbe Regel wie auf /lifeskin: alle vier
@@ -647,11 +661,24 @@ export class Dyqan {
     }
   }
 
-  #korbZeilen() {
+  // DIE KASSE ZEIGT DAS SET IN EINER ZEILE (01.10., Inhaber: kompakter) -
+  // beide Bilder klein uebereinander, Name, Inhalt. Ohne Muelleimer:
+  // Entfernen geht im Warenkorb, die Kasse laedt nicht zum Abbrechen ein.
+  #kasaSet() {
+    const mittel = this.korb.ids.map((id) => this.mittelVon(id)).filter(Boolean);
+    if (!mittel.length) return "";
+    const s = this.setVon(this.korb.set);
+    const bilder = mittel.slice(0, 2).map((m) => `<img src="${e(m.fotot[0])}" alt="" width="40" height="50">`).join("");
+    return `<div class="kasa-set"><span class="kasa-set__bilder">${bilder}</span><span class="kasa-set__text"><b>${e(s?.titulli || "Acne Duo")}</b><small>${e(mittel.map((m) => m.name).join(" + "))} · ${e(mittel[0].inhalt || "30 ml")} secili</small></span></div>`;
+  }
+
+  // In der Kasse ohne Muelleimer (01.10., Inhaber): Entfernen geht im
+  // Warenkorb - in der Kasse soll nichts zum Abbrechen einladen.
+  #korbZeilen(mitEntfernen = true) {
     return this.korb.ids.map((id, index) => {
       const m = this.mittelVon(id);
       if (!m) return "";
-      return `<div class="basket-row"><img src="${e(m.fotot[0])}" alt="${e(m.name)}" width="62" height="78"><div><h3>${e(m.name)}</h3><p>${e(MITTEL_NENTITUJ[m.id] || m.kurztext || m.nenName || "")}${m.inhalt ? ` · ${e(m.inhalt)}` : ""}</p></div>${index === 0 ? `<button type="button" class="remove" data-remove="${e(id)}" aria-label="Hiqni setin e plotë" title="Hiqni setin e plotë">${ikone("Trash2")}</button>` : ''}</div>`;
+      return `<div class="basket-row"><img src="${e(m.fotot[0])}" alt="${e(m.name)}" width="62" height="78"><div><h3>${e(m.name)}</h3><p>${e(MITTEL_NENTITUJ[m.id] || m.kurztext || m.nenName || "")}${m.inhalt ? ` · ${e(m.inhalt)}` : ""}</p></div>${mitEntfernen && index === 0 ? `<button type="button" class="remove" data-remove="${e(id)}" aria-label="Hiqni setin e plotë" title="Hiqni setin e plotë">${ikone("Trash2")}</button>` : ''}</div>`;
     }).join("");
   }
 
@@ -745,7 +772,7 @@ export class Dyqan {
 
   #kasseZeichnen() {
     const n = this.korb.ids.length;
-    $("#kasa-lista", this.dok).innerHTML = this.#korbZeilen();
+    $("#kasa-lista", this.dok).innerHTML = this.#kasaSet();
     $("#kasa-bosh", this.dok).hidden = n > 0;
     $("#kasa-totali", this.dok).hidden = n === 0;
     $("#kasa-shuma", this.dok).textContent = `${summe(this.korb)} €`;
@@ -757,6 +784,25 @@ export class Dyqan {
     $("#kasa-dergo", this.dok).hidden = n === 0;
     $("#kasa-dergo-shuma", this.dok).textContent = n ? `· ${summe(this.korb)} €` : "";
     $("#kasa-gabim", this.dok).hidden = true;
+    // Wann es ankommt (01.10., Inhaber): der echte spaeteste Tag statt nur
+    // "1–3 ditë".
+    const arrin = $("#kasa-arrin", this.dok);
+    if (arrin) arrin.textContent = `Arrin deri ${arrinDeri(new Date())}`;
+    // Ersparnis als Pille neben dem Preis (statt eigener Zeile).
+    const s = this.setVon(this.korb.set);
+    const einzeln = n * preisFuer(1);
+    const spart = n > 1 ? einzeln - summe(this.korb) : 0;
+    const vorher = $("#kasa-vecmas", this.dok);
+    if (vorher) { vorher.textContent = spart > 0 ? `${einzeln} €` : ""; vorher.hidden = !(spart > 0); }
+    const pille = $("#kasa-kurseni", this.dok);
+    if (pille) { pille.textContent = spart > 0 ? `Kurseni ${spart} €` : ""; pille.hidden = !(spart > 0); }
+    void s;
+    // WhatsApp als zweiter Weg - mit fertiger Nachricht.
+    const wa = $("#kasa-wa", this.dok);
+    if (wa) {
+      wa.href = `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(`Përshëndetje, dua të porosis setin Acne Duo (${summe(this.korb)} €).`)}`;
+      wa.hidden = n === 0;
+    }
   }
 
   // Wartet kurz auf die Sitzung des Trichters - wer sehr schnell bestellt,
@@ -830,7 +876,7 @@ export class Dyqan {
 
     this.sendet = false;
     knopf.disabled = false;
-    text.textContent = "Porositni";
+    text.textContent = "Porositni tani";
     if (!ok) {
       gabim.textContent = "Porosia nuk u dërgua. Ju lutemi provoni sërish.";
       gabim.hidden = false;

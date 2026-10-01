@@ -297,3 +297,26 @@ test("Warenkorb im Laden (30.09., Inhaber): kurzer Satz, ein Knopf ohne Preis", 
   assert.doesNotMatch(blatt, /Vazhdo blerjet/);
   assert.doesNotMatch(blatt, /Vazhdo me porosinë/);
 });
+
+test("Kasse (01.10., Inhaber): Beruhigung, Ersparnis, Liefertag, WhatsApp, ohne Muelleimer", async () => {
+  const { arrinDeri } = await import("../apps/lifeskin-shop/shop.js");
+  // Donnerstag 1.10. -> Fr 2., Sa 3., (So zaehlt nicht), Mo 5.
+  assert.equal(arrinDeri(new Date(2026, 9, 1, 10)), "të hënën, 5 tetor");
+  // Freitag 2.10. -> Sa 3., (So zaehlt nicht), Mo 5., Di 6.
+  assert.equal(arrinDeri(new Date(2026, 9, 2, 10)), "të martën, 6 tetor");
+  const html = lies("apps/lifeskin-shop/index.html");
+  const kasa = html.slice(html.indexOf('id="kasa"'), html.indexOf("</section>", html.indexOf('id="kasa"')));
+  assert.match(kasa, /Ju lajmërojmë 1–2 ditë para dërgesës\./);
+  // Kompakt: Ersparnis als Pille neben dem Preis, Felder mit Platzhalter.
+  assert.match(kasa, /id="kasa-kurseni" hidden/);
+  assert.match(kasa, /id="kasa-vecmas" hidden/);
+  assert.match(kasa, /placeholder="Numri i telefonit"/);
+  assert.match(kasa, /id="kasa-arrin"/);
+  assert.match(kasa, /id="kasa-wa"[^>]*hidden>Preferoni WhatsApp\?/);
+  const js = lies("apps/lifeskin-shop/shop.js");
+  // Das Set in einer Zeile, ohne Muelleimer.
+  assert.match(js, /\$\("#kasa-lista", this\.dok\)\.innerHTML = this\.#kasaSet\(\);/);
+  const kasaSet = js.slice(js.indexOf("#kasaSet() {"), js.indexOf("#korbZeilen(mitEntfernen"));
+  assert.doesNotMatch(kasaSet, /data-remove/);
+  assert.match(js, /`Kurseni \$\{spart\} €`/);
+});
