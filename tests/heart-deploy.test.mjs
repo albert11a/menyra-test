@@ -34,11 +34,27 @@ const HEART = lies("apps/mnyra-heart/heart.js");
 // 1. Der Workflow
 // ---------------------------------------------------------------------------
 
-test("der Deploy laeuft von Hand und nicht bei jedem Push", () => {
-  // Ein Deploy bei jedem Push waere ein Deploy, den niemand bestellt hat.
-  assert.match(WORKFLOW, /on:\s*\n\s*workflow_dispatch:/,
+// SEIT DEM 01.10. AUCH VON SELBST - ABER NUR, WENN ES NOETIG IST (Freigabe
+// Inhaber: "Ja, Punkt 3"). Vorher lief er nur von Hand - und lief deshalb zwei
+// Wochen nie. Ein Deploy bei JEDEM Push waere einer, den niemand bestellt hat:
+// Er laeuft nur auf main und nur, wenn Functions, Regeln oder Indizes sich
+// aendern. Der Knopf (von Hand, aus GitHub oder Heart) bleibt.
+test("der Deploy laeuft von Hand und nur bei Pushes, die ihn brauchen", () => {
+  assert.match(WORKFLOW, /\n\s*workflow_dispatch:/,
     "Der Deploy haengt nicht mehr an einem Knopf");
-  assert.ok(!/^\s*push:/m.test(WORKFLOW), "Der Deploy laeuft jetzt bei jedem Push");
+  const ausloeser = WORKFLOW.slice(WORKFLOW.indexOf("\non:"), WORKFLOW.indexOf("\n  workflow_dispatch:"));
+  assert.match(ausloeser, /push:\s*\n\s*branches: \[main\]\s*\n\s*paths:/,
+    "Der Deploy laeuft bei Pushes ohne Einschraenkung auf main und auf bestimmte Pfade");
+  const pfade = [...ausloeser.matchAll(/^\s*- "([^"]+)"$/gm)].map((m) => m[1]).sort();
+  assert.deepEqual(pfade, ["firestore.indexes.json", "firestore.rules", "functions/**"],
+    "Der Deploy haengt an Dateien, die ihn nicht brauchen");
+  // Was live geht, rechnet ein eigener Schritt aus - sonst nichts.
+  assert.match(WORKFLOW, /- name: Ziele bestimmen[\s\S]*?id: ziele/);
+  assert.match(WORKFLOW, /- name: Deploy\s*\n\s*if: steps\.ziele\.outputs\.only != ''/,
+    "Der Deploy laeuft auch, wenn nichts zu deployen ist");
+  // Regeln nur nach bestandenem Test, ein Fehlschlag faellt als Issue auf.
+  assert.match(WORKFLOW, /emulators:exec --only firestore --project mnyra-local "npm run test:rules"/);
+  assert.match(WORKFLOW, /- name: Issue bei Fehlschlag\s*\n\s*if: failure\(\)/);
   // Zwei Deploys gleichzeitig sind einer zu viel - und abgebrochen werden
   // darf keiner, sonst steht die Haelfte der Funktionen in der alten Fassung.
   assert.match(WORKFLOW, /concurrency:/, "Zwei Deploys koennen sich ueberholen");
