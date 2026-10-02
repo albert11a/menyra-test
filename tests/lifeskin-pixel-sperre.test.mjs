@@ -45,7 +45,7 @@ const DATEIEN = Object.freeze({
   // Bestellungen aus dem stillen Modus (order.still) gehen nicht an die CAPI.
   "functions/lifeskin-capi-payload.js": "95e4046e25068ab3",
   "functions/lifeskin-capi-versand.js": "a9e20d0c8088c119",
-  "functions/lifeskin-capi.js": "e16ca676c501fe89",
+  "functions/lifeskin-capi.js": "07273a6f83a093a7",
   "api/lifeskin-capi.js": "8d809123318ab7ea",
   "shared/lifeskin-capi-anstossen.js": "ebd17d59c01e266c"
 });
