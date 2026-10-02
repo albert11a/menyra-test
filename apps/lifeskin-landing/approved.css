@@ -179,3 +179,4 @@
 #lf-preview .lf-fuer-wort[data-raus]{transform:translateY(-40%);opacity:0;filter:blur(4px)}
 #lf-preview .lf-fuer-wort[data-rein]{transform:translateY(40%);opacity:0;filter:blur(4px);transition:none}
 #lf-preview .lf-hero p.lf-fuer{align-items:baseline;line-height:1.3}
+#lf-preview .lf-header{background:#fff}
