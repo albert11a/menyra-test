@@ -142,3 +142,13 @@ white comparison background, doctor strip above CTA, no introductory gallery,
 no horizontal overflow or duplicate IDs. All three CTAs, the sticky button,
 photo/scan preparation, comparison navigation and scan animation still work.
 No page JavaScript errors. Local loopback responds; private LAN unavailable.
+
+## Compact comparison transition
+
+Scope: remove the note below the first entry button and the RASTE REALE
+eyebrow, reduce the transition spacing and show comparison arrows without
+background, border or circular shape. Preserve all comparison controls.
+
+Validation: 55 focused tests and build passed; tracked bundles unchanged.
+Mobile renders checked at 320, 390 and 430px plus 760px: no overflow.
+First CTA and comparison navigation work; arrow hit areas remain 44px.

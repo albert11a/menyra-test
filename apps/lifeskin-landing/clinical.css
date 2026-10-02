@@ -7,7 +7,8 @@
 /* Scoped production overrides. */
 #lf-preview{width:100%;max-width:none;border-radius:0;overflow:clip;container-type:inline-size;--lf-blue:#214e47;--lf-lime:#e3ebdc;--lf-ink:#183a37}
 #lf-preview p{font-size:15px;margin:0}
-#lf-preview .proof-intro{padding-bottom:20px}
+#lf-preview .hero .section{padding-bottom:16px}
+#lf-preview .proof-intro{padding-top:16px;padding-bottom:20px}
 #lf-preview #rezultatet{max-width:944px;margin:0 auto;padding:0 24px 36px!important}
 #lf-preview .lf-pair{border-radius:22px;gap:8px}
 #lf-preview .lf-tag{font-size:9px;padding:7px 9px;left:12px;top:12px;border-radius:7px}
@@ -46,3 +47,8 @@
 @media(hover:hover){#lf-preview .community-card:hover{box-shadow:0 8px 22px #234d3d0e}}
 @media(prefers-reduced-motion:reduce){#lf-preview .community-card,#lf-preview .phone,#lf-preview .doctor-image,#lf-preview .report,#lf-preview .care-visual>img,#lf-preview .plan{transform:none}#lf-preview .hero-dots button:after{transition:none}}
 #lf-preview .proof:has(#rezultatet[hidden]){display:none}
+
+/* Bare comparison arrows retain a comfortable touch target. */
+#lf-preview .proof .lf-arrow,#lf-preview .proof .lf-arrow:hover{width:44px;height:44px;min-width:44px;min-height:44px;padding:10px;border:0;border-radius:0;background:transparent;box-shadow:none;backdrop-filter:none;color:#214e47}
+#lf-preview .proof .lf-arrow .lf-lucide{width:24px;height:24px;stroke-width:2}
+#lf-preview .proof .lf-arrow-image .lf-lucide{filter:drop-shadow(0 1px 1px #fff)}
