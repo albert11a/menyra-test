@@ -112,16 +112,7 @@
   <link rel="dns-prefetch" href="//cdn.jsdelivr.net" />
   <link rel="dns-prefetch" href="//storage.googleapis.com" />
 
-  <!-- HIER STAND EIN PRELOAD AUF DAS GESICHT DER AERZTIN, und es ist
-       weg: Sie steht nicht mehr im ersten Blick, sondern in ihrem
-       eigenen Abschnitt weit darunter (#mjekja). Ein Bild vorzuziehen,
-       das erst nach sechs Abschnitten gebraucht wird, nimmt genau die
-       Leitung weg, ueber die der erste Blick ankommt.
-
-       DER ERSTE BLICK HAT KEIN BILD MEHR und damit auch keine Anfrage,
-       auf die er warten muesste: Sein groesstes Element ist die
-       Ueberschrift, und die steht im Aufbau. Kommt ein Hero-Bild dazu,
-       gehoert genau hier sein preload hin - und nur seines. -->
+  <link rel="preload" as="image" href="/apps/lifeskin/dr-gashi.jpg" />
 
   <!-- ERST DER TRICHTER, DANN DIE LANDINGPAGE. Beide Blaetter vergeben
        dieselben Namen fuer Farben und Masse; das zweite gewinnt, und
@@ -131,6 +122,7 @@
   <link rel="stylesheet" href="/apps/lifeskin/lifeskin-styles.css" />
   <link rel="stylesheet" href="/apps/lifeskin-landing/landing.css" />
   <link rel="stylesheet" href="/apps/lifeskin-landing/approved.css" />
+  <link rel="stylesheet" href="/apps/lifeskin-landing/scroll-story.css" />
 
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-app.js" />
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-metrics.js" />
@@ -167,10 +159,15 @@
      Kastens - er soll stehen bleiben, waehrend darueber gelesen wird. -->
 <section class="ls-schirm" id="ls-einstieg" data-aktiv="ja">
 <div class="lp" id="lp">
-<div id="lf-preview">
-
-<header class="lf-header"><div class="lf-brand">LIFESKIN<small>SKINREACT</small></div><a class="lf-top cursor-interaction" href="#pse">Si funksionon?</a></header>
-<section class="lf-section lf-hero" id="held"><div class="lf-eyebrow"><span class="lf-dot" aria-hidden="true"></span>Dr. Violeta Gashi · Mjeke online</div><h1><span class="lf-headline-line">Çfarë i duhet</span><span class="lf-headline-line lf-headline-blue">lëkurës tënde?</span></h1><p>Bëj analizën me telefon. Dr. Gashi të thotë çfarë të duhet.</p><p class="lf-fuer"><span>Ndihmojmë me</span> <span class="lf-fuer-chip" data-lf-wechsel="Akne hormonale|Pikat e zeza|Shenjat nga akneja|Njolla të errëta|Melasma|Hiperpigmentim|Rosacea|Skuqje e lëkurës|Ekzemë|Dermatit seborroik|Dermatit atopik|Psoriazë|Urtikarie|Vitiligo|Pore të zgjeruara|Lëkurë e yndyrshme|Lëkurë e thatë|Lëkurë e ndjeshme|Rrudha|Keratozë pilare"><span class="lf-fuer-wort">Akne</span></span></p><button class="lf-cta cursor-interaction" id="ls-start" data-ls-start data-ls-quelle="hero" type="button"><span>Fillo analizën falas</span><span class="lf-button-icon" aria-hidden="true"><svg aria-hidden="true"
+<div id="lf-preview" lang="sq">
+  <header class="nx-header"><div class="nx-brand">LIFESKIN<small>SKINREACT</small></div><a class="cursor-interaction" href="#pse">Si funksionon?</a></header>
+  <section class="nx-hero nx-section" id="held">
+    <p class="nx-kicker">ANALIZË ONLINE · DERMATOLOGE</p>
+    <h1>Kuptoje lëkurën.<br><span>Kujdesi që të duhet.</span></h1>
+    <p class="nx-lead">Zbulo çka e shqetëson lëkurën tënde dhe cilat produkte i përshtaten.</p>
+    <div class="nx-doctor-mini"><img src="/apps/lifeskin/dr-gashi.jpg" alt="Dr. Violeta Gashi" width="174" height="174" decoding="async"><div><strong>Dr. Violeta Gashi</strong><span>Dermatologe · Lifeskin</span></div></div>
+    <div class="nx-chips" aria-label="Shqetësime të lëkurës"><span>Akne</span><span>Njolla</span><span>Rosacea</span><span>Ekzemë</span><span>Psoriazë</span><span>Pore</span><span>Lëkurë e ndjeshme</span><span>Lëkurë e thatë</span></div>
+    <button class="nx-cta cursor-interaction" type="button" data-ls-start data-ls-quelle="hero" id="ls-start">Fillo analizën <svg aria-hidden="true"
   class="lf-lucide lucide lucide-arrow-up-right"
   xmlns="http://www.w3.org/2000/svg"
   width="24"
@@ -184,9 +181,10 @@
 >
   <path d="M7 7h10v10" />
   <path d="M7 17 17 7" />
-</svg>
-</span></button><p class="lf-note">Nga telefoni yt · Pa detyrim për blerje</p></section>
-<section class="lf-section" id="rezultatet" style="padding-top:10px"><div class="lf-case-stage" aria-label="Fotografitë para dhe pas">
+</svg></button>
+    <p class="nx-small nx-center">Rezultati brenda 10 minutave · Nga telefoni yt</p>
+  </section>
+  <section class="lf-section" id="rezultatet" style="padding-top:10px"><div class="lf-case-stage" aria-label="Fotografitë para dhe pas">
   <div class="lf-pair" id="lf-case-pair">
     <div class="lf-photo"><img id="lf-before" src="/apps/lifeskin-landing/fotot/rasti-2-dita1.webp" width="720" height="810" alt="Rasti 2, para terapisë" decoding="async"><span class="lf-tag">PARA</span></div>
     <div class="lf-photo"><img id="lf-after" src="/apps/lifeskin-landing/fotot/rasti-2-dita28.webp" width="720" height="810" alt="Rasti 2, pas terapisë" decoding="async"><span class="lf-tag after">PAS</span></div>
@@ -267,7 +265,17 @@
   <polyline points="12 6 12 12 16.5 12" />
 </svg>
 <span>Kohëzgjatja<strong>4 javë</strong></span></p></div></section>
-<div class="lf-band"><span><svg aria-hidden="true"
+  <div class="nx-trust"><span>Dermatologe</span><span>Plan personal</span><span>Produkte për ty</span></div>
+  <section class="nx-section nx-how" id="pse">
+    <p class="nx-kicker">3 HAPA TË THJESHTË</p>
+    <h2>Nga shqetësimi yt.<br><span>Te kujdesi i duhur.</span></h2>
+    <p class="nx-lead">Gjithçka bëhet këtu. Hap pas hapi.</p>
+    <article class="nx-story" data-scene="camera">
+      <div class="nx-stage nx-camera" role="img" aria-label="Demonstrim: skanimi i fytyrës në telefon"><div class="nx-orbit"></div><div class="nx-device"><div class="nx-island"></div><img src="/apps/lifeskin-landing/fotot/intro-scan.webp" alt="" width="281" height="500" decoding="async" loading="lazy"><div class="nx-face-ring"></div><div class="nx-scan-line"></div><div class="nx-camera-caption">Fytyra në mes</div><div class="nx-shutter"></div></div><span class="nx-floating nx-floating-left">Këtu, në faqe</span><span class="nx-floating nx-floating-right">Ti zgjedh mënyrën</span></div>
+      <div class="nx-story-copy"><span class="nx-number">01</span><h3>Nise nga telefoni yt.</h3><p>Zgjedh skanim, foto ose përshkrim të problemit. Përgjigju disa pyetjeve të shkurtra.</p><span class="nx-footnote">Nuk ke nevojë të dalësh nga faqja.</span></div>
+    </article>
+    <article class="nx-story" id="mjekja" data-scene="analysis">
+      <div class="nx-stage nx-analysis" role="img" aria-label="Demonstrim: dermatologia shqyrton lëkurën dhe përgatit analizën"><div class="nx-orbit"></div><img class="nx-doctor-photo" src="/apps/lifeskin/dr-gashi.jpg" alt="Dr. Violeta Gashi" width="174" height="174" decoding="async" loading="lazy"><div class="nx-sheet"><span class="nx-sheet-label">ANALIZA JOTE</span><strong>Lëkura jote,<br>e kuptuar më mirë.</strong><div class="nx-assessment"><span>Shqetësimi yt</span><b><svg aria-hidden="true"
   class="lf-lucide lucide lucide-check"
   xmlns="http://www.w3.org/2000/svg"
   width="24"
@@ -280,8 +288,7 @@
   stroke-linejoin="round"
 >
   <path d="M20 6 9 17l-5-5" />
-</svg>
-Analiza falas</span><span><svg aria-hidden="true"
+</svg></b></div><div class="nx-assessment"><span>Nevojat e lëkurës</span><b><svg aria-hidden="true"
   class="lf-lucide lucide lucide-check"
   xmlns="http://www.w3.org/2000/svg"
   width="24"
@@ -294,8 +301,7 @@ Analiza falas</span><span><svg aria-hidden="true"
   stroke-linejoin="round"
 >
   <path d="M20 6 9 17l-5-5" />
-</svg>
-Dr. Violeta Gashi</span><span><svg aria-hidden="true"
+</svg></b></div><div class="nx-assessment"><span>Kujdesi i duhur</span><b><svg aria-hidden="true"
   class="lf-lucide lucide lucide-check"
   xmlns="http://www.w3.org/2000/svg"
   width="24"
@@ -308,125 +314,14 @@ Dr. Violeta Gashi</span><span><svg aria-hidden="true"
   stroke-linejoin="round"
 >
   <path d="M20 6 9 17l-5-5" />
-</svg>
-Plan për lëkurën tënde</span></div>
-<section class="lf-section" id="pse"><div class="lf-eyebrow">3 HAPA TË THJESHTË</div><h2>Rezultati yt <span class="lf-blu">brenda 10 minutave.</span></h2><ol class="lf-steps lf-hapat"><li class="lf-step"><span class="lf-step-nr" aria-hidden="true">1</span><div><h3>Bëj fotot</h3><p>Me telefonin tënd. Pastaj përgjigju disa pyetjeve të shkurtra.</p><span class="lf-step-koha">Nga telefoni</span></div></li><li class="lf-step"><span class="lf-step-nr" aria-hidden="true">2</span><div><h3>Dr. Gashi i shikon</h3><p>Ajo shikon fotot e tua dhe të shkruan çfarë ka lëkura jote.</p><span class="lf-step-koha">Brenda 10 minutave</span></div></li><li class="lf-step"><span class="lf-step-nr" aria-hidden="true">3</span><div><h3>Merr planin tënd</h3><p>Sheh cilat produkte të duhen, si t’i përdorësh dhe sa kushtojnë. Pastaj vendos ti.</p><span class="lf-step-koha">Falas · pa detyrim</span></div></li></ol><div class="lf-doctor" id="mjekja"><img loading="lazy" width="250" height="340" decoding="async" src="/apps/lifeskin/dr-gashi.jpg" alt="Dr. Violeta Gashi"><div><h3>Dr. Violeta Gashi</h3><p class="lf-role">Dermatologe · Lifeskin</p><p>Ajo shikon fotot dhe përgjigjet e tua. Pastaj zgjedh çfarë i përshtatet lëkurës sate.</p></div></div></section>
-<section class="lf-section" style="padding-top:0"><div class="lf-dark" id="produktet"><div class="lf-eyebrow">PËR TY</div><h2>Lëkura jote nuk është si e të gjithëve.</h2><p>Prandaj edhe produktet zgjidhen sipas saj. Jo sepse i përdor dikush tjetër.</p><ul><li><span><svg aria-hidden="true"
-  class="lf-lucide lucide lucide-check"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="M20 6 9 17l-5-5" />
-</svg>
-</span>Çfarë të përdorësh</li><li><span><svg aria-hidden="true"
-  class="lf-lucide lucide lucide-check"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="M20 6 9 17l-5-5" />
-</svg>
-</span>Si dhe kur ta përdorësh</li><li><span><svg aria-hidden="true"
-  class="lf-lucide lucide lucide-check"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="M20 6 9 17l-5-5" />
-</svg>
-</span>Çfarë të bësh në 4 javët e para</li><li><span><svg aria-hidden="true"
-  class="lf-lucide lucide lucide-check"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="M20 6 9 17l-5-5" />
-</svg>
-</span>Ku të shkruash kur ke pyetje</li></ul></div></section>
-<section class="lf-section" style="padding-top:0"><div class="lf-eyebrow">PO ÇMIMI?</div><h2>Sa kushton<br>terapia ime?</h2><p>Së pari shohim çfarë i duhet lëkurës sate.</p><div class="lf-price"><h3>Çmimi varet nga produktet që të duhen.</h3><p>Dikujt i duhet një produkt. Dikujt më shumë. Pas analizës sheh terapinë tënde dhe çmimin e saj.</p><strong>E sheh çmimin para se të porositësh.</strong></div></section>
-<section class="lf-section" style="padding-top:0" id="garancia"><details><summary class="cursor-interaction"><svg aria-hidden="true"
-  class="lf-lucide lucide lucide-chevron-right"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="m9 18 6-6-6-6" />
-</svg>
-A është analiza falas?</summary><p>Po. Analiza është falas. Nëse vendos të porositësh terapinë, çmimin e sheh para porosisë.</p></details><details><summary class="cursor-interaction"><svg aria-hidden="true"
-  class="lf-lucide lucide lucide-chevron-right"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="m9 18 6-6-6-6" />
-</svg>
-A duhet të blej patjetër?</summary><p>Jo. Së pari sheh planin, produktet dhe çmimin. Pastaj vendos vetë.</p></details><details><summary class="cursor-interaction"><svg aria-hidden="true"
-  class="lf-lucide lucide lucide-chevron-right"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="m9 18 6-6-6-6" />
-</svg>
-Kur do të shoh ndryshim?</summary><p>Plani të udhëzon për 4 javët e para. Koha e ndryshimit varet nga problemi dhe nga lëkura jote.</p></details><details><summary class="cursor-interaction"><svg aria-hidden="true"
-  class="lf-lucide lucide lucide-chevron-right"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="m9 18 6-6-6-6" />
-</svg>
-Po nëse kam nevojë për vizitë?</summary><p>Nëse fotot nuk mjaftojnë ose problemi kërkon kontroll nga afër, Dr. Gashi të këshillon një vizitë.</p></details></section>
-<section class="lf-final" id="fund"><h2>Lëkura jote.<br>Le ta nisim nga ajo.</h2><p>Një foto është hapi i parë.</p><button class="lf-cta cursor-interaction" type="button" data-ls-start data-ls-quelle="final"><span>Fillo analizën falas</span><span class="lf-button-icon" aria-hidden="true"><svg aria-hidden="true"
+</svg></b></div></div><span class="nx-floating nx-analysis-time">Brenda 10 minutave</span></div>
+      <div class="nx-story-copy"><span class="nx-number">02</span><h3>Dr. Gashi e vlerëson.</h3><p>Shikon lëkurën dhe përgjigjet e tua. Të shpjegon çka vëren dhe çfarë kujdesi të duhet.</p><span class="nx-footnote">E qartë. Me fjalë që i kupton.</span></div>
+    </article>
+    <article class="nx-story" data-scene="care">
+      <div class="nx-stage nx-care" role="img" aria-label="Ilustrim: produkte LifeSkin dhe udhëzime për kujdesin personal"><div class="nx-orbit"></div><img class="nx-product-photo" src="/apps/lifeskin-landing/fotot/intro-moistur.webp" alt="Produkti LifeSkin LF MOISTUR" width="420" height="560" decoding="async" loading="lazy"><div class="nx-routine"><span class="nx-sheet-label">PLANI YT PERSONAL</span><strong>Kujdesi për ty.</strong><div><span>Mëngjes</span><b>Hapat e tu</b></div><div><span>Mbrëmje</span><b>Hapat e tu</b></div><small>Produktet · Përdorimi · Çmimi</small></div><span class="nx-floating nx-care-label">Sipas nevojave të tua</span><span class="nx-example">Ilustrim i planit</span></div>
+      <div class="nx-story-copy"><span class="nx-number">03</span><h3>Merr planin për ty.</h3><p>Sheh produktet që të rekomandohen, si t’i përdorësh dhe çmimin. Pastaj mund t’i porositësh këtu.</p><span class="nx-footnote">Një plan për 4 javët e para.</span></div>
+    </article>
+    <button class="nx-cta cursor-interaction" type="button" data-ls-start data-ls-quelle="final">Gjej kujdesin për lëkurën tënde <svg aria-hidden="true"
   class="lf-lucide lucide lucide-arrow-up-right"
   xmlns="http://www.w3.org/2000/svg"
   width="24"
@@ -440,10 +335,32 @@ Po nëse kam nevojë për vizitë?</summary><p>Nëse fotot nuk mjaftojnë ose pr
 >
   <path d="M7 7h10v10" />
   <path d="M7 17 17 7" />
-</svg>
-</span></button></section>
-<footer class="lf-footer"><span>LIFESKIN · SKINREACT</span><span>Dr. Violeta Gashi · Dermatologe</span></footer>
-
+</svg></button>
+  </section>
+  <section class="nx-section nx-product-section" id="produktet">
+    <p class="nx-kicker">ZGJEDHJE ME ARSYE</p><h2>Jo më produkte<br><span>me hamendje.</span></h2>
+    <p class="nx-lead">Lëkura jote ka nevojat e veta. Produktet zgjidhen sipas tyre.</p>
+    <div class="nx-product-grid"><figure><img src="/apps/lifeskin-landing/fotot/intro-acne.webp" alt="LifeSkin LF ACNE" width="420" height="560" decoding="async" loading="lazy"><figcaption>LF ACNE</figcaption></figure><figure><img src="/apps/lifeskin-landing/fotot/intro-moistur.webp" alt="LifeSkin LF MOISTUR" width="420" height="560" decoding="async" loading="lazy"><figcaption>LF MOISTUR</figcaption></figure></div>
+    <div class="nx-benefits"><p><strong>Çfarë të duhet.</strong><span>Produktet që i përshtaten lëkurës sate.</span></p><p><strong>Si ta përdorësh.</strong><span>Hapat e mëngjesit dhe të mbrëmjes.</span></p><p><strong>Sa kushton.</strong><span>Çmimi i qartë, para porosisë.</span></p></div>
+    <p class="nx-small">Këto janë shembuj. Rekomandimi yt varet nga analiza.</p>
+  </section>
+  <section class="nx-section nx-faq" id="garancia"><p class="nx-kicker">PYETJE TË SHKURTRA</p><h2>Para se të fillosh.</h2><details><summary>A duhet të bëj një foto tani?</summary><p>Jo. Së pari zgjedh mënyrën që të përshtatet. Në hapin e fotos mund të përdorësh kamerën këtu, pa e mbyllur faqen.</p></details><details><summary>Sa kushton analiza dhe kujdesi?</summary><p>Analiza është falas. Produktet paguhen nëse vendos t’i porositësh. Sheh rekomandimin dhe çmimin përpara porosisë.</p></details><details><summary>A mund të pyes për trupin?</summary><p>Po. Mund të përshkruash një shqetësim në trup ose të bësh vetëm një pyetje. Nuk është vetëm për fytyrën.</p></details><details><summary>A publikohen fotot?</summary><p>Jo. Fotot e tua nuk publikohen.</p></details></section>
+  <section class="nx-section nx-final" id="fund"><p class="nx-kicker">FILLON ME LËKURËN TËNDE</p><h2>Hapi i parë<br><span>është ta kuptosh.</span></h2><p class="nx-lead">Pastaj zgjedh kujdesin me më shumë qartësi.</p><button class="nx-cta cursor-interaction" type="button" data-ls-start data-ls-quelle="final">Fillo analizën <svg aria-hidden="true"
+  class="lf-lucide lucide lucide-arrow-up-right"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M7 7h10v10" />
+  <path d="M7 17 17 7" />
+</svg></button><p class="nx-small nx-center">Online · Dr. Violeta Gashi · Plan personal</p></section>
+  <footer class="nx-footer"><strong>LIFESKIN</strong><span>SKINREACT</span></footer>
 </div>
 
 </div>
@@ -958,6 +875,7 @@ Po nëse kam nevojë për vizitë?</summary><p>Nëse fotot nuk mjaftojnë ose pr
 <script type="module" src="/apps/lifeskin/lifeskin-app.js"></script>
 <script src="/apps/lifeskin-landing/landing.js" defer></script>
 <script src="/apps/lifeskin-landing/approved.js" defer></script>
+<script src="/apps/lifeskin-landing/scroll-story.js" defer></script>
 <!-- DER LADEN. Als Modul, weil er Preise und Mandant aus
      lifeskin-config.js und lifeskin-catalog.js holt - dieselben
      Zahlen, mit denen der Trichter rechnet. Module laufen ohnehin

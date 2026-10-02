@@ -75,12 +75,12 @@ test("the concern section is removed and both arrow locations navigate the same 
   assert.equal((html.match(/data-case-direction="next"/g) || []).length, 2);
   assert.match(html, /Kohëzgjatja/);
   assert.match(html, /4 javë/);
-  assert.equal((html.match(/class="lf-step"/g) || []).length, 3);
+  assert.equal((html.match(/class="nx-story"/g) || []).length, 3);
   assert.doesNotMatch(html, /Rezultati ndryshon|↗️|✓/);
 });
 
-test("both analysis CTAs retain the existing funnel entry and all photo assets exist", () => {
-  assert.equal((html.match(/<button[^>]*\bdata-ls-start\b/g) || []).length, 2);
+test("all three approved analysis CTAs retain the existing funnel entry and all photo assets exist", () => {
+  assert.equal((html.match(/<button[^>]*\bdata-ls-start\b/g) || []).length, 3);
   assert.equal((html.match(/id="ls-start"/g) || []).length, 1);
   for (const id of ["ls-wahl", "ls-fotopara", "ls-vorbereitung", "ls-analyse"]) {
     assert.ok(html.includes(`id="${id}"`), id);
@@ -88,6 +88,10 @@ test("both analysis CTAs retain the existing funnel entry and all photo assets e
   for (const match of source.matchAll(/"(\/apps\/[^" ]+\.(?:jpg|webp))"/g)) {
     assert.ok(existsSync(match[1].slice(1)), match[1]);
   }
+  for (const match of html.matchAll(/src="(\/apps\/[^" ]+\.(?:jpg|webp))"/g)) {
+    assert.ok(existsSync(match[1].slice(1)), match[1]);
+  }
+  assert.doesNotMatch(html, /data-preview-start|nx-dialog|data:image/);
 });
 
 // Public configuration fixtures only; tests never read production Firestore.
