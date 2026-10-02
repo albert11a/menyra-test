@@ -18,6 +18,8 @@ async function melden(tenantId, sessionId, nutzlast, logContext) {
   logFunctionInfo("lifeskin.capi", { ...logContext, ...ergebnis, eventName: nutzlast.event_name });
 }
 
+// Die erste failurePolicy-Aktivierung erfolgt im Workflow gezielt nur fuer
+// diese beiden vorhandenen LifeSkin-Exporte; kein globales --force.
 function ausloeser(pruefen, bauen) {
   return functions.region("us-central1").runWith({ secrets: ["META_CAPI_TOKEN"], failurePolicy: true })
     .firestore.document("lifeskin/{tenantId}/sessions/{sessionId}")
