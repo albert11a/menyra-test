@@ -184,3 +184,12 @@
    Instagram und Safari faerben ihre Leiste danach - nicht nur nach theme-color. */
 html:has(#ls-einstieg[data-aktiv="ja"]),
 body:has(#ls-einstieg[data-aktiv="ja"]){background:#fff}
+/* Kopf immer sichtbar wie /lifeskinshop: overflow hidden machte #lf-preview
+   zum Scrollkasten, darin haftet sticky nicht. clip schneidet gleich ab. */
+#lf-preview{overflow:hidden;overflow:clip}
+/* Kompakter Kopf: 56px hoch, Logo und Knopf je 36px, oben und unten buendig. */
+#lf-preview .lf-header{height:56px;padding:0 20px;gap:12px}
+#lf-preview .lf-brand{height:36px;display:flex;flex-direction:column;justify-content:space-between;font-size:22px;line-height:.78;letter-spacing:-.05em;padding-top:1px}
+#lf-preview .lf-brand small{margin:0;font-size:7.5px;line-height:.8;letter-spacing:.38em;font-weight:700}
+#lf-preview .lf-top{height:36px;display:inline-flex;align-items:center;padding:0 14px;font-size:13px;border-width:1.5px;line-height:1}
+html:has(#ls-einstieg[data-aktiv="ja"]){scroll-padding-top:64px}
