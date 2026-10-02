@@ -93,6 +93,9 @@ export function createHeartLifeskinInitialState() {
     verteilung: null,
     verlauf: null,
     rohAnzahl: 0,
+    // Skinreact · Lifeskin · Acne duo (heart-lifeskin-bereiche.js): beim
+    // Oeffnen immer Lifeskin in der Mitte.
+    bereich: "lifeskin",
     // Welche Analyse aufgeklappt ist, und die Bilder dazu. Die Bilder werden
     // je Sitzung gemerkt: Wer zwischen zwei Analysen hin und her springt,
     // soll sie nicht zweimal holen.

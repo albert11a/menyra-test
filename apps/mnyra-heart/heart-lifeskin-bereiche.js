@@ -1,16 +1,21 @@
 // DREI BEREICHE IM LIFESKIN-TAB: SKINREACT · LIFESKIN · ACNE DUO
 // (02.10., Wunsch Inhaber).
 //
-// Unter dem Kopf drei Chips - wie die Chips in "Faelle", kaum gerundet.
-// Lifeskin ist beim Oeffnen immer gewaehlt. Wischen wie in einer App:
-// nach links wischen fuehrt nach rechts (Acne duo), nach rechts wischen
-// nach links (Skinreact). Der Inhalt geht mit dem Finger mit, gleitet beim
-// Loslassen hinaus, und der neue Bereich gleitet von der anderen Seite
-// herein. Ein Tipp auf einen Chip gleitet genauso.
+// Unter dem Kopf drei Chips - wie die Chips in "Faelle", kaum gerundet:
 //
-// Skinreact und Acne duo sind noch leer - was dort stehen soll, kommt
-// spaeter; ebenso, dass Lifeskin die Zahlen von /lifeskin und
-// /lifeskinshop zusammen zeigt.
+//   Skinreact  das bisherige Lifeskin (/lifeskin, Weg "")
+//   Lifeskin   in der Mitte, beim Oeffnen immer gewaehlt - hier kommen
+//              eigene Karten hin (noch leer)
+//   Acne duo   der bisherige Lifeskin Shop (/lifeskinshop)
+//
+// Die Karten von Skinreact und Acne duo bleiben, wie sie waren - der
+// Bereich darunter traegt denselben Abstand wie .heart-lifeskin.
+//
+// Wischen wie in einer App: nach links wischen fuehrt nach rechts (Acne
+// duo), nach rechts wischen nach links (Skinreact). Der Inhalt geht mit
+// dem Finger mit, gleitet beim Loslassen hinaus, und der neue Bereich
+// gleitet von der anderen Seite herein. Ein Tipp auf einen Chip gleitet
+// genauso.
 
 import { escapeHtml } from "./heart-ui-utils.js";
 
@@ -25,6 +30,20 @@ export const STANDARD_BEREICH = "lifeskin";
 export function bereichGueltig(id) {
   const wert = String(id || "").trim();
   return BEREICHE.some((b) => b.id === wert) ? wert : STANDARD_BEREICH;
+}
+
+// Welcher Weg (shared/lifeskin-weg.js) hinter einem Bereich steht.
+// Lifeskin in der Mitte hat (noch) keinen: null.
+const WEG_DES_BEREICHS = Object.freeze({ skinreact: "", acneduo: "lifeskinshop" });
+
+export function wegDesBereichs(id) {
+  const bereich = bereichGueltig(id);
+  return Object.prototype.hasOwnProperty.call(WEG_DES_BEREICHS, bereich) ? WEG_DES_BEREICHS[bereich] : null;
+}
+
+// Umgekehrt: in welchem Bereich die Faelle eines Wegs stehen.
+export function bereichDesWegs(weg) {
+  return String(weg || "") === "lifeskinshop" ? "acneduo" : "skinreact";
 }
 
 // Der Nachbar in Wischrichtung: +1 ist der rechts daneben (nach links
@@ -42,19 +61,20 @@ export function renderBereichChips(aktiv) {
   </div>`;
 }
 
-function renderPlatzhalter(id) {
-  const name = BEREICHE.find((b) => b.id === id)?.label || "";
+// Lifeskin in der Mitte: die eigenen Karten kommen noch.
+function renderLifeskinMitte() {
   return `<section class="heart-lifeskin-block heart-bereich-leer">
-      <h3 class="heart-lifeskin-block__titel">${escapeHtml(name)}</h3>
-      <p class="heart-lifeskin-leer">Hier kommen bald die Zahlen von ${escapeHtml(name)}.</p>
+      <h3 class="heart-lifeskin-block__titel">Lifeskin</h3>
+      <p class="heart-lifeskin-leer">Hier kommen die eigenen Lifeskin-Karten hin.</p>
     </section>`;
 }
 
 // Die Uebersicht des Tabs: Chips, darunter der gewaehlte Bereich.
-// lifeskinInhalt zeichnet den Bereich "Lifeskin" (renderLifeskin).
-export function renderBereiche(aktiv, lifeskinInhalt) {
+// wegInhalt zeichnet Skinreact bzw. Acne duo - die Karten von /lifeskin
+// bzw. /lifeskinshop, unveraendert (renderLifeskin).
+export function renderBereiche(aktiv, wegInhalt) {
   const gewaehlt = bereichGueltig(aktiv);
-  const inhalt = gewaehlt === STANDARD_BEREICH ? lifeskinInhalt() : renderPlatzhalter(gewaehlt);
+  const inhalt = gewaehlt === STANDARD_BEREICH ? renderLifeskinMitte() : wegInhalt();
   return `${renderBereichChips(gewaehlt)}
     <div class="heart-bereich" data-bereich="${escapeHtml(gewaehlt)}">${inhalt}</div>`;
 }
@@ -149,7 +169,7 @@ export function bindBereichWischen({ root, lesen, wechseln } = {}) {
     zug = null;
     if (laeuft || e.touches.length !== 1) return;
     // Ueberall unter dem Kopf - auch auf der leeren Flaeche unter einem
-    // kurzen Bereich (Skinreact, Acne duo), nicht nur auf seinem Inhalt.
+    // kurzen Bereich (Lifeskin in der Mitte), nicht nur auf seinem Inhalt.
     // Der Kopf von Heart gehoert nicht dazu.
     const flaeche = e.target?.closest?.(".heart-main-shell");
     if (!flaeche || !root.contains(flaeche) || e.target.closest(".heart-topbar")

@@ -77,7 +77,7 @@ import { vorschauAuffrischen } from "./heart-lifeskin-vorschau.js";
 import { rasteNormalisieren, rastiNormalisieren, neueRastiId, RASTI_PRODUKTE_MAX } from "../../shared/lifeskin-raste.js";
 import { aktualisiereLifeskinSitzungen } from "./heart-lifeskin-berechnung.js";
 import { baueLive, baueLiveShop } from "./heart-lifeskin-live.js";
-import { BEREICHE, STANDARD_BEREICH, bereichGueltig, bereichGleiten, bindBereichWischen } from "./heart-lifeskin-bereiche.js";
+import { BEREICHE, STANDARD_BEREICH, bereichGueltig, wegDesBereichs, bereichDesWegs, bereichGleiten, bindBereichWischen } from "./heart-lifeskin-bereiche.js";
 import { jsonLesen, raportLesen, siehtNachJson } from "../../shared/lifeskin-analyse.js";
 // Wie viele Messwerte der Bogen fasst. Aus dem Bogen selbst, nicht als
 // zweite Zahl daneben: Zwei Zahlen an zwei Stellen sind frueher oder
@@ -1123,9 +1123,34 @@ function schliesseLifeskinSitzung() {
   try { globalThis.scrollTo?.({ top: ziel, left: 0, behavior: "instant" }); } catch { globalThis.scrollTo?.(0, ziel); }
 }
 
+// SKINREACT · LIFESKIN · ACNE DUO (heart-lifeskin-bereiche.js): Skinreact
+// ist der Weg "" (/lifeskin), Acne duo "lifeskinshop". Wechselt mit dem
+// Bereich der Weg, schliesst das einen offenen Fall und rechnet Live neu -
+// wie frueher der Wechsel zwischen den Tabs Lifeskin und Lifeskin Shop.
+// Lifeskin in der Mitte hat keinen Weg und laesst ihn stehen.
+function lifeskinBereichSetzen(id, weg = wegDesBereichs(id)) {
+  const felder = { bereich: bereichGueltig(id) };
+  const wechselt = weg !== null && weg !== String(store.getState().lifeskin?.weg || "");
+  if (wechselt) Object.assign(felder, { weg, offen: "" });
+  actions.patchLifeskin(felder);
+  if (!wechselt) return;
+  try { liveRechnen(); } catch { /* Live ist Beiwerk */ }
+  syncViewInAddress(store.getState());
+}
+
+// Ein Fall (auch aus einer Meldung) oeffnet in seinem Bereich - nach dem
+// Schliessen steht man in seiner Liste, nicht in der leeren Mitte.
+function lifeskinBereichZumFall(id) {
+  const fall = findeSitzung(store.getState().lifeskin || {}, id);
+  if (!fall) return;
+  const ziel = bereichDesWegs(wegDerSitzung(fall));
+  if (bereichGueltig(store.getState().lifeskin?.bereich) !== ziel) lifeskinBereichSetzen(ziel);
+}
+
 async function oeffneLifeskinSitzung(sitzungId = "") {
   const id = String(sitzungId || "").trim();
   if (!id) return;
+  try { lifeskinBereichZumFall(id); } catch { /* der Bereich ist Beiwerk - die Akte oeffnet trotzdem */ }
   const stand = store.getState().lifeskin || {};
   if (!stand.offen) lifeskinListenStelle = Math.round(globalThis.scrollY || 0);
   actions.patchLifeskin({ offen: id });
@@ -4034,7 +4059,7 @@ const operations = {
     const jetzt = bereichGueltig(store.getState().lifeskin?.bereich);
     if (ziel === jetzt) return;
     const stelle = (b) => BEREICHE.findIndex((x) => x.id === b);
-    bereichGleiten(stelle(ziel) > stelle(jetzt) ? 1 : -1, () => actions.patchLifeskin({ bereich: ziel }));
+    bereichGleiten(stelle(ziel) > stelle(jetzt) ? 1 : -1, () => lifeskinBereichSetzen(ziel));
   },
   lifeskinUhrwahl() {
     const stand = store.getState().lifeskin || {};
@@ -4200,22 +4225,19 @@ const operations = {
     // (shared/lifeskin-weg.js). Der Wechsel zwischen beiden schliesst einen
     // offenen Fall und rechnet Live neu - sonst stuende oben noch der Fall
     // oder die Live-Reihe des anderen Wegs.
+    //
+    // SEIT DEM 02.10. DREI BEREICHE IM TAB (heart-lifeskin-bereiche.js):
+    // "lifeskin" oeffnet immer die Mitte (Lifeskin), "lifeskinshop" Acne
+    // duo, "lifeskin2" Skinreact mit den Faellen von /lifeskin2.
     if (safeViewKey === "lifeskin" || safeViewKey === "lifeskin2" || safeViewKey === "lifeskinshop") {
-      const weg = safeViewKey === "lifeskin" ? "" : safeViewKey;
+      const bereich = safeViewKey === "lifeskinshop" ? "acneduo" : safeViewKey === "lifeskin2" ? "skinreact" : STANDARD_BEREICH;
+      lifeskinBereichSetzen(bereich, safeViewKey === "lifeskin2" ? "lifeskin2" : wegDesBereichs(bereich));
       safeViewKey = "lifeskin";
-      if (String(store.getState().lifeskin?.weg || "") !== weg) {
-        actions.patchLifeskin({ weg, offen: "" });
-        try { liveRechnen(); } catch { /* Live ist Beiwerk */ }
-        syncViewInAddress(store.getState());
-        if (store.getState().shell.activeView === "lifeskin") { actions.setNavOpen(false); return; }
-      }
     }
     if (store.getState().shell.activeView === safeViewKey) {
       actions.setNavOpen(false);
       return;
     }
-    // Wer den Lifeskin-Tab oeffnet, landet immer auf "Lifeskin".
-    if (safeViewKey === "lifeskin") actions.patchLifeskin({ bereich: STANDARD_BEREICH });
     actions.setActiveView(safeViewKey);
     queueMicrotask(() => ensureViewData(safeViewKey).catch(() => {}));
   },
@@ -4814,7 +4836,7 @@ bindBereichWischen({
     if (stand.shell.activeView !== "lifeskin") return "";
     return bereichGueltig(stand.lifeskin?.bereich);
   },
-  wechseln(id) { actions.patchLifeskin({ bereich: bereichGueltig(id) }); }
+  wechseln(id) { lifeskinBereichSetzen(id); }
 });
 
 // Damit ein Neuladen dort bleibt, wo man war. Vorher wurde die Ansicht beim

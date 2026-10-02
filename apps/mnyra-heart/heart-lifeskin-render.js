@@ -15,7 +15,7 @@
 
 import { pfadLesen } from "../../shared/lifeskin-klickpfad.js";
 import { escapeHtml } from "./heart-ui-utils.js";
-import { renderBereiche, bereichGueltig, STANDARD_BEREICH } from "./heart-lifeskin-bereiche.js";
+import { renderBereiche, bereichGueltig, wegDesBereichs, bereichDesWegs, STANDARD_BEREICH } from "./heart-lifeskin-bereiche.js";
 import { renderHeartIcon, renderGeraetZeichen } from "./heart-icons.js";
 // Der Setpreis kommt aus derselben Quelle wie im Trichter. Zwei Zahlen an
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
@@ -3487,10 +3487,15 @@ export function renderLifeskin(zustand) {
   // und damit ist er das Zeichen dafuer, dass der Lader durch ist. Die
   // sechs Trichter darunter werden beim Zeichnen gerechnet - reine
   // Funktionen ueber ein paar hundert Sitzungen.
-  // DREI BEREICHE (02.10.): Skinreact · Lifeskin · Acne duo als Chips
-  // unter dem Kopf, zum Wischen (heart-lifeskin-bereiche.js). Akten und
-  // Editoren darunter stehen weiter allein da, ohne Chips.
-  const bereich = bereichGueltig(zustand?.bereich);
+  // DREI BEREICHE (02.10.): Skinreact (/lifeskin) · Lifeskin (Mitte,
+  // eigene Karten folgen) · Acne duo (/lifeskinshop) als Chips unter dem
+  // Kopf, zum Wischen (heart-lifeskin-bereiche.js). Akten und Editoren
+  // darunter stehen weiter allein da, ohne Chips.
+  //
+  // Heart setzt den Bereich immer (Startzustand: Lifeskin). Steht keiner
+  // da, gilt der Bereich des Wegs - und der Weg selbst bleibt, wie er ist.
+  const bereichGesetzt = Boolean(zustand?.bereich);
+  const bereich = bereichGesetzt ? bereichGueltig(zustand.bereich) : bereichDesWegs(wegGueltig(zustand?.weg));
   if (!zustand || !zustand.kennzahlen || !Array.isArray(zustand.trichter)) {
     return `<div class="heart-lifeskin">${renderBereiche(bereich, () => `<p class="heart-lifeskin-leer">Wird geladen …</p>`)}</div>`;
   }
@@ -3499,7 +3504,11 @@ export function renderLifeskin(zustand) {
   // "Lifeskin 2" die von /lifeskin2 (shared/lifeskin-weg.js). Alles
   // darunter - Kacheln, Trichter, Faelle, Bestellungen - rechnet nur mit
   // den Faellen dieses Wegs, damit die beiden Wege sich vergleichen lassen.
-  const weg = wegGueltig(zustand.weg);
+  // Skinreact ist der Weg "", Acne duo "lifeskinshop" - heart.js setzt
+  // zustand.weg beim Wechsel mit; hier gilt der Bereich, damit beides nie
+  // auseinanderlaeuft.
+  const wegBereich = bereichGesetzt ? wegDesBereichs(bereich) : null;
+  const weg = wegBereich === null ? wegGueltig(zustand.weg) : wegBereich;
   const sitzungen = nachWeg(zustand.sitzungen, weg);
   // DER ZAEHLBEGINN GILT FUER DIE ZAHLEN, NICHT FUER DIE ARBEIT.
   //
@@ -3561,9 +3570,10 @@ export function renderLifeskin(zustand) {
     )}</div>`;
   }
 
-  // Skinreact oder Acne duo: nur Chips und ihr Bereich - die Zahlen von
-  // Lifeskin muessen dafuer nicht gerechnet werden.
-  if (bereich !== STANDARD_BEREICH) {
+  // Lifeskin in der Mitte: nur Chips und seine (noch leere) Flaeche -
+  // die Zahlen von Skinreact und Acne duo muessen dafuer nicht gerechnet
+  // werden.
+  if (bereich === STANDARD_BEREICH) {
     return `<div class="heart-lifeskin">${renderBereiche(bereich, () => "")}</div>`;
   }
 

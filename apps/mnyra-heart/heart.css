@@ -10491,7 +10491,8 @@ html:where([data-heart-theme="tag"]),
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
-  margin: 0 0 14px;
+  /* Der Abstand zum Bereich darunter kommt aus dem gap von .heart-lifeskin. */
+  margin: 0;
   overflow: visible;
 }
 .heart-bereich-chips .heart-lifeskin-chip { min-width: 0; padding-inline: 6px; font-size: 12.5px; }
@@ -10499,7 +10500,10 @@ html:where([data-heart-theme="tag"]),
 /* Der Bereich darunter laesst die Seite senkrecht scrollen; waagrecht
    wischt heart-lifeskin-bereiche.js. */
 .heart-main-shell:has(.heart-bereich) { touch-action: pan-y; }
-.heart-bereich { touch-action: pan-y; }
+/* DIE KARTEN BLEIBEN, WIE SIE WAREN: Der Bereich steht zwischen
+   .heart-lifeskin und den Karten und traegt deshalb genau dessen Aufbau
+   (flex, Spalte, 14 px Abstand) - sonst klebten die Karten aneinander. */
+.heart-bereich { display: flex; flex-direction: column; gap: 14px; min-width: 0; touch-action: pan-y; }
 
 /* DAS WISCHEN: die Variable steht auf <html> (heart-lifeskin-bereiche.js),
    die Bewegung nur, solange gewischt wird - danach kein transform, damit
