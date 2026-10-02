@@ -50,6 +50,21 @@
        vollstaendig und bedienbar. -->
   <script>document.documentElement.classList.add("js");</script>
 
+  <!-- /lifeskin BEGINNT OBEN, OHNE SPRUNG (landing.js, Ende): Safari stellt
+       beim Neuladen und Wiederoeffnen die alte Scrollstellung her und
+       setzte die Seite so auf y=62. Wiederherstellen darf der Browser nur,
+       wenn die Seite zuletzt bei den Faellen oder tiefer stand
+       (lifeskin-app.js braucht das fuer Instagram) - das muss hier stehen,
+       vor dem Laden, sonst scrollt Safari zuerst. -->
+  <script>
+    (function () {
+      if (!/^\/lifeskin\/?$/.test(location.pathname) || !("scrollRestoration" in history)) return;
+      var tief = false;
+      try { tief = sessionStorage.getItem("lifeskin:landingTief") === "1"; } catch (e) { /* dann oben */ }
+      history.scrollRestoration = tief ? "auto" : "manual";
+    })();
+  </script>
+
   <!-- DER TIPP, DER VOR DEM JAVASCRIPT KOMMT.
        Der Knopf traegt seine Beschriftung im Aufbau und sieht fertig
        aus, sobald die erste Antwort des Servers da ist - der Griff

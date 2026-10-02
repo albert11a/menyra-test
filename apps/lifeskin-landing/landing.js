@@ -636,46 +636,44 @@
   }, 2600);
 })();
 
-/* /lifeskin BEGINNT OBEN. Gemessen auf dem iPhone (02.10.): Safari setzt
- * die Seite 30 ms nach dem Laden selbst auf y=62 - ohne Skriptaufruf, es
- * ist die Wiederherstellung der Scrollstellung (history.scrollRestoration
- * "auto"). Beim Neuladen und beim Wiederoeffnen des Tabs kommt die Seite
- * dorthin zurueck, wo sie zuletzt stand - und wer sie bei 62 schliesst,
- * bekommt sie bei 62 wieder; oben steht dann der halbe Kopf.
+/* /lifeskin BEGINNT OBEN - OHNE SPRUNG. Gemessen auf dem iPhone (02.10.):
+ * Safari setzt die Seite 30 ms nach dem Laden selbst auf y=62 - ohne
+ * Skriptaufruf, es ist die Wiederherstellung der Scrollstellung. Sie im
+ * Nachhinein zurueckzusetzen, sprang sichtbar (erst 62, dann 0).
  *
- * Die Wiederherstellung bleibt an (lifeskin-app.js will sie: Instagram
- * laedt den Tab neu, wer bei den Fragen war, soll dort bleiben). Nur eine
- * Stellung oberhalb der Faelle (#rezultatet) geht auf ganz oben - solange
- * niemand selbst gescrollt oder getippt hat und bis 1,5 s nach "load".
- * Mit Sprungziel (#...) passiert nichts. */
+ * Deshalb darf der Browser nur wiederherstellen, wenn die Seite bei den
+ * Faellen (#rezultatet) oder tiefer steht - lifeskin-app.js will das fuer
+ * Instagram, das den Tab beim Zurueckkehren neu laedt. Weiter oben steht
+ * history.scrollRestoration auf "manual": Die Seite kommt sofort oben.
+ *
+ * Der Modus wird schon beim Scrollen gesetzt und nicht erst beim Laden:
+ * Der Browser nimmt den, der beim VERLASSEN galt (nachgemessen). Der Kopf
+ * von index.html setzt ihn beim Laden zusaetzlich aus sessionStorage. */
 (function () {
   "use strict";
-  if (!/^\/lifeskin\/?$/.test(location.pathname) || location.hash) return;
-  var aus = false;
-  function ende() {
-    if (aus) return;
-    aus = true;
-    removeEventListener("scroll", pruefe);
-  }
-  ["touchstart", "wheel", "keydown", "pointerdown"].forEach(function (art) {
-    addEventListener(art, ende, { passive: true, capture: true, once: true });
-  });
-  function pruefe() {
-    if (aus || scrollY <= 0) return;
+  if (!/^\/lifeskin\/?$/.test(location.pathname) || !("scrollRestoration" in history)) return;
+  var zuletzt = null;
+  function merke() {
     var einstieg = document.getElementById("ls-einstieg");
     var faelle = document.getElementById("rezultatet");
-    if (!einstieg || einstieg.getAttribute("data-aktiv") !== "ja") return;
+    var aktiv = !!einstieg && einstieg.getAttribute("data-aktiv") === "ja";
     var grenze = faelle && !faelle.hidden ? faelle.getBoundingClientRect().top + scrollY : 400;
-    if (scrollY >= grenze) return;
-    var wurzel = document.documentElement;
-    var vorher = wurzel.style.scrollBehavior;
-    wurzel.style.scrollBehavior = "auto";   // landing.css: smooth - sonst gleitet es sichtbar
-    window.scrollTo(0, 0);
-    wurzel.style.scrollBehavior = vorher;
+    var tief = aktiv && scrollY >= grenze;
+    if (tief === zuletzt) return;
+    zuletzt = tief;
+    history.scrollRestoration = tief ? "auto" : "manual";
+    try {
+      sessionStorage.setItem("lifeskin:landingTief", tief ? "1" : "0");
+    } catch (e) { /* dann beginnt die Seite beim naechsten Mal oben */ }
   }
-  addEventListener("scroll", pruefe, { passive: true });
-  function spaeterAus() { setTimeout(ende, 1500); }
-  if (document.readyState === "complete") spaeterAus();
-  else addEventListener("load", spaeterAus);
-  pruefe();
+  var geplant = false;
+  addEventListener("scroll", function () {
+    if (geplant) return;
+    geplant = true;
+    setTimeout(function () { geplant = false; merke(); }, 150);
+  }, { passive: true });
+  addEventListener("pagehide", merke);
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden") merke();
+  });
 })();
