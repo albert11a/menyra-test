@@ -340,3 +340,63 @@
   #ls-wahl .ls-wahlkarte:not(.ls-wahlkarte--rat) .ls-wahlkarte__punkt { display: none; }
   #ls-wahl .ls-wahl-privat { margin-top: 6px; }
 }
+
+/* Approved scan/photo preparation: scoped to these two landing screens. */
+.ls-vorstart {
+  --basis: #3459e6;
+  --basis-hell: #eef1ff;
+  --grund: #fafafa;
+  --text: #171719;
+  --text-2: #666a75;
+  --linie: #e5e6ec;
+  background: var(--grund);
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+  padding-left: max(20px, env(safe-area-inset-left));
+  padding-right: max(20px, env(safe-area-inset-right));
+}
+.ls-vorstart .ls-kopf { gap: 9px; margin-bottom: 0; padding-bottom: 12px; }
+.ls-vorstart .ls-zurueck { color: var(--text); }
+.ls-vorstart .ls-marke { color: var(--text); font-size: 23px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+.ls-vorstart .ls-marke::after { content: "SKINREACT"; display: block; margin-top: 7px; font-size: 8px; font-weight: 400; letter-spacing: 3px; }
+.ls-vorstart .ls-kopf__schild { margin-left: auto; padding: 6px 11px; background: transparent; border: 1px solid var(--linie); border-radius: 20px; color: var(--text-2); font-size: 12px; font-weight: 400; letter-spacing: 0; }
+.ls-vorstart .ls-inhalt { flex: 0 1 auto; justify-content: flex-start; gap: 0; margin: 0; padding: 18px 0 0; }
+.ls-vorstart .ls-inhalt > * { flex-shrink: 0; }
+.ls-vorstart .ls-vorstart__label { margin: 0; font-size: 10px; line-height: 1.4; font-weight: 700; letter-spacing: 1.4px; color: var(--text-2); }
+.ls-vorstart h2 { margin: 10px 0 12px; font-size: 34px; line-height: 1.03; font-weight: 800; letter-spacing: -1.25px; color: var(--text); }
+.ls-vorstart h2 > span { display: block; }
+.ls-vorstart .ls-vorstart__blau { color: var(--basis); }
+.ls-vorstart .ls-vorstart__unter { margin: 0 0 22px; font-size: 13px; line-height: 1.45; color: var(--text-2); }
+.ls-vorstart .ls-regeln { gap: 0; padding: 0 14px; background: #fff; border: 1px solid var(--linie); border-radius: 16px; counter-reset: vorstart; }
+.ls-vorstart .ls-regel { gap: 12px; padding: 17px 0; counter-increment: vorstart; }
+.ls-vorstart .ls-regel + .ls-regel { border-top: 1px solid var(--linie); }
+.ls-vorstart .ls-regel::after { content: counter(vorstart); margin-left: auto; align-self: flex-start; padding-top: 2px; font-size: 11px; color: var(--text-2); }
+.ls-vorstart .ls-regel__zeichen { width: 36px; height: 36px; border-radius: 11px; color: var(--basis); background: var(--basis-hell); }
+.ls-vorstart .ls-regel__zeichen svg { width: 21px; height: 21px; }
+.ls-vorstart .ls-vorstart__regeltext { min-width: 0; }
+.ls-vorstart .ls-regel__text { display: block; font-size: 15px; line-height: 1.25; font-weight: 700; letter-spacing: -.2px; color: var(--text); }
+.ls-vorstart .ls-vorstart__regeltext p { margin: 4px 0 0; font-size: 12px; line-height: 1.4; color: var(--text-2); }
+.ls-vorstart .ls-vorstart__hilfe { margin: 16px 2px 0; font-size: 12px; line-height: 1.45; color: var(--text-2); }
+.ls-vorstart .ls-fuss { gap: 12px; padding-top: 26px; }
+.ls-vorstart .ls-knopf { min-height: 48px; padding: 13px 18px; border-radius: 12px; background: var(--basis); color: #fff; font-family: inherit; font-size: 15px; font-weight: 700; line-height: 1.4; }
+.ls-vorstart .ls-knopf::after { content: "→"; margin-left: 12px; }
+.ls-vorstart .ls-vorstart__privat { margin: 0; text-align: center; font-size: 11px; line-height: 1.4; color: var(--text-2); }
+@media (max-width: 359px), (max-height: 600px) {
+  .ls-vorstart { padding-top: calc(env(safe-area-inset-top) + 12px); padding-bottom: calc(env(safe-area-inset-bottom) + 12px); }
+  .ls-vorstart .ls-inhalt { padding-top: 12px; }
+  .ls-vorstart h2 { font-size: 30px; }
+  .ls-vorstart .ls-vorstart__unter { margin-bottom: 16px; }
+  .ls-vorstart .ls-regel { padding: 14px 0; gap: 9px; }
+  .ls-vorstart .ls-regel__text { font-size: 14px; }
+  .ls-vorstart .ls-regel::after { display: none; }
+  .ls-vorstart .ls-fuss { padding-top: 18px; }
+}
+@media (max-height: 540px) {
+  .ls-vorstart .ls-kopf { padding-bottom: 6px; }
+  .ls-vorstart .ls-inhalt { padding-top: 6px; }
+  .ls-vorstart h2 { font-size: 26px; margin: 6px 0; }
+  .ls-vorstart .ls-vorstart__unter { margin-bottom: 12px; }
+  .ls-vorstart .ls-regel { padding: 8px 0; }
+  .ls-vorstart .ls-vorstart__hilfe { margin-top: 10px; }
+  .ls-vorstart .ls-fuss { padding-top: 10px; gap: 8px; }
+}

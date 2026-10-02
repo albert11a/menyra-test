@@ -465,6 +465,28 @@ export const OBERFLAECHE = Object.freeze({
     de: "Der Versand ist noch nicht bestätigt. Prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut. Lassen Sie diese Seite geöffnet; Sie müssen Ihre Angaben nicht erneut eingeben."
   },
 
+
+  // Compact preparation screens on /lifeskin; other funnels keep their copy.
+  prepGati: { sq: "Gati për", de: "Bereit für" },
+  prepScanBlau: { sq: "skanimin?", de: "den Scan?" },
+  prepFotoBlau: { sq: "një foto?", de: "ein Foto?" },
+  prepScanLabel: { sq: "SKANIMI I FYTYRËS", de: "GESICHTSSCAN" },
+  prepFotoLabel: { sq: "FOTO E LËKURËS", de: "HAUTFOTO" },
+  prepScanUnter: { sq: "Vetëm 3 gjëra para se të fillosh.", de: "Nur 3 Dinge, bevor du loslegst." },
+  prepFotoUnter: { sq: "Fotografo vetëm pjesën që të shqetëson.", de: "Fotografiere nur die Stelle, die dich stört." },
+  prepMitte: { sq: "Fytyra në mes", de: "Gesicht in die Mitte" },
+  prepMitteText: { sq: "Mbaje fytyrën brenda rrethit.", de: "Halte dein Gesicht im Kreis." },
+  prepLicht: { sq: "Gjej dritë të mirë", de: "Such dir gutes Licht" },
+  prepLichtText: { sq: "Qëndro përballë një dritareje.", de: "Stell dich vor ein Fenster." },
+  prepHoehe: { sq: "Telefoni te sytë", de: "Handy auf Augenhöhe" },
+  prepHoeheText: { sq: "Mbaje drejt, në lartësinë e syve.", de: "Halte es gerade auf Augenhöhe." },
+  prepKlar: { sq: "Foto e qartë", de: "Ein scharfes Foto" },
+  prepKlarText: { sq: "Mbaje telefonin pa e lëvizur.", de: "Halte das Handy ruhig." },
+  prepNah: { sq: "Afrohu pak", de: "Geh etwas näher heran" },
+  prepNahText: { sq: "Pjesa e lëkurës të duket mirë.", de: "Die Hautstelle soll gut zu sehen sein." },
+  prepScanHilfe: { sq: "Ktheje kokën ngadalë. Fotot bëhen vetë.", de: "Drehe den Kopf langsam. Die Fotos entstehen automatisch." },
+  prepFotoHilfe: { sq: "Nuk duhet ta tregosh gjithë fytyrën.", de: "Du musst nicht dein ganzes Gesicht zeigen." },
+
   // 03 Vorbereitung
   vorbereitungTitel: { sq: "Tre gjëra para fotos", de: "Drei Dinge vor dem Foto" },
   // DIE ERSTE REGEL IST EINE ANWEISUNG, KEIN VERBOT.
