@@ -180,3 +180,7 @@
 #lf-preview .lf-fuer-wort[data-rein]{transform:translateY(40%);opacity:0;filter:blur(4px);transition:none}
 #lf-preview .lf-hero p.lf-fuer{align-items:baseline;line-height:1.3}
 #lf-preview .lf-header{background:#fff}
+/* Wie /lifeskinshop (shop-rahmen.css): weisser Seitengrund an html und body.
+   Instagram und Safari faerben ihre Leiste danach - nicht nur nach theme-color. */
+html:has(#ls-einstieg[data-aktiv="ja"]),
+body:has(#ls-einstieg[data-aktiv="ja"]){background:#fff}
