@@ -15,7 +15,7 @@
 
 import { pfadLesen } from "../../shared/lifeskin-klickpfad.js";
 import { escapeHtml } from "./heart-ui-utils.js";
-import { renderBereiche, bereichGueltig, wegDesBereichs, bereichDesWegs, STANDARD_BEREICH } from "./heart-lifeskin-bereiche.js";
+import { renderBereiche, bereichGueltig, wegDesBereichs, bereichDesWegs } from "./heart-lifeskin-bereiche.js";
 import { renderHeartIcon, renderGeraetZeichen } from "./heart-icons.js";
 // Der Setpreis kommt aus derselben Quelle wie im Trichter. Zwei Zahlen an
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
@@ -3510,26 +3510,7 @@ export function renderLifeskin(zustand) {
   const wegBereich = bereichGesetzt ? wegDesBereichs(bereich) : null;
   const weg = wegBereich === null ? wegGueltig(zustand.weg) : wegBereich;
   const sitzungen = nachWeg(zustand.sitzungen, weg);
-  // DER ZAEHLBEGINN GILT FUER DIE ZAHLEN, NICHT FUER DIE ARBEIT.
-  //
-  // "Stats auf 0" (WEG_ZAEHLT_AB) blendete im Laden auch Faelle,
-  // Bestellungen und Tests von davor aus - ein Fall, der vor dem
-  // Zaehlbeginn abgegeben wurde, stand nirgends mehr, auch wenn ihn
-  // Dr. Gashi noch beantworten musste (28.09.: "bei Faelle ist sie nicht
-  // angekommen"). Kacheln, Trichter und Live zaehlen weiter ab dem
-  // Zaehlbeginn; Faelle, Bestellungen, Betreuung und Tests zeigen alles
-  // aus diesem Weg.
-  const alleDesWegs = nachWeg(zustand.sitzungen, weg, { alle: true });
   const { produkte } = zustand;
-  // Derselbe Zustand, nur mit den Faellen dieses Wegs - fuer alles, was
-  // selbst in zustand.sitzungen, zustand.tests oder die Begleitung greift
-  // (Links ohne Stats, eigene Tests, Betreuung).
-  const zustandWeg = mitWegFaellen(zustand, weg, alleDesWegs, { alle: true });
-
-  // Noch kein einziger Besucher. Ein Block aus lauter Nullen sieht aus wie
-  // ein Fehler; ein Satz sagt, dass es keiner ist. Die Kacheln bleiben
-  // trotzdem stehen, damit der Aufbau von Anfang an vertraut ist.
-  const nochNichts = !(sitzungen || []).length;
 
   // Ist eine Analyse aufgeklappt, steht sie allein da. Auf dem Handy waere
   // sie unter Kacheln, Trichter und drei Bloecken sonst nicht zu finden.
@@ -3573,9 +3554,47 @@ export function renderLifeskin(zustand) {
   // Lifeskin in der Mitte: nur Chips und seine (noch leere) Flaeche -
   // die Zahlen von Skinreact und Acne duo muessen dafuer nicht gerechnet
   // werden.
-  if (bereich === STANDARD_BEREICH) {
-    return `<div class="heart-lifeskin">${renderBereiche(bereich, () => "")}</div>`;
-  }
+  // SCHNELL WISCHEN (02.10.): Hat Heart den Bereich gesetzt, stehen alle
+  // drei Bereiche fertig gezeichnet nebeneinander - die zwei nicht
+  // gewaehlten unsichtbar und ohne Layout (heart.css). Beim Wischen ist
+  // der Nachbar sofort da, statt erst nach dem Loslassen aufgebaut zu
+  // werden. Ohne gesetzten Bereich nur der eine (wie bisher).
+  //
+  // Jeder Bereich rechnet mit seinem Weg; Live kommt fuer den offenen Weg
+  // aus zustand.live, fuer die anderen aus zustand.liveWege (heart.js).
+  const inhaltFuer = (id) => renderWegUebersicht(zustand, id === bereich ? weg : wegDesBereichs(id), weg);
+  return `<div class="heart-lifeskin">${renderBereiche(bereich, inhaltFuer, { alle: bereichGesetzt })}</div>`;
+}
+
+// DIE UEBERSICHT EINES WEGS: Kacheln, Live, Trichter, Faelle ... - was
+// bis zum 02.10. die Uebersicht des Tabs war, unveraendert. offenerWeg
+// ist der Weg des gewaehlten Bereichs (fuer zustand.live).
+function renderWegUebersicht(zustand, weg, offenerWeg = weg) {
+  const sitzungen = nachWeg(zustand.sitzungen, weg);
+  // DER ZAEHLBEGINN GILT FUER DIE ZAHLEN, NICHT FUER DIE ARBEIT.
+  //
+  // "Stats auf 0" (WEG_ZAEHLT_AB) blendete im Laden auch Faelle,
+  // Bestellungen und Tests von davor aus - ein Fall, der vor dem
+  // Zaehlbeginn abgegeben wurde, stand nirgends mehr, auch wenn ihn
+  // Dr. Gashi noch beantworten musste (28.09.: "bei Faelle ist sie nicht
+  // angekommen"). Kacheln, Trichter und Live zaehlen weiter ab dem
+  // Zaehlbeginn; Faelle, Bestellungen, Betreuung und Tests zeigen alles
+  // aus diesem Weg.
+  const alleDesWegs = nachWeg(zustand.sitzungen, weg, { alle: true });
+  const { produkte } = zustand;
+  // Derselbe Zustand, nur mit den Faellen dieses Wegs - fuer alles, was
+  // selbst in zustand.sitzungen, zustand.tests oder die Begleitung greift
+  // (Links ohne Stats, eigene Tests, Betreuung).
+  const zustandWeg = mitWegFaellen(zustand, weg, alleDesWegs, { alle: true });
+
+  // Noch kein einziger Besucher. Ein Block aus lauter Nullen sieht aus wie
+  // ein Fehler; ein Satz sagt, dass es keiner ist. Die Kacheln bleiben
+  // trotzdem stehen, damit der Aufbau von Anfang an vertraut ist.
+  const nochNichts = !(sitzungen || []).length;
+  // Live je Weg (zustand.liveWege, heart.js) - so aendert ein Wechsel des
+  // Bereichs am Inhalt nichts, und Heart laesst ihn beim Neuzeichnen in
+  // Ruhe. Vor dem ersten Live-Takt gilt zustand.live fuer den offenen Weg.
+  const live = zustand.liveWege?.[weg || "lifeskin"] ?? (weg === offenerWeg ? zustand.live : undefined);
 
   // DER ZEITRAUM GILT FUER ALLES, WAS DARUNTER STEHT.
   //
@@ -3605,7 +3624,6 @@ export function renderLifeskin(zustand) {
   //   5. Faelle: was zu tun ist.
   //   6. Bestellungen, Nachfassen: was danach kam.
   return `
-    <div class="heart-lifeskin">${renderBereiche(bereich, () => `
       ${nochNichts ? `
         <p class="heart-lifeskin-leer">
           Noch keine Analyse. Die Zahlen fuellen sich mit dem ersten Besucher
@@ -3615,7 +3633,7 @@ export function renderLifeskin(zustand) {
       ${renderKacheln(zahlen, zeitraum)}
       ${zustand.liveFehler
         ? leererBlock("Live", "Verbindung unterbrochen — Live-Zahlen nicht verfuegbar.")
-        : renderLive(zustand.live)}
+        : renderLive(live)}
       ${weg === "lifeskinshop" ? renderShopWeg(shopWeg, zeitraum, zustand.shopChip || "shop", trichterListe) : renderTrichter(trichterListe, zustand.trichterOffen || "main")}
       ${renderAnalysen(alleDesWegs, zustand.berichte || {}, zustand.fach || "alle", "Fälle", "",
         zustand.vorschau || {}, { auswahl: zustand.auswahl ?? null, auswahlLoeschen: !!zustand.auswahlLoeschen })}
@@ -3654,6 +3672,5 @@ export function renderLifeskin(zustand) {
         </div>
       </details>
       ${"" /* Meldungs-Schalter und Reset-Knopf stehen seit dem 23.09. in
-           den Einstellungen (heart-settings-render.js). */}`)}
-    </div>`;
+           den Einstellungen (heart-settings-render.js). */}`;
 }

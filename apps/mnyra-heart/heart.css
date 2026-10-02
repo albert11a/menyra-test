@@ -10497,21 +10497,97 @@ html:where([data-heart-theme="tag"]),
 }
 .heart-bereich-chips .heart-lifeskin-chip { min-width: 0; padding-inline: 6px; font-size: 12.5px; }
 
-/* Der Bereich darunter laesst die Seite senkrecht scrollen; waagrecht
-   wischt heart-lifeskin-bereiche.js. */
+/* Die Flaeche unter dem Kopf laesst die Seite senkrecht scrollen;
+   waagrecht wischt heart-lifeskin-bereiche.js. */
 .heart-main-shell:has(.heart-bereich) { touch-action: pan-y; }
-/* DIE KARTEN BLEIBEN, WIE SIE WAREN: Der Bereich steht zwischen
-   .heart-lifeskin und den Karten und traegt deshalb genau dessen Aufbau
-   (flex, Spalte, 14 px Abstand) - sonst klebten die Karten aneinander. */
-.heart-bereich { display: flex; flex-direction: column; gap: 14px; min-width: 0; touch-action: pan-y; }
 
-/* DAS WISCHEN: die Variable steht auf <html> (heart-lifeskin-bereiche.js),
-   die Bewegung nur, solange gewischt wird - danach kein transform, damit
-   nichts Festes im Bereich seinen Bezug verliert. */
-html.heart-wischt .heart-bereich {
+/* DIE KARTEN BLEIBEN, WIE SIE WAREN: Der Inhalt jedes Bereichs steht
+   zwischen .heart-lifeskin und den Karten und traegt deshalb genau dessen
+   Aufbau (flex, Spalte, 14 px Abstand) - sonst klebten die Karten
+   aneinander. */
+.heart-bereich__inhalt { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.heart-bereich { min-width: 0; touch-action: pan-y; }
+
+/* ALLE DREI BEREICHE LIEGEN FERTIG NEBENEINANDER (schnell wischen).
+   Welcher gewaehlt ist, sagt <html data-heart-bereich>
+   (heart-lifeskin-bereiche.js) - so steht ein Wechsel sofort, ohne dass
+   Heart neu zeichnet. Bis das Attribut gesetzt ist, gilt die Klasse
+   heart-bereich--an aus dem Zustand.
+
+   Der gewaehlte steht im Fluss der Seite. Die anderen liegen links und
+   rechts daneben (--lage: -2 ... 2, je Breite + 32 px) - in Ruhe ohne
+   Hoehe, unsichtbar, nicht bedienbar und ohne Layout
+   (content-visibility), damit sie die Seite weder laenger noch langsamer
+   machen. */
+.heart-bereiche__band { position: relative; }
+.heart-bereich:not(.heart-bereich--an),
+html[data-heart-bereich] .heart-bereich {
+  position: absolute;
+  top: 0;
+  left: calc(var(--lage, 1) * (100% + 32px));
+  width: 100%;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  content-visibility: hidden;
+  pointer-events: none;
+}
+html[data-heart-bereich="skinreact"] .heart-bereich[data-bereich="skinreact"],
+html[data-heart-bereich="lifeskin"] .heart-bereich[data-bereich="lifeskin"],
+html[data-heart-bereich="acneduo"] .heart-bereich[data-bereich="acneduo"] {
+  position: relative;
+  left: 0;
+  height: auto;
+  overflow: visible;
+  visibility: visible;
+  content-visibility: visible;
+  pointer-events: auto;
+}
+html[data-heart-bereich="skinreact"] .heart-bereich[data-bereich="lifeskin"],
+html[data-heart-bereich="lifeskin"] .heart-bereich[data-bereich="acneduo"] { --lage: 1; }
+html[data-heart-bereich="skinreact"] .heart-bereich[data-bereich="acneduo"] { --lage: 2; }
+html[data-heart-bereich="lifeskin"] .heart-bereich[data-bereich="skinreact"],
+html[data-heart-bereich="acneduo"] .heart-bereich[data-bereich="lifeskin"] { --lage: -1; }
+html[data-heart-bereich="acneduo"] .heart-bereich[data-bereich="skinreact"] { --lage: -2; }
+
+/* Der gewaehlte Chip - nach demselben Attribut (bis dahin data-gewaehlt),
+   im Aussehen der gewaehlten Chips in "Faelle". */
+html[data-heart-bereich="skinreact"] .heart-bereich-chips [data-wert="skinreact"],
+html[data-heart-bereich="lifeskin"] .heart-bereich-chips [data-wert="lifeskin"],
+html[data-heart-bereich="acneduo"] .heart-bereich-chips [data-wert="acneduo"],
+html:not([data-heart-bereich]) .heart-bereich-chips[data-gewaehlt="skinreact"] [data-wert="skinreact"],
+html:not([data-heart-bereich]) .heart-bereich-chips[data-gewaehlt="lifeskin"] [data-wert="lifeskin"],
+html:not([data-heart-bereich]) .heart-bereich-chips[data-gewaehlt="acneduo"] [data-wert="acneduo"] {
+  background: var(--heart-surface-soft, #232327);
+  background: color-mix(in srgb, var(--heart-text, #fafafa) 10%, transparent);
+  border-color: var(--heart-border-strong, rgba(82, 82, 91, 0.95));
+  color: var(--heart-text, #fafafa);
+}
+
+/* BEIM WISCHEN: Die Nachbarn werden sichtbar - eine Bildschirmhoehe,
+   ihr Anfang dort, wo er nach dem Wechsel steht (--heart-wisch-oben) -,
+   und das ganze Band geht dem Finger nach. Die Variablen stehen auf
+   <html>, weil Heart die Attribute der Bereiche beim Neuzeichnen
+   zuruecksetzt. In Ruhe kein transform, damit nichts Festes im Bereich
+   seinen Bezug verliert. */
+html.heart-wischt .heart-bereich:not(.heart-bereich--an),
+html.heart-wischt[data-heart-bereich] .heart-bereich {
+  top: var(--heart-wisch-oben, 0px);
+  height: 100vh;
+  height: 100svh;
+  visibility: visible;
+  content-visibility: visible;
+}
+html.heart-wischt[data-heart-bereich="skinreact"] .heart-bereich[data-bereich="skinreact"],
+html.heart-wischt[data-heart-bereich="lifeskin"] .heart-bereich[data-bereich="lifeskin"],
+html.heart-wischt[data-heart-bereich="acneduo"] .heart-bereich[data-bereich="acneduo"] {
+  top: 0;
+  height: auto;
+}
+html.heart-wischt .heart-bereiche__band {
   transform: translate3d(var(--heart-wisch-x, 0px), 0, 0);
   will-change: transform;
 }
-html.heart-wischt--gleitet .heart-bereich {
-  transition: transform 200ms cubic-bezier(0.22, 0.61, 0.36, 1);
+html.heart-wischt--gleitet .heart-bereiche__band {
+  transition: transform var(--heart-wisch-dauer, 150ms) cubic-bezier(0.2, 0.7, 0.3, 1);
 }

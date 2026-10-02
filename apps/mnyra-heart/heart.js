@@ -77,7 +77,8 @@ import { vorschauAuffrischen } from "./heart-lifeskin-vorschau.js";
 import { rasteNormalisieren, rastiNormalisieren, neueRastiId, RASTI_PRODUKTE_MAX } from "../../shared/lifeskin-raste.js";
 import { aktualisiereLifeskinSitzungen } from "./heart-lifeskin-berechnung.js";
 import { baueLive, baueLiveShop } from "./heart-lifeskin-live.js";
-import { BEREICHE, STANDARD_BEREICH, bereichGueltig, wegDesBereichs, bereichDesWegs, bereichGleiten, bindBereichWischen } from "./heart-lifeskin-bereiche.js";
+import { STANDARD_BEREICH, bereichGueltig, wegDesBereichs, bereichDesWegs, bereichSpringen, bindBereichWischen,
+  bereichAbgleichen, bereichFestlegen } from "./heart-lifeskin-bereiche.js";
 import { jsonLesen, raportLesen, siehtNachJson } from "../../shared/lifeskin-analyse.js";
 // Wie viele Messwerte der Bogen fasst. Aus dem Bogen selbst, nicht als
 // zweite Zahl daneben: Zwei Zahlen an zwei Stellen sind frueher oder
@@ -980,13 +981,27 @@ function liveRechnen() {
   const wer = (reihe) => (reihe?.leute || []).map((l) => `${l.id}:${l.punkt}:${l.name}`).join("|");
   // Je Reihe, die dieser Tab hat (zwei, im Laden drei). Wechselt der Tab,
   // fehlen vorher die Reihen - dann wird gezeichnet.
-  const reihen = ["analysen", "bestellungen", "shop", "trichter", "analyse"].filter((k) => stand[k]);
-  const gleich = vorher && reihen.every((k) => vorher[k]
-    && vorher[k].gesamt === stand[k].gesamt
-    && vorher[k].punkte?.every((p, i) => p.anzahl === stand[k].punkte[i]?.anzahl)
-    && wer(vorher[k]) === wer(stand[k]));
+  const gleichWie = (alt, neu) => Boolean(alt) && ["analysen", "bestellungen", "shop", "trichter", "analyse"]
+    .filter((k) => neu[k]).every((k) => alt[k]
+      && alt[k].gesamt === neu[k].gesamt
+      && alt[k].punkte?.every((p, i) => p.anzahl === neu[k].punkte[i]?.anzahl)
+      && wer(alt[k]) === wer(neu[k]));
+  const liveGleich = gleichWie(vorher, stand);
+  // SKINREACT UND ACNE DUO LIEGEN FERTIG NEBENEINANDER (schnell wischen,
+  // heart-lifeskin-bereiche.js): Auch der Bereich, der gerade nicht offen
+  // ist, braucht seine Live-Reihen - sonst saehe man beim Wischen alte.
+  const berichte = store.getState().lifeskin?.berichte || {};
+  const desWegs = (w) => liveSitzungen.filter((s) => wegDerSitzung(s) === w && zaehltImWeg(s, w));
+  const liveWege = {
+    lifeskin: baueLive(desWegs(""), jetzt, undefined, berichte),
+    lifeskinshop: baueLiveShop(desWegs("lifeskinshop"), jetzt, undefined, berichte)
+  };
+  const wegeVorher = store.getState().lifeskin?.liveWege || {};
+  const wegeGleich = gleichWie(wegeVorher.lifeskin, liveWege.lifeskin)
+    && gleichWie(wegeVorher.lifeskinshop, liveWege.lifeskinshop);
+  const gleich = liveGleich && wegeGleich;
   if (gleich) return;
-  actions.patchLifeskin({ live: stand });
+  actions.patchLifeskin({ live: stand, liveWege });
 }
 
 function liveStarten() {
@@ -1145,6 +1160,7 @@ function lifeskinBereichZumFall(id) {
   if (!fall) return;
   const ziel = bereichDesWegs(wegDerSitzung(fall));
   if (bereichGueltig(store.getState().lifeskin?.bereich) !== ziel) lifeskinBereichSetzen(ziel);
+  bereichFestlegen(ziel);
 }
 
 async function oeffneLifeskinSitzung(sitzungId = "") {
@@ -4054,12 +4070,11 @@ const operations = {
   // Chipreihe im Kopf wie beim Datum. Der gewaehlte Chip rueckt ins Bild.
   // SKINREACT · LIFESKIN · ACNE DUO (Chips unter dem Kopf): gleitet in
   // die Richtung des Chips, wie beim Wischen.
+  // Ob der Chip schon gewaehlt ist, weiss bereichSpringen: Gezeigt kann
+  // schon ein anderer Bereich sein als der im Zustand (heart-lifeskin-bereiche.js).
   lifeskinBereich(id) {
-    const ziel = bereichGueltig(id);
     const jetzt = bereichGueltig(store.getState().lifeskin?.bereich);
-    if (ziel === jetzt) return;
-    const stelle = (b) => BEREICHE.findIndex((x) => x.id === b);
-    bereichGleiten(stelle(ziel) > stelle(jetzt) ? 1 : -1, () => lifeskinBereichSetzen(ziel));
+    bereichSpringen(jetzt, bereichGueltig(id), (b) => lifeskinBereichSetzen(b));
   },
   lifeskinUhrwahl() {
     const stand = store.getState().lifeskin || {};
@@ -4232,6 +4247,7 @@ const operations = {
     if (safeViewKey === "lifeskin" || safeViewKey === "lifeskin2" || safeViewKey === "lifeskinshop") {
       const bereich = safeViewKey === "lifeskinshop" ? "acneduo" : safeViewKey === "lifeskin2" ? "skinreact" : STANDARD_BEREICH;
       lifeskinBereichSetzen(bereich, safeViewKey === "lifeskin2" ? "lifeskin2" : wegDesBereichs(bereich));
+      bereichFestlegen(bereich);
       safeViewKey = "lifeskin";
     }
     if (store.getState().shell.activeView === safeViewKey) {
@@ -5019,6 +5035,8 @@ store.subscribe((state) => {
   previousState = state;
 
   renderHeartApp(root, state, getRenderRuntime());
+  // Welcher Bereich im Lifeskin-Tab zu sehen ist (heart-lifeskin-bereiche.js).
+  try { bereichAbgleichen(bereichGueltig(state.lifeskin?.bereich)); } catch { /* nur das Bild */ }
   syncViewInAddress(state);
   if (state.shell.activeView === "analytics") {
     try {
@@ -5113,6 +5131,7 @@ themeAnwenden(store.getState().shell.theme || "nacht");
 store.subscribe((state) => themeAnwenden(state.shell.theme || "nacht"));
 
 renderHeartApp(root, store.getState(), getRenderRuntime());
+try { bereichAbgleichen(bereichGueltig(store.getState().lifeskin?.bereich)); } catch { /* nur das Bild */ }
 syncViewInAddress(store.getState());
 syncViewportSurface(store.getState());
 authController.initialize().catch((error) => {
