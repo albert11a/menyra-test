@@ -635,3 +635,47 @@
     }, 300);
   }, 2600);
 })();
+
+/* /lifeskin BEGINNT OBEN. Gemessen auf dem iPhone (02.10.): Safari setzt
+ * die Seite 30 ms nach dem Laden selbst auf y=62 - ohne Skriptaufruf, es
+ * ist die Wiederherstellung der Scrollstellung (history.scrollRestoration
+ * "auto"). Beim Neuladen und beim Wiederoeffnen des Tabs kommt die Seite
+ * dorthin zurueck, wo sie zuletzt stand - und wer sie bei 62 schliesst,
+ * bekommt sie bei 62 wieder; oben steht dann der halbe Kopf.
+ *
+ * Die Wiederherstellung bleibt an (lifeskin-app.js will sie: Instagram
+ * laedt den Tab neu, wer bei den Fragen war, soll dort bleiben). Nur eine
+ * Stellung oberhalb der Faelle (#rezultatet) geht auf ganz oben - solange
+ * niemand selbst gescrollt oder getippt hat und bis 1,5 s nach "load".
+ * Mit Sprungziel (#...) passiert nichts. */
+(function () {
+  "use strict";
+  if (!/^\/lifeskin\/?$/.test(location.pathname) || location.hash) return;
+  var aus = false;
+  function ende() {
+    if (aus) return;
+    aus = true;
+    removeEventListener("scroll", pruefe);
+  }
+  ["touchstart", "wheel", "keydown", "pointerdown"].forEach(function (art) {
+    addEventListener(art, ende, { passive: true, capture: true, once: true });
+  });
+  function pruefe() {
+    if (aus || scrollY <= 0) return;
+    var einstieg = document.getElementById("ls-einstieg");
+    var faelle = document.getElementById("rezultatet");
+    if (!einstieg || einstieg.getAttribute("data-aktiv") !== "ja") return;
+    var grenze = faelle && !faelle.hidden ? faelle.getBoundingClientRect().top + scrollY : 400;
+    if (scrollY >= grenze) return;
+    var wurzel = document.documentElement;
+    var vorher = wurzel.style.scrollBehavior;
+    wurzel.style.scrollBehavior = "auto";   // landing.css: smooth - sonst gleitet es sichtbar
+    window.scrollTo(0, 0);
+    wurzel.style.scrollBehavior = vorher;
+  }
+  addEventListener("scroll", pruefe, { passive: true });
+  function spaeterAus() { setTimeout(ende, 1500); }
+  if (document.readyState === "complete") spaeterAus();
+  else addEventListener("load", spaeterAus);
+  pruefe();
+})();
