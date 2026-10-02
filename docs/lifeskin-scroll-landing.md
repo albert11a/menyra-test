@@ -100,3 +100,30 @@ CSS pixels on the three mobile sizes. Instagram follows the comparison,
 its cards share a row, and the hero has no Instagram block or concern chips.
 All three CTAs, both preparation routes, comparison navigation, scan motion
 and reduced motion work. No page JavaScript errors.
+
+## Clinical landing implementation
+
+Scope: replace only the landing with the approved clinical preview, scoped
+CSS and decorative motion. Keep all funnel DOM, logic, comparison navigation,
+Heart case selection and Pixel/CAPI calls untouched. Preview dialogs and
+embedded images are omitted. Main CTAs keep their existing entry handlers.
+A sticky presentation button forwards to the existing entry, without adding
+a tracking event or a new funnel route.
+
+The first image is a manually swipeable native scroll-snap gallery, following
+the shop behavior, with arrows, keyboard controls and labelled page indicators.
+The clinician/community section follows the genuine before/after comparison.
+Follower snapshots total 181,900; this is labelled followers, not clients, and
+no treatment-success count is inferred from it. Cards link to each account.
+
+Validation: 55 focused Node tests passed, including the Pixel lock and all
+Heart comparison fixtures. Build passed with no tracked bundle changes.
+Actual local page checked at 320×480, 390×664, 430×780 and 760×900: no
+horizontal overflow or duplicate IDs. Main CTA ends at 330/346/346 CSS
+pixels on mobile. All three entry buttons and the sticky proxy open the
+existing selection; photo and scan paths open their correct preparation.
+Gallery arrows, keyboard End/Home and an actual native touch swipe advance
+the image and active indicator. Comparison advances to 03/04. Decorative
+scan changes frames and freezes for reduced motion. Sticky CTA disappears
+in the funnel. No page JavaScript errors, no production test writes.
+Private LAN IP is unavailable in this workspace; local loopback returns 200.
