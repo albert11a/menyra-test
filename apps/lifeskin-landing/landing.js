@@ -635,3 +635,36 @@
     }, 300);
   }, 2600);
 })();
+
+/* Messanzeige fuer den Kopf, nur mit ?kopfdebug=1 in der Adresse. Zeigt auf
+ * dem echten Telefon, wo Kopf und Inhalt liegen und wer wann scrollt. */
+(function () {
+  "use strict";
+  if (!/[?&]kopfdebug=1\b/.test(location.search)) return;
+  var t0 = Date.now();
+  var log = [];
+  var merk = function (text) { log.push(((Date.now() - t0) / 1000).toFixed(2) + "s " + text); if (log.length > 14) log.shift(); };
+  var orig = window.scrollTo;
+  window.scrollTo = function () { merk("scrollTo(" + JSON.stringify([].slice.call(arguments)) + ")"); return orig.apply(window, arguments); };
+  var oi = Element.prototype.scrollIntoView;
+  Element.prototype.scrollIntoView = function () { merk("scrollIntoView #" + (this.id || this.className)); return oi.apply(this, arguments); };
+  var letzt = -1;
+  addEventListener("scroll", function () { var y = Math.round(scrollY); if (y !== letzt) { letzt = y; merk("scroll y=" + y); } }, { passive: true });
+  merk("start y=" + Math.round(scrollY) + " hash=" + location.hash + " restore=" + (history.scrollRestoration || "?"));
+  var probe = document.createElement("div");
+  probe.style.cssText = "position:fixed;top:0;left:0;width:0;height:env(safe-area-inset-top);pointer-events:none";
+  var box = document.createElement("pre");
+  box.style.cssText = "position:fixed;left:6px;right:6px;bottom:90px;z-index:99999;margin:0;padding:8px;background:#000d;color:#7f7;font:11px/1.35 monospace;white-space:pre-wrap;border-radius:8px;pointer-events:none";
+  function zeig() {
+    if (!probe.parentNode) { document.body.appendChild(probe); document.body.appendChild(box); }
+    var k = document.querySelector(".lf-header"), z = document.querySelector(".lf-eyebrow");
+    var kr = k ? k.getBoundingClientRect() : {}, zr = z ? z.getBoundingClientRect() : {};
+    var vv = window.visualViewport || {};
+    box.textContent = "scrollY " + Math.round(scrollY) + " | safeTop " + probe.offsetHeight
+      + " | innerH " + innerHeight + " | vv.top " + Math.round(vv.offsetTop || 0) + "\n"
+      + "kopf " + Math.round(kr.top) + "-" + Math.round(kr.bottom) + " pos=" + (k && getComputedStyle(k).position)
+      + " | zeile " + Math.round(zr.top) + "\n" + navigator.userAgent.slice(0, 90) + "\n" + log.join("\n");
+  }
+  if (document.body) zeig(); else addEventListener("DOMContentLoaded", zeig);
+  setInterval(zeig, 250);
+})();
