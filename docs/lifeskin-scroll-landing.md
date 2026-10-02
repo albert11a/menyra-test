@@ -80,3 +80,23 @@ before rotation. Scan animation and reduced motion work, the photo frame
 fits above the shutter, all three CTAs and both preparation paths work.
 No JavaScript errors. Loopback responds; the private LAN IP is unavailable
 in this workspace. No production orders or remote writes were used for tests.
+
+## Compact three steps (latest revision)
+
+The hero no longer includes Instagram or concern chips. Instagram now follows
+the untouched before/after section as two equal cards side by side, using
+provided profile images and follower snapshots. Cards enter with subtle
+scroll-linked movement; reduced motion leaves them fully visible and still.
+The explanation uses three short heading/caption pairs before their visuals:
+scan/photo/description, Dr. Gashi assessment, personal plan. Step 01 uses the
+existing animated icon scan illustration; the separate photo illustration and
+repeated method descriptions are omitted. The dermatologist image is smaller.
+Funnel, comparison cases and Pixel/CAPI behavior are unchanged.
+
+Validation for the compact revision: 55 focused tests and build passed.
+No tracked bundle changes. Mobile widths 320/390/430 and desktop 760 have
+no horizontal overflow or duplicate IDs; the first CTA ends at 368/394/405
+CSS pixels on the three mobile sizes. Instagram follows the comparison,
+its cards share a row, and the hero has no Instagram block or concern chips.
+All three CTAs, both preparation routes, comparison navigation, scan motion
+and reduced motion work. No page JavaScript errors.

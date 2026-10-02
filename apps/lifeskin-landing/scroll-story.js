@@ -15,7 +15,7 @@
     if (motion.matches || landing.getAttribute("data-aktiv") !== "ja") return;
     const height = window.innerHeight;
     visible.forEach((story) => {
-      story.querySelectorAll(".nx-stage").forEach((stage) => {
+      story.querySelectorAll(".nx-stage, .nx-instagram-profile").forEach((stage) => {
         const rect = stage.getBoundingClientRect();
         const progress = Math.max(0, Math.min(1,
           (height * 0.85 - rect.top) / (height * 0.65 + rect.height * 0.4)));

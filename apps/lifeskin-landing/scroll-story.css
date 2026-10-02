@@ -149,3 +149,26 @@
 #lf-preview .nx-story[data-scene=camera]>.nx-story-copy{padding:0}
 
 #lf-preview .nx-hero .nx-chips{margin-top:20px;margin-bottom:0}
+
+/* A short three-step explanation with one illustration per step. */
+#lf-preview .nx-how .nx-story{display:flex;flex-direction:column;align-items:stretch;gap:18px;margin:30px 0 38px}
+#lf-preview .nx-how .nx-story-copy{padding:0}
+#lf-preview .nx-how .nx-story h3{font-size:clamp(21px,5.7cqw,30px);margin-bottom:7px}
+#lf-preview .nx-how .nx-story p{font-size:14px;margin:0;line-height:1.45}
+#lf-preview .nx-how .nx-number{margin-bottom:10px}
+#lf-preview .nx-camera .nx-device{height:88%;width:auto;aspect-ratio:.47;max-width:none;border-width:5px;border-radius:25px;box-sizing:border-box}
+#lf-preview .nx-camera .nx-demo-hint{font-size:9px;bottom:12%}
+#lf-preview .nx-camera .nx-demo-auto{font-size:8px;bottom:6%}
+#lf-preview .nx-camera .nx-demo-brand{font-size:8px;top:12%}
+#lf-preview .nx-analysis .nx-doctor-photo{left:7%;top:20%;width:32%;height:49%}
+#lf-preview .nx-instagram{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px 6% 28px;margin:0;border:0;border-radius:0;background:transparent;max-width:none}
+#lf-preview .nx-instagram-title{grid-column:1/-1;margin-bottom:2px;font-size:12px;gap:8px}
+#lf-preview .nx-instagram-profile{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:12px;min-width:0;padding:16px 12px;border:1px solid #e5e7ed;border-radius:18px;background:white;--progress:1;opacity:calc(.65 + var(--progress)*.35);transform:translateY(calc((1 - var(--progress))*16px));transition:box-shadow .2s ease}
+#lf-preview .nx-instagram-profile+.nx-instagram-profile{border:1px solid #e5e7ed}
+#lf-preview .nx-instagram-name{font-size:12px}
+#lf-preview .nx-instagram-count{margin:0;text-align:left}
+#lf-preview .nx-instagram-count strong{font-size:22px;letter-spacing:-.7px}
+#lf-preview .nx-instagram-profile small{font-size:10px}
+#lf-preview .nx-instagram-arrow{position:absolute;right:13px;top:14px;margin:0;color:#3459e6}
+@media(hover:hover){#lf-preview .nx-instagram-profile:hover{box-shadow:0 8px 20px #19254b0d}}
+@media(prefers-reduced-motion:reduce){#lf-preview .nx-instagram-profile{opacity:1;transform:none;transition:none}}
