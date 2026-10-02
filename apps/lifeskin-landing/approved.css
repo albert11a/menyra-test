@@ -177,3 +177,131 @@
 #lf-preview .lf-fuer-wort[data-raus]{transform:translateY(-40%);opacity:0;filter:blur(4px)}
 #lf-preview .lf-fuer-wort[data-rein]{transform:translateY(40%);opacity:0;filter:blur(4px);transition:none}
 #lf-preview .lf-hero p.lf-fuer{align-items:baseline;line-height:1.3}
+
+/* Selection screen only: match the approved /lifeskin landing design.
+   Keep the existing cards, text, order, handlers and subsequent screens. */
+#ls-wahl {
+  --basis: #3157e9;
+  --basis-hell: #eef1ff;
+  --basis-tief: #2a3fb8;
+  --grund: #fafafa;
+  --text: #17181b;
+  --text-2: #62656d;
+  --text-3: #70737b;
+  --linie: #e4e4e8;
+  background: var(--grund);
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+  padding-left: max(20px, env(safe-area-inset-left));
+  padding-right: max(20px, env(safe-area-inset-right));
+}
+#ls-wahl .ls-kopf { gap: 12px; padding-bottom: 20px; margin-bottom: 0; }
+#ls-wahl .ls-zurueck { color: var(--text); }
+#ls-wahl .ls-marke {
+  color: var(--text);
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -1.2px;
+  line-height: 1;
+}
+#ls-wahl .ls-marke::after {
+  content: "SKINREACT";
+  display: block;
+  margin-top: 7px;
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 3px;
+}
+#ls-wahl .ls-kopf__schild {
+  background: transparent;
+  border-color: var(--linie);
+  color: var(--text-2);
+  padding: 7px 13px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+#ls-wahl .ls-inhalt { padding-top: 20px; padding-bottom: 24px; }
+#ls-wahl h2 {
+  color: var(--text);
+  font-size: clamp(30px, 8.6vw, 38px);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+  margin: 0;
+}
+#ls-wahl .ls-wahl__unter {
+  display: block;
+  margin: 18px 0 0;
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.5;
+}
+#ls-wahl .ls-wahl { margin-top: 28px; gap: 14px; }
+#ls-wahl .ls-wahlkarte {
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  padding: 20px 17px;
+  border: 1px solid var(--linie);
+  border-radius: 18px;
+  background: #fff;
+  color: var(--text);
+  box-shadow: none;
+}
+#ls-wahl .ls-wahlkarte__zeichen {
+  width: 38px;
+  height: 38px;
+  margin: 0;
+  border-radius: 11px;
+  background: var(--basis-hell);
+  color: var(--basis);
+}
+#ls-wahl .ls-wahlkarte__leib { display: grid; gap: 7px; min-width: 0; }
+#ls-wahl .ls-wahlkarte__titel {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+#ls-wahl .ls-wahlkarte__text { font-size: 13px; line-height: 1.5; color: var(--text-2); }
+#ls-wahl .ls-wahlkarte__punkt {
+  margin-top: 3px;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--text-3);
+}
+#ls-wahl .ls-wahlkarte--rat {
+  border: 1.5px solid var(--basis);
+  padding-top: 25px;
+}
+#ls-wahl .ls-wahlkarte--rat:not(:first-child) { margin-top: 9px; }
+#ls-wahl .ls-wahlkarte__marke {
+  top: -11px;
+  left: 17px;
+  padding: 5px 11px;
+  background: var(--basis);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1.2;
+}
+#ls-wahl .ls-wahlkarte--rat .ls-wahlkarte__punkt {
+  color: var(--basis-tief);
+  border-top: 1px solid #e9ecfd;
+  padding-top: 10px;
+  margin-top: 4px;
+}
+#ls-wahl .ls-wahlkarte:focus-visible { outline: 3px solid var(--basis); outline-offset: 3px; }
+@media (max-width: 359px), (max-height: 650px) {
+  #ls-wahl .ls-kopf { padding-bottom: 12px; }
+  #ls-wahl .ls-inhalt { padding-top: 12px; }
+  #ls-wahl h2 { font-size: 30px; }
+  #ls-wahl .ls-wahl__unter { margin-top: 14px; }
+  #ls-wahl .ls-wahl { margin-top: 22px; gap: 12px; }
+  #ls-wahl .ls-wahlkarte { gap: 11px; padding: 16px 13px; }
+  #ls-wahl .ls-wahlkarte--rat { padding-top: 22px; }
+  #ls-wahl .ls-wahlkarte__titel { font-size: 16px; }
+}
