@@ -912,18 +912,22 @@ Po nëse kam nevojë për vizitë?</summary><p>Nëse fotot nuk mjaftojnë ose pr
      vier Fragen vor Name und Alter, die Nummer danach. Er wird also
      ZWEIMAL durchlaufen, mit verschiedenen Listen; was sich dabei
      unterscheidet, gibt ihm #fragenStarten() mit. -->
-<section class="ls-schirm" id="ls-fragen" data-aktiv="nein">
+<section class="ls-schirm" id="ls-fragen" data-aktiv="nein" data-kompakt="ja">
   <div class="ls-kopf">
     <button type="button" class="ls-zurueck" id="ls-fragenzurueck" aria-label="Kthehu" hidden>
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
     </button>
     <span class="ls-marke">Lifeskin</span>
     <span class="ls-zaehler" id="ls-fragenzaehler"></span>
+    <span class="ls-frage-falas" data-text="langPunktFalas">Falas</span>
   </div>
   <div class="ls-inhalt" id="ls-frageblatt">
     <p class="ls-klein" id="ls-frageneinleitung"></p>
     <h2 id="ls-fragetitel"></h2>
-    <p class="ls-klein" id="ls-frageunter"></p>
+    <div class="ls-frageanweisung">
+      <p class="ls-klein" id="ls-frageunter"></p>
+      <span id="ls-frageauswahlzaehler" aria-live="polite" hidden></span>
+    </div>
     <div class="ls-wahl" id="ls-fragewahl"></div>
     <input class="ls-eingabe" id="ls-fragefeld" type="text" name="vorname"
            autocomplete="given-name" enterkeyhint="done"

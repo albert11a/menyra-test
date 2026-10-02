@@ -487,6 +487,22 @@ export const OBERFLAECHE = Object.freeze({
   prepScanHilfe: { sq: "Ktheje kokën ngadalë. Fotot bëhen vetë.", de: "Drehe den Kopf langsam. Die Fotos entstehen automatisch." },
   prepFotoHilfe: { sq: "Nuk duhet ta tregosh gjithë fytyrën.", de: "Du musst nicht dein ganzes Gesicht zeigen." },
 
+  // Compact concern selection on /lifeskin; answer IDs stay unchanged.
+  frageKompaktTitel: { sq: "Çka të shqetëson", de: "Was stört dich" },
+  frageKompaktTitelBlau: { sq: "më shumë?", de: "am meisten?" },
+  frageKompaktUnter: { sq: "Zgjidh 1 ose 2.", de: "Wähle 1 oder 2." },
+  frageKompaktFoto: { sq: "Fotoja u ruajt", de: "Foto gespeichert" },
+  frageKompaktScan: { sq: "Skanimi mbaroi", de: "Scan abgeschlossen" },
+  frageKompaktOhneFoto: { sq: "Na trego çka të shqetëson.", de: "Sag uns, was dich stört." },
+  frageKompaktPucrrat: { sq: "Puçrrat", de: "Pickel" },
+  frageKompaktPoret: { sq: "Pore të mëdha", de: "Große Poren" },
+  frageKompaktShkelqimi: { sq: "Lëkurë e yndyrshme", de: "Fettige Haut" },
+  frageKompaktNjollat: { sq: "Njolla të errëta", de: "Dunkle Flecken" },
+  frageKompaktSkuqja: { sq: "Skuqje / ndjeshmëri", de: "Rötung / empfindliche Haut" },
+  frageKompaktThate: { sq: "Lëkurë e thatë", de: "Trockene Haut" },
+  frageKompaktRrudhat: { sq: "Rrudha / lëkurë e lëshuar", de: "Falten / schlaffe Haut" },
+  frageKompaktNukEdi: { sq: "Nuk e di", de: "Weiß ich nicht" },
+
   // 03 Vorbereitung
   vorbereitungTitel: { sq: "Tre gjëra para fotos", de: "Drei Dinge vor dem Foto" },
   // DIE ERSTE REGEL IST EINE ANWEISUNG, KEIN VERBOT.

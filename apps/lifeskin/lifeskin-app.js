@@ -4356,6 +4356,13 @@ export class Trichter {
     // weggeraeumt wird, meldet kein pagehide mehr.
     this.#standMerken();
     if (!frage) return;
+    // Only the approved /lifeskin concern screen uses the compact layout.
+    // Other routes and later questions keep their existing presentation.
+    const fragenSchirm = $("#ls-fragen");
+    const kompakt = fragenSchirm?.dataset?.kompakt === "ja" && frage.id === "anliegen";
+    if (fragenSchirm?.dataset) fragenSchirm.dataset.anliegenKompakt = kompakt ? "ja" : "nein";
+    const auswahlZaehler = $("#ls-frageauswahlzaehler");
+    if (auswahlZaehler) auswahlZaehler.hidden = !kompakt;
     const wahl = $("#ls-fragewahl");
     const weiter = $("#ls-frageweiter");
     if (!wahl) return;
@@ -4389,15 +4396,29 @@ export class Trichter {
         ? ""
         : fuelle(t(eigener || (knapp ? FRAGEN_TEXTE.einleitungEinzeln : FRAGEN_TEXTE.einleitung), this.sprache),
           { pyetjet: pyetjetSatz(this.fragenListe.length, this.sprache) });
-      einleitung.textContent = satz;
-      einleitung.hidden = !satz;
+      const kurz = kompakt ? this.text(this.fragen.einleitung === "einleitungNachFoto"
+        ? "frageKompaktFoto" : this.fragen.einleitung === "einleitungNachScan"
+          ? "frageKompaktScan" : "frageKompaktOhneFoto") : satz;
+      einleitung.textContent = kurz;
+      einleitung.hidden = !kurz;
     }
     // Und "Frage 1 von 2" zaehlt nichts - der Zaehler bleibt dann leer.
     schreibe($("#ls-fragenzaehler"), knapp ? "" : fuelle(t(FRAGEN_TEXTE.zaehler, this.sprache),
       { nr: this.fragen.i + 1, gesamt: this.fragenListe.length }));
     schreibe($("#ls-fragetitel"), t(frage.titel, this.sprache));
+    if (kompakt) {
+      const titel = $("#ls-fragetitel");
+      if (titel) {
+        titel.textContent = this.text("frageKompaktTitel");
+        const blau = document.createElement("span");
+        blau.className = "ls-fragetitel-blau";
+        blau.textContent = this.text("frageKompaktTitelBlau");
+        titel.appendChild(blau);
+      }
+      schreibe(auswahlZaehler, `${this.#frageAntwort(frage).length} / ${frage.hoechstens}`);
+    }
     const unter = $("#ls-frageunter");
-    const unterText = t(frage.unter, this.sprache);
+    const unterText = kompakt ? this.text("frageKompaktUnter") : t(frage.unter, this.sprache);
     schreibe(unter, unterText);
     if (unter) unter.hidden = !unterText;
 
@@ -4450,11 +4471,18 @@ export class Trichter {
     }
 
     const gewaehlt = this.#frageAntwort(frage);
+    const kompaktTexte = kompakt ? {
+      pucrrat: "frageKompaktPucrrat", poret: "frageKompaktPoret",
+      shkelqimi: "frageKompaktShkelqimi", njollat: "frageKompaktNjollat",
+      skuqja: "frageKompaktSkuqja", thate: "frageKompaktThate",
+      rrudhat: "frageKompaktRrudhat", nukEdi: "frageKompaktNukEdi"
+    } : {};
     for (const antwort of frage.antworten) {
       const knopf = document.createElement("button");
       knopf.type = "button";
       knopf.className = "ls-wahl__knopf";
-      knopf.textContent = t(antwort.text, this.sprache);
+      knopf.textContent = kompaktTexte[antwort.id]
+        ? this.text(kompaktTexte[antwort.id]) : t(antwort.text, this.sprache);
       knopf.dataset.antwort = antwort.id;
       knopf.setAttribute("aria-pressed", gewaehlt.includes(antwort.id) ? "true" : "false");
       knopf.addEventListener("click", () => this.#frageGetippt(frage, antwort));
@@ -4518,6 +4546,9 @@ export class Trichter {
 
   #frageMarkieren(frage) {
     const gewaehlt = this.#frageAntwort(frage);
+    if ($("#ls-fragen")?.dataset?.anliegenKompakt === "ja") {
+      schreibe($("#ls-frageauswahlzaehler"), `${gewaehlt.length} / ${frage.hoechstens}`);
+    }
     for (const knopf of $$("#ls-fragewahl .ls-wahl__knopf")) {
       knopf.setAttribute("aria-pressed", gewaehlt.includes(knopf.dataset.antwort) ? "true" : "false");
     }

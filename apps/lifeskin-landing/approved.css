@@ -400,3 +400,58 @@
   .ls-vorstart .ls-vorstart__hilfe { margin-top: 10px; }
   .ls-vorstart .ls-fuss { padding-top: 10px; gap: 8px; }
 }
+
+/* Approved concern selector: only this question on /lifeskin. */
+#ls-fragen .ls-frage-falas { display: none; }
+#ls-fragen .ls-frageanweisung { display: contents; }
+#ls-fragen[data-anliegen-kompakt="ja"] {
+  --basis: #3459e6;
+  --basis-hell: #eef1ff;
+  --grund: #fafafa;
+  --text: #171719;
+  --text-2: #666a75;
+  --linie: #e5e6ec;
+  background: var(--grund);
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+  padding-left: max(20px, env(safe-area-inset-left));
+  padding-right: max(20px, env(safe-area-inset-right));
+}
+#ls-fragen[data-anliegen-kompakt="ja"] .ls-kopf { gap: 9px; padding-bottom: 10px; margin-bottom: 0; }
+#ls-fragen[data-anliegen-kompakt="ja"] .ls-zurueck { color: var(--text); }
+#ls-fragen[data-anliegen-kompakt="ja"] .ls-marke { color: var(--text); font-size: 23px; line-height: 1; font-weight: 800; letter-spacing: -1px; }
+#ls-fragen[data-anliegen-kompakt="ja"] .ls-marke::after { content: "SKINREACT"; display: block; margin-top: 7px; font-size: 8px; font-weight: 400; letter-spacing: 3px; }
+#ls-fragen[data-anliegen-kompakt="ja"] #ls-fragenzaehler { display: none; }
+#ls-fragen[data-anliegen-kompakt="ja"] .ls-frage-falas { display: inline-block; margin-left: auto; padding: 6px 11px; border: 1px solid var(--linie); border-radius: 20px; color: var(--text-2); font-size: 12px; }
+#ls-fragen[data-anliegen-kompakt="ja"] .ls-inhalt { flex: 0 1 auto; justify-content: flex-start; gap: 0; margin: 0; padding: 6px 0 0; }
+#ls-fragen[data-anliegen-kompakt="ja"] .ls-inhalt > * { flex-shrink: 0; }
+#ls-fragen[data-anliegen-kompakt="ja"] #ls-frageneinleitung { display: flex; align-items: center; gap: 6px; margin: 0 0 12px; font-size: 11px; line-height: 1.4; color: var(--text-2); }
+#ls-fragen[data-anliegen-kompakt="ja"] #ls-frageneinleitung::before { content: "✓"; color: var(--basis); }
+#ls-fragen[data-anliegen-kompakt="ja"] #ls-fragetitel { margin: 0; font-size: 30px; line-height: 1.06; font-weight: 800; letter-spacing: -1px; color: var(--text); text-wrap: initial; }
+#ls-fragen[data-anliegen-kompakt="ja"] .ls-fragetitel-blau { display: block; color: var(--basis); }
+#ls-fragen[data-anliegen-kompakt="ja"] .ls-frageanweisung { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 13px 0 14px; }
+#ls-fragen[data-anliegen-kompakt="ja"] #ls-frageunter { margin: 0; font-size: 13px; line-height: 1.4; color: var(--text-2); }
+#ls-fragen[data-anliegen-kompakt="ja"] #ls-frageauswahlzaehler { font-size: 11px; line-height: 1.4; color: var(--text-2); font-variant-numeric: tabular-nums; }
+#ls-fragen[data-anliegen-kompakt="ja"] #ls-fragewahl { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+#ls-fragen[data-anliegen-kompakt="ja"] .ls-wahl__knopf { position: relative; min-height: 60px; padding: 11px 34px 11px 12px; border: 1px solid var(--linie); border-radius: 13px; background: #fff; color: var(--text); font-family: inherit; font-size: 13px; font-weight: 700; line-height: 1.25; text-align: left; }
+#ls-fragen[data-anliegen-kompakt="ja"] .ls-wahl__knopf::after { content: "✓"; position: absolute; top: 50%; right: 10px; transform: translateY(-50%); display: grid; place-items: center; width: 17px; height: 17px; border: 1px solid var(--linie); border-radius: 50%; background: #fff; color: transparent; font-size: 11px; }
+#ls-fragen[data-anliegen-kompakt="ja"] .ls-wahl__knopf[aria-pressed="true"] { border-color: var(--basis); background: var(--basis-hell); color: var(--basis); }
+#ls-fragen[data-anliegen-kompakt="ja"] .ls-wahl__knopf[aria-pressed="true"]::after { border-color: var(--basis); background: var(--basis); color: #fff; }
+#ls-fragen[data-anliegen-kompakt="ja"] .ls-wahl__knopf[data-antwort="nukEdi"] { font-weight: 400; }
+#ls-fragen[data-anliegen-kompakt="ja"] .ls-fuss { padding-top: 18px; }
+#ls-fragen[data-anliegen-kompakt="ja"] #ls-frageweiter { min-height: 48px; padding: 12px 18px; border-radius: 12px; background: var(--basis); color: #fff; font-family: inherit; font-size: 15px; font-weight: 700; line-height: 1.4; }
+#ls-fragen[data-anliegen-kompakt="ja"] #ls-frageweiter::after { content: "→"; margin-left: 12px; }
+#ls-fragen[data-anliegen-kompakt="ja"] #ls-frageweiter:disabled { background: var(--linie); color: var(--text-2); opacity: 1; }
+@media (max-width: 359px), (max-height: 600px) {
+  #ls-fragen[data-anliegen-kompakt="ja"] { padding-top: calc(env(safe-area-inset-top) + 12px); padding-bottom: calc(env(safe-area-inset-bottom) + 12px); }
+  #ls-fragen[data-anliegen-kompakt="ja"] .ls-kopf { padding-bottom: 8px; }
+  #ls-fragen[data-anliegen-kompakt="ja"] .ls-marke { font-size: 21px; }
+  #ls-fragen[data-anliegen-kompakt="ja"] #ls-fragetitel { font-size: 25px; }
+  #ls-fragen[data-anliegen-kompakt="ja"] #ls-frageneinleitung { margin-bottom: 8px; }
+  #ls-fragen[data-anliegen-kompakt="ja"] .ls-frageanweisung { margin: 10px 0 12px; }
+  #ls-fragen[data-anliegen-kompakt="ja"] #ls-fragewahl { gap: 6px; }
+  #ls-fragen[data-anliegen-kompakt="ja"] .ls-wahl__knopf { min-height: 48px; padding: 8px 28px 8px 9px; font-size: 12px; }
+  #ls-fragen[data-anliegen-kompakt="ja"] .ls-wahl__knopf::after { width: 15px; height: 15px; right: 7px; }
+  #ls-fragen[data-anliegen-kompakt="ja"] .ls-fuss { padding-top: 14px; }
+  #ls-fragen[data-anliegen-kompakt="ja"] #ls-frageweiter { min-height: 44px; padding: 10px 18px; }
+}
