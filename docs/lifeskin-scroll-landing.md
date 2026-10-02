@@ -32,7 +32,7 @@ Validation:
 
 Only the first illustration now uses the actual camera's light surface,
 round face area and 40 marks (8 sectors × 5) with its existing ring colors.
-A projected 3D demonstration head turns left/right; captured sectors turn
+A simple Face-ID-like line icon looks left/right; captured sectors turn
 green. There is no camera permission or recording in this illustration.
 The photo shutter and oval sweep are removed. Animation pauses when the
 illustration is out of view, the document is hidden, or the funnel leaves
@@ -44,3 +44,16 @@ Validation: 55 focused tests passed. Mobile widths 320/390/430 and desktop
 remain functional. Canvas frames change during a head turn and stay identical
 with reduced motion. No JavaScript page errors. Build passed, tracked bundle
 files unchanged.
+
+## Photo alternative and early proof
+
+The first illustration has keyboard-accessible scan/photo tabs and an always
+visible explanation that only a skin area can be photographed. The photo demo
+uses the existing photo page’s portrait frame, shutter and camera-switch icon,
+with a cropped real cheek photo. Both demos are illustrations, without camera
+access. The real funnel and analytics remain unchanged.
+
+Before the first CTA, paired before/after thumbnails link to the existing
+comparison section. They follow the enabled Heart case list, load pairs
+atomically and ignore stale updates. Empty configurations or failed configured
+photos hide this early proof instead of showing unconfigured cases.
