@@ -195,11 +195,11 @@
   padding-left: max(20px, env(safe-area-inset-left));
   padding-right: max(20px, env(safe-area-inset-right));
 }
-#ls-wahl .ls-kopf { gap: 12px; padding-bottom: 20px; margin-bottom: 0; }
+#ls-wahl .ls-kopf { gap: 10px; padding-bottom: 12px; margin-bottom: 0; }
 #ls-wahl .ls-zurueck { color: var(--text); }
 #ls-wahl .ls-marke {
   color: var(--text);
-  font-size: 24px;
+  font-size: 21px;
   font-weight: 800;
   letter-spacing: -1.2px;
   line-height: 1;
@@ -207,8 +207,8 @@
 #ls-wahl .ls-marke::after {
   content: "SKINREACT";
   display: block;
-  margin-top: 7px;
-  font-size: 9px;
+  margin-top: 5px;
+  font-size: 8px;
   font-weight: 400;
   letter-spacing: 3px;
 }
@@ -216,71 +216,81 @@
   background: transparent;
   border-color: var(--linie);
   color: var(--text-2);
-  padding: 7px 13px;
-  font-size: 12px;
+  padding: 6px 11px;
+  font-size: 11px;
   font-weight: 500;
   letter-spacing: 0;
 }
-#ls-wahl .ls-inhalt { padding-top: 20px; padding-bottom: 24px; }
+#ls-wahl .ls-inhalt {
+  justify-content: flex-start;
+  gap: 0;
+  margin: 0;
+  padding: 10px 3px 8px;
+  overflow-x: hidden;
+}
+/* Do not shrink headings and cards when the scroll container is short. */
+#ls-wahl .ls-inhalt > * { flex-shrink: 0; }
 #ls-wahl h2 {
   color: var(--text);
-  font-size: clamp(30px, 8.6vw, 38px);
+  font-size: clamp(25px, 7.2vw, 30px);
   font-weight: 800;
   letter-spacing: -0.035em;
   line-height: 1.08;
   margin: 0;
 }
+#ls-wahl h2 > span { display: block; }
+#ls-wahl .ls-wahltitel-blau { color: var(--basis); }
 #ls-wahl .ls-wahl__unter {
   display: block;
-  margin: 18px 0 0;
+  margin: 12px 0 0;
   color: var(--text-2);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
 }
-#ls-wahl .ls-wahl { margin-top: 28px; gap: 14px; }
+#ls-wahl .ls-wahl { margin-top: 20px; gap: 12px; }
 #ls-wahl .ls-wahlkarte {
-  grid-template-columns: 38px minmax(0, 1fr);
+  grid-template-columns: 32px minmax(0, 1fr);
   align-items: start;
-  gap: 14px;
-  padding: 20px 17px;
+  gap: 12px;
+  padding: 14px;
   border: 1px solid var(--linie);
-  border-radius: 18px;
+  border-radius: 16px;
   background: #fff;
   color: var(--text);
   box-shadow: none;
 }
 #ls-wahl .ls-wahlkarte__zeichen {
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   margin: 0;
   border-radius: 11px;
   background: var(--basis-hell);
   color: var(--basis);
 }
-#ls-wahl .ls-wahlkarte__leib { display: grid; gap: 7px; min-width: 0; }
+#ls-wahl .ls-wahlkarte__leib { display: grid; gap: 5px; min-width: 0; }
 #ls-wahl .ls-wahlkarte__titel {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: -0.025em;
   line-height: 1.2;
 }
-#ls-wahl .ls-wahlkarte__text { font-size: 13px; line-height: 1.5; color: var(--text-2); }
+#ls-wahl .ls-wahlkarte__text { font-size: 12.5px; line-height: 1.4; color: var(--text-2); }
 #ls-wahl .ls-wahlkarte__punkt {
-  margin-top: 3px;
-  font-size: 11.5px;
+  margin-top: 1px;
+  font-size: 11px;
   font-weight: 500;
   line-height: 1.4;
   color: var(--text-3);
 }
 #ls-wahl .ls-wahlkarte--rat {
   border: 1.5px solid var(--basis);
-  padding-top: 25px;
+  padding-top: 20px;
 }
-#ls-wahl .ls-wahlkarte--rat:not(:first-child) { margin-top: 9px; }
+#ls-wahl .ls-wahlkarte--rat:not(:first-child) { margin-top: 7px; }
 #ls-wahl .ls-wahlkarte__marke {
   top: -11px;
   left: 17px;
-  padding: 5px 11px;
+  padding: 4px 9px;
   background: var(--basis);
   color: #fff;
   font-size: 9px;
@@ -291,17 +301,42 @@
 #ls-wahl .ls-wahlkarte--rat .ls-wahlkarte__punkt {
   color: var(--basis-tief);
   border-top: 1px solid #e9ecfd;
-  padding-top: 10px;
-  margin-top: 4px;
+  padding-top: 7px;
+  margin-top: 2px;
+}
+#ls-wahl .ls-wahl-privat {
+  margin: 16px 0 0;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 11px;
+  line-height: 1.4;
 }
 #ls-wahl .ls-wahlkarte:focus-visible { outline: 3px solid var(--basis); outline-offset: 3px; }
-@media (max-width: 359px), (max-height: 650px) {
-  #ls-wahl .ls-kopf { padding-bottom: 12px; }
-  #ls-wahl .ls-inhalt { padding-top: 12px; }
-  #ls-wahl h2 { font-size: 30px; }
-  #ls-wahl .ls-wahl__unter { margin-top: 14px; }
-  #ls-wahl .ls-wahl { margin-top: 22px; gap: 12px; }
-  #ls-wahl .ls-wahlkarte { gap: 11px; padding: 16px 13px; }
-  #ls-wahl .ls-wahlkarte--rat { padding-top: 22px; }
-  #ls-wahl .ls-wahlkarte__titel { font-size: 16px; }
+@media (max-width: 359px), (max-height: 600px) {
+  #ls-wahl { padding-top: calc(env(safe-area-inset-top) + 12px); padding-bottom: calc(env(safe-area-inset-bottom) + 12px); }
+  #ls-wahl .ls-kopf { padding-bottom: 8px; }
+  #ls-wahl .ls-inhalt { padding-top: 6px; }
+  #ls-wahl h2 { font-size: 25px; }
+  #ls-wahl .ls-wahl__unter { margin-top: 9px; }
+  #ls-wahl .ls-wahl { margin-top: 16px; gap: 10px; }
+  #ls-wahl .ls-wahlkarte { gap: 10px; padding: 11px 12px; }
+  #ls-wahl .ls-wahlkarte--rat { padding-top: 17px; }
+  #ls-wahl .ls-wahlkarte__titel { font-size: 15px; }
+  #ls-wahl .ls-wahl-privat { margin-top: 12px; }
+}
+@media (max-width: 359px) {
+  #ls-wahl .ls-wahlkarte:not(.ls-wahlkarte--rat) .ls-wahlkarte__punkt { display: none; }
+}
+@media (max-height: 540px) {
+  #ls-wahl { padding-top: calc(env(safe-area-inset-top) + 6px); padding-bottom: calc(env(safe-area-inset-bottom) + 6px); }
+  #ls-wahl .ls-marke { font-size: 19px; }
+  #ls-wahl .ls-marke::after { font-size: 7px; margin-top: 4px; }
+  #ls-wahl h2 { font-size: 23px; }
+  #ls-wahl .ls-wahl__unter { font-size: 12px; margin-top: 8px; }
+  #ls-wahl .ls-wahlkarte { padding: 7px 11px; }
+  #ls-wahl .ls-wahlkarte--rat { padding-top: 13px; }
+  #ls-wahl .ls-wahlkarte__leib { gap: 3px; }
+  #ls-wahl .ls-wahlkarte__text { font-size: 12px; }
+  #ls-wahl .ls-wahlkarte:not(.ls-wahlkarte--rat) .ls-wahlkarte__punkt { display: none; }
+  #ls-wahl .ls-wahl-privat { margin-top: 6px; }
 }

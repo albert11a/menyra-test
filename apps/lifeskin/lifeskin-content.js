@@ -235,6 +235,20 @@ export const OBERFLAECHE = Object.freeze({
   // Dr. Gashi. Der Satz unter der Ueberschrift sagt genau das, damit
   // die Wahl keine Entscheidung ueber die Qualitaet der Antwort ist.
   menyraTitel: { sq: "Si dëshironi të vazhdoni?", de: "Wie möchten Sie weitermachen?" },
+  // Compact selection copy belongs only to /lifeskin's first selection screen.
+  wahlKompaktTitel: { sq: "Si do ta bësh", de: "Wie möchtest du" },
+  wahlKompaktTitelBlau: { sq: "analizën tënde?", de: "deine Analyse machen?" },
+  wahlKompaktUnter: { sq: "Zgjidh një mënyrë.", de: "Wähle einen Weg." },
+  wahlKompaktScanTitel: { sq: "Skano fytyrën", de: "Scanne dein Gesicht" },
+  wahlKompaktScanText: { sq: "Ktheje kokën ngadalë. Fotot bëhen vetë.", de: "Dreh den Kopf langsam. Die Fotos entstehen automatisch." },
+  wahlKompaktScanPunkt: { sq: "Rreth 60 sekonda", de: "Etwa 60 Sekunden" },
+  wahlKompaktFotoTitel: { sq: "Dërgo një foto", de: "Schick ein Foto" },
+  wahlKompaktFotoText: { sq: "Bëj një foto të pjesës që të shqetëson. P.sh. faqja, balli ose mjekra.", de: "Fotografiere die Stelle, die dich stört. Zum Beispiel Wange, Stirn oder Kinn." },
+  wahlKompaktFotoPunkt: { sq: "Nuk duhet ta tregosh gjithë fytyrën.", de: "Du musst nicht dein ganzes Gesicht zeigen." },
+  wahlKompaktTrupTitel: { sq: "Trupi ose një pyetje", de: "Körper oder eine Frage" },
+  wahlKompaktTrupText: { sq: "Na shkruaj çka të shqetëson. Mund të shtosh edhe foto.", de: "Schreib uns, was dich stört. Du kannst auch ein Foto hinzufügen." },
+  wahlKompaktTrupPunkt: { sq: "Me ose pa foto", de: "Mit oder ohne Foto" },
+  wahlKompaktPrivat: { sq: "Fotot e tua nuk publikohen.", de: "Deine Fotos werden nicht veröffentlicht." },
   menyraUnter: {
     sq: "Zgjidhni një mënyrë. Të gjitha ju çojnë te Dr. Gashi.",
     de: "Wählen Sie einen Weg. Alle führen zu Dr. Gashi."
