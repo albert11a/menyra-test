@@ -27,3 +27,20 @@ Validation:
   workspace cannot expose the private LAN address 192.168.1.168.
 - No production test orders, Firebase writes or Pixel/CAPI changes.
 
+
+## Scan illustration refinement
+
+Only the first illustration now uses the actual camera's light surface,
+round face area and 40 marks (8 sectors × 5) with its existing ring colors.
+A projected 3D demonstration head turns left/right; captured sectors turn
+green. There is no camera permission or recording in this illustration.
+The photo shutter and oval sweep are removed. Animation pauses when the
+illustration is out of view, the document is hidden, or the funnel leaves
+its landing. Reduced motion shows a static frontal head; no JavaScript keeps
+a static CSS illustration. The actual camera runtime is unchanged.
+
+Validation: 55 focused tests passed. Mobile widths 320/390/430 and desktop
+760 have no horizontal overflow; funnel transitions and comparison navigation
+remain functional. Canvas frames change during a head turn and stay identical
+with reduced motion. No JavaScript page errors. Build passed, tracked bundle
+files unchanged.
