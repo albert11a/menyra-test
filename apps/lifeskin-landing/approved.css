@@ -133,3 +133,49 @@
 #lf-preview .lf-step-nr{width:46px;height:46px;border-radius:14px;background:var(--lf-blue);color:white;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:800}
 #lf-preview .lf-hapat h3{font-size:21px;margin:9px 0 6px}#lf-preview .lf-hapat .lf-step p{font-size:16px;line-height:1.45;margin:0 0 10px}
 #lf-preview .lf-step-koha{display:inline-block;padding:6px 11px;border-radius:9px;background:var(--lf-lime);color:#17181b;font-size:13px;font-weight:800}
+
+/* Richtiger Kopf: weiss, haftet oben, Logo und Knopf vertikal mittig. Logo und Knopf selbst bleiben wie sie sind. */
+#lf-preview .lf-header{position:sticky;top:0;z-index:20;align-items:center;padding:3cqw 4.9cqw;background:#ffffffeb;-webkit-backdrop-filter:saturate(1.6) blur(14px);backdrop-filter:saturate(1.6) blur(14px);border-bottom:1px solid #ececf1}
+
+/* Held: kleiner, ruhiger, gleichmaessige Abstaende. */
+#lf-preview .lf-hero{padding-top:7cqw;padding-bottom:6cqw}
+#lf-preview .lf-hero .lf-eyebrow{font-size:clamp(10px,2.3cqw,14px);color:#6b6e76;letter-spacing:.2em;margin-bottom:3cqw}
+#lf-preview .lf-hero h1{font-size:clamp(32px,8.6cqw,64px);letter-spacing:-.035em;line-height:1.04;margin-bottom:3.5cqw}
+#lf-preview .lf-hero p:not(.lf-note){font-size:clamp(15px,3.6cqw,19px);line-height:1.45;margin-bottom:4.5cqw;max-width:30ch}
+#lf-preview .lf-hero .lf-teme{margin:0 0 6cqw;gap:5px}
+#lf-preview .lf-hero .lf-teme li{padding:5px 9px;border-radius:8px;font-size:12.5px;font-weight:600}
+#lf-preview .lf-hero .lf-teme li:last-child{padding:5px 2px;font-weight:500}
+#lf-preview .lf-hero .lf-cta{min-height:0;height:clamp(52px,13.5cqw,68px);padding-top:0;padding-bottom:0;border-radius:16px}
+#lf-preview .lf-hero .lf-note{margin-top:3cqw}
+#lf-preview .lf-hero .lf-teme{gap:5px;white-space:nowrap}
+#lf-preview .lf-hero .lf-teme li{padding:6px 10px;border-radius:100px;background:#fff;border:1px solid #e3e4ea;color:#2b2d33;font-size:12.5px;font-weight:500;line-height:1.2}
+#lf-preview .lf-hero .lf-teme li:last-child{background:transparent;border-color:transparent;color:#8a8d95;padding:6px 2px}
+#lf-preview .lf-hero p:not(.lf-note){margin-bottom:6cqw}
+#lf-preview .lf-hero .lf-eyebrow{color:#3d4048;text-transform:uppercase;font-weight:700}
+#lf-preview .lf-hero .lf-dot{background:#22b45a;box-shadow:0 0 0 0 #22b45a66;animation:lf-puls 2s ease-out infinite}
+@keyframes lf-puls{0%{box-shadow:0 0 0 0 #22b45a66}70%,100%{box-shadow:0 0 0 7px #22b45a00}}
+@media(prefers-reduced-motion:reduce){#lf-preview .lf-hero .lf-dot{animation:none}}
+#lf-preview .lf-hero .lf-eyebrow{text-transform:none;font-size:13px;font-weight:500;letter-spacing:0;color:#7a7d85;gap:7px;margin-bottom:3.5cqw}
+#lf-preview .lf-hero .lf-dot{width:6px;height:6px;flex:0 0 6px;animation-name:lf-puls-klein}
+@keyframes lf-puls-klein{0%{box-shadow:0 0 0 0 #22b45a55}70%,100%{box-shadow:0 0 0 4px #22b45a00}}
+/* Ueberschrift: beide Zeilen gleich breit (gemessen: Zeile 2 ist 1.161x breiter). */
+#lf-preview .lf-hero h1 .lf-headline-line:first-child{font-size:1.08em}
+#lf-preview .lf-hero h1 .lf-headline-blue{font-size:.94em}
+/* Held: fester Abstands-Rhythmus. */
+#lf-preview .lf-hero .lf-eyebrow{margin-bottom:16px}
+#lf-preview .lf-hero h1{line-height:1.08;margin-bottom:20px}
+#lf-preview .lf-hero p:not(.lf-note){margin-bottom:28px}
+#lf-preview .lf-hero .lf-note{margin-top:14px}
+/* Held: "Ndihmojmë me" mit wechselndem Begriff. */
+#lf-preview .lf-hero p.lf-fuer{display:flex;align-items:center;gap:8px;margin:-10px 0 28px;font-size:14px;line-height:1;color:#7a7d85}
+#lf-preview .lf-fuer-chip{display:inline-flex;align-items:center;height:30px;padding:0 11px;border-radius:6px;background:#edf0ff;color:#2a3fb8;font-weight:600;overflow:hidden}
+#lf-preview .lf-fuer-wort{display:inline-block;white-space:nowrap;transition:transform .35s ease,opacity .35s ease}
+#lf-preview .lf-fuer-wort[data-raus]{transform:translateY(-110%);opacity:0}
+#lf-preview .lf-fuer-wort[data-rein]{transform:translateY(110%);opacity:0;transition:none}
+/* Ohne Chip: nur fetter Text, weicher Wechsel (gleiten + unscharf). */
+#lf-preview .lf-hero p.lf-fuer{gap:6px;font-size:15px}
+#lf-preview .lf-fuer-chip{height:auto;padding:0;background:none;border-radius:0;color:#17181b;font-weight:700;overflow:visible;line-height:1.3}
+#lf-preview .lf-fuer-wort{transition:transform .45s cubic-bezier(.22,1,.36,1),opacity .45s ease,filter .45s ease}
+#lf-preview .lf-fuer-wort[data-raus]{transform:translateY(-40%);opacity:0;filter:blur(4px)}
+#lf-preview .lf-fuer-wort[data-rein]{transform:translateY(40%);opacity:0;filter:blur(4px);transition:none}
+#lf-preview .lf-hero p.lf-fuer{align-items:baseline;line-height:1.3}

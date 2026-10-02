@@ -605,3 +605,33 @@
     })(fragen[f]);
   }
 })();
+
+/* "Ndihmojmë me": der Begriff (gut 20 Hautprobleme, Akne jedes dritte Mal) im Chip wechselt alle 2,6 Sekunden. Ohne
+ * Skript oder bei weniger Bewegung bleibt "Akne" einfach stehen. */
+(function () {
+  "use strict";
+  var chip = document.querySelector("[data-lf-wechsel]");
+  if (!chip) return;
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  // Akne ist der haeufigste Grund: nach je zwei anderen Begriffen kommt
+  // sie wieder. Die Liste im HTML enthaelt sie deshalb nicht.
+  var woerter = [];
+  chip.getAttribute("data-lf-wechsel").split("|").forEach(function (w, n) {
+    if (n % 2 === 0) woerter.push("Akne");
+    woerter.push(w);
+  });
+  var wort = chip.querySelector(".lf-fuer-wort");
+  var i = 0;
+  setInterval(function () {
+    if (document.hidden) return;
+    wort.setAttribute("data-raus", "");
+    setTimeout(function () {
+      i = (i + 1) % woerter.length;
+      wort.textContent = woerter[i];
+      wort.removeAttribute("data-raus");
+      wort.setAttribute("data-rein", "");
+      void wort.offsetWidth;
+      wort.removeAttribute("data-rein");
+    }, 300);
+  }, 2600);
+})();

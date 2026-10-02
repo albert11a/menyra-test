@@ -93,6 +93,25 @@
       step(dx < 0 ? 1 : -1);
     });
     stage.addEventListener("pointercancel", () => { if (swipe) settle(); });
+    // Axis lock: once a stroke is clearly sideways, the page must not drift
+    // up or down with the thumb. A stroke that starts vertical stays scroll.
+    let lock = null;
+    stage.addEventListener("touchstart", (event) => {
+      const t = event.touches[0];
+      lock = event.touches.length === 1 ? { x: t.clientX, y: t.clientY, axis: "" } : null;
+    }, { passive: true });
+    stage.addEventListener("touchmove", (event) => {
+      if (!lock) return;
+      const t = event.touches[0];
+      if (!lock.axis) {
+        const dx = Math.abs(t.clientX - lock.x);
+        const dy = Math.abs(t.clientY - lock.y);
+        if (dx < 6 && dy < 6) return;
+        lock.axis = dx > dy ? "x" : "y";
+      }
+      if (lock.axis === "x" && event.cancelable) event.preventDefault();
+    }, { passive: false });
+    stage.addEventListener("touchend", () => { lock = null; }, { passive: true });
   }
   root.addEventListener("lifeskin:comparison-cases", (event) => {
     ++request; // Any pending photos from the former list are now obsolete.
