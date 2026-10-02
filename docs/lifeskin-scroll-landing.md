@@ -47,13 +47,36 @@ files unchanged.
 
 ## Photo alternative and early proof
 
-The first illustration has keyboard-accessible scan/photo tabs and an always
+The initial refinement had keyboard-accessible scan/photo tabs and an always
 visible explanation that only a skin area can be photographed. The photo demo
 uses the existing photo page’s portrait frame, shutter and camera-switch icon,
 with a cropped real cheek photo. Both demos are illustrations, without camera
 access. The real funnel and analytics remain unchanged.
 
-Before the first CTA, paired before/after thumbnails link to the existing
+The initial refinement placed paired before/after thumbnails before the CTA, linking to the existing
 comparison section. They follow the enabled Heart case list, load pairs
 atomically and ignore stale updates. Empty configurations or failed configured
 photos hide this early proof instead of showing unconfigured cases.
+
+## Visible method alternatives and Instagram proof
+
+Scope: replace the demo tabs with two permanently visible, vertically stacked
+scan/photo examples inside step 01. Use tall phone proportions, short method
+headings and independent scroll progression for each stage. Keep the real
+funnel, case carousel and Pixel/CAPI untouched.
+
+A compact Instagram block directly after the hero introduction uses the
+provided profile screenshots as avatar sources and links to @lifeskin.ks
+and @lifeskin.al. Counts are 73.9k and 108k, as shown in the user screenshots
+on 2 October 2026; they are snapshots, not live counters or customer counts.
+The earlier thumbnail strip is removed to avoid stacking competing proof
+blocks ahead of the first CTA. The full before/after section stays unchanged.
+
+Validation: 55 focused tests passed; build passed with no tracked bundle
+changes. Mobile widths 320/390/430 and desktop 760 show no horizontal
+overflow or duplicate IDs. Both examples are visible without switching tabs
+and remain vertically stacked; phones have approximately 0.47 width/height
+before rotation. Scan animation and reduced motion work, the photo frame
+fits above the shutter, all three CTAs and both preparation paths work.
+No JavaScript errors. Loopback responds; the private LAN IP is unavailable
+in this workspace. No production orders or remote writes were used for tests.

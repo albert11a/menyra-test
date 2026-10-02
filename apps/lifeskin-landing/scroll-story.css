@@ -104,16 +104,6 @@
 #lf-preview .nx-hero p.nx-lead{margin-bottom:18px}
 #lf-preview .nx-hero .nx-doctor-mini{margin-bottom:16px}
 #lf-preview .nx-hero .nx-chips{margin-bottom:16px}
-#lf-preview .nx-early-proof{display:flex;align-items:center;gap:8px;margin:0 0 18px;text-decoration:none;color:#17181b;background:#eef1ff;border-radius:14px;padding:10px}
-#lf-preview .nx-proof-thumbs{display:grid;grid-template-columns:1fr 1fr;gap:2px;width:76px;flex:none;border-radius:8px;overflow:hidden}
-#lf-preview .nx-proof-thumbs img{display:block;width:100%;height:44px;object-fit:cover;object-position:center 40%}
-#lf-preview .nx-proof-text{min-width:0;margin-left:2px}
-#lf-preview .nx-proof-text strong{display:block;font-size:12px;line-height:1.4}
-#lf-preview .nx-proof-text small{display:block;font-size:10px;color:#646a76;line-height:1.5}
-#lf-preview .nx-demo-tabs{display:grid;grid-template-columns:1fr 1fr;background:#e9ecf7;border-radius:12px;padding:4px;gap:4px;margin-bottom:12px}
-#lf-preview .nx-demo-tabs button{min-height:44px;border:0;background:transparent;color:#656a74;border-radius:9px;font-size:12px;font-weight:700;padding:10px 8px;line-height:1.3}
-#lf-preview .nx-demo-tabs button[aria-selected=true]{background:white;color:#3459e6;box-shadow:0 2px 6px #19254b0a}
-#lf-preview .nx-story p.nx-method-reassure{font-size:12px;line-height:1.5;margin:0 0 16px;color:#656a74}
 #lf-preview .nx-photo-device{width:51%;max-width:242px;background:#f8f7f5;transform:translateY(calc((1 - var(--progress))*16px)) rotate(-2deg)}
 #lf-preview .nx-photo-frame{position:absolute;left:18%;right:18%;top:20%;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:#0b0f0e}
 #lf-preview .nx-photo-frame img{display:block;width:100%;height:100%;object-fit:cover;object-position:60% 50%;transform:scale(3);transform-origin:60% 48%}
@@ -124,6 +114,38 @@
 #lf-preview .nx-photo-shutter{justify-self:center;width:25px;height:25px;border:2px solid #214e47;border-radius:50%;background:#214e4715}
 #lf-preview .nx-photo-demo .nx-floating-left{font-size:9px;max-width:128px;line-height:1.4;top:18%}
 #lf-preview .nx-photo-demo .nx-floating-right{font-size:9px;top:8%;bottom:auto;right:3%;transform:rotate(5deg)}
-@container(max-width:359px){#lf-preview .nx-proof-thumbs{width:58px}#lf-preview .nx-proof-thumbs img{height:39px}#lf-preview .nx-early-proof{gap:6px;padding:8px}#lf-preview .nx-proof-text strong{font-size:11px}#lf-preview .nx-proof-text small{font-size:9px}}
-@container(max-width:359px){#lf-preview .nx-header{padding-top:12px;padding-bottom:12px}#lf-preview .nx-hero .nx-doctor-mini{margin-bottom:12px}#lf-preview .nx-hero .nx-chips{margin-bottom:12px}#lf-preview .nx-early-proof{margin-bottom:10px}}
-#lf-preview .nx-early-proof[hidden],#lf-preview .nx-proof-thumbs[hidden],#lf-preview .nx-stage[hidden]{display:none}
+
+/* Two visible methods share step 01; phone proportions stay tall and narrow. */
+#lf-preview .nx-method-option .nx-stage{height:clamp(255px,70cqw,360px)}
+#lf-preview .nx-method-option .nx-device{height:88%;width:auto;aspect-ratio:0.47;max-width:none;border-width:5px;border-radius:25px;box-sizing:border-box}
+#lf-preview .nx-method-heading{margin:0 0 16px}
+#lf-preview .nx-method-heading h4{font-size:22px;line-height:1.2;letter-spacing:-.5px;margin:0 0 7px;color:#17181b}
+#lf-preview .nx-method-heading p{font-size:13px;line-height:1.5;max-width:36ch;margin:0;color:#656a74}
+#lf-preview .nx-method-or{display:flex;align-items:center;gap:14px;margin:22px 0;color:#747780;font-size:12px}
+#lf-preview .nx-method-or:before,#lf-preview .nx-method-or:after{content:"";height:1px;background:#dfe3ed;flex:1}
+#lf-preview .nx-method-option .nx-demo-hint{font-size:9px;bottom:12%;left:6%;right:6%}
+#lf-preview .nx-method-option .nx-demo-auto{font-size:8px;bottom:6%}
+#lf-preview .nx-method-option .nx-demo-brand{font-size:8px;top:12%}
+#lf-preview .nx-method-option .nx-photo-frame{left:10%;right:10%;top:22%}
+#lf-preview .nx-method-option .nx-photo-shutter{width:22px;height:22px}
+#lf-preview .nx-photo-focus{transform:scale(calc(.95 + var(--progress)*.05));box-shadow:0 0 0 calc(var(--progress)*1px) #ffffff40}
+#lf-preview .nx-instagram{background:white;border:1px solid #e5e7ed;border-radius:16px;padding:12px 14px;margin:0 0 18px}
+#lf-preview .nx-instagram-title{display:flex;align-items:center;gap:7px;color:#555b68;font-size:11px;margin-bottom:8px}
+#lf-preview .nx-instagram-title svg{width:15px;height:15px;flex:none;color:#3459e6}
+#lf-preview .nx-instagram-profile{display:flex;align-items:center;gap:9px;text-decoration:none;color:#17181b;min-height:44px;padding:5px 0}
+#lf-preview .nx-instagram-profile+.nx-instagram-profile{border-top:1px solid #f0f1f5}
+#lf-preview .nx-instagram-avatar{position:relative;display:block;width:34px;height:34px;border-radius:50%;overflow:hidden;flex:none;background:#4ea8c7}
+#lf-preview .nx-instagram-avatar img{position:absolute;width:173px;max-width:none;height:auto;left:-6.3px}
+#lf-preview .nx-instagram-avatar-ks img{top:-29.1px}
+#lf-preview .nx-instagram-avatar-al img{top:-25.6px}
+#lf-preview .nx-instagram-name{font-size:12px;font-weight:700;line-height:1.4}
+#lf-preview .nx-instagram-profile small{display:block;color:#797d87;font-weight:400;font-size:10px;line-height:1.4}
+#lf-preview .nx-instagram-count{margin-left:auto;text-align:right;white-space:nowrap}
+#lf-preview .nx-instagram-count strong{font-size:15px;letter-spacing:-.4px;line-height:1.3}
+#lf-preview .nx-instagram-arrow{font-size:15px;color:#3459e6;margin-left:2px}
+@container(min-width:600px){#lf-preview .nx-story[data-scene=camera]{display:block}#lf-preview .nx-method-option{display:grid;grid-template-columns:1fr 1.15fr;gap:32px;align-items:center}#lf-preview .nx-method-heading{margin:0}#lf-preview .nx-method-heading h4{font-size:27px}#lf-preview .nx-method-heading p{font-size:15px}#lf-preview .nx-method-or{margin:28px 0}#lf-preview .nx-story[data-scene=camera]>.nx-story-copy{padding-top:24px}#lf-preview .nx-instagram{max-width:400px}}
+@media(prefers-reduced-motion:reduce){#lf-preview .nx-stage{--progress:.5!important}}
+#lf-preview .nx-method-demo{margin-top:24px}
+#lf-preview .nx-story[data-scene=camera]>.nx-story-copy{padding:0}
+
+#lf-preview .nx-hero .nx-chips{margin-top:20px;margin-bottom:0}
