@@ -236,10 +236,23 @@ jobs:
           GRUND: ${{ inputs.reason }}
         run: |
           echo "Deploy: $ONLY ${GRUND:+($GRUND)}"
-          # KEIN --force: Ohne ihn bricht die CLI ab, wenn der Deploy eine
+          # KEIN GLOBALES --force: Ohne ihn bricht die CLI ab, wenn der Deploy eine
           # Funktion LOESCHEN wuerde, die in der Produktion steht. Genau so
           # soll es sein - ein Deploy aus einem halben Stand darf nicht
           # stillschweigend Funktionen abraeumen.
+          # Firebase verlangt beim ERSTMALIGEN Einschalten von failurePolicy
+          # --force. Nur die zwei ausdruecklich freigegebenen LifeSkin-
+          # Funktionen erhalten es; kein globales --force und keine Loeschung
+          # fremder Funktionen. Vorher muss der lokale Export existieren.
+          if [[ ",$ONLY," == *",functions,"* ]]; then
+            node - <<'NODE'
+          const funcs = require("./functions");
+          for (const name of ["lifeskinCapiPurchase", "lifeskinCapiWaiting"]) {
+            if (typeof funcs[name] !== "function") throw new Error(`Missing LifeSkin export: ${name}`);
+          }
+          NODE
+            npx firebase deploy --only functions:lifeskinCapiPurchase,functions:lifeskinCapiWaiting --project menyra-c0e68 --non-interactive --force
+          fi
           npx firebase deploy --only "$ONLY" --project menyra-c0e68 --non-interactive
 
       - name: Schluessel entfernen

@@ -89,8 +89,16 @@ test("ein Deploy raeumt keine Funktionen ab", () => {
   // wuerde. Genau so soll es sein: Ein Deploy aus einem halben Stand darf
   // nicht stillschweigend Funktionen aus der Produktion nehmen.
   assert.match(WORKFLOW, /npx firebase deploy/, "Es wird gar nicht deployt");
-  assert.ok(!/firebase deploy[^\n]*--force/.test(WORKFLOW),
-    "--force loescht Funktionen, die im Quelltext gerade fehlen");
+  // Albert erlaubt am 02.10.2026 automatische LifeSkin-Wiederholungen.
+  // Firebase verlangt --force fuer diese erste Richtlinien-Aktivierung;
+  // der Gesamt-Deploy darf es weiterhin niemals verwenden.
+  const forced = WORKFLOW.split("\n").filter(line => /firebase deploy.*--force/.test(line));
+  assert.equal(forced.length, 1);
+  assert.match(forced[0], /--only functions:lifeskinCapiPurchase,functions:lifeskinCapiWaiting --project menyra-c0e68 --non-interactive --force$/);
+  assert.ok(!/firebase deploy --only "\$ONLY"[^\n]*--force/.test(WORKFLOW), "Globales --force waere eine Loeschfreigabe");
+  assert.match(WORKFLOW, /typeof funcs\[name\] !== "function"/, "Fehlende LifeSkin-Exporte muessen vor --force abbrechen");
+  const deploy = WORKFLOW.slice(WORKFLOW.indexOf("- name: Deploy"));
+  assert.ok(deploy.indexOf("Missing LifeSkin export") < deploy.indexOf("npx firebase deploy"));
   assert.match(WORKFLOW, /--project menyra-c0e68/, "Der Deploy trifft kein bestimmtes Projekt");
   // Die CLI liest functions/index.js, um zu sehen, was darin steht. Ohne die
   // Abhaengigkeiten der Functions scheitert dieses Lesen.

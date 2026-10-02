@@ -49,3 +49,13 @@ als live gemeldet wird. Vercel veroeffentlicht Browser/REST-Endpunkt automatisch
 Die Annahme neuer echter Ereignisse, Telefonnummernabgleich und Meta-Deduplizierung
 muessen nach Veroeffentlichung im Ereignismanager kontrolliert werden. Der Code und
 bestandene Tests sind keine Garantie fuer zukuenftige Netzverfuegbarkeit oder mehr Kaeufe.
+
+## Deploy-Ergaenzung
+
+Der erste Deploy wurde von der Firebase CLI vor dem Ausspielen gestoppt:
+`Pass the --force option to deploy functions with a failure policy`.
+Der Workflow aktiviert deshalb die freigegebenen Wiederholungsrichtlinien zuerst
+mit exakt `functions:lifeskinCapiPurchase,functions:lifeskinCapiWaiting` und `--force`.
+Ein Export-Check verhindert, dass dabei eine fehlende Funktion geloescht wird.
+Anschliessend laeuft der normale Gesamt-Deploy ohne `--force`; der bestehende Schutz
+vor Loeschungen anderer Funktionen bleibt erhalten.
