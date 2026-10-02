@@ -764,6 +764,14 @@ export function anschriftBegonnen(sitzung) {
     || stufenIndex(sitzung?.step) >= stufenIndex("address");
 }
 
+// ARKA - WER AN DER KASSE WAR (02.10., Kachel im Bereich Lifeskin): Die
+// Kasse ging auf (kasseGeoeffnet - Bestellschirm der Ergebnisseite oder
+// Kasse des Ladens) oder die Anschrift wurde begonnen. Wer bestellt hat,
+// war zwangslaeufig dort (anschriftBegonnen nimmt hatBestellt mit).
+export function warAnDerKasse(sitzung) {
+  return sitzung?.kasseGeoeffnet === true || anschriftBegonnen(sitzung);
+}
+
 export function baueKauftrichter(sitzungen) {
   const alle = Array.isArray(sitzungen) ? sitzungen : [];
   const stufen = [
@@ -1247,6 +1255,7 @@ export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS, zeitraum = "" 
     // Warenkoerbe und was darin lag.
     warenkoerbe: korbAlle.length,
     warenkorbWert: korbWert,
+    kasse: imBlick.filter(warAnDerKasse).length,
     // Wie viele der Besucher eine Analyse abgegeben haben, und wie
     // viele angefangen und aufgehoert haben.
     analysenQuote: landing ? analysen(imBlick).length / landing : 0,

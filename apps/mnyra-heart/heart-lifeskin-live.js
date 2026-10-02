@@ -1,4 +1,5 @@
 import { istTest } from "./heart-lifeskin-berechnung.js";
+import { wegDerSitzung } from "../../shared/lifeskin-weg.js";
 // WER GERADE JETZT WO STEHT.
 //
 // Der Trichter darunter beantwortet "wie viele sind heute durchgekommen".
@@ -350,6 +351,60 @@ export function baueLiveShop(sitzungen, jetzt = Date.now(), fenster = LIVE_FENST
     }))
   });
   return { shop: bau("shop"), trichter: bau("trichter"), analyse: bau("analyse"), stand: jetzt };
+}
+
+// ══ LIFESKIN (MITTE): BEIDE WEGE ZUSAMMEN (02.10., Wunsch Inhaber) ════
+//
+// /lifeskin und /lifeskinshop gehen durch dieselben Seiten - Landing,
+// Mënyra, Fotot ... Patient, die Ergebnisseite, der Laden. Deshalb drei
+// gemeinsame Reihen, und jeder steht in genau einem Punkt genau einer:
+//
+//   Live · Both     Landing - Mënyra - Fotot - Pyetjet - Nummri - Patient
+//   Live · Shop     N'shport - Adresa - Gotat     (direkt im Laden)
+//   Live · Analyse  Rezultati - N'shport - Adresa - Cash
+//                   (nur die fertige Analyse, die Ergebnisseite)
+//
+// Wo jemand steht, sagt fuer BEIDE Wege dieselbe Regel wie im Shop
+// (liveOrtShop): Ergebnisseite, Laden und Trichter schreiben auf beiden
+// Wegen dieselben Live-Staende. Jeder Besucher traegt seinen Weg - "ls"
+// (/lifeskin) oder "lss" (/lifeskinshop) -, Heart zeigt ihn am Chip.
+export const LIVE_BEIDE_SHOP_PUNKTE = Object.freeze(LIVE_SHOP_PUNKTE.filter((p) => p.id !== "landing"));
+export const LIVE_BEIDE_ERGEBNIS_PUNKTE = Object.freeze([
+  { id: "analyse", label: "Rezultati" },
+  { id: "korb", label: "N'shport", geld: true },
+  { id: "adresa", label: "Adresa", geld: true },
+  { id: "gotat", label: "Cash", geld: true }
+].map((p) => Object.freeze(p)));
+
+// sitzungen: die Live-Sitzungen BEIDER Wege (je ab seinem Zaehlbeginn).
+export function baueLiveBeide(sitzungen, jetzt = Date.now(), fenster = LIVE_FENSTER_MS, berichte = {}) {
+  const reihen = { beide: LIVE_ANALYSE_PUNKTE, shop: LIVE_BEIDE_SHOP_PUNKTE, analyse: LIVE_BEIDE_ERGEBNIS_PUNKTE };
+  const zahl = Object.fromEntries(Object.entries(reihen).map(([k, punkte]) => [k, new Map(punkte.map((p) => [p.id, 0]))]));
+  const leute = { beide: [], shop: [], analyse: [] };
+  for (const sitzung of Array.isArray(sitzungen) ? sitzungen : []) {
+    if (istTest(sitzung, berichte?.[sitzung?.id]) || !istGeradeAktiv(sitzung, jetzt, fenster)) continue;
+    const ort = liveOrtShop(sitzung);
+    if (!ort) continue;
+    let [reihe, punkt] = ort;
+    // Landing und Trichter sind auf beiden Wegen derselbe Weg zur Analyse.
+    if (reihe === "trichter" || (reihe === "shop" && punkt === "landing")) reihe = "beide";
+    if (!zahl[reihe]?.has(punkt)) continue;
+    if (punkt === "gotat" && bestelltVorhin(sitzung, jetzt, fenster)) continue;
+    zahl[reihe].set(punkt, zahl[reihe].get(punkt) + 1);
+    leute[reihe].push({
+      id: String(sitzung.id || ""), name: String(sitzung.name || "").trim(), punkt, source: sitzung.source || {},
+      weg: wegDerSitzung(sitzung) === "lifeskinshop" ? "lss" : "ls"
+    });
+  }
+  const bau = (k) => ({
+    gesamt: leute[k].length,
+    leute: leute[k],
+    punkte: reihen[k].map((p) => ({
+      id: p.id, label: p.label, ton: p.ton || "", geld: p.geld === true,
+      anzahl: zahl[k].get(p.id), aktiv: zahl[k].get(p.id) > 0
+    }))
+  });
+  return { beide: bau("beide"), shop: bau("shop"), analyse: bau("analyse"), stand: jetzt };
 }
 
 // Heart: eine Sitzung ohne ihren Klickpfad - fuer den Vergleich, ob sich

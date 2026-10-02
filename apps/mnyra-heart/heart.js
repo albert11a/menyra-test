@@ -76,7 +76,7 @@ import { bogenMerken, bogenVergessen, bogenWiederherstellen } from "./heart-life
 import { vorschauAuffrischen } from "./heart-lifeskin-vorschau.js";
 import { rasteNormalisieren, rastiNormalisieren, neueRastiId, RASTI_PRODUKTE_MAX } from "../../shared/lifeskin-raste.js";
 import { aktualisiereLifeskinSitzungen } from "./heart-lifeskin-berechnung.js";
-import { baueLive, baueLiveShop } from "./heart-lifeskin-live.js";
+import { baueLive, baueLiveShop, baueLiveBeide } from "./heart-lifeskin-live.js";
 import { STANDARD_BEREICH, bereichGueltig, wegDesBereichs, bereichDesWegs, bereichSpringen, bindBereichWischen,
   bereichAbgleichen, bereichFestlegen } from "./heart-lifeskin-bereiche.js";
 import { jsonLesen, raportLesen, siehtNachJson } from "../../shared/lifeskin-analyse.js";
@@ -981,7 +981,7 @@ function liveRechnen() {
   const wer = (reihe) => (reihe?.leute || []).map((l) => `${l.id}:${l.punkt}:${l.name}`).join("|");
   // Je Reihe, die dieser Tab hat (zwei, im Laden drei). Wechselt der Tab,
   // fehlen vorher die Reihen - dann wird gezeichnet.
-  const gleichWie = (alt, neu) => Boolean(alt) && ["analysen", "bestellungen", "shop", "trichter", "analyse"]
+  const gleichWie = (alt, neu) => Boolean(alt) && ["analysen", "bestellungen", "shop", "trichter", "analyse", "beide"]
     .filter((k) => neu[k]).every((k) => alt[k]
       && alt[k].gesamt === neu[k].gesamt
       && alt[k].punkte?.every((p, i) => p.anzahl === neu[k].punkte[i]?.anzahl)
@@ -992,13 +992,17 @@ function liveRechnen() {
   // ist, braucht seine Live-Reihen - sonst saehe man beim Wischen alte.
   const berichte = store.getState().lifeskin?.berichte || {};
   const desWegs = (w) => liveSitzungen.filter((s) => wegDerSitzung(s) === w && zaehltImWeg(s, w));
+  // "beide": der Bereich Lifeskin in der Mitte - /lifeskin und
+  // /lifeskinshop zusammen (baueLiveBeide).
   const liveWege = {
     lifeskin: baueLive(desWegs(""), jetzt, undefined, berichte),
-    lifeskinshop: baueLiveShop(desWegs("lifeskinshop"), jetzt, undefined, berichte)
+    lifeskinshop: baueLiveShop(desWegs("lifeskinshop"), jetzt, undefined, berichte),
+    beide: baueLiveBeide([...desWegs(""), ...desWegs("lifeskinshop")], jetzt, undefined, berichte)
   };
   const wegeVorher = store.getState().lifeskin?.liveWege || {};
   const wegeGleich = gleichWie(wegeVorher.lifeskin, liveWege.lifeskin)
-    && gleichWie(wegeVorher.lifeskinshop, liveWege.lifeskinshop);
+    && gleichWie(wegeVorher.lifeskinshop, liveWege.lifeskinshop)
+    && gleichWie(wegeVorher.beide, liveWege.beide);
   const gleich = liveGleich && wegeGleich;
   if (gleich) return;
   actions.patchLifeskin({ live: stand, liveWege });

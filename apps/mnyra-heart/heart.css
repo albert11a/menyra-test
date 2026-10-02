@@ -10591,3 +10591,23 @@ html.heart-wischt .heart-bereiche__band {
 html.heart-wischt--gleitet .heart-bereiche__band {
   transition: transform var(--heart-wisch-dauer, 150ms) cubic-bezier(0.2, 0.7, 0.3, 1);
 }
+
+/* LS ODER LSS AM LIVE-CHIP (Bereich Lifeskin, beide Wege zusammen):
+   ueber welchen Weg der Besucher kam - LS /lifeskin, LSS /lifeskinshop.
+   Kaum gerundet wie die Chips in "Faelle", ruhig, damit Name und Punkt
+   die Hauptsache bleiben. */
+.heart-live__weg {
+  flex: none;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  border: 1px solid var(--heart-border-strong, rgba(82, 82, 91, 0.95));
+  color: var(--heart-text, #fafafa);
+  background: color-mix(in srgb, var(--heart-text, #fafafa) 8%, transparent);
+}
+.heart-live__weg--lss { color: #f7c56b; border-color: rgba(247, 197, 107, 0.45); }
+:where(html[data-heart-theme="tag"]) .heart-live__weg--lss { color: #9a5b00; border-color: rgba(154, 91, 0, 0.35); }

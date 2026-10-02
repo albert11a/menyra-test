@@ -2,8 +2,8 @@
 //
 // Unter dem Kopf drei Chips wie in "Faelle" (kaum gerundet). Skinreact ist
 // das bisherige Lifeskin (/lifeskin), Acne duo der bisherige Lifeskin Shop
-// (/lifeskinshop), Lifeskin in der Mitte bekommt eigene Karten und ist beim
-// Oeffnen gewaehlt. Nach links wischen fuehrt zu Acne duo, nach rechts zu
+// (/lifeskinshop), Lifeskin in der Mitte zeigt beide Wege zusammen und ist
+// beim Oeffnen gewaehlt. Nach links wischen fuehrt zu Acne duo, nach rechts zu
 // Skinreact - mit Bewegung. Die Karten bleiben, wie sie waren.
 
 import test from "node:test";
@@ -17,6 +17,7 @@ import {
 } from "../apps/mnyra-heart/heart-lifeskin-bereiche.js";
 import { renderLifeskin } from "../apps/mnyra-heart/heart-lifeskin-render.js";
 import { createHeartInitialState } from "../apps/mnyra-heart/heart-state.js";
+import { normalisiere } from "../apps/mnyra-heart/heart-lifeskin-berechnung.js";
 
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
 const lies = (p) => readFileSync(join(wurzel, p), "utf8");
@@ -82,10 +83,60 @@ test("die Chips stehen oben - in der Form der Faelle-Chips", () => {
   assert.match(renderLifeskin({ bereich: "skinreact" }), /Wird geladen/);
 });
 
-test("Lifeskin in der Mitte: eigene Flaeche, noch ohne die alten Karten", () => {
+// LIFESKIN IN DER MITTE: BEIDE WEGE ZUSAMMEN (02.10.).
+const HEUTE = new Date().toISOString();
+const fall = (id, weg, extra = {}) => normalisiere(id, { createdAt: HEUTE, updatedAt: HEUTE, step: "opened", source: weg ? { weg } : {}, ...extra });
+
+test("Lifeskin: Live Both, Live Shop, Live Analyse, Zahlen, Bestellungen - in dieser Reihenfolge", () => {
   const mitte = bereichHtml(renderLifeskin({ ...GELADEN, bereich: "lifeskin" }), "lifeskin");
-  assert.match(mitte, /Hier kommen die eigenen Lifeskin-Karten hin/);
-  assert.doesNotMatch(mitte, /heart-lifeskin-kacheln|Mehr anzeigen/);
+  const titel = [...mitte.matchAll(/heart-lifeskin-block__titel">([^<]+)</g)].map((m) => m[1]);
+  assert.deepEqual(titel, ["Live · Both", "Live · Shop", "Live · Analyse", "Bestellungen"]);
+  assert.ok(mitte.indexOf("Live · Analyse") < mitte.indexOf("heart-lifeskin-kacheln"), "die Zahlen stehen unter den Live-Karten");
+  assert.ok(mitte.indexOf("heart-lifeskin-kacheln") < mitte.indexOf(">Bestellungen<"), "die Bestellungen stehen unter den Zahlen");
+  // Keine Faelle, kein Trichter, kein "Mehr anzeigen" - das bleibt in den Wegen.
+  assert.doesNotMatch(mitte, /Fälle|Mehr anzeigen/);
+});
+
+test("Lifeskin: links Visit, Analysen, Analysenquote, Abbrüche Analysen - rechts Shporta, Arka, Umsatz, Abgebrochen Kauf", () => {
+  const mitte = bereichHtml(renderLifeskin({ ...GELADEN, bereich: "lifeskin" }), "lifeskin");
+  const marken = [...mitte.matchAll(/heart-lifeskin-kachel__marke">([^<]+)</g)].map((m) => m[1]);
+  // Das Raster fuellt Reihe fuer Reihe: links, rechts, links, rechts ...
+  const links = marken.filter((_, i) => i % 2 === 0);
+  const rechts = marken.filter((_, i) => i % 2 === 1);
+  assert.deepEqual(links, ["Visit", "Analysen", "Analysenquote", "Abbrüche Analysen"]);
+  assert.deepEqual(rechts, ["Shporta", "Arka", "Umsatz", "Abgebrochen Kauf"]);
+});
+
+test("Lifeskin zaehlt beide Wege zusammen - Skinreact plus Acne duo", () => {
+  const sitzungen = [
+    fall("ls1", ""), fall("ls2", "", { imKorb: true }),
+    fall("lss1", "lifeskinshop"), fall("lss2", "lifeskinshop", { kasseGeoeffnet: true, imKorb: true }),
+    fall("lss3", "lifeskinshop", { step: "ordered", order: { orderId: "o-1", total: 39, status: "neu", createdAt: HEUTE } })
+  ];
+  const html = renderLifeskin({ ...GELADEN, sitzungen, bereich: "lifeskin" });
+  const wert = (bereich, marke) => bereichHtml(html, bereich)
+    .match(new RegExp(`kachel__marke">${marke}</span>\\s*<b class="heart-lifeskin-kachel__wert">([^<]+)<`))?.[1];
+  const visit = Number(wert("lifeskin", "Visit"));
+  assert.equal(visit, Number(wert("skinreact", "Landing")) + Number(wert("acneduo", "Landing")));
+  assert.equal(Number(wert("lifeskin", "Shporta")), Number(wert("skinreact", "Warenkörbe")) + Number(wert("acneduo", "Warenkörbe")));
+  // Arka: lss2 hat die Kasse geoeffnet, lss3 hat bestellt.
+  assert.equal(wert("lifeskin", "Arka"), "2");
+  assert.equal(wert("lifeskin", "Umsatz"), wert("acneduo", "Umsatz"));
+  // Die Bestellung aus dem Shop steht in den Bestellungen der Mitte.
+  assert.match(bereichHtml(html, "lifeskin"), /data-action="lifeskin-sitzung" data-id="lss3"/);
+});
+
+test("Lifeskin: am Live-Chip steht LS oder LSS", () => {
+  const reihe = (leute) => ({ gesamt: leute.length, leute, punkte: [{ id: "fotot", label: "Fotot", anzahl: leute.length, aktiv: true }] });
+  const html = renderLifeskin({ ...GELADEN, bereich: "lifeskin", liveWege: { beide: {
+    beide: reihe([{ id: "a", name: "", punkt: "fotot", source: {}, weg: "lss" }, { id: "b", name: "Arta", punkt: "fotot", source: {}, weg: "ls" }]),
+    shop: reihe([]), analyse: reihe([])
+  } } });
+  const mitte = bereichHtml(html, "lifeskin");
+  assert.match(mitte, /<i class="heart-live__weg heart-live__weg--lss">LSS<\/i><b>Besucher<\/b>/);
+  assert.match(mitte, /<i class="heart-live__weg heart-live__weg--ls">LS<\/i><b>Arta<\/b>/);
+  // In den Bereichen eines Wegs gibt es keine Marke.
+  assert.doesNotMatch(bereichHtml(html, "skinreact"), /heart-live__weg/);
 });
 
 test("schnell wischen: alle drei Bereiche liegen fertig nebeneinander", () => {

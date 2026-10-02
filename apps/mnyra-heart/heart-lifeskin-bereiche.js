@@ -4,8 +4,8 @@
 // Unter dem Kopf drei Chips - wie die Chips in "Faelle", kaum gerundet:
 //
 //   Skinreact  das bisherige Lifeskin (/lifeskin, Weg "")
-//   Lifeskin   in der Mitte, beim Oeffnen immer gewaehlt - hier kommen
-//              eigene Karten hin (noch leer)
+//   Lifeskin   in der Mitte, beim Oeffnen immer gewaehlt - beide Wege
+//              zusammen: Live, Zahlen, Bestellungen (02.10.)
 //   Acne duo   der bisherige Lifeskin Shop (/lifeskinshop)
 //
 // Die Karten von Skinreact und Acne duo bleiben, wie sie waren - jeder
@@ -66,18 +66,11 @@ export function renderBereichChips(aktiv) {
   </div>`;
 }
 
-// Lifeskin in der Mitte: die eigenen Karten kommen noch.
-function renderLifeskinMitte() {
-  return `<section class="heart-lifeskin-block heart-bereich-leer">
-      <h3 class="heart-lifeskin-block__titel">Lifeskin</h3>
-      <p class="heart-lifeskin-leer">Hier kommen die eigenen Lifeskin-Karten hin.</p>
-    </section>`;
-}
-
 // Die Uebersicht des Tabs: Chips, darunter die Bereiche.
 //
-// inhaltFuer(id) zeichnet Skinreact bzw. Acne duo - die Karten von
-// /lifeskin bzw. /lifeskinshop, unveraendert (renderLifeskin).
+// inhaltFuer(id) zeichnet den Bereich (renderLifeskin): Skinreact und
+// Acne duo die Karten von /lifeskin bzw. /lifeskinshop, unveraendert;
+// Lifeskin in der Mitte beide Wege zusammen.
 //
 // alle: ALLE DREI BEREICHE STEHEN FERTIG NEBENEINANDER (02.10.: "sehr
 // schnell wischen"). Der gewaehlte steht im Fluss der Seite, die anderen
@@ -95,7 +88,7 @@ function renderLifeskinMitte() {
 export function renderBereiche(aktiv, inhaltFuer, { alle = false } = {}) {
   const gewaehlt = bereichGueltig(aktiv);
   const bereiche = (alle ? BEREICHE : BEREICHE.filter((b) => b.id === gewaehlt)).map((b) => {
-    const inhalt = b.id === STANDARD_BEREICH ? renderLifeskinMitte() : inhaltFuer(b.id);
+    const inhalt = inhaltFuer(b.id);
     return `<div class="heart-bereich${b.id === gewaehlt ? " heart-bereich--an" : ""}" data-bereich="${escapeHtml(b.id)}"
         data-morph-key="bereich-${escapeHtml(b.id)}">${mitFingerabdruck(`<div class="heart-bereich__inhalt">${inhalt}</div>`)}</div>`;
   }).join("");
@@ -281,7 +274,7 @@ export function bindBereichWischen({ root, lesen, wechseln } = {}) {
     zug = null;
     if (e.touches.length !== 1) return;
     // Ueberall unter dem Kopf - auch auf der leeren Flaeche unter einem
-    // kurzen Bereich (Lifeskin in der Mitte), nicht nur auf seinem Inhalt.
+    // kurzen Bereich, nicht nur auf seinem Inhalt.
     // Der Kopf von Heart gehoert nicht dazu.
     const flaeche = e.target?.closest?.(".heart-main-shell");
     if (!flaeche || !root.contains(flaeche) || e.target.closest(".heart-topbar")

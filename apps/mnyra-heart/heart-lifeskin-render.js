@@ -382,6 +382,14 @@ function renderLiveReihe(reihe, art) {
 // Ohne Namen (noch auf der Landingpage, noch nichts eingegeben) steht
 // "Besucher" und woher er kam - antippen geht dort nicht, es gibt noch
 // keinen Fall.
+// LS ODER LSS AM CHIP (Bereich Lifeskin, beide Wege zusammen): ueber
+// welchen Weg der Besucher kam - LS /lifeskin, LSS /lifeskinshop. Die
+// Reihen eines einzelnen Wegs tragen keinen Weg und keine Marke.
+function wegMarke(person) {
+  if (person?.weg !== "ls" && person?.weg !== "lss") return "";
+  return `<i class="heart-live__weg heart-live__weg--${person.weg}">${person.weg === "lss" ? "LSS" : "LS"}</i>`;
+}
+
 function renderLiveLeute(reihe) {
   const leute = reihe?.leute || [];
   if (!leute.length) return "";
@@ -390,10 +398,10 @@ function renderLiveLeute(reihe) {
       <div class="heart-live__leute">
         ${leute.slice(0, 8).map((l) => l.name ? `
         <button type="button" class="heart-live__person" data-action="lifeskin-sitzung" data-id="${escapeHtml(l.id)}">
-          <b>${escapeHtml(l.name)}</b><span>${escapeHtml(name(l.punkt))}</span>
+          ${wegMarke(l)}<b>${escapeHtml(l.name)}</b><span>${escapeHtml(name(l.punkt))}</span>
         </button>` : `
         <span class="heart-live__person heart-live__person--anonym">
-          <b>Besucher</b><span>${escapeHtml([name(l.punkt), herkunftVon({ source: l.source }).quelle].filter(Boolean).join(" · "))}</span>
+          ${wegMarke(l)}<b>Besucher</b><span>${escapeHtml([name(l.punkt), herkunftVon({ source: l.source }).quelle].filter(Boolean).join(" · "))}</span>
         </span>`).join("")}
       </div>`;
 }
@@ -3562,8 +3570,117 @@ export function renderLifeskin(zustand) {
   //
   // Jeder Bereich rechnet mit seinem Weg; Live kommt fuer den offenen Weg
   // aus zustand.live, fuer die anderen aus zustand.liveWege (heart.js).
-  const inhaltFuer = (id) => renderWegUebersicht(zustand, id === bereich ? weg : wegDesBereichs(id), weg);
+  const inhaltFuer = (id) => (id === "lifeskin" ? renderLifeskinBeide(zustand)
+    : renderWegUebersicht(zustand, id === bereich ? weg : wegDesBereichs(id), weg));
   return `<div class="heart-lifeskin">${renderBereiche(bereich, inhaltFuer, { alle: bereichGesetzt })}</div>`;
+}
+
+// ══ LIFESKIN IN DER MITTE: BEIDE WEGE ZUSAMMEN (02.10., Inhaber) ═════
+//
+// Skinreact (/lifeskin) und Acne duo (/lifeskinshop) zusammengezaehlt -
+// mit denselben Rechnungen wie in ihren Bereichen (baueKennzahlen,
+// baueLiveBeide, renderBestellungen), nur ueber die Faelle beider Wege.
+// Jeder Weg zaehlt ab seinem eigenen Zaehlbeginn (nachWeg).
+//
+//   1. Live · Both     der Weg zur Analyse, LS/LSS am Chip
+//   2. Live · Shop     direkt im Laden: N'shport, Adresa, Gotat
+//   3. Live · Analyse  die fertige Analyse: Rezultati, N'shport, Adresa, Cash
+//   4. Die Zahlen      links der Weg zur Analyse, rechts der Weg zum Geld
+//   5. Bestellungen    alle, egal ob Acne duo oder Skinreact
+const BEIDE_WEGE = Object.freeze(["", "lifeskinshop"]);
+
+function renderLifeskinBeide(zustand) {
+  const sitzungen = BEIDE_WEGE.flatMap((w) => nachWeg(zustand.sitzungen, w) || []);
+  const alle = BEIDE_WEGE.flatMap((w) => nachWeg(zustand.sitzungen, w, { alle: true }) || []);
+  const zeitraum = zustand.zeitraum || "";
+  const zahlen = zeitraum
+    ? baueKennzahlen(sitzungen, { setPreis: zustand.konfig?.setPreis, zeitraum })
+    : baueKennzahlen(sitzungen, { setPreis: zustand.konfig?.setPreis });
+  const live = zustand.liveWege?.beide;
+  return `
+      ${zustand.liveFehler
+        ? leererBlock("Live", "Verbindung unterbrochen — Live-Zahlen nicht verfuegbar.")
+        : `${renderLiveKarte(live?.beide, "beide", "Live · Both")}
+      ${renderLiveKarte(live?.shop, "beide-shop", "Live · Shop")}
+      ${renderLiveKarte(live?.analyse, "beide-analyse", "Live · Analyse")}`}
+      ${renderKachelnBeide(zahlen, zeitraum)}
+      ${renderBestellungen(alle, zustand.bestellZeitraum || "heute")}`;
+}
+
+// DIE ACHT KACHELN BEIDER WEGE - zwei Spalten, die man von oben nach
+// unten liest (Wunsch Inhaber):
+//
+//   Visit               Shporta          wer kam        / wer etwas in den Korb legte
+//   Analysen            Arka             wer abgab      / wer an der Kasse war
+//   Analysenquote       Umsatz           die Quote      / was hereinkam
+//   Abbrüche Analysen   Abgebrochen Kauf wo es liegen bleibt
+//
+// Das Raster fuellt Reihe fuer Reihe, deshalb stehen sie hier paarweise.
+// Dieselben Zahlen und Zusaetze wie die Kacheln eines Wegs (renderKacheln).
+function renderKachelnBeide(kennzahlen, zeitraum = "") {
+  const name = ZEITRAEUME.find((z) => z.id === zeitraum)?.label || "Heute";
+  const klein = zeitraum === "max" ? "gesamt" : name.toLowerCase();
+  const differenz = (kennzahlen.landing ?? 0) - (kennzahlen.landingDavor ?? 0);
+  const analysenDifferenz = (kennzahlen.analysen ?? 0) - (kennzahlen.analysenDavor ?? 0);
+  const ohneDatum = Number(kennzahlen.ohneDatum) || 0;
+  return `
+    ${ohneDatum ? `<p class="heart-lifeskin-warnung">
+      ${ohneDatum} ${ohneDatum === 1 ? "Analyse hat" : "Analysen haben"} kein Datum und
+      ${ohneDatum === 1 ? "zaehlt" : "zaehlen"} in den Tageszahlen nicht mit.
+    </p>` : ""}
+    <details class="heart-lifeskin-block heart-klapp heart-kachelklapp" ${klappAttr("kacheln-beide", true)} data-zeitraum="${escapeHtml(name)}">
+      <summary class="heart-klapp__kopf" aria-label="Zahlen · ${escapeHtml(name)}">
+        <span class="heart-klapp__zahl heart-klapp__zahl--zu">${escapeHtml(`${kennzahlen.landing ?? 0} Visit · ${kennzahlen.analysen ?? 0} Analysen · ${euro(kennzahlen.umsatzHeute)}`)}</span>
+        <span class="heart-kachelklapp__pfeil" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span>
+      </summary>
+    <div class="heart-lifeskin-kacheln">
+      ${renderKachel({
+        marke: "Visit",
+        wert: String(kennzahlen.landing ?? 0),
+        zusatz: zeitraum === "max" ? `Besucher · ${klein}` : `${differenz >= 0 ? "+" : ""}${differenz} ggue. davor`,
+        richtung: differenz > 0 ? "auf" : differenz < 0 ? "ab" : ""
+      })}
+      ${renderKachel({
+        marke: "Shporta",
+        wert: String(kennzahlen.warenkoerbe ?? 0),
+        zusatz: `${euro(kennzahlen.warenkorbWert)} im Korb`
+      })}
+      ${renderKachel({
+        marke: "Analysen",
+        wert: String(kennzahlen.analysen ?? 0),
+        zusatz: zeitraum === "max" ? `abgegeben · ${klein}`
+          : `${analysenDifferenz >= 0 ? "+" : ""}${analysenDifferenz} ggue. davor`,
+        richtung: analysenDifferenz > 0 ? "auf" : analysenDifferenz < 0 ? "ab" : ""
+      })}
+      ${renderKachel({
+        marke: "Arka",
+        wert: String(kennzahlen.kasse ?? 0),
+        zusatz: `an der Kasse · ${klein}`
+      })}
+      ${renderKachel({
+        marke: "Analysenquote",
+        wert: prozent(kennzahlen.analysenQuote),
+        zusatz: `je Visit · aus ${kennzahlen.landing ?? 0}`
+      })}
+      ${renderKachel({
+        marke: "Umsatz",
+        wert: euro(kennzahlen.umsatzHeute),
+        zusatz: `${kennzahlen.bestellungenHeute} Bestellungen`
+      })}
+      ${renderKachel({
+        marke: "Abbrüche Analysen",
+        wert: String((kennzahlen.analyseAbbrueche || []).length),
+        zusatz: "angefangen, nicht abgegeben",
+        richtung: (kennzahlen.analyseAbbrueche || []).length ? "ab" : ""
+      })}
+      ${renderKachel({
+        marke: "Abgebrochen Kauf",
+        wert: String((kennzahlen.kaufAbbrueche || []).length),
+        zusatz: `ca. ${euro(kennzahlen.kaufAbbruchBetrag ?? 0)} Potenzial`,
+        richtung: (kennzahlen.kaufAbbrueche || []).length ? "ab" : ""
+      })}
+    </div>
+    </details>`;
 }
 
 // DIE UEBERSICHT EINES WEGS: Kacheln, Live, Trichter, Faelle ... - was

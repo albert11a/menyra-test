@@ -507,3 +507,27 @@ test("Lifeskin Shop: Heart zeichnet die drei Karten, die anderen Tabs ihre zwei"
   const heart = lies("apps/mnyra-heart/heart.js");
   assert.match(heart, /const bauen = weg === "lifeskinshop" \? baueLiveShop : baueLive;/);
 });
+
+// LIFESKIN IN DER MITTE (02.10.): BEIDE WEGE IN DREI GEMEINSAMEN REIHEN.
+test("baueLiveBeide: Weg zur Analyse, Laden und Ergebnisseite - jeder genau einmal, mit LS/LSS", async () => {
+  const { baueLiveBeide } = await import("../apps/mnyra-heart/heart-lifeskin-live.js");
+  const live = baueLiveBeide([
+    sitzung("opened"),                                                        // LS auf der Landing
+    sitzung("camera", { source: { weg: "lifeskinshop" } }),                   // LSS vor der Kamera
+    sitzung("opened", { timings: { live: "offer" }, source: { weg: "lifeskinshop" } }), // LSS im Laden-Korb
+    sitzung("result", { timings: { live: "fertig" } }),                       // LS liest seine Ergebnisseite
+    sitzung("result", { timings: { live: "shporta" }, source: { weg: "lifeskinshop" } }), // LSS: Korb der Ergebnisseite
+    sitzung("camera", { alterMs: LIVE_FENSTER_MS + 60000 })                   // nicht mehr live
+  ], JETZT);
+  const zahlen = (reihe) => Object.fromEntries(reihe.punkte.filter((p) => p.anzahl).map((p) => [p.label, p.anzahl]));
+  assert.deepEqual(live.beide.punkte.map((p) => p.label), ["Landing", "Mënyra", "Fotot", "Pyetjet", "Nummri", "Patient"]);
+  assert.deepEqual(live.shop.punkte.map((p) => p.label), ["N'shport", "Adresa", "Gotat"]);
+  assert.deepEqual(live.analyse.punkte.map((p) => p.label), ["Rezultati", "N'shport", "Adresa", "Cash"]);
+  assert.deepEqual(zahlen(live.beide), { Landing: 1, Fotot: 1 });
+  assert.deepEqual(zahlen(live.shop), { "N'shport": 1 });
+  assert.deepEqual(zahlen(live.analyse), { Rezultati: 1, "N'shport": 1 });
+  assert.deepEqual(live.beide.leute.map((l) => l.weg), ["ls", "lss"]);
+  assert.deepEqual(live.shop.leute.map((l) => l.weg), ["lss"]);
+  assert.deepEqual(live.analyse.leute.map((l) => l.weg), ["ls", "lss"]);
+  assert.equal(live.beide.gesamt + live.shop.gesamt + live.analyse.gesamt, 5);
+});
