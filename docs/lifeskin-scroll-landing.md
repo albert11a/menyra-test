@@ -127,3 +127,18 @@ the image and active indicator. Comparison advances to 03/04. Decorative
 scan changes frames and freezes for reduced motion. Sticky CTA disappears
 in the funnel. No page JavaScript errors, no production test writes.
 Private LAN IP is unavailable in this workspace; local loopback returns 200.
+
+## Hero correction
+
+Scope: remove the introductory product-photo gallery, move the existing
+Dr. Gashi / 10-minute strip between the hero subtitle and its entry button,
+and make the hero and immediately following before/after section uniformly
+white. Keep the comparison and all funnel actions unchanged. Remove the
+unused introductory gallery handler and its control styles.
+
+Validation: 55 focused Node tests passed; npm run build passed with no
+tracked bundle changes. Checked 320×480, 390×664, 430×780 and 760×900:
+white comparison background, doctor strip above CTA, no introductory gallery,
+no horizontal overflow or duplicate IDs. All three CTAs, the sticky button,
+photo/scan preparation, comparison navigation and scan animation still work.
+No page JavaScript errors. Local loopback responds; private LAN unavailable.

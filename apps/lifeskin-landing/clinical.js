@@ -52,33 +52,4 @@
   motion.addEventListener?.("change", request);
   new MutationObserver(hideSticky).observe(landing, { attributes: true, attributeFilter: ["data-aktiv"] });
 
-  const rail = root.querySelector(".hero-rail");
-  if (!rail) return;
-  const slides = Array.from(rail.querySelectorAll("img"));
-  const dots = Array.from(root.querySelectorAll(".hero-dots button"));
-  const previous = root.querySelector(".hero-prev");
-  const next = root.querySelector(".hero-next");
-  const current = () => Math.round(rail.scrollLeft / Math.max(1, rail.clientWidth));
-  function update() {
-    const index = current();
-    dots.forEach((dot, i) => dot.setAttribute("aria-pressed", String(i === index)));
-    previous.disabled = index <= 0;
-    next.disabled = index >= slides.length - 1;
-  }
-  function show(index) {
-    rail.scrollTo({ left: Math.max(0, Math.min(slides.length - 1, index)) * rail.clientWidth,
-      behavior: motion.matches ? "instant" : "smooth" });
-  }
-  dots.forEach((dot, index) => dot.addEventListener("click", () => show(index)));
-  previous.addEventListener("click", () => show(current() - 1));
-  next.addEventListener("click", () => show(current() + 1));
-  rail.addEventListener("keydown", (event) => {
-    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-    event.preventDefault();
-    show(event.key === "Home" ? 0 : event.key === "End" ? slides.length - 1
-      : current() + (event.key === "ArrowRight" ? 1 : -1));
-  });
-  rail.addEventListener("scroll", update, { passive: true });
-  window.addEventListener("resize", update);
-  update();
 })();
