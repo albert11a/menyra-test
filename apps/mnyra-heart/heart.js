@@ -77,6 +77,7 @@ import { vorschauAuffrischen } from "./heart-lifeskin-vorschau.js";
 import { rasteNormalisieren, rastiNormalisieren, neueRastiId, RASTI_PRODUKTE_MAX } from "../../shared/lifeskin-raste.js";
 import { aktualisiereLifeskinSitzungen } from "./heart-lifeskin-berechnung.js";
 import { baueLive, baueLiveShop } from "./heart-lifeskin-live.js";
+import { BEREICHE, STANDARD_BEREICH, bereichGueltig, bereichGleiten, bindBereichWischen } from "./heart-lifeskin-bereiche.js";
 import { jsonLesen, raportLesen, siehtNachJson } from "../../shared/lifeskin-analyse.js";
 // Wie viele Messwerte der Bogen fasst. Aus dem Bogen selbst, nicht als
 // zweite Zahl daneben: Zwei Zahlen an zwei Stellen sind frueher oder
@@ -4026,6 +4027,15 @@ const operations = {
   },
   // DIE ANTWORTZEIT (Uhr-Knopf links neben dem Datum, 29.09.): dieselbe
   // Chipreihe im Kopf wie beim Datum. Der gewaehlte Chip rueckt ins Bild.
+  // SKINREACT · LIFESKIN · ACNE DUO (Chips unter dem Kopf): gleitet in
+  // die Richtung des Chips, wie beim Wischen.
+  lifeskinBereich(id) {
+    const ziel = bereichGueltig(id);
+    const jetzt = bereichGueltig(store.getState().lifeskin?.bereich);
+    if (ziel === jetzt) return;
+    const stelle = (b) => BEREICHE.findIndex((x) => x.id === b);
+    bereichGleiten(stelle(ziel) > stelle(jetzt) ? 1 : -1, () => actions.patchLifeskin({ bereich: ziel }));
+  },
   lifeskinUhrwahl() {
     const stand = store.getState().lifeskin || {};
     const auf = stand.uhrWahl !== true;
@@ -4204,6 +4214,8 @@ const operations = {
       actions.setNavOpen(false);
       return;
     }
+    // Wer den Lifeskin-Tab oeffnet, landet immer auf "Lifeskin".
+    if (safeViewKey === "lifeskin") actions.patchLifeskin({ bereich: STANDARD_BEREICH });
     actions.setActiveView(safeViewKey);
     queueMicrotask(() => ensureViewData(safeViewKey).catch(() => {}));
   },
@@ -4793,6 +4805,17 @@ const operations = {
 };
 
 bindHeartEvents({ root, operations });
+// Wischen zwischen Skinreact, Lifeskin und Acne duo - nur in der
+// Uebersicht des Lifeskin-Tabs (die Chips stehen nur dort).
+bindBereichWischen({
+  root,
+  lesen() {
+    const stand = store.getState();
+    if (stand.shell.activeView !== "lifeskin") return "";
+    return bereichGueltig(stand.lifeskin?.bereich);
+  },
+  wechseln(id) { actions.patchLifeskin({ bereich: bereichGueltig(id) }); }
+});
 
 // Damit ein Neuladen dort bleibt, wo man war. Vorher wurde die Ansicht beim
 // Start aus der Adresse gelesen, beim Wechseln aber nie hineingeschrieben -

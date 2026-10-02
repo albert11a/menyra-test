@@ -384,7 +384,8 @@ function renderDrawerNav(state) {
   const unter = NAV_MNYRA.map((key) => renderNavLink(eintrag.get(key), state, { unter: true })).join("");
   return `
     ${renderNavLink(eintrag.get("lifeskin"), state)}
-    ${renderNavLink(LIFESKIN2_NAV, state)}
+    ${"" /* "Lifeskin 2 brauchen wir nicht mehr" (02.10., Inhaber) - der
+         Eintrag ist aus dem Menue; #lifeskin2 in der Adresse geht weiter. */}
     ${renderNavLink(LIFESKINSHOP_NAV, state)}
     <div class="heart-nav-gruppe${offen ? " heart-nav-gruppe--offen" : ""}">
       <button class="heart-nav-link heart-nav-gruppe__kopf${inMnyra ? " heart-nav-link--hier" : ""}" data-action="nav-gruppe"

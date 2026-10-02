@@ -619,6 +619,11 @@ export function bindHeartEvents({
       operations.lifeskinUhrwahl?.();
       return;
     }
+    // Skinreact · Lifeskin · Acne duo (Chips unter dem Kopf).
+    if (action === "lifeskin-bereich") {
+      operations.lifeskinBereich?.(target.getAttribute("data-wert"));
+      return;
+    }
     if (action === "lifeskin-antwortzeit") {
       await operations.setLifeskinAntwortzeit?.(target.getAttribute("data-wert"));
       return;

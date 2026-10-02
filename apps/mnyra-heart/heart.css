@@ -10482,3 +10482,32 @@ html:where([data-heart-theme="tag"]),
 .heart-kosten__teil[open] > .heart-kosten__teil-kopf i { transform: rotate(45deg); }
 .heart-kosten__teil-inhalt { display: grid; gap: 8px; padding: 0 14px 14px; }
 .heart-kosten__form > .heart-kosten__speichern { margin-top: 10px; }
+
+/* ══ SKINREACT · LIFESKIN · ACNE DUO (02.10., Wunsch Inhaber) ═════════
+   Drei Chips unter dem Kopf - dieselbe Form wie die Chips in "Faelle"
+   (.heart-lifeskin-chips--shop: 32 px hoch, kaum gerundet), alle drei
+   gleich breit in einer Reihe. */
+.heart-bereich-chips {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0 0 14px;
+  overflow: visible;
+}
+.heart-bereich-chips .heart-lifeskin-chip { min-width: 0; padding-inline: 6px; font-size: 12.5px; }
+
+/* Der Bereich darunter laesst die Seite senkrecht scrollen; waagrecht
+   wischt heart-lifeskin-bereiche.js. */
+.heart-main-shell:has(.heart-bereich) { touch-action: pan-y; }
+.heart-bereich { touch-action: pan-y; }
+
+/* DAS WISCHEN: die Variable steht auf <html> (heart-lifeskin-bereiche.js),
+   die Bewegung nur, solange gewischt wird - danach kein transform, damit
+   nichts Festes im Bereich seinen Bezug verliert. */
+html.heart-wischt .heart-bereich {
+  transform: translate3d(var(--heart-wisch-x, 0px), 0, 0);
+  will-change: transform;
+}
+html.heart-wischt--gleitet .heart-bereich {
+  transition: transform 200ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}

@@ -15,6 +15,7 @@
 
 import { pfadLesen } from "../../shared/lifeskin-klickpfad.js";
 import { escapeHtml } from "./heart-ui-utils.js";
+import { renderBereiche, bereichGueltig, STANDARD_BEREICH } from "./heart-lifeskin-bereiche.js";
 import { renderHeartIcon, renderGeraetZeichen } from "./heart-icons.js";
 // Der Setpreis kommt aus derselben Quelle wie im Trichter. Zwei Zahlen an
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
@@ -3486,8 +3487,12 @@ export function renderLifeskin(zustand) {
   // und damit ist er das Zeichen dafuer, dass der Lader durch ist. Die
   // sechs Trichter darunter werden beim Zeichnen gerechnet - reine
   // Funktionen ueber ein paar hundert Sitzungen.
+  // DREI BEREICHE (02.10.): Skinreact · Lifeskin · Acne duo als Chips
+  // unter dem Kopf, zum Wischen (heart-lifeskin-bereiche.js). Akten und
+  // Editoren darunter stehen weiter allein da, ohne Chips.
+  const bereich = bereichGueltig(zustand?.bereich);
   if (!zustand || !zustand.kennzahlen || !Array.isArray(zustand.trichter)) {
-    return `<p class="heart-lifeskin-leer">Wird geladen …</p>`;
+    return `<div class="heart-lifeskin">${renderBereiche(bereich, () => `<p class="heart-lifeskin-leer">Wird geladen …</p>`)}</div>`;
   }
 
   // ZWEI TABS, EINE ANSICHT: "Lifeskin" zeigt die Faelle von /lifeskin,
@@ -3556,6 +3561,12 @@ export function renderLifeskin(zustand) {
     )}</div>`;
   }
 
+  // Skinreact oder Acne duo: nur Chips und ihr Bereich - die Zahlen von
+  // Lifeskin muessen dafuer nicht gerechnet werden.
+  if (bereich !== STANDARD_BEREICH) {
+    return `<div class="heart-lifeskin">${renderBereiche(bereich, () => "")}</div>`;
+  }
+
   // DER ZEITRAUM GILT FUER ALLES, WAS DARUNTER STEHT.
   //
   // Kacheln, Trichter und Lesetiefe zeigen denselben Ausschnitt - zwei
@@ -3584,7 +3595,7 @@ export function renderLifeskin(zustand) {
   //   5. Faelle: was zu tun ist.
   //   6. Bestellungen, Nachfassen: was danach kam.
   return `
-    <div class="heart-lifeskin">
+    <div class="heart-lifeskin">${renderBereiche(bereich, () => `
       ${nochNichts ? `
         <p class="heart-lifeskin-leer">
           Noch keine Analyse. Die Zahlen fuellen sich mit dem ersten Besucher
@@ -3633,6 +3644,6 @@ export function renderLifeskin(zustand) {
         </div>
       </details>
       ${"" /* Meldungs-Schalter und Reset-Knopf stehen seit dem 23.09. in
-           den Einstellungen (heart-settings-render.js). */}
+           den Einstellungen (heart-settings-render.js). */}`)}
     </div>`;
 }

@@ -39,16 +39,16 @@ function schublade(html) {
   return html.slice(anfang, html.indexOf("</nav>", anfang));
 }
 
-// Seit dem 27.09. steht "Lifeskin 2" (die Faelle von /lifeskin2) als
-// eigener Eintrag direkt unter Lifeskin - Wunsch: "eine neue Tab, Lifeskin 2".
-test("die Schublade hat fuenf Eintraege: Lifeskin, Lifeskin 2, Lifeskin Shop, Mnyra, Einrichtung", () => {
+// "Lifeskin 2" stand vom 27.09. bis 02.10. als eigener Eintrag unter
+// Lifeskin - seitdem: "Lifeskin 2 brauchen wir nicht mehr".
+test("die Schublade hat vier Eintraege: Lifeskin, Lifeskin Shop, Mnyra, Einrichtung", () => {
   const nav = schublade(zeichne("lifeskin"));
-  // Oben ausserhalb der Gruppe: nur Lifeskin, Lifeskin 2, Lifeskin Shop und Einrichtung.
+  // Oben ausserhalb der Gruppe: nur Lifeskin, Lifeskin Shop und Einrichtung.
   const gruppeAnfang = nav.indexOf('<div class="heart-nav-gruppe');
   const gruppeEnde = nav.indexOf("</div>\n    </div>", gruppeAnfang);
   const aussen = nav.slice(0, gruppeAnfang) + nav.slice(gruppeEnde);
   const oben = [...aussen.matchAll(/data-nav-key="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(oben, ["lifeskin", "lifeskin2", "lifeskinshop", "connections"]);
+  assert.deepEqual(oben, ["lifeskin", "lifeskinshop", "connections"]);
   assert.match(nav, /data-action="nav-gruppe"/);
   assert.match(nav, /<span class="heart-nav-link__label">Mnyra<\/span>/);
 });
