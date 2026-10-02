@@ -636,6 +636,44 @@
   }, 2600);
 })();
 
+/* DER EINSTIEG BEGINNT OBEN, NICHT EIN STUECK DARUNTER (gemessen 02.10. auf
+ * dem iPhone mit ?kopfdebug=1: "0.00s y=0, 0.03s scroll y=62", ohne jeden
+ * Skriptaufruf). Safari stellt beim Wiederoeffnen die alte Scrollstellung
+ * her; lag die im Kopfbereich, klebt der Kopf seitdem ueber der
+ * Ueberschrift. Die Wiederherstellung bleibt (lifeskin-app.js will sie fuer
+ * das Neuladen in Instagram) - nur eine Stellung oberhalb der Faelle
+ * (#rezultatet) wird auf ganz oben gesetzt, solange niemand selbst
+ * gescrollt oder getippt hat. Mit Sprungziel (#...) passiert nichts.
+ * Gilt nur fuer /lifeskin. */
+(function () {
+  "use strict";
+  // Nur die Landingpage /lifeskin - landing.js laedt auch apps/lifeskin-2.
+  if (!/^\/lifeskin\/?$/.test(location.pathname) || location.hash) return;
+  var selbst = false;
+  var merk = function () { selbst = true; };
+  ["touchstart", "wheel", "keydown", "pointerdown"].forEach(function (art) {
+    addEventListener(art, merk, { passive: true, capture: true, once: true });
+  });
+  function grenze() {
+    var faelle = document.getElementById("rezultatet");
+    return faelle && !faelle.hidden ? faelle.getBoundingClientRect().top + scrollY : 400;
+  }
+  function pruefe() {
+    if (selbst || scrollY <= 0 || scrollY >= grenze()) return;
+    var einstieg = document.getElementById("ls-einstieg");
+    if (!einstieg || einstieg.getAttribute("data-aktiv") !== "ja") return;
+    var wurzel = document.documentElement;
+    var vorher = wurzel.style.scrollBehavior;
+    wurzel.style.scrollBehavior = "auto";   // sonst gleitet es sichtbar nach oben
+    window.scrollTo(0, 0);
+    wurzel.style.scrollBehavior = vorher;
+  }
+  addEventListener("scroll", pruefe, { passive: true });
+  addEventListener("pageshow", pruefe);
+  setTimeout(function () { removeEventListener("scroll", pruefe); }, 2000);
+  pruefe();
+})();
+
 /* Messanzeige fuer den Kopf, nur mit ?kopfdebug=1 in der Adresse. Zeigt auf
  * dem echten Telefon, wo Kopf und Inhalt liegen und wer wann scrollt. */
 (function () {
