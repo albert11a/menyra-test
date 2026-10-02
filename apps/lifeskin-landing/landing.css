@@ -228,12 +228,19 @@ html:has(#ls-einstieg[data-aktiv="ja"]) {
      Dokument - es ist das, was scrollt. */
   scroll-behavior: smooth;
   scroll-padding-top: 16px;
+  /* WIE EINE GEWOEHNLICHE SEITE: am Rand federn. lifeskin-styles.css
+     stellt html und body auf overscroll-behavior-y: none - fuer die
+     Trichterbildschirme richtig, hier hielt es den Schwung am oberen
+     und unteren Ende hart an, und das Wischen fuehlte sich stockend an.
+     Was beim Federn sichtbar wird, ist der Grund oben - nicht schwarz. */
+  overscroll-behavior-y: auto;
 }
 body:has(#ls-einstieg[data-aktiv="ja"]) {
   height: auto;
   min-height: 100%;
   overflow: visible;
   background: #F7FAF9;
+  overscroll-behavior-y: auto;
 }
 /* Der Einstieg ist so hoch wie sein Inhalt und nicht wie das Fenster.
    Die Kennung gewinnt gegen .ls-schirm, das display bleibt dort. */

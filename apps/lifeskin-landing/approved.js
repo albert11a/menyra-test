@@ -67,6 +67,11 @@
   const stage = root.querySelector(".lf-case-stage");
   const pair = root.querySelector("#lf-case-pair");
   if (stage && pair) {
+    // One rule for "sideways", shared by the drag, the axis lock and the
+    // swipe itself. The lock used to fire at dx > dy while a swipe needed
+    // dx > 1.5 * dy: a slightly diagonal thumb stroke then neither scrolled
+    // the page nor changed the case - the page just stuck under the thumb.
+    const sideways = (dx, dy) => Math.abs(dx) > Math.abs(dy) * 1.5;
     let swipe = null;
     const settle = () => {
       pair.style.transition = "transform .22s ease";
@@ -82,13 +87,13 @@
       if (!swipe || event.pointerId !== swipe.id) return;
       swipe.dx = event.clientX - swipe.x;
       swipe.dy = event.clientY - swipe.y;
-      if (Math.abs(swipe.dx) > Math.abs(swipe.dy) && cases.length > 1) pair.style.transform = `translateX(${swipe.dx * 0.35}px)`;
+      if (sideways(swipe.dx, swipe.dy) && cases.length > 1) pair.style.transform = `translateX(${swipe.dx * 0.35}px)`;
     });
     stage.addEventListener("pointerup", (event) => {
       if (!swipe || event.pointerId !== swipe.id) return;
       const { dx, dy } = swipe;
       settle();
-      if (Math.abs(dx) < 40 || Math.abs(dx) <= Math.abs(dy) * 1.5) return;
+      if (Math.abs(dx) < 40 || !sideways(dx, dy)) return;
       swipedAt = Date.now();
       step(dx < 0 ? 1 : -1);
     });
@@ -107,7 +112,7 @@
         const dx = Math.abs(t.clientX - lock.x);
         const dy = Math.abs(t.clientY - lock.y);
         if (dx < 6 && dy < 6) return;
-        lock.axis = dx > dy ? "x" : "y";
+        lock.axis = sideways(dx, dy) ? "x" : "y";
       }
       if (lock.axis === "x" && event.cancelable) event.preventDefault();
     }, { passive: false });
