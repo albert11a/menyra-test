@@ -649,6 +649,7 @@
  * Der Modus wird schon beim Scrollen gesetzt und nicht erst beim Laden:
  * Der Browser nimmt den, der beim VERLASSEN galt (nachgemessen). Der Kopf
  * von index.html setzt ihn beim Laden zusaetzlich aus sessionStorage. */
+/* global scrollY, addEventListener */
 (function () {
   "use strict";
   if (!/^\/lifeskin\/?$/.test(location.pathname) || !("scrollRestoration" in history)) return;
