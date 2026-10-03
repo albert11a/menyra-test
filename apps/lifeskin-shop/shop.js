@@ -30,7 +30,7 @@ import { pixelKennungen, browserAngaben } from "../lifeskin/lifeskin-pixel.js";
 import { preisFuer } from "../../shared/lifeskin-preise.js";
 import { ansichtOeffnen, ansichtSchliessen } from "../../shared/lifeskin-ansicht.js";
 import { mittelBauen, holeSammlung, FOTO_PRAEFIX } from "../lifeskin-landing/shop.js";
-import { rasteLaden, rasteFuer, rasteMitBildern } from "../../shared/lifeskin-raste.js";
+import { RASTE_STANDARD, rasteLaden, rasteFuer, rasteMitBildern } from "../../shared/lifeskin-raste.js";
 import {
   SETET_DOK, SET_FOTO_PRAEFIX, SHOP_HERO_DOK, SHOP_HERO_MAX, shopHeroDokId, SETET_STANDARD, MITTEL_FOTOS_STANDARD, MITTEL_NENTITUJ,
   setetOderStandard, setetNormalisieren, aktiveSetet, nevojaKennung, setPreis
@@ -421,8 +421,8 @@ export class Dyqan {
     await Promise.race([this.titelbildFertig, pause(6000)]);
     // Die Faelle mit Ort "Shop" - sie zeichnen sich, sobald ihre Bilder da sind.
     // Bis dahin stehen Platzhalter da; hat Heart keinen Fall (oder antwortet
-    // nicht), kommt der eine dokumentierte Fall - nie erst er, dann andere.
-    const RUECKWEG = [{ para: "/apps/lifeskin/fall-vorher.jpg", pas: "/apps/lifeskin/fall-nachher.jpg", gjetja: "" }];
+    // nicht), kommen die vorhandenen dokumentierten Acne-Faelle - nie erst er, dann andere.
+    const RUECKWEG = [{ para: "/apps/lifeskin/fall-vorher.jpg", pas: "/apps/lifeskin/fall-nachher.jpg", gjetja: "" }, ...RASTE_STANDARD.filter(r => ["r1", "r2"].includes(r.id))];
     const faelle = raste
       ? rasteMitBildern(rasteFuer(raste, "shop"), BASIS)
         .then((liste) => this.#zeichneFaelle(liste.length ? liste : RUECKWEG))
@@ -551,7 +551,7 @@ export class Dyqan {
     const raster = $("#set-grid", this.dok);
     if (!raster) return;
     const available = this.setet.length > 0;
-    for (const button of this.dok.querySelectorAll('.hero [data-set], #zgjedhja [data-set], .closing [data-set], #sticky-buy')) button.disabled = !available;
+    for (const button of this.dok.querySelectorAll('.hero [data-set], #setet [data-set], #zgjedhja [data-set], .closing [data-set], #sticky-buy')) button.disabled = !available;
     if (!available) { raster.innerHTML = '<p class="section-intro">Seti nuk është aktualisht i disponueshëm.</p>'; return; }
     raster.innerHTML = this.setet.map(s => duoCard(s, this.mittel, { fotos: this.fotosBereit })).join('');
     const numri = $("#set-numri", this.dok);
@@ -567,7 +567,7 @@ export class Dyqan {
     this.filter = "all";
     // Oben und in der Leiste: das erste Set.
     const erstes = this.setet[0];
-    for (const knopf of this.dok.querySelectorAll(".hero [data-set], #zgjedhja [data-set], .closing [data-set], #sticky-buy")) knopf.dataset.set = erstes.id;
+    for (const knopf of this.dok.querySelectorAll(".hero [data-set], #setet [data-set], #zgjedhja [data-set], .closing [data-set], #sticky-buy")) knopf.dataset.set = erstes.id;
     const label = $("#sticky-label", this.dok);
     if (label) label.textContent = erstes.titulli;
     const preis = $("#sticky-price", this.dok);

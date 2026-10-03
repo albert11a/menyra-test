@@ -478,8 +478,8 @@ test("das Titelbild springt nicht: Rahmen von Anfang an 7:5, das eigene Bild kom
 test("der Abschnitt #zgjedhja spricht den Zweifel vor der Bestellung an (29.09., Wunsch Inhaber)", () => {
   const html = lies("apps/lifeskin-shop/index.html");
   const abschnitt = html.slice(html.indexOf('id="zgjedhja"'), html.indexOf("</section>", html.indexOf('id="zgjedhja"')));
-  assert.match(abschnitt, /Ende nuk jeni të sigurt\?<br><span>A ju përshtatet Acne Duo\?<\/span>/);
-  assert.match(abschnitt, /<details class="selection-pyetja"><summary>Çfarë ju duhet\?/);
+  assert.match(abschnitt, /Çka i duhet lëkurës tënde\?/);
+  assert.match(abschnitt, /data-ls-start data-ls-quelle="shop">Bëje analizën/);
   assert.doesNotMatch(abschnitt, /data-set=/, "hier nur der Weg zu Dr. Gashi, gekauft wird oben");
   assert.doesNotMatch(lies("apps/lifeskin-shop/shop-weg.css"), /kontrolli/);
 });
