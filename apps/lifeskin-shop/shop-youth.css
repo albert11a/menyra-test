@@ -225,3 +225,59 @@
 #ls-einstieg .page .proof-bahn{scroll-padding-inline-start:0}
 #ls-einstieg .skip:not(:focus){clip-path:inset(50%);width:1px;height:1px;padding:0;overflow:hidden}
 @media(min-width:801px){#ls-einstieg .page .hero h1{font-size:clamp(46px,4.4vw,64px)}}
+
+/* Fine adjustments: filled photos, readable proof and analysis priority. */
+#ls-einstieg .page .product-pair img,#ls-einstieg .page .routine-photo img{object-fit:cover;background:none}
+#ls-einstieg .page .message-rail{grid-template-columns:repeat(3,1fr)}
+#ls-einstieg .page .message-card{display:grid;grid-template-columns:54px 1fr;align-items:start;gap:16px;padding:20px;text-align:left;overflow:visible}
+#ls-einstieg .page .message-picture{padding:0;background:none;border-radius:5px;overflow:hidden}
+#ls-einstieg .page .message-picture img{width:54px;height:82px;object-fit:cover;object-position:50% 62%;border:1px solid var(--line);border-radius:5px}
+#ls-einstieg .page .message-copy{padding:0}
+#ls-einstieg .page .message-copy strong{font-size:17px;line-height:1.5;font-weight:650}
+#ls-einstieg .page .message-copy>span{font-size:11px;margin-top:15px;line-height:1.5}
+#ls-einstieg .page .analysis-section{padding:48px 0 24px}
+#ls-einstieg .page .analysis{display:grid;grid-template-columns:170px 1fr;gap:36px;padding:36px;background:#f2f7ef;border-radius:12px}
+#ls-einstieg .page .analysis-expert img{width:170px;height:194px;border-radius:10px;object-fit:cover;object-position:50% 26%}
+#ls-einstieg .page .analysis-expert b{display:block;font-size:14px;line-height:1.4;margin-top:14px}
+#ls-einstieg .page .analysis-expert small{display:block;font-size:12px;color:var(--muted);margin-top:3px}
+#ls-einstieg .page .analysis-copy h2{font-size:38px;line-height:1.12;letter-spacing:-1.2px;max-width:500px}
+#ls-einstieg .page .analysis-copy .sub{font-size:16px;max-width:540px}
+#ls-einstieg .page .analysis-copy .outline{display:inline-flex;align-items:center;justify-content:center;gap:22px;background:var(--ink);color:white;min-height:54px;padding:15px 22px;margin-top:24px}
+#ls-einstieg .page .confidence{background:white;padding:0 0 48px}
+#ls-einstieg .page .confidence-grid{padding:30px;border-radius:12px;background:var(--ink);grid-template-columns:1fr 1fr;gap:40px}
+#ls-einstieg .page .confidence h2{font-size:26px;line-height:1.2;letter-spacing:-.6px;margin-bottom:15px;max-width:320px}
+#ls-einstieg .page .confidence .eyebrow{font-size:9px!important;margin-bottom:12px}
+#ls-einstieg .page .confidence p{font-size:13px;line-height:1.7}
+#ls-einstieg .page .confidence .support-expert{font-size:11px;color:#b9cbbc;margin-top:18px}
+#ls-einstieg .page .guarantee{padding-left:30px}
+#ls-einstieg .page .big45{font-size:48px;letter-spacing:-2px;line-height:1}
+#ls-einstieg .page .big45 small{font-size:18px;letter-spacing:-.3px}
+#ls-einstieg .page .guarantee h3{font-size:18px;margin:15px 0 12px}
+@media(max-width:800px){
+ #ls-einstieg .page .message-card{flex-basis:90%;grid-template-columns:46px 1fr;gap:14px;padding:18px}
+ #ls-einstieg .page .message-picture img{width:46px;height:72px}
+ #ls-einstieg .page .message-copy strong{font-size:16px;line-height:1.5}
+ #ls-einstieg .page .message-copy>span{font-size:11px;margin-top:12px}
+ #ls-einstieg .page .analysis-section{padding:38px 0 20px}
+ #ls-einstieg .page .analysis{grid-template-columns:1fr;gap:25px;padding:26px 22px}
+ #ls-einstieg .page .analysis-expert{display:flex;align-items:center;gap:18px}
+ #ls-einstieg .page .analysis-expert img{width:96px;height:112px;border-radius:9px;flex-shrink:0}
+ #ls-einstieg .page .analysis-expert b{font-size:15px;margin:0}
+ #ls-einstieg .page .analysis-expert small{font-size:12px;margin-top:6px}
+ #ls-einstieg .page .analysis-copy h2{font-size:30px;line-height:1.12;letter-spacing:-.9px;margin-bottom:16px}
+ #ls-einstieg .page .analysis-copy .sub{font-size:14px;line-height:1.65}
+ #ls-einstieg .page .analysis-copy .outline{display:flex;width:100%;font-size:14px;margin-top:24px}
+ #ls-einstieg .page .confidence{padding:0 0 38px}
+ #ls-einstieg .page .confidence-grid{grid-template-columns:1fr;padding:24px;gap:24px;border-radius:12px}
+ #ls-einstieg .page .confidence h2{font-size:24px;line-height:1.22;max-width:270px}
+ #ls-einstieg .page .confidence p{font-size:12px;line-height:1.7}
+ #ls-einstieg .page .guarantee{padding:22px 0 0}
+ #ls-einstieg .page .big45{font-size:44px}
+ #ls-einstieg .page .big45 small{font-size:17px}
+ #ls-einstieg .page .guarantee h3{font-size:17px;margin:14px 0 11px}
+}
+@media(max-width:355px){#ls-einstieg .page .analysis{padding:22px 18px}#ls-einstieg .page .analysis-expert{gap:12px}#ls-einstieg .page .analysis-expert img{width:78px;height:96px}#ls-einstieg .page .analysis-expert b{font-size:13px}#ls-einstieg .page .analysis-copy h2{font-size:27px}}
+#ls-einstieg .page #zgjedhja{padding:36px}
+#ls-einstieg .page #zgjedhja h2{font-size:38px;line-height:1.12;letter-spacing:-1.2px;margin:0 0 16px}
+@media(max-width:800px){#ls-einstieg .page #zgjedhja{padding:26px 22px}#ls-einstieg .page #zgjedhja h2{font-size:30px;letter-spacing:-.9px}}
+@media(max-width:355px){#ls-einstieg .page #zgjedhja{padding:22px 18px}#ls-einstieg .page #zgjedhja h2{font-size:27px}}
