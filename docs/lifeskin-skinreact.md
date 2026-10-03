@@ -18,7 +18,17 @@ Camera and preparation/result screens are now embedded at the guide position ins
 ## Stable scan stage
 Starting the camera now overlays the original guide inside its unchanged square, without scrolling, hiding the sticky bar or inserting extra controls. Guidance remains in its reserved four-line slot and the existing start button becomes cancel. Completion uses the same diameter for a processing ring and the genuinely approved suitability range; explanatory text and order controls follow underneath.
 
-## Schalter Auto / Manuell (2026-10-03, Wunsch Inhaber)
-Derselbe Schalter wie am Feld Përputhja (`lifeskin/lifeskin/config/perputhja`) steht jetzt auch ueber der SkinReact-Liste in Heart (Acne duo → Fälle → SkinReact). Bei **Auto** ist in jeder noch nicht freigegebenen Zeile **95–100 %** vorausgewaehlt; eine Entwurfswahl oder eine Freigabe geht vor. **Gesendet wird weiterhin nur mit „Dërgo“** – keine Freigabe ohne dass jemand das Foto gesehen hat, kein Senden beim Laden oder im Live-Takt. Manuell: wie bisher „Stufe wählen“.
-
 Mobile guidance correction: the text slot reserves four lines (84px), retains normal block line wrapping, and can grow instead of clipping. Start/camera geometry is checked at 320, 390 and 430px.
+
+## Schalter Auto / Manuell (2026-10-03, Entscheidung Inhaber)
+Derselbe Schalter wie am Feld Përputhja (`lifeskin/lifeskin/config/perputhja`) steht ueber der SkinReact-Liste in Heart (Acne duo → Fälle → SkinReact).
+
+**Manuell:** wie oben – Stufe wählen, „Dërgo“.
+
+**Auto (Wunsch Inhaber: „Wir schauen uns alle Fotos die ganze Zeit an – 5 Sekunden Verzögerung, sollte es nicht stimmen, stoppen wir. Aber es muss auto sein.“):**
+- Ein neuer SkinReact-Scan (angelegt nach dem Einschalten von Auto) bekommt in Heart einen **5-Sekunden-Countdown** – in seiner Zeile und als Leiste unten in Heart, in jeder Ansicht, mit **Stopp** und **Ansehen**.
+- Niemand stoppt: Heart schreibt **95–100 %** in den Bericht (`skinreact`, wie „Dërgo“; dazu `skinreactAuto: { art: "auto", freigabeAt }`). Die Kundin sieht das Ergebnis mit dem nächsten Abruf (~2 s).
+- **Stopp** (oder eine Stufe von Hand gewählt): nichts geht raus, der Fall wird manuell. Der Stopp steht im Bericht (`skinreactAuto.gestoppt`) und gilt für alle Geräte.
+- Geschrieben wird in einer Firestore-Transaktion: Ist der Fall inzwischen gestoppt oder schon freigegeben, wird nichts geschrieben – mehrere offene Heart-Geräte geben nicht doppelt frei.
+- **Die Automatik läuft in Heart**: Sie gibt frei, wenn Heart auf mindestens einem angemeldeten Gerät offen ist (dort läuft der Countdown). Ist Heart nirgends offen, wartet der Fall, bis Heart wieder offen ist – dann läuft sein Countdown ab dort. Eine Version ohne offenes Heart wäre eine Cloud Function (Deploy durch den Inhaber, nicht aus Codex).
+- Keine neue Regel (der CEO darf in `reports` jedes Feld schreiben), kein Deploy, kein Pixel geändert.

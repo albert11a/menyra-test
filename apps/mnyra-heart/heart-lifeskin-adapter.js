@@ -1,4 +1,4 @@
-import { skinreactFreigabe } from "../../shared/lifeskin-skinreact.js";
+import { skinreactFreigabe, skinreactErgebnis } from "../../shared/lifeskin-skinreact.js";
 // Liest, was im Lifeskin-Trichter passiert ist.
 //
 // Geschrieben werden die Sitzungen vom Trichter selbst, ohne Anmeldung und
@@ -49,7 +49,8 @@ import {
   setDoc,
   deleteDoc,
   where,
-  writeBatch
+  writeBatch,
+  runTransaction
 } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import { LIVE_FENSTER_MS, ohnePfad } from "./heart-lifeskin-live.js";
 import { mediumNormalisieren } from "../../shared/lifeskin-medien.js";
@@ -281,6 +282,9 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     // Përputhja Auto oder Manuell (shared/lifeskin-perputhja.js) - ohne
     // Eintrag "hand", wie bisher.
     perputhjaModus: perputhjaModusGueltig(perputhjaDok?.modus),
+    // Seit wann Auto gilt - nur Faelle danach gibt die SkinReact-Automatik
+    // frei (heart-skinreact-auto.js).
+    perputhjaAutoSeit: perputhjaModusGueltig(perputhjaDok?.modus) === "auto" ? String(perputhjaDok?.gesetztAm || "") : "",
     // null: nie gesetzt - Nummer-Seite und Warteseite nehmen die alte Regel.
     antwortzeit: antwortzeitGueltig(antwortzeitDok?.wahl)
       ? { wahl: antwortzeitDok.wahl, gesetztAm: String(antwortzeitDok.gesetztAm || "") }
@@ -575,8 +579,9 @@ export async function loescheShopSetFoto(id) {
 // Der Schalter am Feld Përputhja: "auto" oder "hand", fuer alle Geraete.
 export async function speicherePerputhjaModus(modus) {
   const wert = perputhjaModusGueltig(modus);
-  await setDoc(doc(db, "lifeskin", TENANT, "config", PERPUTHJA_DOK), { modus: wert, gesetztAm: new Date().toISOString() });
-  return wert;
+  const gesetztAm = new Date().toISOString();
+  await setDoc(doc(db, "lifeskin", TENANT, "config", PERPUTHJA_DOK), { modus: wert, gesetztAm });
+  return { modus: wert, gesetztAm };
 }
 
 export async function speichereAntwortzeit(wahl) {
@@ -877,6 +882,40 @@ export async function speichereProduktkosten(kosten) {
   const sauber = { ...kostenNormalisieren(kosten), updatedAt: new Date().toISOString() };
   await setDoc(kostenRef(), sauber);
   return sauber;
+}
+
+// DIE SKINREACT-AUTOMATIK (heart-skinreact-auto.js): in EINER Transaktion
+// lesen und schreiben - ist der Fall inzwischen gestoppt oder schon
+// freigegeben (auf einem anderen Geraet), wird nichts geschrieben.
+// Antwort: "frei", "gestoppt", "schon" - oder ein Fehler, solange der
+// Bericht noch nicht angelegt ist (dann versucht Heart es gleich wieder).
+export async function gibSkinreactAutoFrei(id, bereich) {
+  if (!/^[a-f0-9]{32}$/.test(String(id))) throw new Error("Ungültiger Fall.");
+  const ref = doc(db, "lifeskin", TENANT, "reports", id);
+  return runTransaction(db, async (t) => {
+    const snapshot = await t.get(ref);
+    if (!snapshot.exists()) throw new Error("Fotos werden noch gespeichert.");
+    const daten = snapshot.data() || {};
+    if (daten.skinreactAuto?.gestoppt === true) return "gestoppt";
+    if (skinreactErgebnis(daten)) return "schon";
+    const freigabe = skinreactFreigabe(bereich);
+    t.set(ref, { ...freigabe, skinreactAuto: { art: "auto", freigabeAt: freigabe.skinreact.freigabeAt } }, { merge: true });
+    return "frei";
+  });
+}
+
+// STOPP: gilt fuer alle Geraete. Nur in einen bestehenden Bericht - einen
+// halben Bericht anzulegen, wuerde dem Kunden das Anlegen verbauen.
+export async function stoppeSkinreactAuto(id) {
+  if (!/^[a-f0-9]{32}$/.test(String(id))) throw new Error("Ungültiger Fall.");
+  const ref = doc(db, "lifeskin", TENANT, "reports", id);
+  return runTransaction(db, async (t) => {
+    const snapshot = await t.get(ref);
+    if (!snapshot.exists()) return "lokal";
+    if (skinreactErgebnis(snapshot.data() || {})) return "schon";
+    t.set(ref, { skinreactAuto: { gestoppt: true, gestopptAt: new Date().toISOString() } }, { merge: true });
+    return "gestoppt";
+  });
 }
 
 // CEO-authorized assessment only; leave report status/therapy untouched.

@@ -661,6 +661,11 @@ export function bindHeartEvents({
       await operations.gibSkinreactFrei?.(target.getAttribute("data-id"), target);
       return;
     }
+    // STOPP im Countdown der SkinReact-Automatik.
+    if (action === "lifeskin-skinreact-stopp") {
+      await operations.stoppeSkinreactAuto?.(target.getAttribute("data-id"));
+      return;
+    }
     if (action === "lifeskin-fach") {
       operations.setLifeskinFach?.(target.getAttribute("data-wert"));
       return;

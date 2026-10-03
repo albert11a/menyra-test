@@ -1,4 +1,6 @@
 import { skinreactWahlMerken, skinreactEntwuerfe, skinreactSendet } from "./heart-skinreact.js";
+import { autoStand, autoAnzeige, AUTO_BEREICH } from "./heart-skinreact-auto.js";
+import { istSkinreact } from "../../shared/lifeskin-skinreact.js";
 import { wegDerSitzung, zaehltImWeg } from "../../shared/lifeskin-weg.js";
 import { pruefeRaportV3, reportToWire } from "../../shared/lifeskin-raport-v3.js";
 import { shitjaLesen } from "../../shared/lifeskin-shitja.js";
@@ -56,7 +58,7 @@ import {
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
 import { createNdjekjaOperationen } from "./heart-lifeskin-ndjekja.js";
-import { ladeLifeskin, ladeLifeskinSeit, ladeLifeskinSitzung, horcheLive, ladeFotos, ladeErstesFoto, gibSkinreactFrei, loescheAlleSitzungen, loescheSitzung, setzeBerichtMarke, speichereProdukt, loescheProdukt, gibBerichtFrei,
+import { ladeLifeskin, ladeLifeskinSeit, ladeLifeskinSitzung, horcheLive, ladeFotos, ladeErstesFoto, gibSkinreactFrei, gibSkinreactAutoFrei, stoppeSkinreactAuto, loescheAlleSitzungen, loescheSitzung, setzeBerichtMarke, speichereProdukt, loescheProdukt, gibBerichtFrei,
   ladeBericht, setzeVersand, speichereAnbieter,
   ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX,
   speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder,
@@ -1032,6 +1034,59 @@ export function liveAnhalten() {
   if (liveTakt) { globalThis.clearInterval(liveTakt); liveTakt = null; }
   liveSitzungen = [];
 }
+
+// ══ SKINREACT AUTO-FREIGABE (heart-skinreact-auto.js) ══════════════════
+//
+// Ein Takt je halbe Sekunde: Neue SkinReact-Faelle bekommen ihren
+// Countdown (ab dem Augenblick, in dem DIESES Heart sie sieht), und wer
+// bei 0 steht und nicht gestoppt ist, wird freigegeben. Der Countdown
+// steht in state.lifeskin.skinreactAuto - gezeichnet wird nur, wenn sich
+// eine Sekunde oder ein Stand aendert.
+const skinreactGesehen = new Map();
+const skinreactStopps = new Set();
+const skinreactAutoLaeuft = new Map();
+
+function skinreactAutoTakt() {
+  const zustand = store.getState().lifeskin || {};
+  const vorher = zustand.skinreactAuto || {};
+  if (zustand.perputhjaModus !== "auto" || zustand.status !== "ready") {
+    if (Object.keys(vorher).length) actions.patchLifeskin({ skinreactAuto: {} });
+    return;
+  }
+  const jetzt = Date.now();
+  const neu = {};
+  for (const sitzung of zustand.sitzungen || []) {
+    if (!istSkinreact(sitzung)) continue;
+    const id = String(sitzung.id || "");
+    if (!skinreactGesehen.has(id)) skinreactGesehen.set(id, jetzt);
+    const stand = autoStand(sitzung, zustand.berichte?.[id], {
+      modus: "auto", autoSeit: zustand.perputhjaAutoSeit, gesehenAm: skinreactGesehen.get(id), jetzt,
+      gestoppt: skinreactStopps.has(id), entwurf: skinreactEntwuerfe.has(id)
+    });
+    const laeuft = skinreactAutoLaeuft.get(id);
+    if (stand?.rest === 0 && !(laeuft && jetzt < laeuft)) skinreactAutoFreigeben(id);
+    const anzeige = autoAnzeige(stand, skinreactAutoLaeuft.has(id));
+    if (anzeige) neu[id] = anzeige;
+  }
+  if (JSON.stringify(neu) !== JSON.stringify(vorher)) actions.patchLifeskin({ skinreactAuto: neu });
+}
+
+async function skinreactAutoFreigeben(id) {
+  // Bis zur Antwort kein zweiter Versuch; danach fruehestens in 3 s.
+  skinreactAutoLaeuft.set(id, Number.POSITIVE_INFINITY);
+  try {
+    const antwort = await gibSkinreactAutoFrei(id, AUTO_BEREICH);
+    if (antwort === "gestoppt") skinreactStopps.add(id);
+    await lifeskinBerichteNachlesen([id]);
+    skinreactAutoLaeuft.delete(id);
+  } catch {
+    // Meist ist der Bericht noch nicht angelegt (die Fotos laden noch).
+    skinreactAutoLaeuft.set(id, Date.now() + 3000);
+  }
+  skinreactAutoTakt();
+}
+
+globalThis.setInterval?.(() => { try { skinreactAutoTakt(); } catch { /* Takt ist Beiwerk */ } }, 500);
 
 // Ab wann der naechste Abgleich nachholen muss: der Beginn des letzten
 // erfolgreichen Ladens, mit zwei Minuten Luft fuer Uhren, die nicht ganz
@@ -4113,14 +4168,16 @@ const operations = {
     const wert = modus === "auto" ? "auto" : "hand";
     const vorher = store.getState().lifeskin?.perputhjaModus || "hand";
     if (wert === vorher) return;
-    actions.patchLifeskin({ perputhjaModus: wert });
+    const seitVorher = store.getState().lifeskin?.perputhjaAutoSeit || "";
+    actions.patchLifeskin({ perputhjaModus: wert, perputhjaAutoSeit: wert === "auto" ? new Date().toISOString() : "" });
     try {
-      await speicherePerputhjaModus(wert);
+      const gespeichert = await speicherePerputhjaModus(wert);
+      actions.patchLifeskin({ perputhjaAutoSeit: wert === "auto" ? gespeichert.gesetztAm : "" });
       setToast("Përputhja", wert === "auto"
-        ? "Auto: Heart setzt bei Shop-Fällen 95–99 % vor. Vor dem Freigeben änderbar."
-        : "Manuell: Das Feld bleibt leer, die Zahl trägt Dr. Gashi ein.", "success");
+        ? "Auto: Neue SkinReact-Scans gehen nach 5 s mit 95–100 % raus – außer ihr tippt Stopp."
+        : "Manuell: Nichts geht von selbst raus. Stufe wählen, Dërgo.", "success");
     } catch (fehler) {
-      actions.patchLifeskin({ perputhjaModus: vorher });
+      actions.patchLifeskin({ perputhjaModus: vorher, perputhjaAutoSeit: seitVorher });
       setToast("Përputhja", fehler?.message || "Speichern fehlgeschlagen.", "danger");
     }
   },
@@ -4133,6 +4190,23 @@ const operations = {
     actions.patchLifeskin({ shopChip: String(id || "shop").trim() });
   },
   skinreactWahlMerken(id, wert) { skinreactWahlMerken(id, wert); },
+  // STOPP im Countdown der SkinReact-Automatik: Nichts geht raus, der Fall
+  // wird manuell - auf allen Geraeten (stoppeSkinreactAuto).
+  async stoppeSkinreactAuto(id) {
+    const fall = String(id || "");
+    if (!fall) return;
+    skinreactStopps.add(fall);
+    skinreactAutoTakt();
+    try {
+      const antwort = await stoppeSkinreactAuto(fall);
+      setToast("SkinReact", antwort === "schon"
+        ? "Zu spät – der Fall war schon freigegeben. Stufe wählen und Dërgo korrigiert ihn."
+        : "Gestoppt. Stufe wählen und Dërgo.", antwort === "schon" ? "danger" : "success");
+      await lifeskinBerichteNachlesen([fall]);
+    } catch (fehler) {
+      setToast("SkinReact", `Gestoppt auf diesem Gerät. ${fehler?.message || ""}`.trim(), "danger");
+    }
+  },
   async gibSkinreactFrei(id, knopf) {
     const zeile = knopf.closest("[data-skinreact-fall]");
     const meldung = zeile?.querySelector(".heart-skinreact__meldung");

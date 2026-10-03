@@ -439,6 +439,30 @@ function renderDrawer(state, userName) {
   `;
 }
 
+// DIE SKINREACT-AUTOMATIK, UEBERALL IN HEART (03.10.): Laeuft fuer einen
+// neuen Scan der Countdown bis zur Auto-Freigabe (heart-skinreact-auto.js),
+// steht unten eine Leiste mit Name, Sekunden und Stopp - egal, welche
+// Ansicht gerade offen ist. Stoppen muss man koennen, wo man gerade ist.
+function renderSkinreactLeiste(state) {
+  let laufend = [];
+  let sitzungen = [];
+  try {
+    laufend = Object.entries(state.lifeskin?.skinreactAuto || {}).filter(([, a]) => Number.isFinite(a?.sek));
+    sitzungen = state.lifeskin?.sitzungen || [];
+  } catch { return ""; }
+  if (!laufend.length) return "";
+  const name = (id) => sitzungen.find((s) => s.id === id)?.name || "Neuer Scan";
+  return `
+      <div class="heart-skinreact-leiste" role="status" aria-live="polite">
+        ${laufend.slice(0, 3).map(([id, a]) => `
+        <div class="heart-skinreact-leiste__fall">
+          <span class="heart-skinreact-leiste__text"><b>${escapeHtml(name(id))}</b> · ${a.sendet ? "wird gesendet …" : `Auto in <b>${a.sek}</b> s`}</span>
+          <button type="button" class="heart-skinreact-leiste__ansehen" data-nav-key="lifeskinshop">Ansehen</button>
+          ${a.sendet ? "" : `<button type="button" class="heart-skinreact-leiste__stopp" data-action="lifeskin-skinreact-stopp" data-id="${escapeHtml(id)}">Stopp</button>`}
+        </div>`).join("")}
+      </div>`;
+}
+
 function renderShell(state, runtime = {}) {
   const activeView = state.shell.activeView;
   const userName = getHeartDisplayNameCore(state.auth.profile, state.auth.user) || "CEO";
@@ -558,6 +582,7 @@ function renderShell(state, runtime = {}) {
     },
     modal: state.shell.modal || {}
   })}
+      ${renderSkinreactLeiste(state)}
       ${state.shell.toast ? `
         <div class="heart-toast heart-toast--${escapeHtml(state.shell.toast.tone || "neutral")}" role="status">
           <strong>${escapeHtml(state.shell.toast.title || "Hinweis")}</strong>

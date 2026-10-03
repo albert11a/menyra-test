@@ -10663,3 +10663,36 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 .heart-skinreact-auto > span { flex: 1 1 auto; }
 .heart-skinreact-auto > .heart-perputhja-modus { flex: none; }
 .heart-perputhja-modus .heart-lifeskin-chip { white-space: nowrap; }
+
+/* SKINREACT AUTO-FREIGABE: Countdown mit Stopp - in der Zeile und als
+   Leiste unten in Heart (ueber dem Toast, ueber jeder Ansicht). */
+.heart-skinreact__auto {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin: 8px 0 0; padding: 6px 6px 6px 10px; border-radius: 8px;
+  background: rgba(240, 180, 41, 0.12); color: #f0c35a; font-size: 12.5px;
+}
+.heart-skinreact__auto b { font-size: 15px; }
+.heart-skinreact__auto--stopp { background: rgba(255, 255, 255, 0.06); color: var(--heart-muted, #a1a1aa); }
+.heart-skinreact__stopp,
+.heart-skinreact-leiste__stopp {
+  flex: none; min-height: 36px; padding: 0 16px; border: 0; border-radius: 8px;
+  background: #e11d48; color: #fff; font: inherit; font-size: 14px; font-weight: 800; cursor: pointer;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.heart-skinreact-leiste {
+  position: fixed; left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px));
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); z-index: 60;
+  display: grid; gap: 6px;
+}
+.heart-skinreact-leiste__fall {
+  display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px; border-radius: 12px;
+  background: #1f1a0b; border: 1px solid rgba(240, 180, 41, 0.45); color: #f7e3a6;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); font-size: 13px;
+}
+.heart-skinreact-leiste__text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.heart-skinreact-leiste__ansehen {
+  flex: none; min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(247, 227, 166, 0.35);
+  background: transparent; color: inherit; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+:where(html[data-heart-theme="tag"]) .heart-skinreact__auto { background: #fdf3d8; color: #8a5a00; }
+:where(html[data-heart-theme="tag"]) .heart-skinreact-leiste__fall { background: #fff8e6; color: #5c3d00; border-color: #e9c46a; }

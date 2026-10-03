@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { SKINREACT_BEREICHE, skinreactBereich, skinreactFreigabe, skinreactErgebnis, istSkinreact } from '../shared/lifeskin-skinreact.js';
 import { herkunftAuslesen, Sitzung } from '../apps/lifeskin/lifeskin-session.js';
 import { berichtAusRest, SkinreactErgebnis, skinreactEinbetten } from '../apps/lifeskin-shop/skinreact-ergebnis.js';
@@ -86,21 +85,35 @@ test('inline embedding preserves original video/canvas screen nodes and reuses t
   skinreactEinbetten(document,'einstieg');assert.equal(section.dataset.srState,'idle');
 });
 
-// AUTO (Schalter Përputhja, 03.10., Wunsch Inhaber): 95-100 % steht schon
-// in der Auswahl - gesendet wird erst mit "Dërgo". Keine Freigabe ohne Mensch.
-test('Auto waehlt 95-100 vor, sendet aber nichts von selbst', () => {
+// AUTO (Schalter Përputhja, 03.10., Entscheidung Inhaber): 95-100 % steht
+// in der Auswahl, und ein neuer Scan geht nach 5 s automatisch raus - ausser
+// jemand tippt Stopp (heart-skinreact-auto.js).
+test('Auto waehlt 95-100 vor; gestoppt und freigegeben gehen vor', () => {
   const s = { id: 'sr-auto', name: 'Arta', createdAt: new Date().toISOString(), photos: ['a'], source: { scanWorkflow: 'skinreact', weg: 'lifeskinshop' } };
-  const auto = renderSkinreactFall(s, {}, '', { perputhjaModus: 'auto' });
-  assert.match(auto, /value="95-100" selected/);
-  assert.match(auto, /data-action="lifeskin-skinreact-senden"/, 'Dërgo bleibt der Weg zur Freigabe');
-  // Manuell und ohne Einstellung: nichts vorausgewaehlt.
+  assert.match(renderSkinreactFall(s, {}, '', { perputhjaModus: 'auto' }), /value="95-100" selected/);
   for (const modus of ['hand', undefined]) assert.doesNotMatch(renderSkinreactFall(s, {}, '', { perputhjaModus: modus }), /" selected/);
-  // Schon freigegeben: es gilt die Freigabe, nicht der Vorschlag.
   const frei = { skinreact: { bereich: '70-75', freigabeAt: '2026-10-03T08:00:00.000Z', art: 'produkteignung' } };
-  const html = renderSkinreactFall(s, frei, '', { perputhjaModus: 'auto' });
-  assert.match(html, /value="70-75" selected/);
-  assert.doesNotMatch(html, /value="95-100" selected/);
-  // Heart sendet nur aus dem Klick auf Dërgo - kein Senden beim Laden oder im Live-Takt.
-  const heart = readFileSync(new URL('../apps/mnyra-heart/heart.js', import.meta.url), 'utf8');
-  assert.doesNotMatch(heart, /SKINREACT_AUTO_BEREICH/, 'heart.js darf den Vorschlag nicht selbst senden');
+  assert.match(renderSkinreactFall(s, frei, '', { perputhjaModus: 'auto' }), /value="70-75" selected/);
+  const gestoppt = renderSkinreactFall(s, {}, '', { perputhjaModus: 'auto', auto: { gestoppt: true } });
+  assert.doesNotMatch(gestoppt, /" selected/);
+  assert.match(gestoppt, /Auto gestoppt/);
+});
+
+test('Countdown in der Zeile mit Stopp - und unten in Heart, in jeder Ansicht', async () => {
+  const s = { id: 'b'.repeat(32), name: 'Besa', createdAt: new Date().toISOString(), photos: ['a'], source: { scanWorkflow: 'skinreact', weg: 'lifeskinshop' } };
+  const zeile = renderSkinreactFall(s, {}, '', { perputhjaModus: 'auto', auto: { sek: 3, sendet: false } });
+  assert.match(zeile, /Auto-Freigabe 95–100 % in <b>3<\/b> s/);
+  assert.match(zeile, new RegExp(`data-action="lifeskin-skinreact-stopp" data-id="${'b'.repeat(32)}">Stopp`));
+  assert.doesNotMatch(renderSkinreactFall(s, {}, '', { perputhjaModus: 'auto', auto: { sek: 0, sendet: true } }), /Stopp</);
+  const { renderHeartApp } = await import('../apps/mnyra-heart/heart-render.js');
+  const knoten = { innerHTML: '', querySelector: () => null, querySelectorAll: () => [], contains: () => false };
+  renderHeartApp(knoten, {
+    auth: { status: 'authenticated', user: { uid: 'u', email: 'c@m.t' }, profile: {}, access: { allowed: true } },
+    shell: { activeView: 'dashboard', modal: {}, navGruppe: null, theme: 'nacht' },
+    crmAdmin: {}, analytics: {}, landing: {}, destinations: {}, mnyraGo: {}, connections: {}, setup: {},
+    lifeskin: { sitzungen: [s], skinreactAuto: { [s.id]: { sek: 4, sendet: false } } }
+  }, {});
+  assert.match(knoten.innerHTML, /class="heart-skinreact-leiste"/);
+  assert.match(knoten.innerHTML, /<b>Besa<\/b> · Auto in <b>4<\/b> s/);
+  assert.match(knoten.innerHTML, /heart-skinreact-leiste__stopp" data-action="lifeskin-skinreact-stopp"/);
 });
