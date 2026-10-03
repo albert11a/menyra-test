@@ -281,3 +281,32 @@
 #ls-einstieg .page #zgjedhja h2{font-size:38px;line-height:1.12;letter-spacing:-1.2px;margin:0 0 16px}
 @media(max-width:800px){#ls-einstieg .page #zgjedhja{padding:26px 22px}#ls-einstieg .page #zgjedhja h2{font-size:30px;letter-spacing:-.9px}}
 @media(max-width:355px){#ls-einstieg .page #zgjedhja{padding:22px 18px}#ls-einstieg .page #zgjedhja h2{font-size:27px}}
+
+/* Complete original message collection and unified Instagram panel. */
+#ls-einstieg .page .message-rail{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;gap:16px;overscroll-behavior-x:contain;padding-bottom:4px}
+#ls-einstieg .page .message-card{flex:0 0 calc((100% - 32px)/3);scroll-snap-align:start;scroll-snap-stop:always;min-height:170px}
+#ls-einstieg .page .swipe-hint{display:flex;align-items:center;gap:6px;white-space:nowrap}
+#ls-einstieg .page .swipe-hint .icon{width:16px;height:16px}
+#ls-einstieg .page .instagram-panel{padding:32px;border:1px solid var(--line);border-radius:14px;background:#f5f8f5;overflow:hidden}
+#ls-einstieg .page .instagram-panel h2{margin:12px 0 16px;line-height:1.12}
+#ls-einstieg .page .instagram-panel .sub{max-width:560px;line-height:1.6}
+#ls-einstieg .page .instagram-card{gap:12px;padding:18px;border-radius:10px}
+#ls-einstieg .page .instagram-link{width:20px;height:20px;flex-shrink:0}
+#ls-einstieg .page .instagram-panel .customer-rail{margin-top:24px}
+#ls-einstieg .page .brand-showcase{margin-top:24px}
+#ls-einstieg .page .brand-showcase .hero-photo{width:100%;max-width:none;margin:0;aspect-ratio:7/5;border-radius:14px}
+@media(max-width:760px){
+ #ls-einstieg .page .proof-heading{align-items:flex-start;gap:14px;flex-direction:column}
+ #ls-einstieg .page .message-card{flex-basis:90%;min-height:160px}
+ #ls-einstieg .page .instagram-panel{padding:22px 18px;border-radius:12px}
+ #ls-einstieg .page .instagram-panel h2{font-size:30px}
+ #ls-einstieg .page .instagram-grid{gap:10px;margin-top:22px}
+ #ls-einstieg .page .instagram-card{padding:14px 12px;gap:9px}
+ #ls-einstieg .page .instagram-avatar{width:34px;height:34px}
+ #ls-einstieg .page .instagram-card strong{font-size:13px}
+ #ls-einstieg .page .followers b{font-size:23px}
+ #ls-einstieg .page .instagram-link{width:18px;height:18px}
+ #ls-einstieg .page .brand-showcase{margin-top:20px}
+ #ls-einstieg .page .brand-showcase .hero-photo{border-radius:12px}
+}
+@media(max-width:360px){#ls-einstieg .page .instagram-card{gap:6px;padding:12px 8px}#ls-einstieg .page .followers b{font-size:20px}#ls-einstieg .page .instagram-avatar{width:28px;height:28px}}

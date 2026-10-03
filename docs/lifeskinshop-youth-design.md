@@ -15,3 +15,11 @@ Die korrigierte Vorschau wurde auf 320/390/430/768/1440 px geprüft: kein horizo
 
 ## Feinheiten zur erneuten Vorschau (03.10.)
 Produktbilder füllen die bestehenden Bildflächen durch einen leichten Crop einheitlich aus. Kundennachrichten werden wieder kompakte Textkarten mit kleiner Originalbild-Vorschau links; die bisherigen data-zitat-bild-Hooks vergrößern weiterhin die Originalnachricht. Analyse mit größerem Arztporträt und größerer Karte vor dem kompakten Support-/Garantieblock. Support/Garantie in einer moderat abgerundeten Karte. Die Bild-Render wurden vom Inhaber am 03.10.2026 mit „Passt mach“ zur Übernahme auf main freigegeben.
+
+## Original messages and Instagram panel — 2026-10-03
+
+Restored all 17 existing message images and exact original quotations from the previous customer section, presented as compact horizontally swipeable cards with an original-image dialog. Corrected the heading to “Çka thonë klientët?” and displayed the collection count. Instagram heading, account links and customer media now share one rounded panel; outgoing arrows use the existing Lucide symbol. Removed the “Më shumë nga LifeSkin” disclosure and displayed the existing Heart-controlled Acne Duo image/gallery directly below the panel, preserving its loading/cache hooks.
+
+Validation: production build succeeded; 20 shop/Pixel tests passed. Browser checks at 320, 390, 430, 768 and 1440 pixels found no horizontal overflow or page errors. All 17 message cards render; original-message dialog opens/closes; add-to-cart and checkout emit their existing stubbed events. No real orders or production data writes. Local renders use documented fallback gallery/media where remote data is unavailable; they do not measure production loading performance or conversion.
+
+Additional analysis-flow suite: 35/36 checks passed. Its failing photo-rule assertion concerns the unchanged /lifeskin landing page and expects photo markup absent there; identical file on origin/main. No analysis-flow code changed in this iteration.
