@@ -392,7 +392,7 @@ export class Dyqan {
       if (!rail) return;
       this.klienten = kundenAuswahl(medien);
       rail.innerHTML = kundenGalerie(medien);
-      $("#klientet", this.dok)?.toggleAttribute("hidden", !rail.children.length);
+      $("#klientet", this.dok)?.toggleAttribute("hidden", !rail.children.length && !$("#klientet [data-zitat-bild]", this.dok));
       rail.addEventListener("play", event => {
         rail.querySelectorAll("video").forEach(video => { if (video !== event.target) video.pause(); });
       }, true);
