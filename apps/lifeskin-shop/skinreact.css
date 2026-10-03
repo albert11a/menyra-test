@@ -35,7 +35,7 @@
 #ls-einstieg #zgjedhja [data-sr-live] .ls-hinweis{display:none}
 #ls-einstieg #zgjedhja [data-sr-live] .ls-kamera{flex:none;margin:0 auto;background:transparent}
 #ls-einstieg #zgjedhja[data-sr-state="kamera"]>.sr-stage>.sr-ring{visibility:hidden}
-#ls-einstieg #zgjedhja .sr-hint{height:42px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#ls-einstieg .page #zgjedhja .sr-hint{height:auto;min-height:84px;display:block;overflow:visible;font-size:13px;line-height:21px;padding:0;text-wrap:pretty}
 #ls-einstieg #zgjedhja[data-sr-state="analyse"]>.sr-stage{aspect-ratio:auto}
 #ls-einstieg #zgjedhja[data-sr-state="analyse"]>.sr-stage>.sr-disc,
 #ls-einstieg #zgjedhja[data-sr-state="analyse"]>.sr-stage>.sr-ring{display:none}
