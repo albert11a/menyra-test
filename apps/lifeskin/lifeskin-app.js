@@ -26,7 +26,7 @@
 // PUNKT aus derselben Datei.
 //
 // lifeskin-haut.js faellt damit ganz weg: Niemand sonst holt etwas daraus.
-import { SkinreactErgebnis } from "../lifeskin-shop/skinreact-ergebnis.js";
+import { SkinreactErgebnis, skinreactEinbetten } from "../lifeskin-shop/skinreact-ergebnis.js";
 import { MESS_BREITE, PUNKT } from "./lifeskin-metrics.js";
 import { pruefeAufnahme, schaerfeVonBild } from "./lifeskin-face.js";
 import { Ringlauf, SEKTOREN, POSE_GRENZEN, SEKTOR_RECHTS } from "./lifeskin-pose.js";
@@ -1017,9 +1017,10 @@ export class Trichter {
   zeige(name, { verlauf = "vor" } = {}) {
     if (name !== "analyse") this.skinreactAnzeige?.stop();
     if (name !== this.aktiv) this.klickpfad?.melde("bildschirm", KLICKPFAD_NAMEN[`ls-${name}`] || name);
+    const eingebettet = this.skinreact ? skinreactEinbetten(globalThis.document, name) : null;
     for (const schirm of SCHIRME) {
       const knoten = $(`#ls-${schirm}`);
-      if (knoten) knoten.dataset.aktiv = schirm === name ? "ja" : "nein";
+      if (knoten) knoten.dataset.aktiv = schirm === name || (schirm === "einstieg" && eingebettet?.inline) ? "ja" : "nein";
     }
     const vorher = this.aktiv;
     this.aktiv = name;
@@ -1059,7 +1060,8 @@ export class Trichter {
     // Nichts am Trichter aendert sich dadurch. Der erste Aufruf gilt immer
     // dem Bildschirm, der ohnehin gerade dasteht; gescrollt wuerde also auf
     // eine Stelle, an der noch niemand etwas getan hat.
-    if (vorher) window.scrollTo(0, 0);
+    if (eingebettet?.inline) eingebettet.platz?.scrollIntoView?.({ block: "start", behavior: "instant" });
+    else if (vorher && !this.skinreact) window.scrollTo(0, 0);
 
     // Wo jemand steht, wird bei jedem Wechsel festgehalten - auch bei
     // denen ohne Verlaufseintrag. Sonst bliebe beim Weitergehen von
@@ -1763,6 +1765,10 @@ export class Trichter {
     $("#ls-fragenzurueck")?.addEventListener("click", () => this.#frageZurueck());
 
     $("#ls-kameraoeffnen")?.addEventListener("click", () => this.#kameraStarten());
+    $("#sr-camera-cancel")?.addEventListener("click", () => {
+      this.#kameraStoppen();
+      this.zeige("einstieg");
+    });
     $("#ls-hilfe")?.addEventListener("click", () => this.#blatt(true));
     for (const knoten of $$("[data-blatt-zu]")) {
       knoten.addEventListener("click", () => this.#blatt(false));
@@ -3130,6 +3136,11 @@ export class Trichter {
     const schirm = $("#ls-kamera");
     const buehne = $(".ls-kamera");
     if (!schirm || !buehne) return;
+    if (this.skinreact && schirm.closest?.("[data-sr-live]")) {
+      schirm.style.height = "auto";
+      buehne.style.width = `${Math.max(0, Math.floor(Math.min(480, schirm.clientWidth)))}px`;
+      return;
+    }
     const hoehe = window.visualViewport?.height || window.innerHeight;
     if (hoehe > 0) schirm.style.height = `${Math.floor(hoehe)}px`;
     const stil = getComputedStyle(schirm);

@@ -24,3 +24,30 @@
 @media(prefers-reduced-motion:reduce){.sr-head,.sr-features,.sr-ring line,.sr-pending{animation:none}}
 #ls-einstieg .page #zgjedhja .sr-hint{font-size:13px;line-height:1.6;text-align:center;margin-bottom:24px}
 #ls-einstieg .page #zgjedhja .sr-micro{font-size:12px;line-height:1.5;color:#526258;text-align:center;margin-top:14px}
+
+/* Camera and result occupy the original face-guide position in the shop. */
+#zgjedhja [data-sr-live]{scroll-margin-top:80px;margin:28px auto 0;max-width:480px}
+#zgjedhja[data-sr-state="idle"] [data-sr-live]{display:none}
+#ls-einstieg #zgjedhja:is([data-sr-state="kamera"],[data-sr-state="analyse"])>.sr-stage,
+#ls-einstieg #zgjedhja:is([data-sr-state="kamera"],[data-sr-state="analyse"])>.sr-hint,
+#ls-einstieg #zgjedhja:is([data-sr-state="kamera"],[data-sr-state="analyse"])>#ls-start,
+#ls-einstieg #zgjedhja:is([data-sr-state="kamera"],[data-sr-state="analyse"])>.sr-micro{display:none}
+#ls-einstieg #zgjedhja [data-sr-live]>.ls-schirm{min-height:0;height:auto;width:100%;max-width:none;padding:0;margin:0;background:#fff}
+#ls-einstieg #zgjedhja [data-sr-live]>.ls-schirm>.ls-kopf{display:none}
+#ls-einstieg #zgjedhja [data-sr-live] .ls-kamera{flex:none;margin:0 auto}
+#ls-einstieg #zgjedhja [data-sr-live] .ls-hinweis{font-size:14px;text-align:center;margin:18px 0;line-height:1.6}
+#ls-einstieg #zgjedhja [data-sr-live] .ls-fuss{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin:0;padding:0}
+#ls-einstieg #zgjedhja [data-sr-live] .ls-fuss button{font-size:13px;width:auto;margin:0}
+#ls-einstieg #zgjedhja [data-sr-live] .ls-analyse{width:100%;gap:16px;flex:none}
+#ls-einstieg #zgjedhja [data-sr-live] .sr-result{margin:0 auto}
+#ls-einstieg #zgjedhja [data-sr-live] .sr-result p{font-size:15px;line-height:1.65}
+#ls-einstieg #zgjedhja [data-sr-live] .sr-result__eyebrow{font-size:11px;margin:0 0 24px}
+#ls-einstieg #zgjedhja [data-sr-live] .sr-result__note{font-size:12px;margin:20px 0}
+#ls-einstieg #zgjedhja [data-sr-live] .sr-result__range{font-size:clamp(48px,15vw,76px);margin:24px 0}
+#ls-einstieg #zgjedhja [data-sr-live] .sr-back{margin:20px auto}
+#ls-einstieg #zgjedhja [data-sr-live] .sr-order{color:#fff}
+#ls-einstieg:has(#zgjedhja[data-sr-state="kamera"]) .sticky{display:none}
+#ls-einstieg .page .skinreact-section .wrap{padding-inline:0;max-width:680px}
+#ls-einstieg #zgjedhja [data-sr-live]>.ls-schirm[data-aktiv="ja"]{animation:none}
+#ls-einstieg .page #zgjedhja [data-sr-live] .ls-fuss{flex-direction:row;align-items:center}
+#ls-einstieg .page #zgjedhja [data-sr-live] .ls-fuss button{flex:1;min-width:0;min-height:44px;font-size:13px;padding:10px}

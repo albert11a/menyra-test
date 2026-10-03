@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { SKINREACT_BEREICHE, skinreactBereich, skinreactFreigabe, skinreactErgebnis, istSkinreact } from '../shared/lifeskin-skinreact.js';
 import { herkunftAuslesen, Sitzung } from '../apps/lifeskin/lifeskin-session.js';
-import { berichtAusRest, SkinreactErgebnis } from '../apps/lifeskin-shop/skinreact-ergebnis.js';
+import { berichtAusRest, SkinreactErgebnis, skinreactEinbetten } from '../apps/lifeskin-shop/skinreact-ergebnis.js';
 import { renderSkinreactFall, renderLifeskin } from '../apps/mnyra-heart/heart-lifeskin-render.js';
 import { skinreactWahlMerken, skinreactEntwuerfe } from '../apps/mnyra-heart/heart-skinreact.js';
 import { normalisiere, baueKennzahlen, baueTrichter } from '../apps/mnyra-heart/heart-lifeskin-berechnung.js';
@@ -72,4 +72,15 @@ test('workflow survives reload but older submitted analyses are not reclassified
   data.set('lifeskin:sitzung',JSON.stringify({id,createdAt:'2026-10-03T05:00:00Z',step:'result',bericht:true}));
   const old=new Sitzung({speicher:storage,fetchFn});
   assert.equal(old.scanWorkflow,'');assert.ok(old.fortsetzbar());
+});
+
+test('inline embedding preserves original video/canvas screen nodes and reuses the same slot',()=>{
+  let slot=null;const camera={id:'ls-kamera'},result={id:'ls-analyse'};
+  const section={dataset:{},querySelector:selector=>selector==='[data-sr-live]'?slot:{after:node=>{slot=node}}};
+  const document={getElementById:id=>({'zgjedhja':section,'ls-kamera':camera,'ls-analyse':result})[id],createElement:()=>({children:[],setAttribute(){},append(node){this.children.push(node)}})};
+  const first=skinreactEinbetten(document,'kamera');
+  assert.equal(first.inline,true);assert.equal(section.dataset.srState,'kamera');
+  assert.equal(first.platz.children[0],camera);assert.equal(first.platz.children[1],result);
+  const next=skinreactEinbetten(document,'analyse');assert.equal(next.platz,first.platz);assert.equal(next.platz.children.length,2);assert.equal(section.dataset.srState,'analyse');
+  skinreactEinbetten(document,'einstieg');assert.equal(section.dataset.srState,'idle');
 });

@@ -64,3 +64,23 @@ export class SkinreactErgebnis {
     this.wurzel.querySelector(".sr-back").addEventListener("click", () => { this.stop(); globalThis.__lifeskinTrichter?.zeige("einstieg"); });
   }
 }
+
+// Reuse the original DOM/video/canvases in place; never start a second scanner.
+export function skinreactEinbetten(dokument, name) {
+  const sektion = dokument?.getElementById?.("zgjedhja");
+  if (!sektion) return null;
+  let platz = sektion.querySelector("[data-sr-live]");
+  if (!platz) {
+    platz = dokument.createElement("div");
+    platz.setAttribute("data-sr-live", "");
+    const vorschau = sektion.querySelector(".sr-stage");
+    vorschau?.after(platz);
+    for (const id of ["ls-kamera", "ls-analyse"]) {
+      const schirm = dokument.getElementById(id);
+      if (schirm) platz.append(schirm);
+    }
+  }
+  const inline = name === "kamera" || name === "analyse";
+  sektion.dataset.srState = inline ? name : "idle";
+  return { platz, inline };
+}
