@@ -628,6 +628,11 @@ export function bindHeartEvents({
       await operations.setLifeskinAntwortzeit?.(target.getAttribute("data-wert"));
       return;
     }
+    // Përputhja Auto oder Manuell (Schalter am Feld im Befund).
+    if (action === "lifeskin-perputhja-modus") {
+      await operations.setLifeskinPerputhjaModus?.(target.getAttribute("data-wert"));
+      return;
+    }
     if (action === "heart-push-einschalten") {
       operations.schalteHeartPushEin?.();
       return;

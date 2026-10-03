@@ -61,7 +61,7 @@ import { ladeLifeskin, ladeLifeskinSeit, ladeLifeskinSitzung, horcheLive, ladeFo
   ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX,
   speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder,
   speichereShopSetet, ladeShopSetFoto, speichereShopSetFoto, loescheShopSetFoto, speichereShopHero, loescheShopHero, speichereShopHeroListe,
-  speichereAntwortzeit,
+  speichereAntwortzeit, speicherePerputhjaModus,
   ladeMedien, speichereMedien, speichereMedium, loescheMedium, ladeKommentare, setzeKommentarVerborgen, loescheKommentar, schreibeKommentare,
   ladeProduktkosten, speichereProduktkosten } from "./heart-lifeskin-adapter.js";
 import { medienListe, mediumNormalisieren, neueMediumId } from "../../shared/lifeskin-medien.js";
@@ -4105,6 +4105,23 @@ const operations = {
         : `${eintrag.label} – steht jetzt auf der Nummer-Seite und der Warteseite: „${antwortzeitSatz(antwortzeit)}“.`, "success");
     } catch (fehler) {
       setToast("Antwortzeit", fehler?.message || "Speichern fehlgeschlagen.", "danger");
+    }
+  },
+  // PËRPUTHJA AUTO ODER MANUELL (Schalter am Feld im Befund, 03.10.):
+  // gilt sofort und fuer alle Geraete (shared/lifeskin-perputhja.js).
+  async setLifeskinPerputhjaModus(modus) {
+    const wert = modus === "auto" ? "auto" : "hand";
+    const vorher = store.getState().lifeskin?.perputhjaModus || "hand";
+    if (wert === vorher) return;
+    actions.patchLifeskin({ perputhjaModus: wert });
+    try {
+      await speicherePerputhjaModus(wert);
+      setToast("Përputhja", wert === "auto"
+        ? "Auto: Heart setzt bei Shop-Fällen 95–99 % vor. Vor dem Freigeben änderbar."
+        : "Manuell: Das Feld bleibt leer, die Zahl trägt Dr. Gashi ein.", "success");
+    } catch (fehler) {
+      actions.patchLifeskin({ perputhjaModus: vorher });
+      setToast("Përputhja", fehler?.message || "Speichern fehlgeschlagen.", "danger");
     }
   },
   // Welcher der sechs Trichter unter der Chipreihe steht.

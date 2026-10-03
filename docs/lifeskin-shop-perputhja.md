@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-09-28
+Last updated: 2026-10-03
 
 # LifeSkin Shop - die Kontrolle bis zur Përputhja (/lifeskinshop)
 
@@ -12,8 +12,10 @@ Laden, oben mit der **Përputhja**: wie viel Prozent die Therapie zu seiner
 Haut passt.
 
 **DIE ZAHL SETZT DR. GASHI.** Sie traegt sie in Mnyra Heart beim Befund
-ein. Keine Software errechnet, schaetzt oder schlaegt sie vor
-(`shared/lifeskin-perputhja.js` prueft nur 1-100).
+ein. Keine Software errechnet oder schaetzt sie aus Daten des Kunden
+(`shared/lifeskin-perputhja.js` prueft 1-100). Seit dem 03.10. gibt es am
+Feld den Schalter **Auto / Manuell** (siehe Nachtrag 03.10.): Bei Auto
+setzt Heart 95-99 vor.
 
 ## Ablauf fuer den Kunden
 
@@ -130,6 +132,26 @@ sich daran nichts.
   dann Sprung auf 7:5, sobald das Bild aus Heart kam). Das Bild aus Heart
   wird auf dem Geraet gemerkt (`localStorage` "lifeskin:shopHero") und
   steht beim naechsten Oeffnen sofort da; in Heart entfernt -> Standardbild.
+
+## Nachtrag 03.10. - Schalter Auto / Manuell
+
+Auftrag (Inhaber): "ein Schalter, Auto und nicht Auto - wenn Auto, dann
+95-99 automatisch".
+
+- Ueber dem Feld "Përputhja % · Lifeskin Shop" im Befund stehen zwei Chips
+  **Auto** und **Manuell** (Form wie die Chips in "Faelle").
+- **Manuell** (Standard, auch ohne Eintrag): wie bisher - Feld leer, Dr.
+  Gashi traegt die Zahl ein.
+- **Auto**: Ein leeres Feld steht schon auf 95-99 (`perputhjaAuto`). Die
+  Zahl haengt nur an der Fallnummer - bei einem Fall immer dieselbe, auf
+  jedem Geraet; kein Kundendatum fliesst ein. Sie bleibt aenderbar; ein
+  Entwurf oder ein freigegebener Bericht geht vor. Freigeben geht wie
+  bisher nur mit einer Zahl im Feld.
+- Gespeichert fuer alle Geraete in `lifeskin/lifeskin/config/perputhja`
+  (`{ modus: "auto" | "hand", gesetztAm }`). Die Config-Regel erlaubt dem
+  CEO-Konto das Schreiben schon - **keine Regel-Aenderung, kein Deploy**.
+- Kein Pixel, keine Seite des Kunden geaendert: Die Therapieseite zeigt wie
+  bisher die Zahl aus dem Bericht.
 
 ## Rueckweg
 

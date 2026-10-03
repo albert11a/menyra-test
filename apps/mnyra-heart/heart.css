@@ -10630,3 +10630,23 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 .heart-shopchip-pages--skinreact .heart-shopchip-page{grid-template-columns:repeat(3,minmax(0,1fr))}
 .heart-faelle .heart-shopchip-pages--skinreact [data-wert="skinreact"]{font-size:12px;letter-spacing:0}
 .heart-faelle .heart-shopchip-pages--skinreact [data-wert="skinreact"] span{font-size:11px;margin-left:3px}
+
+/* PËRPUTHJA AUTO ODER MANUELL - zwei Chips rechts neben dem Titel des
+   Feldes; darunter Feld und Hinweis ueber die ganze Breite. */
+.heart-befund__perputhja {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+}
+.heart-befund__perputhja > input,
+.heart-befund__perputhja > small { grid-column: 1 / -1; }
+.heart-befund__perputhja > span label { cursor: pointer; }
+.heart-perputhja-modus {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 5px;
+  margin: 0;
+  overflow: visible;
+}
+.heart-perputhja-modus .heart-lifeskin-chip { min-width: 0; padding-inline: 12px; }

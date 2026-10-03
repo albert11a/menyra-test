@@ -286,6 +286,72 @@ test("Heart: das Feld steht nur bei Faellen aus dem Laden, mit dem gemerkten Wer
   assert.match(frei, /id="lifeskin-perputhja"[^>]*value="88"/);
 });
 
+// AUTO ODER MANUELL (03.10., Wunsch Inhaber): Ein Schalter am Feld.
+// Manuell bleibt der Stand von oben (kein Vorschlag); Auto setzt 95-99
+// vor - je Fall immer dieselbe Zahl, aus der Fallnummer, aenderbar.
+test("perputhjaAuto: 95 bis 99, je Fall immer dieselbe Zahl", async () => {
+  const { perputhjaAuto, perputhjaModusGueltig, PERPUTHJA_DOK } = await import("../shared/lifeskin-perputhja.js");
+  const zahlen = new Set();
+  for (let i = 0; i < 500; i += 1) {
+    const z = perputhjaAuto(`fall-${i}`);
+    assert.ok(Number.isInteger(z) && z >= 95 && z <= 99, `${z} liegt nicht zwischen 95 und 99`);
+    zahlen.add(z);
+  }
+  assert.deepEqual([...zahlen].sort(), [95, 96, 97, 98, 99], "nicht jede Zahl von 95 bis 99 kommt vor");
+  assert.equal(perputhjaAuto("LS-0310-ABC12"), perputhjaAuto("LS-0310-ABC12"));
+  assert.equal(perputhjaModusGueltig("auto"), "auto");
+  for (const anders of ["hand", "", null, undefined, "AUTO", 1]) assert.equal(perputhjaModusGueltig(anders), "hand");
+  assert.equal(PERPUTHJA_DOK, "perputhja");
+});
+
+test("Heart: der Schalter Auto/Manuell steht am Feld - Auto fuellt vor, Manuell nicht", async () => {
+  const speicher = new Map();
+  globalThis.localStorage = {
+    getItem: (k) => (speicher.has(k) ? speicher.get(k) : null),
+    setItem: (k, v) => speicher.set(k, String(v)),
+    removeItem: (k) => speicher.delete(k)
+  };
+  const { renderSitzungDetail } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
+  const { normalisiere } = await import("../apps/mnyra-heart/heart-lifeskin-berechnung.js");
+  const { STANDARD_PRODUKTE } = await import("../apps/lifeskin/lifeskin-catalog.js");
+  const { perputhjaAuto } = await import("../shared/lifeskin-perputhja.js");
+  const { entwurfSchreiben, entwurfLoeschen } = await import("../apps/mnyra-heart/heart-lifeskin-entwurf.js");
+  const shop = normalisiere("shop2", { createdAt: "2026-10-03T09:00:00.000Z", step: "done", name: "Arta", source: { weg: "lifeskinshop" } });
+  const alt = normalisiere("alt2", { createdAt: "2026-10-03T09:00:00.000Z", step: "done", name: "Besa" });
+  const zeichne = (modus, bericht = { status: "wartet" }, s = shop) =>
+    renderSitzungDetail(s, null, "", STANDARD_PRODUKTE, bericht, false, undefined, { perputhjaModus: modus });
+
+  const auto = zeichne("auto");
+  assert.match(auto, new RegExp(`id="lifeskin-perputhja"[^>]*value="${perputhjaAuto("shop2")}"`));
+  assert.match(auto, /data-action="lifeskin-perputhja-modus" data-wert="auto" aria-pressed="true">Auto</);
+  assert.match(auto, /data-action="lifeskin-perputhja-modus" data-wert="hand" aria-pressed="false">Manuell</);
+  // Manuell (und ohne Einstellung): leer, wie bisher.
+  for (const modus of ["hand", undefined]) {
+    const hand = zeichne(modus);
+    assert.match(hand, /id="lifeskin-perputhja"[^>]*value=""/);
+    assert.match(hand, /data-wert="hand" aria-pressed="true">Manuell</);
+  }
+  // Was Dr. Gashi eingetragen hat oder was im Bericht steht, gilt auch bei Auto.
+  entwurfSchreiben("shop2", { produkte: ["lf-acne"], perputhja: 91 });
+  assert.match(zeichne("auto"), /id="lifeskin-perputhja"[^>]*value="91"/);
+  entwurfLoeschen("shop2");
+  assert.match(zeichne("auto", { status: "fertig", freigabeAt: "x", perputhja: 88, produkte: [{ id: "lf-acne", satz: "" }] }),
+    /id="lifeskin-perputhja"[^>]*value="88"/);
+  // Faelle von /lifeskin: weder Feld noch Schalter.
+  assert.doesNotMatch(zeichne("auto", { status: "wartet" }, alt), /lifeskin-perputhja/);
+});
+
+test("Heart speichert den Schalter fuer alle Geraete und liest ihn beim Laden", () => {
+  const adapter = lies("apps/mnyra-heart/heart-lifeskin-adapter.js");
+  assert.match(adapter, /export async function speicherePerputhjaModus\(modus\)/);
+  assert.match(adapter, /setDoc\(doc\(db, "lifeskin", TENANT, "config", PERPUTHJA_DOK\), \{ modus: wert/);
+  assert.match(adapter, /perputhjaModus: perputhjaModusGueltig\(perputhjaDok\?\.modus\)/);
+  assert.match(adapter, /\.filter\(\(d\) => d\.id !== PERPUTHJA_DOK\)/, "der Schalter landet sonst in konfig");
+  const heart = lies("apps/mnyra-heart/heart.js");
+  assert.match(heart, /async setLifeskinPerputhjaModus\(modus\) \{/);
+  assert.match(lies("apps/mnyra-heart/heart-events.js"), /action === "lifeskin-perputhja-modus"/);
+});
+
 test("Heart gibt einen Laden-Fall mit Therapie nicht ohne Zahl frei - als Vorschau schon", () => {
   const heart = lies("apps/mnyra-heart/heart.js");
   const stelle = heart.indexOf("async function gibLifeskinBerichtFrei");

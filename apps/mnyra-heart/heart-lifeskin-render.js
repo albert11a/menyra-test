@@ -41,7 +41,7 @@ import { klappAttr, alsKlapp } from "./heart-lifeskin-klapp.js";
 import { nachWeg, baueLs2Weg, baueShopWeg, dauerText as ls2Dauer } from "./heart-lifeskin-weg.js";
 import { renderShopSetet, renderShopSetEditor, renderShopHero, renderShopHeroEditor, shopSetetListe } from "./heart-lifeskin-shopsets.js";
 import { wegGueltig } from "../../shared/lifeskin-weg.js";
-import { perputhjaGueltig } from "../../shared/lifeskin-perputhja.js";
+import { perputhjaGueltig, perputhjaAuto, perputhjaModusGueltig, PERPUTHJA_AUTO_VON, PERPUTHJA_AUTO_BIS } from "../../shared/lifeskin-perputhja.js";
 import { ANTWORTZEITEN, antwortzeitWahl } from "../../shared/lifeskin-antwortzeit.js";
 import { entwurfLesen, promptGemacht } from "./heart-lifeskin-entwurf.js";
 import { mitFingerabdruck } from "./heart-morph.js";
@@ -2734,6 +2734,16 @@ export function befundWeg(sitzung, art, gemerkt = "") {
   return typ === "scan" ? "skanim" : "foto";
 }
 
+// AUTO ODER MANUELL - der Schalter ueber dem Feld Përputhja (03.10.).
+// Dieselbe Form wie die Chips in "Faelle"; die Wahl gilt fuer alle Geraete.
+function renderPerputhjaSchalter(modus) {
+  const knopf = (wert, text) => `<button type="button" class="heart-lifeskin-chip${modus === wert ? " heart-lifeskin-chip--an" : ""}"
+      data-action="lifeskin-perputhja-modus" data-wert="${wert}" aria-pressed="${modus === wert}">${text}</button>`;
+  return `<div class="heart-lifeskin-chips heart-lifeskin-chips--shop heart-perputhja-modus" role="group" aria-label="Përputhja automatisch oder von Hand">
+            ${knopf("auto", "Auto")}${knopf("hand", "Manuell")}
+          </div>`;
+}
+
 function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({}), zustand = {}) {
   const stand = bericht?.status || "wartet";
   const fertig = stand !== "wartet" && stand !== "vorschau";
@@ -2766,9 +2776,13 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({}), 
   // DIE PËRPUTHJA SETZT DR. GASHI - nur bei Faellen aus dem Laden
   // (/lifeskinshop). Wie sehr die Therapie zu dieser Haut passt, in
   // Prozent; der Kunde sieht die Zahl gross oben auf seiner Seite. Heart
-  // schlaegt keine vor (shared/lifeskin-perputhja.js).
+  // schlaegt keine vor (shared/lifeskin-perputhja.js) - ausser der
+  // Schalter steht auf Auto (03.10.): Dann steht im leeren Feld 95-99,
+  // je Fall immer dieselbe Zahl, und sie bleibt aenderbar.
   const shopFall = wegGueltig(sitzung?.source?.weg) === "lifeskinshop";
-  const perputhja = entwurf?.perputhja || perputhjaGueltig(bericht?.perputhja) || "";
+  const perputhjaModus = perputhjaModusGueltig(zustand?.perputhjaModus);
+  const perputhja = entwurf?.perputhja || perputhjaGueltig(bericht?.perputhja)
+    || (perputhjaModus === "auto" ? perputhjaAuto(sitzung?.id) : "");
 
   const marke = {
     wartet: ["heart-lifeskin-marke--offen", "wartet auf Befund"],
@@ -2930,13 +2944,16 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({}), 
                      value="${escapeHtml(String(preis))}" />
             </label>
           </div>${shopFall ? `
-          <label class="heart-lifeskin-feld heart-befund__perputhja">
-            <span>Përputhja % · Lifeskin Shop</span>
+          <div class="heart-lifeskin-feld heart-befund__perputhja">
+            <span><label for="lifeskin-perputhja">Përputhja % · Lifeskin Shop</label></span>
+            ${renderPerputhjaSchalter(perputhjaModus)}
             <input class="heart-lifeskin-eingabe" id="lifeskin-perputhja" type="number" inputmode="numeric"
                    min="1" max="100" step="1" placeholder="1–100"
                    value="${escapeHtml(String(perputhja))}" />
-            <small>Wie sehr die Therapie zu dieser Haut passt. Der Kunde sieht die Zahl groß oben auf seiner Seite.</small>
-          </label>` : ""}`)}
+            <small>${perputhjaModus === "auto"
+              ? `Auto: ${PERPUTHJA_AUTO_VON}–${PERPUTHJA_AUTO_BIS} % je Fall vorgesetzt, bei diesem Fall immer dieselbe Zahl. Vor dem Freigeben änderbar. Der Kunde sieht die Zahl groß oben auf seiner Seite.`
+              : "Wie sehr die Therapie zu dieser Haut passt. Der Kunde sieht die Zahl groß oben auf seiner Seite."}</small>
+          </div>` : ""}`)}
         ${schritt(2, "Prompt kopieren", `
           <button type="button" class="heart-befund__knopf heart-befund__knopf--haupt" data-action="lifeskin-prompt-kopieren">Prompt für diesen Fall kopieren</button>
           <textarea class="heart-lifeskin-eingabe" id="lifeskin-prompt-ausgabe" hidden readonly rows="5" aria-label="Vollständiger Prompt für diesen Fall"></textarea>`)}

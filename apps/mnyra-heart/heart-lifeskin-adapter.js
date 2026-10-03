@@ -55,6 +55,7 @@ import { LIVE_FENSTER_MS, ohnePfad } from "./heart-lifeskin-live.js";
 import { mediumNormalisieren } from "../../shared/lifeskin-medien.js";
 import { SETET_DOK, SET_FOTO_PRAEFIX, SHOP_HERO_DOK, SHOP_HERO_MAX, shopHeroDokId } from "../../shared/lifeskin-shop-sets.js";
 import { ANTWORTZEIT_DOK, antwortzeitGueltig } from "../../shared/lifeskin-antwortzeit.js";
+import { PERPUTHJA_DOK, perputhjaModusGueltig } from "../../shared/lifeskin-perputhja.js";
 
 const TENANT = "lifeskin";
 const SITZUNG_GRENZE = 3000;
@@ -212,12 +213,14 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
   // Wann Dr. Gashi antwortet (Uhr-Knopf im Kopf) - eigenes Dokument, nicht
   // in die Konfiguration einruehren.
   const antwortzeitDok = konfigDocs.find((d) => d.id === ANTWORTZEIT_DOK)?.data() || null;
+  const perputhjaDok = konfigDocs.find((d) => d.id === PERPUTHJA_DOK)?.data() || null;
   const konfig = konfigDocs
     .filter((d) => !String(d.id).startsWith(LANDING_FOTOT_PRAEFIX) && !String(d.id).startsWith(ANALYSE_FOTOT_PRAEFIX))
     .filter((d) => d.id !== RASTE_DOK_ID && !String(d.id).startsWith(RASTI_BILD_ID))
     .filter((d) => d.id !== SETET_DOK && d.id !== SHOP_HERO_DOK && !String(d.id).startsWith(SET_FOTO_PRAEFIX))
     .filter((d) => !String(d.id).startsWith(`${SHOP_HERO_DOK}-`))
     .filter((d) => d.id !== ANTWORTZEIT_DOK)
+    .filter((d) => d.id !== PERPUTHJA_DOK)
     .reduce((zusammen, d) => ({ ...zusammen, ...(d.data() || {}) }), {});
   const setPreis = Number.isFinite(Number(konfig.setPreis)) && Number(konfig.setPreis) > 0
     ? Number(konfig.setPreis)
@@ -275,6 +278,9 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     shopHeroMehr: Array.from({ length: SHOP_HERO_MAX - 1 }, (_, i) => konfigDocs.find((d) => d.id === shopHeroDokId(i + 1))?.data()?.foto)
       .slice(0, Math.max(0, (Number(heroDok?.anzahl) || 1) - 1))
       .filter((f) => typeof f === "string" && f.startsWith("data:image/")),
+    // Përputhja Auto oder Manuell (shared/lifeskin-perputhja.js) - ohne
+    // Eintrag "hand", wie bisher.
+    perputhjaModus: perputhjaModusGueltig(perputhjaDok?.modus),
     // null: nie gesetzt - Nummer-Seite und Warteseite nehmen die alte Regel.
     antwortzeit: antwortzeitGueltig(antwortzeitDok?.wahl)
       ? { wahl: antwortzeitDok.wahl, gesetztAm: String(antwortzeitDok.gesetztAm || "") }
@@ -566,6 +572,13 @@ export async function loescheShopSetFoto(id) {
 
 // Die Antwortzeit (Uhr-Knopf im Kopf von Heart). config ist oeffentlich
 // lesbar - Nummer-Seite und Warteseite lesen sie ohne Anmeldung.
+// Der Schalter am Feld Përputhja: "auto" oder "hand", fuer alle Geraete.
+export async function speicherePerputhjaModus(modus) {
+  const wert = perputhjaModusGueltig(modus);
+  await setDoc(doc(db, "lifeskin", TENANT, "config", PERPUTHJA_DOK), { modus: wert, gesetztAm: new Date().toISOString() });
+  return wert;
+}
+
 export async function speichereAntwortzeit(wahl) {
   if (!antwortzeitGueltig(wahl)) throw new Error("Unbekannte Antwortzeit.");
   const einstellung = { wahl, gesetztAm: new Date().toISOString() };
