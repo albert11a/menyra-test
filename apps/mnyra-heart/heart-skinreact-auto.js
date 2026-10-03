@@ -11,10 +11,11 @@
 // manuell: Stufe waehlen, Dërgo. Wer im Countdown die Stufe von Hand
 // aendert, hat damit ebenfalls uebernommen.
 //
-// DIE FREIGABE LAEUFT IN HEART: Sie passiert auf einem Geraet, auf dem
-// Heart offen ist - also dort, wo jemand den Countdown sieht. Mehrere
-// offene Geraete geben nicht doppelt frei, und ein Stopp gilt fuer alle:
-// Vor dem Schreiben liest Heart den Bericht in einer Transaktion
+// IN HEART UND AUF DEM SERVER: Ist Heart offen, laeuft hier der Countdown
+// mit Stopp. Denselben Timer gibt es auf dem Server, damit es auch ohne
+// offenes Heart freigibt (functions/lifeskin-skinreact-auto.js, Wunsch
+// Inhaber: "so als waere Heart offen"). Beide lesen den Bericht vor dem
+// Schreiben in einer Transaktion - nichts doppelt, ein Stopp gilt ueberall
 // (gibSkinreactAutoFrei, heart-lifeskin-adapter.js).
 //
 // Nur Faelle, die NACH dem Einschalten von Auto kamen - das Einschalten

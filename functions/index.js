@@ -4005,6 +4005,10 @@ exports.notifyCeoOnLifeskinSessionWrite = functions
 // und andersherum genauso.
 Object.assign(exports, require("./lifeskin-capi"));
 
+// SkinReact: Auto-Freigabe nach 5 s auch ohne offenes Heart
+// (lifeskin-skinreact-auto.js). Nur der Ausloeser wird exportiert.
+exports.skinreactAutoFreigabe = require("./lifeskin-skinreact-auto").skinreactAutoFreigabe;
+
 const { migrateEmailsToMnyra } = require("./email-domain-migration");
 exports.migrateEmailsToMnyra = migrateEmailsToMnyra;
 
