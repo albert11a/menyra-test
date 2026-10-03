@@ -23,3 +23,9 @@ Restored all 17 existing message images and exact original quotations from the p
 Validation: production build succeeded; 20 shop/Pixel tests passed. Browser checks at 320, 390, 430, 768 and 1440 pixels found no horizontal overflow or page errors. All 17 message cards render; original-message dialog opens/closes; add-to-cart and checkout emit their existing stubbed events. No real orders or production data writes. Local renders use documented fallback gallery/media where remote data is unavailable; they do not measure production loading performance or conversion.
 
 Additional analysis-flow suite: 35/36 checks passed. Its failing photo-rule assertion concerns the unchanged /lifeskin landing page and expects photo markup absent there; identical file on origin/main. No analysis-flow code changed in this iteration.
+
+## Approved Kosovo-Albanian sales copy — 2026-10-03
+
+Scope: replace landing-page copy with the owner's approved draft from chat, preserving original testimonials, all DOM IDs, product prices/data bindings, Heart galleries, analysis entry and cart → checkout flow. No Pixel or medical-result guarantees added. Verify responsive rendering, build and existing shop/Pixel tests before publishing main under the owner's existing authorization.
+
+Validation: npm run build succeeded with no tracked bundle changes. All 20 shop/Pixel checks and the updated analysis-entry wording check passed. Mobile renders and responsive widths 320/390/430/768/1440 checked: no page errors or horizontal overflow. Original-message dialog, cart and checkout worked with stubbed events; no production orders/data writes. All 17 testimonial texts and image paths match the previous main commit.

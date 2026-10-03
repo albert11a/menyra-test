@@ -310,3 +310,15 @@
  #ls-einstieg .page .brand-showcase .hero-photo{border-radius:12px}
 }
 @media(max-width:360px){#ls-einstieg .page .instagram-card{gap:6px;padding:12px 8px}#ls-einstieg .page .followers b{font-size:20px}#ls-einstieg .page .instagram-avatar{width:28px;height:28px}}
+
+/* Spacing for the owner-approved Kosovo-Albanian copy. */
+#ls-einstieg .page .intro-lead{display:block;margin-bottom:14px}
+#ls-einstieg .page .intro strong{font-weight:650}
+#ls-einstieg .page .messages-intro{max-width:640px;font-size:14px;line-height:1.65;color:var(--muted);margin:0 0 12px}
+#ls-einstieg .page .messages-action{font-size:12px;font-weight:650;margin:0 0 22px}
+#ls-einstieg .page .confidence-grid p+p{margin-top:14px}
+#ls-einstieg .page .closing .closing-intro{font-size:16px;line-height:1.65;max-width:540px;margin:0 auto 14px;color:var(--ink)}
+#ls-einstieg .page .closing .closing-promise{font-size:13px;margin:0 0 24px}
+#ls-einstieg .page .closing .closing-analysis{margin-top:22px;font-size:13px}
+#ls-einstieg .page .closing-analysis a{text-decoration:none;color:var(--ink)}
+#ls-einstieg .page .closing-analysis strong{text-decoration:underline;text-underline-offset:4px}
