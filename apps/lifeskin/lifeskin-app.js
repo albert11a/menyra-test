@@ -26,6 +26,7 @@
 // PUNKT aus derselben Datei.
 //
 // lifeskin-haut.js faellt damit ganz weg: Niemand sonst holt etwas daraus.
+import { SkinreactErgebnis } from "../lifeskin-shop/skinreact-ergebnis.js";
 import { MESS_BREITE, PUNKT } from "./lifeskin-metrics.js";
 import { pruefeAufnahme, schaerfeVonBild } from "./lifeskin-face.js";
 import { Ringlauf, SEKTOREN, POSE_GRENZEN, SEKTOR_RECHTS } from "./lifeskin-pose.js";
@@ -633,11 +634,14 @@ export class Trichter {
     // alte Fassung. Ein Trichter, der ohne Zutun etwas anderes tut als
     // bisher, waere genau das, was hier niemand will.
     this.variante = variante || varianteLesen(globalThis.document?.documentElement);
+    this.skinreact = globalThis.document?.documentElement?.dataset?.lsScanWorkflow === "skinreact";
     // Ueber welche Landingpage er kam ("lifeskin2" oder "") - die Fragen
     // sprechen dann in ihren Worten (frageFuerWeg).
     this.weg = wegLesen(globalThis.document?.documentElement);
     this.pixel = new Pixel();
     this.sitzung = new Sitzung({ beiSchritt: (name, zusatz) => this.pixel.melde(name, zusatz) });
+    // Previously submitted shop analyses retain their original therapy route.
+    if (this.skinreact && this.sitzung.fortsetzbar() && this.sitzung.scanWorkflow !== "skinreact") this.skinreact = false;
     /* Derselbe Speicher, in dem die Sitzung ihre Kennung haelt: Er
        gehoert dem einen Tab und ueberlebt ein Neuladen. */
     try { this.speicher = globalThis.sessionStorage || null; }
@@ -943,6 +947,7 @@ export class Trichter {
     // landete danach mit JEDEM stillen Link im selben Tab auf "Ky rast nuk
     // u gjet" - die stillen Links taten scheinbar nichts mehr.
     if (this.sitzung.fortsetzbar() && globalThis.__mnyraStill !== true) {
+      if (this.skinreact) { this.#skinreactZeigen(); return; }
       globalThis.location.replace(this.sitzung.berichtPfad);
       return;
     }
@@ -1010,6 +1015,7 @@ export class Trichter {
   }
 
   zeige(name, { verlauf = "vor" } = {}) {
+    if (name !== "analyse") this.skinreactAnzeige?.stop();
     if (name !== this.aktiv) this.klickpfad?.melde("bildschirm", KLICKPFAD_NAMEN[`ls-${name}`] || name);
     for (const schirm of SCHIRME) {
       const knoten = $(`#ls-${schirm}`);
@@ -1848,6 +1854,7 @@ export class Trichter {
   #startTippen() {
     const knopf = $("#ls-start");
     if (knopf) delete knopf.dataset.wartet;
+    if (this.skinreact && (this.sitzung.fortsetzbar() || this.sitzung.stand?.bericht === true)) { this.#skinreactZeigen(); return; }
     this.#netzVormerken();
 
     // DIE KURZE FASSUNG GEHT UNMITTELBAR AN DIE KAMERA.
@@ -1874,12 +1881,13 @@ export class Trichter {
     // Geprueft wird am Aufbau und nicht an der Fassung: Die beiden
     // Seiten ohne diesen Bildschirm laufen unveraendert weiter.
     if ((this.sitzung.stand?.step || "opened") === "opened") this.landingtiefe?.weiter();
-    if ($("#ls-wahl")) {
+    if (!this.skinreact && $("#ls-wahl")) {
       this.sitzung.schritt("wahl");
       this.zeige("wahl");
       return;
     }
 
+    if (this.skinreact) this.sitzung.skinreactMarkieren();
     if (this.variante === "kurz") { this.#kameraStarten(); return; }
 
     this.sitzung.schritt("named");
@@ -4151,6 +4159,7 @@ export class Trichter {
       views: proben.length,
       byHand: vonHand
     });
+    if (this.skinreact) { this.#uebergeben(); return; }
     this.#fragenZeigen();
   }
 
@@ -4776,6 +4785,20 @@ export class Trichter {
     this.aufbereitungGezeigt = true;
   }
 
+  #skinreactZeigen() {
+    this.zeige("analyse");
+    this.skinreactAnzeige?.stop();
+    this.skinreactAnzeige = new SkinreactErgebnis({
+      sitzung: this.sitzung,
+      wurzel: $("#ls-analyse .ls-analyse"),
+      kaufen: () => {
+        this.zeige("einstieg");
+        $("[data-set='acne']")?.click();
+      }
+    });
+    this.skinreactAnzeige.start();
+  }
+
   #aufbereitungFertig() {
     const el = this.aufbereitungLetzte;
     if (el) { el.dataset.stand = "fertig"; el.firstElementChild.textContent = "✓"; }
@@ -4852,6 +4875,7 @@ export class Trichter {
       this.sitzung.schritt("result");
       this.#aufbereitungFertig();
       this.#standVergessen();
+      if (this.skinreact) { this.#skinreactZeigen(); return; }
       globalThis.location.assign(this.sitzung.berichtPfad);
     } catch (fehler) {
       this.#fehlerZeigen("uebergabeFehler", () => this.#uebergeben());

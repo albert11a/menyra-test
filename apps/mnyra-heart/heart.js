@@ -1,3 +1,4 @@
+import { skinreactWahlMerken, skinreactEntwuerfe, skinreactSendet } from "./heart-skinreact.js";
 import { wegDerSitzung, zaehltImWeg } from "../../shared/lifeskin-weg.js";
 import { pruefeRaportV3, reportToWire } from "../../shared/lifeskin-raport-v3.js";
 import { shitjaLesen } from "../../shared/lifeskin-shitja.js";
@@ -55,7 +56,7 @@ import {
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
 import { createNdjekjaOperationen } from "./heart-lifeskin-ndjekja.js";
-import { ladeLifeskin, ladeLifeskinSeit, ladeLifeskinSitzung, horcheLive, ladeFotos, ladeErstesFoto, loescheAlleSitzungen, loescheSitzung, setzeBerichtMarke, speichereProdukt, loescheProdukt, gibBerichtFrei,
+import { ladeLifeskin, ladeLifeskinSeit, ladeLifeskinSitzung, horcheLive, ladeFotos, ladeErstesFoto, gibSkinreactFrei, loescheAlleSitzungen, loescheSitzung, setzeBerichtMarke, speichereProdukt, loescheProdukt, gibBerichtFrei,
   ladeBericht, setzeVersand, speichereAnbieter,
   ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX,
   speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder,
@@ -1150,7 +1151,7 @@ function schliesseLifeskinSitzung() {
 function lifeskinBereichSetzen(id, weg = wegDesBereichs(id)) {
   const felder = { bereich: bereichGueltig(id) };
   const wechselt = weg !== null && weg !== String(store.getState().lifeskin?.weg || "");
-  if (wechselt) Object.assign(felder, { weg, offen: "" });
+  if (wechselt) Object.assign(felder, { weg, offen: "", fach: weg === "lifeskinshop" ? "skinreact" : "alle" });
   actions.patchLifeskin(felder);
   if (!wechselt) return;
   try { liveRechnen(); } catch { /* Live ist Beiwerk */ }
@@ -4113,6 +4114,26 @@ const operations = {
   // Welcher Chip der Karte "Shop" offen ist (Shop, Scan, Foto, Analyse).
   setLifeskinShopChip(id) {
     actions.patchLifeskin({ shopChip: String(id || "shop").trim() });
+  },
+  skinreactWahlMerken(id, wert) { skinreactWahlMerken(id, wert); },
+  async gibSkinreactFrei(id, knopf) {
+    const zeile = knopf.closest("[data-skinreact-fall]");
+    const meldung = zeile?.querySelector(".heart-skinreact__meldung");
+    const bereich = zeile?.querySelector("[data-skinreact-bereich]")?.value;
+    if (!bereich) { if (meldung) meldung.textContent = "Bitte einen Bereich wählen."; return; }
+    if (knopf.disabled || skinreactSendet.has(id)) return;
+    skinreactSendet.add(id);
+    knopf.disabled = true;
+    knopf.textContent = "Po dërgohet…";
+    try {
+      await gibSkinreactFrei(id, bereich);
+      skinreactEntwuerfe.delete(id);
+      skinreactSendet.delete(id);
+      if (meldung) meldung.textContent = "U dërgua ✓";
+      await lifeskinBerichteNachlesen([id]);
+    } catch (fehler) {
+      if (meldung) meldung.textContent = fehler?.message || "Senden fehlgeschlagen. Erneut versuchen.";
+    } finally { skinreactSendet.delete(id); knopf.disabled = false; knopf.textContent = "Dërgo"; }
   },
   setLifeskinFach(id) {
     const auswahl = store.getState().lifeskin?.auswahl;

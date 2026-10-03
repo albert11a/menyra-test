@@ -1,3 +1,4 @@
+import { istSkinreact, skinreactErgebnis } from "../../shared/lifeskin-skinreact.js";
 import { pfadLesen } from "../../shared/lifeskin-klickpfad.js";
 import { statistikTag } from "../../shared/lifeskin-statistik.js";
 import { LANDING_SCHIRME, landingLesen } from "../../shared/lifeskin-landingtiefe.js";
@@ -702,7 +703,7 @@ export function istPatient(sitzung) {
   // Die Marke gibt es erst seit dieser Aenderung. Ein Fall von vorher
   // traegt sie nicht und wird gelesen wie bisher - eine Auswertung,
   // die die Vergangenheit auf null setzt, ist keine.
-  if (sitzung?.shopKauf === true) return false;
+  if (sitzung?.shopKauf === true && !istSkinreact(sitzung)) return false;
   return stufenIndex(sitzung?.step) >= stufenIndex("result");
 }
 
@@ -1079,7 +1080,7 @@ export function zustandVon(sitzung, bericht = null) {
   if (bericht?.archiviert === true) return "archiviert";
   if (bericht?.spaeter === true) return "spaeter";
   const status = String(bericht?.status || "").trim();
-  if (!FREIGEGEBEN.includes(status)) return "neu";
+  if (!FREIGEGEBEN.includes(status) && !(istSkinreact(sitzung) && skinreactErgebnis(bericht))) return "neu";
   // GESEHEN HEISST GEOEFFNET, und zwar von ihm.
   //
   // berichtGeoeffnet faellt allein auf dem Bildschirm "fertig" der

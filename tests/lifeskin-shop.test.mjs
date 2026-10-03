@@ -22,10 +22,10 @@ test("der Weg 'lifeskinshop' ist bekannt und steht in der Sitzung", async () => 
 });
 
 test("die Seite: Laden als Einstieg, darunter die Bildschirme der Analyse", () => {
-  assert.match(HTML, /<html lang="sq" data-ls-variante="kurz" data-ls-landing="lifeskinshop">/);
+  assert.match(HTML, /<html lang="sq" data-ls-variante="kurz" data-ls-landing="lifeskinshop" data-ls-scan-workflow="skinreact">/);
   assert.match(HTML, /<script src="\/shared\/lifeskin-still\.js"><\/script>/, "ohne stillen Modus zaehlen eigene Tests");
   assert.equal((HTML.match(/id="ls-start"/g) || []).length, 1, "genau ein Startknopf fuer den Trichter");
-  assert.match(HTML, /id="ls-start" data-ls-start data-ls-quelle="shop">Bëje analizën/);
+  assert.match(HTML, /id="ls-start" data-ls-start data-ls-quelle="shop">Fillo skanimin/);
   for (const id of ["ls-einstieg", "ls-wahl", "ls-vorbereitung", "ls-kamera", "ls-fotopara", "ls-foto", "ls-name", "ls-tel", "ls-fragen", "ls-analyse"]) {
     assert.ok(HTML.includes(`id="${id}"`), `#${id} fehlt`);
   }

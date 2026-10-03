@@ -10611,3 +10611,22 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 }
 .heart-live__weg--lss { color: #f7c56b; border-color: rgba(247, 197, 107, 0.45); }
 :where(html[data-heart-theme="tag"]) .heart-live__weg--lss { color: #9a5b00; border-color: rgba(154, 91, 0, 0.35); }
+
+/* SkinReact: inspect photo and release a range without opening the case. */
+.heart-skinreact{display:grid;grid-template-columns:88px minmax(0,1fr);gap:14px;padding:16px 0;border-bottom:1px solid var(--heart-border,#dce5df)}
+.heart-skinreact__foto{align-self:start;padding:0;border:0;background:none;cursor:pointer;border-radius:12px;overflow:hidden}
+.heart-faelle .heart-skinreact .heart-lifeskin-fall__bild{display:block;width:88px;height:112px;border-radius:12px}
+.heart-skinreact__kopf{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.heart-skinreact__kopf b{font-size:14px;overflow-wrap:anywhere}
+.heart-skinreact__inhalt>small{display:block;font-size:11px;opacity:.7;margin:7px 0 10px}
+.heart-skinreact__freigabe{display:flex;gap:8px;align-items:end}.heart-skinreact__freigabe label{flex:1;min-width:0}.heart-skinreact__label{display:block;font-size:10px;opacity:.7;margin-bottom:5px}
+.heart-skinreact__freigabe select{width:100%;min-height:42px;border:1px solid #9caea6;background:transparent;color:inherit;border-radius:8px;padding:8px;font:inherit;font-size:13px}
+.heart-skinreact__freigabe button{min-height:42px;padding:10px 15px;border:0;border-radius:8px;background:#18875b;color:#fff;font-weight:700;cursor:pointer}.heart-skinreact__freigabe button:disabled{opacity:.6;cursor:wait}
+.heart-skinreact__meldung{display:block;font-size:11px;margin-top:8px;min-height:14px}.heart-skinreact select:focus-visible,.heart-skinreact button:focus-visible{outline:3px solid #20a76c;outline-offset:3px}
+@media(max-width:360px){.heart-skinreact{grid-template-columns:70px minmax(0,1fr);gap:10px}.heart-faelle .heart-skinreact .heart-lifeskin-fall__bild{width:70px;height:98px}.heart-skinreact__freigabe button{padding-inline:10px}}
+.heart-faelle .heart-shopchip-page [data-wert="skinreact"]{font-size:11px;letter-spacing:-.15px;padding-inline:3px}
+.heart-faelle .heart-shopchip-page [data-wert="skinreact"] span{font-size:10px;margin-left:2px}
+.heart-skinreact__kopf>.heart-lifeskin-pill{font-size:10px;padding:4px 7px;border-radius:6px;background:rgba(24,135,91,.10);color:#18875b;white-space:nowrap}
+
+.heart-shopchip-pages--skinreact .heart-shopchip-page{grid-template-columns:repeat(3,minmax(0,1fr))}
+.heart-faelle .heart-shopchip-pages--skinreact [data-wert="skinreact"]{font-size:12px;letter-spacing:0}
+.heart-faelle .heart-shopchip-pages--skinreact [data-wert="skinreact"] span{font-size:11px;margin-left:3px}

@@ -437,6 +437,7 @@ export class Sitzung {
     // schicken wuerde die Regeln verletzen, die ihn festhalten - und der
     // ganze Schreibvorgang fiele aus.
     this.fortgesetzt = Boolean(gemerkt);
+    this.scanWorkflow = gemerkt?.scanWorkflow === "skinreact" ? "skinreact" : "";
     // Der Anlegezeitpunkt gehoert zum Besuch, nicht zum Seitenaufruf.
     this.createdAt = gemerkt?.createdAt || jetzt();
     // Was der Patient sieht und in WhatsApp schickt.
@@ -492,7 +493,8 @@ export class Sitzung {
         createdAt: stand.createdAt,
         name: typeof stand.name === "string" ? stand.name : "",
         views: Number(stand.views) || 0,
-        bericht: stand.bericht === true
+        bericht: stand.bericht === true,
+        scanWorkflow: stand.scanWorkflow === "skinreact" ? "skinreact" : ""
       };
     } catch {
       // Privates Fenster, gesperrter Speicher, kaputter Eintrag: dann eben
@@ -513,9 +515,17 @@ export class Sitzung {
         name: this.stand.name || "",
         views: Number(this.stand.views) || 0,
         // Ob es zu diesem Besuch einen Bericht gibt - siehe fortsetzbar().
-        bericht: this.stand.bericht === true
+        bericht: this.stand.bericht === true,
+        scanWorkflow: this.scanWorkflow || ""
       }));
     } catch { /* egal */ }
+  }
+
+  // Mark only an actually started SkinReact scan, preserving campaign attribution.
+  skinreactMarkieren() {
+    this.scanWorkflow = "skinreact";
+    this.#merkeStand();
+    return this.ergaenze({ source: { ...(this.stand.source || {}), scanWorkflow: "skinreact" } });
   }
 
   // Kann die Seite dort weitermachen, wo der Besucher war?
@@ -663,7 +673,7 @@ export class Sitzung {
       ...(this.fortgesetzt ? {} : { step: "opened" }),
       updatedAt: jetzt(),
       sprache,
-      source: herkunftAuslesen(),
+      source: { ...herkunftAuslesen(), ...(this.scanWorkflow ? { scanWorkflow: this.scanWorkflow } : {}) },
       device: geraetAuslesen(undefined, undefined, dokument)
     };
     this.stand = { ...this.stand, ...daten };

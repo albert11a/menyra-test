@@ -652,6 +652,10 @@ export function bindHeartEvents({
       await operations.lifeskinAuswahlTun?.(target.getAttribute("data-wert"), target);
       return;
     }
+    if (action === "lifeskin-skinreact-senden") {
+      await operations.gibSkinreactFrei?.(target.getAttribute("data-id"), target);
+      return;
+    }
     if (action === "lifeskin-fach") {
       operations.setLifeskinFach?.(target.getAttribute("data-wert"));
       return;
@@ -835,6 +839,10 @@ export function bindHeartEvents({
   }
 
   async function handleChange(event) {
+    if (event.target?.matches?.("[data-skinreact-bereich]")) {
+      operations.skinreactWahlMerken?.(event.target.closest("[data-skinreact-fall]")?.getAttribute("data-skinreact-fall"), event.target.value);
+      return;
+    }
     // HIER STANDEN DIE ZWEI BILDWAHLEN VON LIFESKIN.
     //
     // Sie horchten auf ein Feld, das im neu gezeichneten Kasten stand -

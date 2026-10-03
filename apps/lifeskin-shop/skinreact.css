@@ -1,0 +1,26 @@
+#ls-einstieg .skinreact-section{background:#fff;padding:48px 0}
+#ls-einstieg .skinreact-section .wrap{max-width:680px;padding-inline:20px}
+#ls-einstieg .skinreact-section h2{font-size:34px;line-height:1.12;margin-bottom:20px}
+#ls-einstieg .skinreact-section .sub{color:#526258;line-height:1.65}
+#ls-einstieg .sr-stage{position:relative;width:100%;max-width:480px;aspect-ratio:1;margin:28px auto 22px;color:#203e34}
+.sr-ring{position:absolute;inset:0;width:100%;height:100%}.sr-ring line{stroke:#d5dfda;stroke-width:3;stroke-linecap:round;animation:sr-tick 12s ease-in-out infinite;animation-delay:var(--sr-delay)}
+.sr-disc{position:absolute;inset:7%;border-radius:50%;background:radial-gradient(circle at 50% 35%,#f8fbf9,#e5eeea);display:grid;place-items:center;overflow:hidden}
+.sr-face{width:138px;height:158px}.sr-face svg{width:100%;height:100%;overflow:visible}.sr-head{transform-origin:60px 66px;animation:sr-head 12s ease-in-out infinite}.sr-features{animation:sr-look 12s ease-in-out infinite}
+#ls-einstieg .sr-hint{text-align:center;font-size:13px;line-height:1.6;margin-bottom:24px;color:#526258}
+#ls-einstieg .skinreact-section .cta{width:100%;min-height:56px;display:flex;align-items:center;justify-content:center;gap:16px}
+#ls-einstieg .sr-micro{text-align:center;font-size:12px;color:#526258;margin-top:14px;line-height:1.5}
+@keyframes sr-head{0%,100%{transform:translate(0,0) scaleX(1)}20%{transform:translate(2px,0) scaleX(.91)}40%{transform:translate(0,-4px) scaleY(.92)}60%{transform:translate(-2px,0) scaleX(.91)}80%{transform:translate(1px,2px) rotate(4deg)}}
+@keyframes sr-look{0%,100%{transform:translate(0,0)}20%{transform:translate(13px,0)}40%{transform:translate(0,-12px)}60%{transform:translate(-13px,0)}80%{transform:translate(8px,8px)}}
+@keyframes sr-tick{0%{stroke:#d5dfda}15%,75%{stroke:#20a76c}95%,100%{stroke:#d5dfda}}
+.sr-result{max-width:480px;margin:30px auto;text-align:center;color:#102921;padding:0 4px}
+.sr-result__eyebrow{font-size:11px;letter-spacing:1.5px;font-weight:700;margin-bottom:28px}
+.sr-result h1{font-size:30px;line-height:1.16;letter-spacing:-.7px;margin:20px 0}
+.sr-result p{font-size:15px;line-height:1.65;color:#526258}.sr-result .sr-result__note{font-size:12px;margin:22px 0}
+.sr-result__range{font-size:clamp(48px,15vw,76px);font-weight:800;letter-spacing:-3px;color:#18875b;margin:24px 0}
+.sr-order{width:100%;display:flex;align-items:center;justify-content:center;gap:16px;min-height:56px;padding:16px;background:#102921;color:#fff;border:0;border-radius:8px;font:700 15px Arial;text-decoration:none;cursor:pointer}
+.sr-back{display:block;margin:22px auto;background:none;border:0;padding:12px;font:14px Arial;color:#526258;text-decoration:underline;cursor:pointer}
+.sr-pending{width:100px;height:100px;margin:34px auto;border:5px solid #e5eeea;border-top-color:#20a76c;border-radius:50%;animation:sr-pending 1.5s linear infinite}
+@keyframes sr-pending{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.sr-head,.sr-features,.sr-ring line,.sr-pending{animation:none}}
+#ls-einstieg .page #zgjedhja .sr-hint{font-size:13px;line-height:1.6;text-align:center;margin-bottom:24px}
+#ls-einstieg .page #zgjedhja .sr-micro{font-size:12px;line-height:1.5;color:#526258;text-align:center;margin-top:14px}

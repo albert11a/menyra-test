@@ -1,3 +1,4 @@
+import { skinreactFreigabe } from "../../shared/lifeskin-skinreact.js";
 // Liest, was im Lifeskin-Trichter passiert ist.
 //
 // Geschrieben werden die Sitzungen vom Trichter selbst, ohne Anmeldung und
@@ -863,4 +864,13 @@ export async function speichereProduktkosten(kosten) {
   const sauber = { ...kostenNormalisieren(kosten), updatedAt: new Date().toISOString() };
   await setDoc(kostenRef(), sauber);
   return sauber;
+}
+
+// CEO-authorized assessment only; leave report status/therapy untouched.
+export async function gibSkinreactFrei(id, bereich) {
+  if (!/^[a-f0-9]{32}$/.test(String(id))) throw new Error("Ungültiger Fall.");
+  const ref = doc(db, "lifeskin", TENANT, "reports", id);
+  const snapshot = await getDocFromServer(ref);
+  if (!snapshot.exists()) throw new Error("Fotos werden noch gespeichert. Bitte gleich erneut senden.");
+  await setDoc(ref, skinreactFreigabe(bereich), { merge: true });
 }

@@ -1,3 +1,5 @@
+import { skinreactEntwuerfe, skinreactSendet } from "./heart-skinreact.js";
+import { SKINREACT_BEREICHE, skinreactBereich, skinreactErgebnis, istSkinreact } from "../../shared/lifeskin-skinreact.js";
 // Der Lifeskin-Bereich in Heart.
 //
 // Aufbau wie gewuenscht und wie im uebrigen Heart: Kacheln oben, Bloecke
@@ -173,13 +175,13 @@ function renderChips(eintraege, aktiv, aktion, art = "") {
 }
 
 // Four fixed columns per swipe page, including incomplete final pages.
-function renderChipSeiten(eintraege, aktiv, aktion) {
+function renderChipSeiten(eintraege, aktiv, aktion, spalten = 4) {
   const seiten = [];
-  for (let i = 0; i < eintraege.length; i += 4) {
-    seiten.push(renderChips(eintraege.slice(i, i + 4), aktiv, aktion, "shop")
+  for (let i = 0; i < eintraege.length; i += spalten) {
+    seiten.push(renderChips(eintraege.slice(i, i + spalten), aktiv, aktion, "shop")
       .replace("heart-lifeskin-chips heart-lifeskin-chips--shop", "heart-shopchip-page heart-lifeskin-chips--shop"));
   }
-  return `<div class="heart-lifeskin-chips heart-shopchip-pages" role="group" aria-label="Auswahl – seitenweise wischen">${seiten.join("")}</div>`;
+  return `<div class="heart-lifeskin-chips heart-shopchip-pages${spalten === 3 ? " heart-shopchip-pages--skinreact" : ""}" role="group" aria-label="Auswahl – seitenweise wischen">${seiten.join("")}</div>`;
 }
 
 // DIE ZEITRAEUME IM KOPF VON HEART (heart-render.js): Der Datum-Knopf
@@ -1528,32 +1530,49 @@ function fallKnopf(s, bericht, fach, bild, waehlen, an, chance = null) {
   return html;
 }
 
+export function renderSkinreactFall(s, bericht, bild) {
+  const frei = skinreactErgebnis(bericht);
+  const wahl = skinreactEntwuerfe.get(s.id) || frei?.id || "";
+  const sendet = skinreactSendet.has(s.id);
+  const status = s.hatBestellt ? "Bestellt" : s.kasseGeoeffnet ? "Kasse" : frei ? "Freigegeben" : "Offen";
+  const optionen = SKINREACT_BEREICHE.map((id) => `<option value="${id}"${wahl === id ? " selected" : ""}>${skinreactBereich(id).text}</option>`).join("");
+  return mitFingerabdruck(`<article class="heart-skinreact" data-skinreact-fall="${escapeHtml(s.id)}" data-morph-key="skinreact:${escapeHtml(s.id)}">
+    <button type="button" class="heart-skinreact__foto" data-action="lifeskin-sitzung" data-id="${escapeHtml(s.id)}" aria-label="Alle Fotos ansehen">${vorschauFeld(s, bild)}</button>
+    <div class="heart-skinreact__inhalt"><div class="heart-skinreact__kopf"><b>${escapeHtml(s.name || s.code || "SkinReact")}</b><span class="heart-lifeskin-pill heart-lifeskin-pill--an">${status}</span></div>
+    <small>${escapeHtml(datumKurz(s.createdAt))} · ${escapeHtml(uhrzeit(s.createdAt))}${frei ? ` · ${frei.text}` : ""}</small>
+    <div class="heart-skinreact__freigabe"><label><span class="heart-skinreact__label">Produkteignung</span><select id="sr-wahl-${escapeHtml(s.id)}" data-skinreact-bereich aria-label="Eignungsbereich für ${escapeHtml(s.code || s.id)}"><option value="">Stufe wählen</option>${optionen}</select></label>
+    <button type="button" data-action="lifeskin-skinreact-senden" data-id="${escapeHtml(s.id)}"${sendet ? " disabled" : ""}>${sendet ? "Po dërgohet…" : "Dërgo"}</button></div>
+    <span class="heart-skinreact__meldung" role="status" aria-live="polite"></span></div></article>`);
+}
+
 function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle", fuss = "",
-  vorschau = {}, { auswahl = null, auswahlLoeschen = false } = {}) {
+  vorschau = {}, { auswahl = null, auswahlLoeschen = false, skinreact = false } = {}) {
   // ALLE WEGE IN EINER LISTE. Ein Fall ist ein Fall, egal ueber welchen
   // Weg er hereinkam - "abgegeben" heisst auf jedem Weg dasselbe.
   // Dieselbe Definition wie die Kennzahl: auch spaetere Schritte und
   // die Warteseitenmarke; reine Shopbestellungen sind keine Analysen.
-  const fertige = sitzungen.filter(istAnalyse);
+  const fertige = sitzungen.filter((s) => istAnalyse(s) || istSkinreact(s));
+  const faecher = skinreact ? [{ id: "skinreact", label: "SkinReact" }, ...FAECHER] : FAECHER;
+  const passt = (s, f) => f === "skinreact" ? istSkinreact(s) : imFach(s, berichte[s.id], f);
 
-  const zaehler = Object.fromEntries(FAECHER.map((f) => [f.id,
-    fertige.filter((s) => imFach(s, berichte[s.id], f.id)).length]));
+  const zaehler = Object.fromEntries(faecher.map((f) => [f.id,
+    fertige.filter((s) => passt(s, f.id)).length]));
   // Ein Fach, das es nicht (mehr) gibt, zeigt "Offen" - nie eine leere
   // Liste ohne angewaehlten Chip.
-  if (!FAECHER.some((f) => f.id === fach)) fach = "alle";
+  if (!faecher.some((f) => f.id === fach)) fach = "alle";
   // "Offen" ist Arbeit - dort wird NIE abgeschnitten. Die anderen Faecher
   // zeigen die neuesten 300 und sagen, wenn es mehr gibt.
-  const imGewaehltenFach = fertige.filter((s) => imFach(s, berichte[s.id], fach));
+  const imGewaehltenFach = fertige.filter((s) => passt(s, fach));
   // IM ARCHIV STEHT OBEN, WER ZULETZT IN SEINER ANALYSE WAR (30.09.,
   // Inhaber) - wer nie wieder hineinsah, nach dem Tag des Falls.
   if (fach === "archiviert") {
     const wann = (s) => analyseBesuche(s).zuletzt || String(s.createdAt || "");
     imGewaehltenFach.sort((a, b) => wann(b).localeCompare(wann(a)));
   }
-  const gewaehlt = fach === "alle" ? imGewaehltenFach : imGewaehltenFach.slice(0, 300);
+  const gewaehlt = ["alle", "skinreact"].includes(fach) ? imGewaehltenFach : imGewaehltenFach.slice(0, 300);
   const mehr = imGewaehltenFach.length - gewaehlt.length;
 
-  const chips = renderChipSeiten(FAECHER.map((f) => ({ ...f, anzahl: zaehler[f.id] })), fach, "lifeskin-fach");
+  const chips = renderChipSeiten(faecher.map((f) => ({ ...f, anzahl: zaehler[f.id] })), fach, "lifeskin-fach", skinreact ? 3 : 4);
   const neu = zaehler.alle || 0;
   const zahl = `${neu} neu`;
 
@@ -1566,7 +1585,7 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
   // Die Kaufchance zaehlt ueber ALLE Faelle dieses Wegs, auch die
   // gekauften - nur so ergibt sich eine Quote.
   const chancen = fach === "archiviert" ? kaufChancen(fertige, berichte) : null;
-  const zeilen = gewaehlt.map((s) => fallKnopf(s, berichte[s.id], fach, vorschau[s.id], waehlen, gewaehltSet.has(s.id),
+  const zeilen = gewaehlt.map((s) => fach === "skinreact" && !waehlen ? renderSkinreactFall(s, berichte[s.id], vorschau[s.id]) : fallKnopf(s, berichte[s.id], fach, vorschau[s.id], waehlen, gewaehltSet.has(s.id),
     chancen?.get(s.id) || null)).join("");
 
   const leerFach = {
@@ -3753,7 +3772,7 @@ function renderWegUebersicht(zustand, weg, offenerWeg = weg) {
         : renderLive(live)}
       ${weg === "lifeskinshop" ? renderShopWeg(shopWeg, zeitraum, zustand.shopChip || "shop", trichterListe) : renderTrichter(trichterListe, zustand.trichterOffen || "main")}
       ${renderAnalysen(alleDesWegs, zustand.berichte || {}, zustand.fach || "alle", "Fälle", "",
-        zustand.vorschau || {}, { auswahl: zustand.auswahl ?? null, auswahlLoeschen: !!zustand.auswahlLoeschen })}
+        zustand.vorschau || {}, { auswahl: zustand.auswahl ?? null, auswahlLoeschen: !!zustand.auswahlLoeschen, skinreact: weg === "lifeskinshop" })}
       ${renderBetreuung(zustandWeg)}
       ${renderBestellungen(alleDesWegs, zustand.bestellZeitraum || "heute")}
       ${renderNachfassen(alleDesWegs)}
