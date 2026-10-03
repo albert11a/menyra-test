@@ -14,3 +14,6 @@ Polling displays approved range within the next two-second successful request, c
 
 ## Inline scan correction (2026-10-03)
 Camera and preparation/result screens are now embedded at the guide position inside #zgjedhja. The landing stays visible. Original video/canvas nodes and pose capture are reused; there is no second scanner. The inline camera uses available section width instead of viewport-height sizing. Cancel stops camera and restores guide. Other landing flows retain their fullscreen behavior.
+
+## Stable scan stage
+Starting the camera now overlays the original guide inside its unchanged square, without scrolling, hiding the sticky bar or inserting extra controls. Guidance remains in its reserved two-line slot and the existing start button becomes cancel. Completion uses the same diameter for a processing ring and the genuinely approved suitability range; explanatory text and order controls follow underneath.

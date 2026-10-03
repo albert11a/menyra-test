@@ -76,7 +76,7 @@ test('workflow survives reload but older submitted analyses are not reclassified
 
 test('inline embedding preserves original video/canvas screen nodes and reuses the same slot',()=>{
   let slot=null;const camera={id:'ls-kamera'},result={id:'ls-analyse'};
-  const section={dataset:{},querySelector:selector=>selector==='[data-sr-live]'?slot:{after:node=>{slot=node}}};
+  const section={dataset:{},querySelector:selector=>selector==='[data-sr-live]'?slot:{append:node=>{slot=node}}};
   const document={getElementById:id=>({'zgjedhja':section,'ls-kamera':camera,'ls-analyse':result})[id],createElement:()=>({children:[],setAttribute(){},append(node){this.children.push(node)}})};
   const first=skinreactEinbetten(document,'kamera');
   assert.equal(first.inline,true);assert.equal(section.dataset.srState,'kamera');

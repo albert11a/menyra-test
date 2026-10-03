@@ -22,7 +22,7 @@ export class SkinreactErgebnis {
     if (!this.wurzel || this.aktiv) return;
     this.aktiv = true;
     this.beginn = Date.now();
-    this.wurzel.innerHTML = `<div class="sr-result"><p class="sr-result__eyebrow">SKINREACT</p><div class="sr-pending" aria-hidden="true"></div><h1>Po kontrollohet skanimi yt.</h1><p data-sr-status role="status" aria-live="polite">Rezultati shfaqet këtu sapo të përfundojë kontrolli.</p><button type="button" class="sr-back">Vazhdo në faqe</button></div>`;
+    this.wurzel.innerHTML = `<div class="sr-result"><p class="sr-result__eyebrow">SKINREACT</p><div class="sr-result__visual"><div class="sr-pending" aria-hidden="true"></div><span class="sr-working">Po përpunohet</span></div><h1>Po kontrollohet skanimi yt.</h1><p data-sr-status role="status" aria-live="polite">Rezultati shfaqet këtu sapo të përfundojë kontrolli.</p><button type="button" class="sr-back">Vazhdo në faqe</button></div>`;
     this.wurzel.querySelector(".sr-back").addEventListener("click", () => {
       this.stop();
       globalThis.__lifeskinTrichter?.zeige("einstieg");
@@ -59,7 +59,7 @@ export class SkinreactErgebnis {
     this.angezeigt = bereich.id;
     this.sitzung.ergaenze?.({ berichtGeoeffnet: true });
     const pershtatet = bereich.min >= 60;
-    this.wurzel.innerHTML = `<div class="sr-result"><p class="sr-result__eyebrow">SKINREACT · REZULTATI YT</p><h1>Përshtatja e vlerësuar<br>me Acne Duo</h1><div class="sr-result__range">${bereich.text}</div><p>${pershtatet ? "Acne Duo është vlerësuar si i përshtatshëm për rutinën tënde." : "Për lëkurën tënde, kërko një rekomandim personal para se të zgjedhësh setin."}</p><p class="sr-result__note">Vlerësim orientues nga fotografitë. Nuk është probabilitet shërimi apo garanci rezultati.</p>${pershtatet ? '<button type="button" class="sr-order">Porosit Acne Duo <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button>' : '<a class="sr-order" href="https://wa.me/436508564879">Merr një rekomandim personal</a>'}<button type="button" class="sr-back">Kthehu në faqe</button></div>`;
+    this.wurzel.innerHTML = `<div class="sr-result"><p class="sr-result__eyebrow">SKINREACT · REZULTATI YT</p><div class="sr-result__visual sr-result__visual--ready"><div class="sr-result__range">${bereich.text}</div><span class="sr-working">Përshtatja me Acne Duo</span></div><h1>Përshtatja e vlerësuar<br>me Acne Duo</h1><p>${pershtatet ? "Acne Duo është vlerësuar si i përshtatshëm për rutinën tënde." : "Për lëkurën tënde, kërko një rekomandim personal para se të zgjedhësh setin."}</p><p class="sr-result__note">Vlerësim orientues nga fotografitë. Nuk është probabilitet shërimi apo garanci rezultati.</p>${pershtatet ? '<button type="button" class="sr-order">Porosit Acne Duo <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button>' : '<a class="sr-order" href="https://wa.me/436508564879">Merr një rekomandim personal</a>'}<button type="button" class="sr-back">Kthehu në faqe</button></div>`;
     this.wurzel.querySelector(".sr-order")?.addEventListener("click", () => { if (pershtatet) { this.stop(); this.kaufen(); } });
     this.wurzel.querySelector(".sr-back").addEventListener("click", () => { this.stop(); globalThis.__lifeskinTrichter?.zeige("einstieg"); });
   }
@@ -74,7 +74,8 @@ export function skinreactEinbetten(dokument, name) {
     platz = dokument.createElement("div");
     platz.setAttribute("data-sr-live", "");
     const vorschau = sektion.querySelector(".sr-stage");
-    vorschau?.after(platz);
+    vorschau?.append(platz);
+    vorschau?.removeAttribute?.("aria-hidden");
     for (const id of ["ls-kamera", "ls-analyse"]) {
       const schirm = dokument.getElementById(id);
       if (schirm) platz.append(schirm);
@@ -82,5 +83,11 @@ export function skinreactEinbetten(dokument, name) {
   }
   const inline = name === "kamera" || name === "analyse";
   sektion.dataset.srState = inline ? name : "idle";
+  const start = dokument.getElementById("ls-start");
+  if (start) {
+    if (!start.dataset.srOriginal) start.dataset.srOriginal = start.innerHTML;
+    start.innerHTML = name === "kamera" ? "Anulo skanimin" : start.dataset.srOriginal;
+    start.hidden = name === "analyse";
+  }
   return { platz, inline };
 }

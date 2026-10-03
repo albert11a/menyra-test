@@ -9,3 +9,17 @@ if (ticks) {
     ticks.append(line);
   }
 }
+
+// Keep guidance in its original fixed-height position while the pose engine updates it.
+const section = document.getElementById("zgjedhja");
+const hint = section?.querySelector(".sr-hint");
+const liveHint = document.getElementById("ls-kamerahinweis");
+if (section && hint && liveHint) {
+  const original = hint.innerHTML;
+  const sync = () => {
+    if (section.dataset.srState === "kamera") hint.textContent = liveHint.textContent || "Lejo kamerën për me fillu.";
+    else if (section.dataset.srState === "idle") hint.innerHTML = original;
+  };
+  new MutationObserver(sync).observe(liveHint, { childList:true, subtree:true, characterData:true });
+  new MutationObserver(sync).observe(section, { attributes:true, attributeFilter:["data-sr-state"] });
+}

@@ -1060,8 +1060,7 @@ export class Trichter {
     // Nichts am Trichter aendert sich dadurch. Der erste Aufruf gilt immer
     // dem Bildschirm, der ohnehin gerade dasteht; gescrollt wuerde also auf
     // eine Stelle, an der noch niemand etwas getan hat.
-    if (eingebettet?.inline) eingebettet.platz?.scrollIntoView?.({ block: "start", behavior: "instant" });
-    else if (vorher && !this.skinreact) window.scrollTo(0, 0);
+    if (vorher && !this.skinreact) window.scrollTo(0, 0);
 
     // Wo jemand steht, wird bei jedem Wechsel festgehalten - auch bei
     // denen ohne Verlaufseintrag. Sonst bliebe beim Weitergehen von
@@ -1858,6 +1857,7 @@ export class Trichter {
   // gerufen. Die zweite ist der Tipp, der VOR dem JavaScript kam - siehe
   // #frueherTippNachholen().
   #startTippen() {
+    if (this.skinreact && this.aktiv === "kamera") { this.#kameraStoppen(); this.zeige("einstieg"); return; }
     const knopf = $("#ls-start");
     if (knopf) delete knopf.dataset.wartet;
     if (this.skinreact && (this.sitzung.fortsetzbar() || this.sitzung.stand?.bericht === true)) { this.#skinreactZeigen(); return; }
