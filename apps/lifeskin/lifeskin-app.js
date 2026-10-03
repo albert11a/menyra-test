@@ -4796,7 +4796,7 @@ export class Trichter {
     this.aufbereitungGezeigt = true;
   }
 
-  #skinreactZeigen() {
+  #skinreactZeigen({ nurVorbereitung = false } = {}) {
     this.zeige("analyse");
     this.skinreactAnzeige?.stop();
     this.skinreactAnzeige = new SkinreactErgebnis({
@@ -4807,7 +4807,8 @@ export class Trichter {
         $("[data-set='acne']")?.click();
       }
     });
-    this.skinreactAnzeige.start();
+    if (nurVorbereitung) this.skinreactAnzeige.vorbereiten({ zurueck: false });
+    else this.skinreactAnzeige.start();
   }
 
   #aufbereitungFertig() {
@@ -4820,10 +4821,11 @@ export class Trichter {
   async #uebergeben() {
     if (this.uebergabeAktiv) return;
     this.uebergabeAktiv = true;
-    this.zeige("analyse");
+    if (this.skinreact) this.#skinreactZeigen({ nurVorbereitung: true });
+    else this.zeige("analyse");
     // Waehrend gespeichert wird, fuehrt kein Pfeil zurueck.
     $("#ls-analyse [data-zurueck]")?.setAttribute("hidden", "");
-    const anzeige = this.#aufbereitungZeigen().catch(() => {});
+    const anzeige = this.skinreact ? Promise.resolve() : this.#aufbereitungZeigen().catch(() => {});
     let frist;
     let vorgang = null;
     try {
@@ -4884,7 +4886,7 @@ export class Trichter {
       // Nicht darauf warten: Die Meldung an Dr. Gashi stoesst die
       // Warteseite an (astra.js), sobald sie steht.
       this.sitzung.schritt("result");
-      this.#aufbereitungFertig();
+      if (!this.skinreact) this.#aufbereitungFertig();
       this.#standVergessen();
       if (this.skinreact) { this.#skinreactZeigen(); return; }
       globalThis.location.assign(this.sitzung.berichtPfad);

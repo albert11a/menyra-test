@@ -32,3 +32,7 @@ Derselbe Schalter wie am Feld Përputhja (`lifeskin/lifeskin/config/perputhja`) 
 - Geschrieben wird in einer Firestore-Transaktion: Ist der Fall inzwischen gestoppt oder schon freigegeben, wird nichts geschrieben – mehrere offene Heart-Geräte geben nicht doppelt frei.
 - **Auch ohne offenes Heart (Server):** Die Cloud Function `skinreactAutoFreigabe` (`functions/lifeskin-skinreact-auto.js`) startet, sobald der Bericht eines SkinReact-Scans angelegt wird, wartet dieselben 5 s und gibt dann in einer Transaktion frei – mit denselben Prüfungen (Auto an, Scan nach dem Einschalten, nicht gestoppt, nicht schon freigegeben, Schalter in den 5 s nicht auf Manuell). Ist Heart offen, läuft dort zusätzlich der Countdown mit Stopp; die Transaktion verhindert doppelte Freigaben. Live geht die Function über den Workflow `mnyra-deploy-functions` (Push auf `main` mit Änderung unter `functions/`).
 - Keine neue Regel (der CEO darf in `reports` jedes Feld schreiben), kein Deploy, kein Pixel geändert.
+
+## Result motion and typography
+Waiting and completion share a centered SVG ring with an indeterminate orbit, then a one-shot completion stroke. Center scan icon sweep stays within its frame. Ranges use separate baseline-aligned numbers, dash and percent with explicit gaps; no negative letter spacing. Reduced motion disables movement. Actual approval/polling and cart route unchanged.
+The same processing view starts during photo/report upload, before polling; the old fullscreen progress-number view is skipped only for SkinReact. No result number appears until approval.

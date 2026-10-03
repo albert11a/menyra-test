@@ -12,6 +12,14 @@ export function berichtAusRest(daten) {
   return Object.fromEntries(Object.entries(daten?.fields || {}).map(([k, v]) => [k, firestoreWert(v)]));
 }
 
+// One centered SVG owns both waiting and completion; it never implies a fake percentage.
+function ergebnisRing() {
+  return `<svg class="sr-result__orbit" viewBox="0 0 100 100" aria-hidden="true"><circle class="sr-orbit-track" cx="50" cy="50" r="48"/><circle class="sr-orbit-progress" cx="50" cy="50" r="48" pathLength="100"/></svg>`;
+}
+function bereichZiffern(bereich) {
+  return `<span>${bereich.min}</span><span class="sr-range-dash">–</span><span>${bereich.max}</span><span class="sr-range-percent">%</span>`;
+}
+
 // One request at a time. Reads the original report; no random / cached diagnosis.
 export class SkinreactErgebnis {
   constructor({ sitzung, wurzel, kaufen, holen = (...args) => globalThis.fetch(...args), intervall = 2000 }) {
@@ -22,12 +30,17 @@ export class SkinreactErgebnis {
     if (!this.wurzel || this.aktiv) return;
     this.aktiv = true;
     this.beginn = Date.now();
-    this.wurzel.innerHTML = `<div class="sr-result"><p class="sr-result__eyebrow">SKINREACT</p><div class="sr-result__visual"><div class="sr-pending" aria-hidden="true"></div><span class="sr-working">Po përpunohet</span></div><h1>Po kontrollohet skanimi yt.</h1><p data-sr-status role="status" aria-live="polite">Rezultati shfaqet këtu sapo të përfundojë kontrolli.</p><button type="button" class="sr-back">Vazhdo në faqe</button></div>`;
+    this.vorbereiten();
+    this.pruefen();
+  }
+  vorbereiten({ zurueck = true } = {}) {
+    if (!this.wurzel) return;
+    this.wurzel.innerHTML = `<div class="sr-result"><p class="sr-result__eyebrow">SKINREACT</p><div class="sr-result__visual">${ergebnisRing()}<div class="sr-pending" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5a1 1 0 0 1 1-1h3m8 0h3a1 1 0 0 1 1 1v3m0 8v3a1 1 0 0 1-1 1h-3m-8 0H5a1 1 0 0 1-1-1v-3M9 9v1m6-1v1m-5 5c1 1 3 1 4 0"/><path class="sr-sweep" d="M6 12h12"/></svg></div><span class="sr-working">Po përpunohet</span></div><h1>Po kontrollohet skanimi yt.</h1><p data-sr-status role="status" aria-live="polite">Rezultati shfaqet këtu sapo të përfundojë kontrolli.</p><button type="button" class="sr-back">Vazhdo në faqe</button></div>`;
     this.wurzel.querySelector(".sr-back").addEventListener("click", () => {
       this.stop();
       globalThis.__lifeskinTrichter?.zeige("einstieg");
     });
-    this.pruefen();
+    this.wurzel.querySelector(".sr-back").hidden = !zurueck;
   }
   stop() { this.aktiv = false; clearTimeout(this.takt); this.abbruch?.abort(); }
   async pruefen() {
@@ -59,7 +72,7 @@ export class SkinreactErgebnis {
     this.angezeigt = bereich.id;
     this.sitzung.ergaenze?.({ berichtGeoeffnet: true });
     const pershtatet = bereich.min >= 60;
-    this.wurzel.innerHTML = `<div class="sr-result"><p class="sr-result__eyebrow">SKINREACT · REZULTATI YT</p><div class="sr-result__visual sr-result__visual--ready"><div class="sr-result__range">${bereich.text}</div><span class="sr-working">Përshtatja me Acne Duo</span></div><h1>Përshtatja e vlerësuar<br>me Acne Duo</h1><p>${pershtatet ? "Acne Duo është vlerësuar si i përshtatshëm për rutinën tënde." : "Për lëkurën tënde, kërko një rekomandim personal para se të zgjedhësh setin."}</p><p class="sr-result__note">Vlerësim orientues nga fotografitë. Nuk është probabilitet shërimi apo garanci rezultati.</p>${pershtatet ? '<button type="button" class="sr-order">Porosit Acne Duo <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button>' : '<a class="sr-order" href="https://wa.me/436508564879">Merr një rekomandim personal</a>'}<button type="button" class="sr-back">Kthehu në faqe</button></div>`;
+    this.wurzel.innerHTML = `<div class="sr-result"><p class="sr-result__eyebrow">SKINREACT · REZULTATI YT</p><div class="sr-result__visual sr-result__visual--ready">${ergebnisRing()}<div class="sr-result__range" aria-label="${bereich.text}">${bereichZiffern(bereich)}</div><span class="sr-working">Përshtatja me Acne Duo</span></div><h1>Përshtatja e vlerësuar<br>me Acne Duo</h1><p>${pershtatet ? "Acne Duo është vlerësuar si i përshtatshëm për rutinën tënde." : "Për lëkurën tënde, kërko një rekomandim personal para se të zgjedhësh setin."}</p><p class="sr-result__note">Vlerësim orientues nga fotografitë. Nuk është probabilitet shërimi apo garanci rezultati.</p>${pershtatet ? '<button type="button" class="sr-order">Porosit Acne Duo <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button>' : '<a class="sr-order" href="https://wa.me/436508564879">Merr një rekomandim personal</a>'}<button type="button" class="sr-back">Kthehu në faqe</button></div>`;
     this.wurzel.querySelector(".sr-order")?.addEventListener("click", () => { if (pershtatet) { this.stop(); this.kaufen(); } });
     this.wurzel.querySelector(".sr-back").addEventListener("click", () => { this.stop(); globalThis.__lifeskinTrichter?.zeige("einstieg"); });
   }
