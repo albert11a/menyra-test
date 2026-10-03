@@ -401,6 +401,50 @@
   .ls-vorstart .ls-fuss { padding-top: 10px; gap: 8px; }
 }
 
+/* /lifeskin: approved simple instructions from 01.10., without titles. */
+#ls-wahl .ls-wahl--drei { margin-top: 0; }
+.ls-vorstart.ls-anleitung-einfach {
+  --basis: #0e4f48;
+  --basis-hell: #e6efec;
+}
+.ls-vorstart.ls-anleitung-einfach .ls-inhalt {
+  flex: 1;
+  justify-content: center;
+  padding-top: 18px;
+}
+.ls-vorstart.ls-anleitung-einfach .ls-regeln {
+  gap: 14px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+.ls-vorstart.ls-anleitung-einfach .ls-regel {
+  gap: 14px;
+  padding: 0;
+  border: 0;
+}
+.ls-vorstart.ls-anleitung-einfach .ls-regel::after,
+.ls-vorstart.ls-anleitung-einfach .ls-knopf::after { content: none; }
+.ls-vorstart.ls-anleitung-einfach .ls-regel__zeichen {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+}
+.ls-vorstart.ls-anleitung-einfach .ls-regel__zeichen svg { width: 22px; height: 22px; }
+.ls-vorstart.ls-anleitung-einfach .ls-regel__text {
+  font-size: 16px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.ls-vorstart.ls-anleitung-einfach .ls-fuss { padding-top: 18px; }
+.ls-vorstart.ls-anleitung-einfach .ls-knopf {
+  min-height: 54px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
 /* Approved concern selector: only this question on /lifeskin. */
 #ls-fragen .ls-frage-falas { display: none; }
 #ls-fragen .ls-frageanweisung { display: contents; }

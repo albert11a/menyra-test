@@ -289,9 +289,7 @@
     <span class="ls-kopf__schild" data-text="langPunktFalas">Falas</span>
   </div>
 
-  <div class="ls-inhalt">
-    <h2><span data-text="wahlKompaktTitel">Si do ta bësh</span><span class="ls-wahltitel-blau" data-text="wahlKompaktTitelBlau">analizën tënde?</span></h2>
-    <p class="ls-klein ls-wahl__unter" data-text="wahlKompaktUnter">Zgjidh një mënyrë.</p>
+  <div class="ls-inhalt" aria-label="Menyra e analizes">
 
     <!-- Vier Karten passen nicht als vier Bloecke auf ein Telefon: Das
          Zeichen sitzt deshalb LINKS neben dem Text statt darueber, und
@@ -350,7 +348,7 @@
      im Ring, hier um EINE Stelle aus der Naehe. Die letzte Zeile ist die
      wichtigste - sie ist der Grund, warum jemand diesen Weg gewaehlt
      hat. -->
-<section class="ls-schirm ls-vorstart" id="ls-fotopara" data-aktiv="nein">
+<section class="ls-schirm ls-vorstart ls-anleitung-einfach" id="ls-fotopara" aria-label="Udhezimi per foto" data-aktiv="nein">
   <div class="ls-kopf">
     <button type="button" class="ls-zurueck" data-zurueck aria-label="Kthehu" hidden>
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
@@ -358,37 +356,42 @@
     <span class="ls-marke">Lifeskin</span>
     <span class="ls-kopf__schild" data-text="langPunktFalas">Falas</span>
   </div>
-  <div class="ls-inhalt">
-    <p class="ls-vorstart__label" data-text="prepFotoLabel">FOTO E LËKURËS</p>
-    <h2><span data-text="prepGati">Gati për</span><span class="ls-vorstart__blau" data-text="prepFotoBlau">një foto?</span></h2>
-    <p class="ls-vorstart__unter" data-text="prepFotoUnter">Fotografo vetëm pjesën që të shqetëson.</p>
+  <div class="ls-inhalt ls-inhalt--mitte">
     <div class="ls-regeln">
-      <!-- Seit dem 01.10. wie im Laden ohne "Pa makeup" und ohne
-           "Mos përdorni filter" (Wunsch Inhaber). -->
+      <div class="ls-regel">
+        <span class="ls-regel__zeichen" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20c1.8-4.2 4.5-6.3 8-6.3s6.2 2.1 8 6.3"/><circle cx="12" cy="7.5" r="3.6"/><path d="m4.5 4.5 15 15"/></svg>
+        </span>
+        <span class="ls-regel__text" data-text="fotoParaMakeup"></span>
+      </div>
       <div class="ls-regel">
         <span class="ls-regel__zeichen" aria-hidden="true">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
         </span>
-        <div class="ls-vorstart__regeltext"><span class="ls-regel__text" data-text="prepLicht">Gjej dritë të mirë</span><p data-text="prepLichtText">Qëndro përballë një dritareje.</p></div>
+        <span class="ls-regel__text" data-text="fotoParaLicht"></span>
       </div>
       <div class="ls-regel">
         <span class="ls-regel__zeichen" aria-hidden="true">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.4-4.4"/></svg>
         </span>
-        <div class="ls-vorstart__regeltext"><span class="ls-regel__text" data-text="prepKlar">Foto e qartë</span><p data-text="prepKlarText">Mbaje telefonin pa e lëvizur.</p></div>
+        <span class="ls-regel__text" data-text="fotoParaKlar"></span>
+      </div>
+      <div class="ls-regel">
+        <span class="ls-regel__zeichen" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.5" cy="9.5" r="5.5"/><circle cx="14.5" cy="14.5" r="5.5"/><path d="m3.5 3.5 17 17"/></svg>
+        </span>
+        <span class="ls-regel__text" data-text="fotoParaFilter"></span>
       </div>
       <div class="ls-regel">
         <span class="ls-regel__zeichen" aria-hidden="true">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="6" width="17" height="13" rx="2.5"/><circle cx="12" cy="12.5" r="3.2"/><path d="M8 6.2 9.2 4h5.6L16 6.2"/></svg>
         </span>
-        <div class="ls-vorstart__regeltext"><span class="ls-regel__text" data-text="prepNah">Afrohu pak</span><p data-text="prepNahText">Pjesa e lëkurës të duket mirë.</p></div>
+        <span class="ls-regel__text" data-text="fotoParaNah"></span>
       </div>
     </div>
-    <p class="ls-vorstart__hilfe" data-text="prepFotoHilfe">Nuk duhet ta tregosh gjithë fytyrën.</p>
   </div>
   <div class="ls-fuss">
-    <button type="button" class="ls-knopf" id="ls-fotoweiter" data-text="fotoParaKnopf">Vazhdo</button>
-    <p class="ls-vorstart__privat" data-text="wahlKompaktPrivat">Fotot e tua nuk publikohen.</p>
+    <button type="button" class="ls-knopf" id="ls-fotoweiter" data-text="fotoParaKnopf"></button>
   </div>
 </section>
 
@@ -446,7 +449,7 @@
 
      Auf dem Weg ohne Wahlbildschirm (apps/lifeskin-trichter/) gibt es
      sie weiter nicht: Dort fuehrt der Tipp unmittelbar an die Kamera. -->
-<section class="ls-schirm ls-vorstart" id="ls-vorbereitung" data-aktiv="nein">
+<section class="ls-schirm ls-vorstart ls-anleitung-einfach" id="ls-vorbereitung" aria-label="Udhezimi per skanim" data-aktiv="nein">
   <div class="ls-kopf">
     <button type="button" class="ls-zurueck" data-zurueck aria-label="Kthehu" hidden>
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
@@ -454,33 +457,28 @@
     <span class="ls-marke">Lifeskin</span>
     <span class="ls-kopf__schild" data-text="langPunktFalas">Falas</span>
   </div>
-  <div class="ls-inhalt">
-    <p class="ls-vorstart__label" data-text="prepScanLabel">SKANIMI I FYTYRËS</p>
-    <h2><span data-text="prepGati">Gati për</span><span class="ls-vorstart__blau" data-text="prepScanBlau">skanimin?</span></h2>
-    <p class="ls-vorstart__unter" data-text="prepScanUnter">Vetëm 3 gjëra para se të fillosh.</p>
+  <div class="ls-inhalt ls-inhalt--mitte">
     <div class="ls-regeln">
       <div class="ls-regel">
         <span class="ls-regel__zeichen" data-zeichen="scan-face" aria-hidden="true"></span>
-        <div class="ls-vorstart__regeltext"><span class="ls-regel__text" data-text="prepMitte">Fytyra në mes</span><p data-text="prepMitteText">Mbaje fytyrën brenda rrethit.</p></div>
+        <span class="ls-regel__text" data-text="vorbereitungMitte"></span>
       </div>
       <div class="ls-regel">
         <span class="ls-regel__zeichen" aria-hidden="true">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
         </span>
-        <div class="ls-vorstart__regeltext"><span class="ls-regel__text" data-text="prepLicht">Gjej dritë të mirë</span><p data-text="prepLichtText">Qëndro përballë një dritareje.</p></div>
+        <span class="ls-regel__text" data-text="vorbereitungLicht"></span>
       </div>
       <div class="ls-regel">
         <span class="ls-regel__zeichen" aria-hidden="true">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg>
         </span>
-        <div class="ls-vorstart__regeltext"><span class="ls-regel__text" data-text="prepHoehe">Telefoni te sytë</span><p data-text="prepHoeheText">Mbaje drejt, në lartësinë e syve.</p></div>
+        <span class="ls-regel__text" data-text="vorbereitungHoehe"></span>
       </div>
     </div>
-    <p class="ls-vorstart__hilfe" data-text="prepScanHilfe">Ktheje kokën ngadalë. Fotot bëhen vetë.</p>
   </div>
   <div class="ls-fuss">
-    <button type="button" class="ls-knopf" id="ls-kameraoeffnen" data-text="vorbereitungKnopf">Hap kamerën</button>
-    <p class="ls-vorstart__privat" data-text="wahlKompaktPrivat">Fotot e tua nuk publikohen.</p>
+    <button type="button" class="ls-knopf" id="ls-kameraoeffnen" data-text="vorbereitungKnopf"></button>
   </div>
 </section>
 
