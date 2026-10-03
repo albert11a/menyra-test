@@ -17,3 +17,6 @@ Camera and preparation/result screens are now embedded at the guide position ins
 
 ## Stable scan stage
 Starting the camera now overlays the original guide inside its unchanged square, without scrolling, hiding the sticky bar or inserting extra controls. Guidance remains in its reserved two-line slot and the existing start button becomes cancel. Completion uses the same diameter for a processing ring and the genuinely approved suitability range; explanatory text and order controls follow underneath.
+
+## Schalter Auto / Manuell (2026-10-03, Wunsch Inhaber)
+Derselbe Schalter wie am Feld Përputhja (`lifeskin/lifeskin/config/perputhja`) steht jetzt auch ueber der SkinReact-Liste in Heart (Acne duo → Fälle → SkinReact). Bei **Auto** ist in jeder noch nicht freigegebenen Zeile **95–100 %** vorausgewaehlt; eine Entwurfswahl oder eine Freigabe geht vor. **Gesendet wird weiterhin nur mit „Dërgo“** – keine Freigabe ohne dass jemand das Foto gesehen hat, kein Senden beim Laden oder im Live-Takt. Manuell: wie bisher „Stufe wählen“.

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { SKINREACT_BEREICHE, skinreactBereich, skinreactFreigabe, skinreactErgebnis, istSkinreact } from '../shared/lifeskin-skinreact.js';
 import { herkunftAuslesen, Sitzung } from '../apps/lifeskin/lifeskin-session.js';
 import { berichtAusRest, SkinreactErgebnis, skinreactEinbetten } from '../apps/lifeskin-shop/skinreact-ergebnis.js';
@@ -83,4 +84,23 @@ test('inline embedding preserves original video/canvas screen nodes and reuses t
   assert.equal(first.platz.children[0],camera);assert.equal(first.platz.children[1],result);
   const next=skinreactEinbetten(document,'analyse');assert.equal(next.platz,first.platz);assert.equal(next.platz.children.length,2);assert.equal(section.dataset.srState,'analyse');
   skinreactEinbetten(document,'einstieg');assert.equal(section.dataset.srState,'idle');
+});
+
+// AUTO (Schalter Përputhja, 03.10., Wunsch Inhaber): 95-100 % steht schon
+// in der Auswahl - gesendet wird erst mit "Dërgo". Keine Freigabe ohne Mensch.
+test('Auto waehlt 95-100 vor, sendet aber nichts von selbst', () => {
+  const s = { id: 'sr-auto', name: 'Arta', createdAt: new Date().toISOString(), photos: ['a'], source: { scanWorkflow: 'skinreact', weg: 'lifeskinshop' } };
+  const auto = renderSkinreactFall(s, {}, '', { perputhjaModus: 'auto' });
+  assert.match(auto, /value="95-100" selected/);
+  assert.match(auto, /data-action="lifeskin-skinreact-senden"/, 'Dërgo bleibt der Weg zur Freigabe');
+  // Manuell und ohne Einstellung: nichts vorausgewaehlt.
+  for (const modus of ['hand', undefined]) assert.doesNotMatch(renderSkinreactFall(s, {}, '', { perputhjaModus: modus }), /" selected/);
+  // Schon freigegeben: es gilt die Freigabe, nicht der Vorschlag.
+  const frei = { skinreact: { bereich: '70-75', freigabeAt: '2026-10-03T08:00:00.000Z', art: 'produkteignung' } };
+  const html = renderSkinreactFall(s, frei, '', { perputhjaModus: 'auto' });
+  assert.match(html, /value="70-75" selected/);
+  assert.doesNotMatch(html, /value="95-100" selected/);
+  // Heart sendet nur aus dem Klick auf Dërgo - kein Senden beim Laden oder im Live-Takt.
+  const heart = readFileSync(new URL('../apps/mnyra-heart/heart.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(heart, /SKINREACT_AUTO_BEREICH/, 'heart.js darf den Vorschlag nicht selbst senden');
 });

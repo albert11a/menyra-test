@@ -10650,3 +10650,16 @@ html.heart-wischt--gleitet .heart-bereiche__band {
   overflow: visible;
 }
 .heart-perputhja-modus .heart-lifeskin-chip { min-width: 0; padding-inline: 12px; }
+
+/* Ueber der SkinReact-Liste: Satz links, Schalter Auto/Manuell rechts. */
+.heart-skinreact-auto {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 10px 0 2px;
+}
+.heart-skinreact-auto > span { font-size: 12px; color: var(--heart-muted, #7b807d); min-width: 0; }
+.heart-skinreact-auto > span { flex: 1 1 auto; }
+.heart-skinreact-auto > .heart-perputhja-modus { flex: none; }
+.heart-perputhja-modus .heart-lifeskin-chip { white-space: nowrap; }

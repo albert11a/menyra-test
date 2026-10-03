@@ -1530,9 +1530,16 @@ function fallKnopf(s, bericht, fach, bild, waehlen, an, chance = null) {
   return html;
 }
 
-export function renderSkinreactFall(s, bericht, bild) {
+// AUTO (Schalter Përputhja, 03.10.): Bei einem noch nicht freigegebenen
+// Fall steht 95-100 % schon in der Auswahl. Gesendet wird trotzdem erst
+// mit "Dërgo" - jemand hat das Foto gesehen (docs/lifeskin-skinreact.md:
+// keine Freigabe ohne Mensch).
+export const SKINREACT_AUTO_BEREICH = "95-100";
+
+export function renderSkinreactFall(s, bericht, bild, { perputhjaModus = "hand" } = {}) {
   const frei = skinreactErgebnis(bericht);
-  const wahl = skinreactEntwuerfe.get(s.id) || frei?.id || "";
+  const vorschlag = perputhjaModus === "auto" && !frei ? SKINREACT_AUTO_BEREICH : "";
+  const wahl = skinreactEntwuerfe.get(s.id) || frei?.id || vorschlag;
   const sendet = skinreactSendet.has(s.id);
   const status = s.hatBestellt ? "Bestellt" : s.kasseGeoeffnet ? "Kasse" : frei ? "Freigegeben" : "Offen";
   const optionen = SKINREACT_BEREICHE.map((id) => `<option value="${id}"${wahl === id ? " selected" : ""}>${skinreactBereich(id).text}</option>`).join("");
@@ -1545,8 +1552,17 @@ export function renderSkinreactFall(s, bericht, bild) {
     <span class="heart-skinreact__meldung" role="status" aria-live="polite"></span></div></article>`);
 }
 
+// Ueber der SkinReact-Liste: derselbe Schalter wie am Feld Përputhja.
+function renderSkinreactAutoLeiste(modus) {
+  const auto = perputhjaModusGueltig(modus) === "auto";
+  return `<div class="heart-skinreact-auto">
+      <span>${auto ? "Auto: 95–100 % ist vorausgewählt – Foto ansehen, Dërgo tippen." : "Manuell: Stufe selbst wählen, dann Dërgo."}</span>
+      ${renderPerputhjaSchalter(perputhjaModusGueltig(modus))}
+    </div>`;
+}
+
 function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle", fuss = "",
-  vorschau = {}, { auswahl = null, auswahlLoeschen = false, skinreact = false } = {}) {
+  vorschau = {}, { auswahl = null, auswahlLoeschen = false, skinreact = false, perputhjaModus = "hand" } = {}) {
   // ALLE WEGE IN EINER LISTE. Ein Fall ist ein Fall, egal ueber welchen
   // Weg er hereinkam - "abgegeben" heisst auf jedem Weg dasselbe.
   // Dieselbe Definition wie die Kennzahl: auch spaetere Schritte und
@@ -1585,7 +1601,7 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
   // Die Kaufchance zaehlt ueber ALLE Faelle dieses Wegs, auch die
   // gekauften - nur so ergibt sich eine Quote.
   const chancen = fach === "archiviert" ? kaufChancen(fertige, berichte) : null;
-  const zeilen = gewaehlt.map((s) => fach === "skinreact" && !waehlen ? renderSkinreactFall(s, berichte[s.id], vorschau[s.id]) : fallKnopf(s, berichte[s.id], fach, vorschau[s.id], waehlen, gewaehltSet.has(s.id),
+  const zeilen = gewaehlt.map((s) => fach === "skinreact" && !waehlen ? renderSkinreactFall(s, berichte[s.id], vorschau[s.id], { perputhjaModus }) : fallKnopf(s, berichte[s.id], fach, vorschau[s.id], waehlen, gewaehltSet.has(s.id),
     chancen?.get(s.id) || null)).join("");
 
   const leerFach = {
@@ -1610,6 +1626,7 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
       ${chips}
       ${fuss ? `<p class="heart-lifeskin-block__fuss">${escapeHtml(fuss)}</p>` : ""}
       ${waehlen ? renderAuswahlLeiste(fach, gewaehlt.map((s) => s.id), auswahl, auswahlLoeschen) : ""}
+      ${fach === "skinreact" && !waehlen ? renderSkinreactAutoLeiste(perputhjaModus) : ""}
       ${zeilen ? `<div class="heart-lifeskin-faelle">${zeilen}</div>`
         : `<p class="heart-lifeskin-leer">${escapeHtml(leerFach)}</p>`}
       ${mehr > 0 ? `<p class="heart-lifeskin-leer">+ ${mehr} ältere in diesem Fach.</p>` : ""}
@@ -3789,7 +3806,8 @@ function renderWegUebersicht(zustand, weg, offenerWeg = weg) {
         : renderLive(live)}
       ${weg === "lifeskinshop" ? renderShopWeg(shopWeg, zeitraum, zustand.shopChip || "shop", trichterListe) : renderTrichter(trichterListe, zustand.trichterOffen || "main")}
       ${renderAnalysen(alleDesWegs, zustand.berichte || {}, zustand.fach || "alle", "Fälle", "",
-        zustand.vorschau || {}, { auswahl: zustand.auswahl ?? null, auswahlLoeschen: !!zustand.auswahlLoeschen, skinreact: weg === "lifeskinshop" })}
+        zustand.vorschau || {}, { auswahl: zustand.auswahl ?? null, auswahlLoeschen: !!zustand.auswahlLoeschen, skinreact: weg === "lifeskinshop",
+          perputhjaModus: zustand.perputhjaModus })}
       ${renderBetreuung(zustandWeg)}
       ${renderBestellungen(alleDesWegs, zustand.bestellZeitraum || "heute")}
       ${renderNachfassen(alleDesWegs)}
