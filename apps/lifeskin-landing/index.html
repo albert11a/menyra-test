@@ -123,6 +123,7 @@
   <link rel="stylesheet" href="/apps/lifeskin-landing/landing.css" />
   <link rel="stylesheet" href="/apps/lifeskin-landing/approved.css" />
   <link rel="stylesheet" href="/apps/lifeskin-landing/clinical.css" />
+  <link rel="stylesheet" href="/apps/lifeskin-landing/analysis-first.css" />
 
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-app.js" />
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-metrics.js" />
@@ -158,105 +159,44 @@
      Fensterhoehe IST. Der feste Knopf unten liegt ausserhalb dieses
      Kastens - er soll stehen bleiben, waehrend darueber gelesen wird. -->
 <section class="ls-schirm" id="ls-einstieg" data-aktiv="ja">
-<div class="lp" id="lp">
-<div id="lf-preview" lang="sq">
+<div class="lp" id="lp"><div id="lf-preview" lang="sq">
+<main class="lf-page">
+ <header class="lf-nav"><div class="lf-logo">LIFE<span>SKIN</span></div><span class="lf-online">Kujdes per ty.</span></header>
+ <section class="lf-entry-card" aria-labelledby="lf-entry-title">
+ <span class="lf-entry-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V4h4m8 0h4v4m0 8v4h-4M8 20H4v-4M9 10h.01M15 10h.01M9 15s1 1 3 1 3-1 3-1"/></svg></span>
+ <h1 id="lf-entry-title">Analiza e lekures.</h1>
+ <p class="lf-entry-problem">Pucrra, njolla apo lekure e thate?</p>
+ <p class="lf-entry-copy">Dr. Gashi e shikon lekuren tande<br>dhe te tregon cka i duhet.</p>
+ <div class="lf-entry-doctor"><img data-asset="doctor" src="/apps/lifeskin/dr-gashi.jpg" width="174" height="174" alt="Dr. Violeta Gashi"><div><strong>Online nga Dr. Gashi.</strong><span>Dermatologe · LifeSkin</span></div></div>
 
-<section class="hero"><div class="shell"><header class="nav"><div class="brand">LIFESKIN<small>SKINREACT</small></div><a href="#pse">Si funksionon?</a></header><div class="section"><div class="hero-copy"><p class="eyebrow">ANALIZË E LËKURËS · ONLINE</p><h1>Kupto lëkurën.<br><span>Kujdes për ty.</span></h1><p class="sub">Vlerësim nga dermatologia. Produkte sipas nevojave të lëkurës tënde.</p><div class="doctor-strip"><img src="/apps/lifeskin/dr-gashi.jpg" alt="Dr. Violeta Gashi" width="174" height="174"><div><strong>Dr. Violeta Gashi</strong><small>Dermatologe · LifeSkin</small></div><div class="time"><strong>10 minuta</strong><small>Për rezultatin tënd</small></div></div><div class="hero-action"><button class="cta" data-ls-start data-ls-quelle="hero" id="ls-start">Fillo analizën <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button></div></div></div></div></section>
-<div class="proof"><div class="section shell proof-intro"><h2>Shiko ndryshimin.</h2><p class="sub">Para dhe pas kujdesit me LifeSkin.</p></div>  <section class="lf-section" id="rezultatet" ><div class="lf-case-stage" aria-label="Fotografitë para dhe pas">
-  <div class="lf-pair" id="lf-case-pair">
-    <div class="lf-photo"><img id="lf-before" src="/apps/lifeskin-landing/fotot/rasti-2-dita1.webp" width="720" height="810" alt="Rasti 2, para terapisë" decoding="async"><span class="lf-tag">PARA</span></div>
-    <div class="lf-photo"><img id="lf-after" src="/apps/lifeskin-landing/fotot/rasti-2-dita28.webp" width="720" height="810" alt="Rasti 2, pas terapisë" decoding="async"><span class="lf-tag after">PAS</span></div>
-  </div>
-  <div class="lf-sticker">Shiko<br>ndryshimin.</div><button class="lf-arrow lf-arrow-image lf-arrow-prev" type="button" data-case-direction="prev" aria-label="Rasti i mëparshëm"><svg aria-hidden="true"
-  class="lf-lucide lucide lucide-chevron-left"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="m15 18-6-6 6-6" />
-</svg>
-</button><button class="lf-arrow lf-arrow-image lf-arrow-next" type="button" data-case-direction="next" aria-label="Rasti tjetër"><svg aria-hidden="true"
-  class="lf-lucide lucide lucide-chevron-right"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="m9 18 6-6-6-6" />
-</svg>
-</button>
-</div>
-<div class="lf-casebar"><div class="lf-navigation" aria-label="Rastet para dhe pas"><button class="lf-arrow lf-arrow-bottom" type="button" data-case-direction="prev" aria-label="Rasti i mëparshëm"><svg aria-hidden="true"
-  class="lf-lucide lucide lucide-arrow-left"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="m12 19-7-7 7-7" />
-  <path d="M19 12H5" />
-</svg>
-</button><span class="lf-case-count" id="lf-case-count" aria-live="polite">02 / 04</span><button class="lf-arrow lf-arrow-bottom" type="button" data-case-direction="next" aria-label="Rasti tjetër"><svg aria-hidden="true"
-  class="lf-lucide lucide lucide-arrow-right"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="M5 12h14" />
-  <path d="m12 5 7 7-7 7" />
-</svg>
-</button></div><p class="lf-duration"><svg aria-hidden="true"
-  class="lf-lucide lucide lucide-clock-3"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <circle cx="12" cy="12" r="10" />
-  <polyline points="12 6 12 12 16.5 12" />
-</svg>
-<span>Kohëzgjatja<strong>4 javë</strong></span></p></div></section></div>
-<section class="understanding"><div class="section shell"><p class="eyebrow">DERMATOLOGE · KONSULTË ONLINE</p><h2>Kujdesi fillon<br>duke të kuptuar.</h2><div class="clinician"><img src="/apps/lifeskin/dr-gashi.jpg" alt="Dr. Violeta Gashi" width="174" height="174" loading="lazy"><div><strong>Dr. Violeta Gashi</strong><p>Analizon lëkurën dhe të konsulton online.</p></div></div><div class="community-intro"><strong>Mbi 181 mijë ndjekës.</strong><p>Komuniteti ynë në Kosovë dhe Shqipëri.</p></div>    <aside class="community-cards" aria-label="Lifeskin në Instagram">
-      <a class="community-card reveal cursor-interaction" href="https://www.instagram.com/lifeskin.ks/" target="_blank" rel="noopener noreferrer" aria-label="Lifeskin Kosovë në Instagram, 73,9 mijë ndjekës"><span class="community-avatar community-avatar-ks"><img src="/apps/lifeskin-landing/fotot/instagram-ks.jpeg" alt="" width="1320" height="871" decoding="async" loading="lazy"></span><span class="community-name">@lifeskin.ks<small>Kosovë</small></span><span class="community-count"><strong>73,9 mijë</strong><small>ndjekës</small></span><span class="community-arrow" aria-hidden="true">↗</span></a>
-      <a class="community-card reveal cursor-interaction" href="https://www.instagram.com/lifeskin.al/" target="_blank" rel="noopener noreferrer" aria-label="Lifeskin Shqipëri në Instagram, 108 mijë ndjekës"><span class="community-avatar community-avatar-al"><img src="/apps/lifeskin-landing/fotot/instagram-al.jpeg" alt="" width="1320" height="1116" decoding="async" loading="lazy"></span><span class="community-name">@lifeskin.al<small>Shqipëri</small></span><span class="community-count"><strong>108 mijë</strong><small>ndjekës</small></span><span class="community-arrow" aria-hidden="true">↗</span></a>
-    </aside></div></section>
-<section class="journey" id="pse"><div class="section shell"><div class="journey-intro"><p class="eyebrow">3 HAPA TË THJESHTË</p><h2>Nga analiza.<br>Te plani yt.</h2><p class="sub">Gjithçka bëhet këtu, në faqe.</p></div><div class="journey-cards"><article class="nx-story"><div class="step camera-step reveal"><div class="step-head"><span class="step-kicker">01 / TI ZGJEDH</span><h3>Skanim. Foto.<br>Ose përshkrim.</h3><p>Edhe pa e treguar gjithë fytyrën.</p></div><div class="scan-scene"><div class="scan-orbit"></div><div class="phone"><span class="island"></span><span class="phone-brand">LIFESKIN</span><div class="scan-area"><div class="scan-fallback" aria-hidden="true">☺</div><canvas class="nx-scan-canvas" width="300" height="300" aria-label="Ikona e fytyrës kthehet ngadalë në rrethin e skanimit"></canvas></div><span class="scan-hint">Ktheje kokën ngadalë.</span><span class="scan-auto">Fotot bëhen vetë.</span></div></div><div class="method-label">Në faqe<span></span>Pa dalë nga Instagram</div></div></article><article class="nx-story"><div class="step doctor-step reveal"><div class="step-head"><span class="step-kicker">02 / VLERËSIMI</span><h3>Dr. Gashi<br>e vlerëson.</h3><p>Lëkurën dhe përgjigjet e tua.</p></div><div class="doctor-visual"><img class="doctor-image" src="/apps/lifeskin/dr-gashi.jpg" alt="Dr. Violeta Gashi" width="174" height="174" loading="lazy"><div class="report"><small>ANALIZA JOTE</small><strong>E qartë.<br>Personale.</strong><div class="row">Gjendja e lëkurës<b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg></b></div><div class="row">Nevojat e tua<b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg></b></div><div class="row">Kujdesi i duhur<b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg></b></div></div></div></div></article><article class="nx-story"><div class="step care-step reveal"><div class="step-head"><span class="step-kicker">03 / PLANI YT</span><h3>Merr kujdesin<br>për ty.</h3><p>Produktet. Përdorimi. Çmimi.</p></div><div class="care-visual"><img src="/apps/lifeskin-landing/fotot/intro-moistur.webp" alt="Shembull i produktit LifeSkin" width="420" height="560" loading="lazy"><div class="plan"><small>PLANI YT PERSONAL</small><strong>Rutina jote.</strong><div class="row">Mëngjes<b>Hapat e tu</b></div><div class="row">Mbrëmje<b>Hapat e tu</b></div></div></div></div></article></div><button class="cta" data-ls-start data-ls-quelle="final">Fillo analizën <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button></div></section>
-<section class="product-section"><div class="section shell product-layout"><div><p class="eyebrow">TERAPI SIPAS NEVOJAVE TË TUA</p><h2>Produkte për ty.<br>Jo me hamendje.</h2><p class="sub">Së pari kuptohet lëkura. Pastaj zgjedhet kujdesi që i përshtatet.</p><div class="product-line"><span>Plan personal</span><span>Përdorim i qartë</span><span>Porosi në faqe</span></div></div><div class="product-visual reveal"><img src="/apps/lifeskin-landing/fotot/intro-moistur.webp" alt="Produkt LifeSkin për kujdesin e lëkurës" width="420" height="560" loading="lazy"><div class="photo-caption"><strong>Një rutinë.<br>Për nevojat e tua.</strong><small>Produktet varen nga vlerësimi yt.</small></div></div></div></section>
-<section class="faq"><div class="section shell"><p class="eyebrow">PARA SE TË NISËSH</p><h2>Pyetje të shkurtra.</h2><details><summary>A duhet ta tregoj gjithë fytyrën?</summary><p>Jo. Mund të fotografosh vetëm pjesën që të shqetëson ose ta përshkruash problemin.</p></details><details><summary>Çka marr pas analizës?</summary><p>Vlerësimin e lëkurës dhe planin personal: produktet, mënyrën e përdorimit dhe çmimin.</p></details><details><summary>A duhet t’i blej produktet?</summary><p>Ti vendos pasi ta shohësh planin dhe çmimin. Analiza është falas.</p></details></div></section>
-<section class="finish"><div class="section shell"><p class="eyebrow">HAPI I PARË ËSHTË I THJESHTË</p><h2>Lëkura jote.<br>Një plan për ty.</h2><p class="sub">Nise nga telefoni. Ne të udhëzojmë.</p><button class="cta" data-ls-start data-ls-quelle="final">Fillo analizën <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button><p class="note">Analizë online · Dr. Violeta Gashi</p></div></section>
-<footer class="footer shell"><strong>LIFESKIN / SKINREACT</strong><span>Kujdesi për lëkurën.</span></footer><div class="sticky" aria-label="Fillo analizën"><div class="sticky-inner"><button class="cta" data-clinical-start>Fillo analizën <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button></div></div>
-</div>
+ <p class="lf-entry-free">Analiza eshte falas.</p>
+<figure class="lf-entry-photo"><img id="lf-entry-photo-image" src="/apps/lifeskin-landing/fotot/analiza-ne-telefon.jpg" width="760" height="950" fetchpriority="high" decoding="async" alt="Shembull i skanimit te lekures ne telefon me LifeSkin"></figure>
 
-</div>
 </section>
 
+ <section class="lf-simple-how" id="pse"><p class="lf-simple-kicker">QYSH FUNKSIONON?</p><h2>3 hapa te lehte.</h2><div class="lf-how-rows"><div><span>1</span><p>Na trego lekuren me foto, skanim ose mesazh.</p></div><div><span>2</span><p>Trego cka te pengon. Dr. Gashi e shikon rastin tand.</p></div><div><span>3</span><p>Merr analizen dhe shiko produktet per lekuren tande.</p></div></div><p class="lf-warm-footnote">Krejt ne telefon. Hap pas hapi.</p></section>
+
+ <section class="lf-simple-proof" id="rezultatet">
+  <div class="lf-proof-head"><h2>Shiko ndryshimin.</h2><div class="lf-gallery-arrows"><button data-case-direction="prev" class="cursor-interaction" aria-label="Rasti paraprak"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m5-5-5 5 5 5"/></svg></button><button data-case-direction="next" class="cursor-interaction" aria-label="Rasti tjeter"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button></div></div>
+  <p class="lf-proof-intro">Shembuj nga kujdesi me LifeSkin.</p>
+  <div class="lf-case-stage" aria-label="Para dhe pas kujdesit me LifeSkin"><div class="lf-pair lf-proof-slide" id="lf-case-pair">
+<figure class="lf-photo"><img id="lf-before" src="/apps/lifeskin-landing/fotot/rasti-2-dita1.webp" width="720" height="810" alt="Rasti 2, para kujdesit" decoding="async"><figcaption class="lf-tag">Para</figcaption></figure>
+<figure class="lf-photo"><img id="lf-after" src="/apps/lifeskin-landing/fotot/rasti-2-dita28.webp" width="720" height="810" alt="Rasti 2, pas kujdesit" decoding="async"><figcaption class="lf-tag after">Pas</figcaption></figure>
+</div></div>
+<div class="lf-gallery-bottom"><span id="lf-case-count" aria-live="polite">02 / 04</span></div>
+<p class="lf-gallery-note">Rezultati ndryshon prej personit ne person.</p>
+ </section>
+ <section class="lf-community"><p>Njihu me LifeSkin.</p><div class="lf-community-links"><a href="https://www.instagram.com/lifeskin.ks/" target="_blank" rel="noopener noreferrer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg><span>LifeSkin Kosove<small>@lifeskin.ks</small></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a><a href="https://www.instagram.com/lifeskin.al/" target="_blank" rel="noopener noreferrer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg><span>LifeSkin Shqiperi<small>@lifeskin.al</small></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a></div></section>
+
+ <section class="lf-warm-result"><p class="lf-simple-kicker">PAS ANALIZES</p><h2>Tash e din<br>cka i duhet lekures.</h2><div class="lf-warm-results"><p><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>Analiza e lekures tande.</p><p><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>Produktet qe te pershtaten.</p><p><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>Si me i perdor.</p></div><p class="lf-warm-footnote">Shikoje analizen. Pastaj vendos.</p></section>
+
+ <section class="lf-section lf-faq"><details><summary>A duhet me tregu krejt fytyren?</summary><p>Jo. Mundesh me dergu foto vetem te vendit qe te pengon. Ose na shkruaj.</p></details><details><summary>Ku e marr pergjigjen?</summary><p>Ne WhatsApp ose Viber. Numrin e shkruan ne fund.</p></details><details><summary>Cka shoh pas analizes?</summary><p>Analizen e lekures tande, produktet qe te pershtaten dhe si me i perdor. I shikon me qetesi.</p></details></section>
+
+ <footer class="lf-footer"><span>LifeSkin · Kosove & Shqiperi</span><span>Kujdesi fillon ketu.</span></footer>
+</main>
+</div></div>
+<div class="ls-analysis-sticky"><div class="ls-analysis-sticky__inner"><button type="button" class="lf-action" data-ls-start data-ls-quelle="sticky" id="ls-start">Fillo analizen <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button></div></div>
+</section>
 
 <!-- 02 MENYRA - die vier Wege.
      DER TEUERSTE BILDSCHIRM DES GANZEN WEGS, und deshalb gibt es ihn.

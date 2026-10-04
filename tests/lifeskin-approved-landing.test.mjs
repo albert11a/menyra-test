@@ -69,19 +69,22 @@ test("a failed next pair keeps the current photos and can be retried", async () 
   assert.equal(state.after.src, "/apps/lifeskin-landing/fotot/rasti-1-dita28.webp");
 });
 
-test("the concern section is removed and both arrow locations navigate the same pair", () => {
+test("the analysis-first landing explains the next step and navigates the existing comparison pair", () => {
   assert.doesNotMatch(html, /Fillo nga problemi yt|data-problem|data-case="/);
-  assert.equal((html.match(/data-case-direction="prev"/g) || []).length, 2);
-  assert.equal((html.match(/data-case-direction="next"/g) || []).length, 2);
-  assert.match(html, /Kohëzgjatja/);
-  assert.match(html, /4 javë/);
-  assert.equal((html.match(/class="nx-story"/g) || []).length, 3);
-  assert.doesNotMatch(html, /Rezultati ndryshon|↗️|✓/);
+  assert.equal((html.match(/data-case-direction="prev"/g) || []).length, 1);
+  assert.equal((html.match(/data-case-direction="next"/g) || []).length, 1);
+  for (const id of ["rezultatet", "lf-case-pair", "lf-before", "lf-after", "lf-case-count"]) {
+    assert.ok(html.includes(`id="${id}"`), id);
+  }
+  assert.match(html, /Analiza e lekures/);
+  assert.match(html, /Online nga Dr\. Gashi/);
+  assert.doesNotMatch(html, /class="product-section"|data-clinical-start|↗️/);
 });
 
-test("all three approved analysis CTAs retain the existing funnel entry and all photo assets exist", () => {
-  assert.equal((html.match(/<button[^>]*\bdata-ls-start\b/g) || []).length, 3);
+test("the sole sticky CTA retains the existing funnel entry and all photo assets exist", () => {
+  assert.equal((html.match(/<button[^>]*\bdata-ls-start\b/g) || []).length, 1);
   assert.equal((html.match(/id="ls-start"/g) || []).length, 1);
+  assert.match(html, /class="ls-analysis-sticky"[\s\S]*data-ls-quelle="sticky" id="ls-start"/);
   for (const id of ["ls-wahl", "ls-fotopara", "ls-vorbereitung", "ls-analyse"]) {
     assert.ok(html.includes(`id="${id}"`), id);
   }

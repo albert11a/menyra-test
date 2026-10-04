@@ -109,18 +109,18 @@ test("Heart bestimmt, welche Faelle oben stehen - der Tipp findet den Fall ueber
 });
 
 // /lifeskin: the approved comparison has one frame and shared overlays.
-test("/lifeskin: genau ein Vergleich unter dem ersten Blick, vor den Schritten", () => {
+test("/lifeskin: die Analyse wird erklaert, danach folgt genau ein Vergleich", () => {
   const html = lies("apps/lifeskin-landing/index.html");
-  assert.ok(html.indexOf('id="held"') < html.indexOf('id="rezultatet"'));
-  assert.ok(html.indexOf('id="rezultatet"') < html.indexOf('id="pse"'));
+  assert.ok(html.indexOf('id="lf-entry-title"') < html.indexOf('id="pse"'));
+  assert.ok(html.indexOf('id="pse"') < html.indexOf('id="rezultatet"'));
   assert.equal((html.match(/class="lf-case-stage"/g) || []).length, 1);
-  assert.equal((html.match(/class="lf-sticker"/g) || []).length, 1);
+  assert.equal((html.match(/class="lf-sticker"/g) || []).length, 0);
   assert.doesNotMatch(html, /id="rastet"|data:image|lf-screenshotcrop/);
 });
 
 test("/lifeskin: beide Fotos laden direkt und teilen sich einen festen Rahmen", () => {
   const html = lies("apps/lifeskin-landing/index.html");
-  const comparison = html.slice(html.indexOf('class="lf-case-stage"'), html.indexOf('class="lf-casebar"'));
+  const comparison = html.slice(html.indexOf('class="lf-case-stage"'), html.indexOf('class="lf-gallery-bottom"'));
   assert.equal((comparison.match(/<img /g) || []).length, 2);
   assert.doesNotMatch(comparison, /loading="lazy"/);
   const css = lies("apps/lifeskin-landing/approved.css");

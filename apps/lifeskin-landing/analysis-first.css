@@ -1,0 +1,678 @@
+/* Approved analysis-first landing. All visual overrides are scoped to the entry screen. */
+
+#ls-einstieg #lf-preview {
+  --lf-ink: #142331;
+  --lf-blue: #244cfa;
+  --lf-ice: #e8f4ff;
+  --lf-lime: #d9ff78;
+  --lf-paper: #fff;
+  --lf-soft: #f5f7fb;
+  color: var(--lf-ink);
+  background: var(--lf-paper);
+  font-family: Arial, Helvetica, sans-serif;
+  color-scheme: light;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+#ls-einstieg #lf-preview * {
+  box-sizing: border-box;
+}
+#ls-einstieg #lf-preview [hidden] {
+  display: none !important;
+}
+#ls-einstieg #lf-preview button,
+#ls-einstieg #lf-preview input,
+#ls-einstieg #lf-preview textarea {
+  font: inherit;
+}
+#ls-einstieg #lf-preview button {
+  cursor: inherit;
+}
+#ls-einstieg #lf-preview button:focus-visible,
+#ls-einstieg #lf-preview a:focus-visible {
+  outline: 3px solid var(--lf-blue);
+  outline-offset: 4px;
+}
+#ls-einstieg #lf-preview .lf-page {
+  background: var(--lf-paper);
+}
+#ls-einstieg #lf-preview .lf-nav {
+  padding: 24px 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+#ls-einstieg #lf-preview .lf-logo {
+  font-size: 23px;
+  font-weight: 900;
+  letter-spacing: -1.1px;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--lf-ink);
+}
+#ls-einstieg #lf-preview .lf-logo span {
+  color: var(--lf-blue);
+}
+#ls-einstieg #lf-preview .lf-nav small {
+  font-size: 12px;
+  letter-spacing: 0.13em;
+  font-weight: 700;
+}
+#ls-einstieg #lf-preview h1 {
+  font-size: clamp(36px, 6.8vw, 58px);
+  line-height: 1.01;
+  letter-spacing: -2.5px;
+  font-weight: 900;
+  text-wrap: initial;
+  margin: 0 0 20px;
+}
+#ls-einstieg #lf-preview h1 em {
+  font-style: normal;
+  color: var(--lf-blue);
+}
+#ls-einstieg #lf-preview .lf-section {
+  padding: 33px 28px;
+}
+#ls-einstieg #lf-preview .lf-section h2 {
+  font-size: 30px;
+  font-weight: 850;
+  letter-spacing: -1.2px;
+  line-height: 1.1;
+  margin: 0 0 10px;
+}
+#ls-einstieg #lf-preview .lf-section > p {
+  font-size: 15px;
+  line-height: 1.5;
+  color: #526171;
+  margin: 0 0 22px;
+}
+#ls-einstieg #lf-preview .lf-faq details {
+  border-top: 1px solid #e0e6ee;
+  padding: 17px 0;
+}
+#ls-einstieg #lf-preview .lf-faq summary {
+  font-size: 15px;
+  font-weight: 700;
+}
+#ls-einstieg #lf-preview .lf-faq details p {
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 12px 0 0;
+  color: #526171;
+}
+#ls-einstieg #lf-preview .lf-footer {
+  padding: 9px 28px 24px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+  color: #526171;
+}
+@media (max-width: 520px) {
+  #ls-einstieg #lf-preview .lf-nav {
+    padding: 22px 20px;
+  }
+  #ls-einstieg #lf-preview h1 {
+    font-size: 43px;
+    letter-spacing: -1.9px;
+    max-width: 310px;
+  }
+  #ls-einstieg #lf-preview .lf-section {
+    padding: 29px 22px;
+  }
+  #ls-einstieg #lf-preview .lf-nav small {
+    font-size: 10px;
+  }
+  #ls-einstieg #lf-preview .lf-footer {
+    flex-wrap: wrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #ls-einstieg #lf-preview *,
+  #ls-einstieg #lf-preview *:before,
+  #ls-einstieg #lf-preview *:after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+#ls-einstieg #lf-preview .lf-page {
+  max-width: 620px;
+  margin: 0 auto;
+}
+#ls-einstieg #lf-preview .lf-nav {
+  padding: 25px 25px 23px;
+}
+#ls-einstieg #lf-preview .lf-logo {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+}
+#ls-einstieg #lf-preview .lf-online {
+  font-size: 12px;
+  color: #64717f;
+}
+#ls-einstieg #lf-preview .lf-simple-kicker {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #637b8b;
+  margin: 0 0 17px;
+}
+#ls-einstieg #lf-preview .lf-simple-proof {
+  padding: 27px 25px 0;
+}
+#ls-einstieg #lf-preview .lf-proof-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+#ls-einstieg #lf-preview .lf-proof-head h2 {
+  font-size: 25px;
+  letter-spacing: -0.8px;
+  line-height: 1.15;
+  font-weight: 700;
+  margin: 0;
+}
+#ls-einstieg #lf-preview .lf-gallery-arrows {
+  display: flex;
+  gap: 0;
+  flex-shrink: 0;
+}
+#ls-einstieg #lf-preview .lf-gallery-arrows button {
+  border: 0;
+  background: transparent;
+  color: #142331;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 44px;
+  padding: 8px;
+}
+#ls-einstieg #lf-preview .lf-gallery-arrows svg {
+  height: 20px;
+  width: 20px;
+}
+#ls-einstieg #lf-preview .lf-proof-slide {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+#ls-einstieg #lf-preview .lf-proof-slide figure {
+  margin: 0;
+  position: relative;
+}
+#ls-einstieg #lf-preview .lf-proof-slide img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 8/9;
+  object-fit: contain;
+  background: #f4f5f7;
+  border-radius: 13px;
+  user-select: none;
+}
+#ls-einstieg #lf-preview .lf-proof-slide figcaption {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #142331;
+}
+#ls-einstieg #lf-preview .lf-gallery-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 43px;
+}
+#ls-einstieg #lf-preview .lf-gallery-bottom > span {
+  font-size: 11px;
+  color: #617183;
+}
+#ls-einstieg #lf-preview .lf-gallery-note {
+  font-size: 11px;
+  color: #687789;
+  line-height: 1.5;
+  margin: 0;
+}
+#ls-einstieg #lf-preview .lf-community {
+  padding: 25px;
+}
+#ls-einstieg #lf-preview .lf-community > p {
+  font-size: 13px;
+  margin: 0 0 12px;
+  color: #536372;
+}
+#ls-einstieg #lf-preview .lf-community-links {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+#ls-einstieg #lf-preview .lf-community-links a {
+  border: 1px solid #e4e9ee;
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px 11px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #142331;
+  text-decoration: none;
+  min-width: 0;
+}
+#ls-einstieg #lf-preview .lf-community-links svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+#ls-einstieg #lf-preview .lf-community-links a > svg:last-child {
+  margin-left: auto;
+  width: 13px;
+}
+#ls-einstieg #lf-preview .lf-community-links span {
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 0;
+}
+#ls-einstieg #lf-preview .lf-community-links small {
+  display: block;
+  font-size: 10px;
+  color: #627385;
+  margin-top: 4px;
+  font-weight: 400;
+}
+#ls-einstieg #lf-preview .lf-simple-how {
+  margin: 5px 13px 0;
+  border-radius: 19px;
+  padding: 28px 20px;
+  background: #edf4fc;
+}
+#ls-einstieg #lf-preview .lf-simple-how h2 {
+  font-size: 29px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -1px;
+  margin: 0;
+}
+#ls-einstieg #lf-preview .lf-how-rows {
+  display: grid;
+  gap: 16px;
+  margin: 25px 0;
+}
+#ls-einstieg #lf-preview .lf-how-rows > div {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+#ls-einstieg #lf-preview .lf-how-rows span {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  color: #315de3;
+  background: #dce8fa;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+#ls-einstieg #lf-preview .lf-how-rows p {
+  font-size: 14px;
+  color: #314458;
+  margin: 0;
+  line-height: 1.45;
+}
+#ls-einstieg #lf-preview .lf-faq {
+  padding: 23px 25px 12px;
+}
+#ls-einstieg #lf-preview {
+  --lf-lime: #e0ecfa;
+  --lf-blue: #315de3;
+}
+@media (max-width: 360px) {
+  #ls-einstieg #lf-preview .lf-simple-proof {
+    padding-left: 19px;
+    padding-right: 19px;
+  }
+  #ls-einstieg #lf-preview .lf-proof-head h2 {
+    font-size: 22px;
+  }
+  #ls-einstieg #lf-preview .lf-community {
+    padding: 22px 19px;
+  }
+  #ls-einstieg #lf-preview .lf-community-links {
+    grid-template-columns: 1fr;
+  }
+}
+#ls-einstieg #lf-preview .lf-entry-card {
+  margin: 0 18px;
+  background: #edf4ff;
+  border: 1px solid #e3ecf8;
+  border-radius: 22px;
+  padding: 24px 22px 17px;
+}
+#ls-einstieg #lf-preview .lf-entry-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #dee9ff;
+  color: #315de3;
+  margin-bottom: 18px;
+}
+#ls-einstieg #lf-preview .lf-entry-icon svg {
+  width: 21px;
+  height: 21px;
+}
+#ls-einstieg #lf-preview .lf-entry-card h1 {
+  font-size: clamp(29px, 5.5vw, 37px);
+  line-height: 1.12;
+  letter-spacing: -1.15px;
+  font-weight: 750;
+  color: #142331;
+  margin: 0 0 13px;
+}
+#ls-einstieg #lf-preview .lf-entry-copy {
+  font-size: 16px;
+  line-height: 1.55;
+  color: #506173;
+  margin: 0 0 22px;
+}
+#ls-einstieg #lf-preview .lf-entry-doctor {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 22px;
+}
+#ls-einstieg #lf-preview .lf-entry-doctor img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+#ls-einstieg #lf-preview .lf-entry-doctor strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+#ls-einstieg #lf-preview .lf-entry-doctor span {
+  display: block;
+  font-size: 11px;
+  color: #657789;
+  margin-top: 3px;
+}
+#ls-einstieg #lf-preview .lf-entry-free {
+  text-align: center;
+  margin: 9px 0 0;
+  font-size: 11px;
+  color: #627587;
+}
+#ls-einstieg #lf-preview .lf-nav {
+  padding: 23px 24px 20px;
+}
+#ls-einstieg #lf-preview .lf-simple-proof {
+  padding-top: 24px;
+}
+#ls-einstieg #lf-preview .lf-footer {
+  padding-bottom: 21px;
+}
+@media (max-width: 360px) {
+  #ls-einstieg #lf-preview .lf-entry-card {
+    margin: 0 12px;
+    padding: 22px 18px 15px;
+  }
+  #ls-einstieg #lf-preview .lf-entry-copy {
+    font-size: 15px;
+  }
+}
+
+#ls-einstieg #lf-preview .lf-entry-free {
+  text-align: left;
+  margin-top: 0;
+}
+#ls-einstieg #lf-preview .lf-entry-doctor {
+  margin-bottom: 14px;
+}
+
+#ls-einstieg #lf-preview .lf-entry-problem {
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 700;
+  margin: 0 0 11px;
+  color: #263e5b;
+}
+#ls-einstieg #lf-preview .lf-entry-copy {
+  margin-bottom: 19px;
+  font-size: 15px;
+}
+#ls-einstieg #lf-preview .lf-simple-how {
+  margin-top: 22px;
+}
+#ls-einstieg #lf-preview .lf-how-rows p {
+  font-size: 14px;
+  line-height: 1.55;
+}
+#ls-einstieg #lf-preview .lf-how-rows > div {
+  align-items: flex-start;
+}
+#ls-einstieg #lf-preview .lf-how-rows span {
+  margin-top: 2px;
+}
+#ls-einstieg #lf-preview .lf-warm-footnote {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #5b6d80;
+  margin: 0;
+}
+#ls-einstieg #lf-preview .lf-warm-result {
+  margin: 6px 18px 0;
+  padding: 25px 20px;
+  background: #f0f6f5;
+  border-radius: 19px;
+}
+#ls-einstieg #lf-preview .lf-warm-result h2 {
+  font-size: 28px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  margin: 0 0 23px;
+}
+#ls-einstieg #lf-preview .lf-warm-results {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+#ls-einstieg #lf-preview .lf-warm-results p {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #314e50;
+  line-height: 1.5;
+  margin: 0;
+}
+#ls-einstieg #lf-preview .lf-warm-results svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  color: #276f62;
+}
+#ls-einstieg #lf-preview .lf-proof-intro {
+  font-size: 13px;
+  color: #5b6d80;
+  line-height: 1.5;
+  margin: -4px 0 16px;
+}
+
+#ls-einstieg #lf-preview .lf-entry-photo {
+  margin: 19px -22px -17px;
+  overflow: hidden;
+  border-radius: 0 0 22px 22px;
+  background: #e8e4de;
+}
+#ls-einstieg #lf-preview .lf-entry-photo img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 6/5;
+  object-fit: cover;
+  object-position: 50% 32%;
+}
+#ls-einstieg #lf-preview .lf-entry-icon {
+  display: none;
+}
+#ls-einstieg #lf-preview .lf-entry-card {
+  padding-top: 25px;
+}
+#ls-einstieg #lf-preview .lf-entry-doctor {
+  margin-bottom: 12px;
+}
+@media (max-width: 360px) {
+  #ls-einstieg #lf-preview .lf-entry-photo {
+    margin-left: -18px;
+    margin-right: -18px;
+    margin-bottom: -15px;
+  }
+}
+
+/* The real page scrolls normally; its only CTA belongs to this screen and
+   stays at the viewport edge, including after returning from the funnel. */
+#ls-einstieg {
+  background: #fff;
+}
+#ls-einstieg[data-aktiv="ja"] {
+  animation: none;
+  transform: none;
+}
+#ls-einstieg #lf-preview {
+  border-radius: 0;
+  overflow: visible;
+  background: #fff;
+}
+#ls-einstieg #lf-preview .lf-page {
+  padding-bottom: calc(100px + env(safe-area-inset-bottom));
+}
+#ls-einstieg .ls-analysis-sticky {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 40;
+  pointer-events: none;
+}
+#ls-einstieg .ls-analysis-sticky__inner {
+  width: 100%;
+  max-width: 620px;
+  padding: 12px 24px max(12px, env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 1px solid #e4eaf1;
+  box-shadow: 0 -5px 18px rgba(25, 45, 80, 0.035);
+  pointer-events: auto;
+}
+#ls-einstieg .ls-analysis-sticky .lf-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+  min-height: 54px;
+  padding: 15px 20px;
+  border: 0;
+  border-radius: 12px;
+  background: #315de3;
+  color: #fff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+#ls-einstieg .ls-analysis-sticky .lf-action svg {
+  width: 19px;
+  height: 19px;
+}
+#ls-einstieg .ls-analysis-sticky .lf-action:focus-visible {
+  outline: 3px solid #315de3;
+  outline-offset: 4px;
+}
+#ls-einstieg #lf-preview .lf-simple-proof .lf-pair {
+  border-radius: 0;
+  overflow: hidden;
+  gap: 8px;
+}
+#ls-einstieg #lf-preview .lf-simple-proof .lf-photo {
+  margin: 0;
+}
+#ls-einstieg #lf-preview .lf-simple-proof .lf-photo img {
+  aspect-ratio: 8 / 9;
+  object-fit: contain;
+  height: auto;
+  max-height: none;
+  border-radius: 13px;
+}
+#ls-einstieg #lf-preview .lf-simple-proof .lf-tag {
+  top: auto;
+  bottom: 10px;
+  left: 10px;
+  background: #fff;
+  padding: 6px 10px;
+  font-size: 11px;
+  letter-spacing: 0;
+  border-radius: 6px;
+}
+#ls-einstieg #lf-preview .lf-gallery-bottom {
+  justify-content: flex-end;
+}
+#ls-einstieg #lf-preview .lf-gallery-bottom #lf-case-count {
+  font-size: 11px;
+  color: #617183;
+}
+#ls-einstieg #lf-preview .lf-proof-head h2 {
+  margin: 0;
+}
+#ls-einstieg #lf-preview .lf-simple-proof {
+  padding-bottom: 0;
+}
+#ls-einstieg #lf-preview .lf-community-links a {
+  cursor: pointer;
+}
+#ls-einstieg #lf-preview #rezultatet {
+  padding: 24px 25px 0 !important;
+}
+#ls-einstieg #lf-preview .lf-case-stage {
+  aspect-ratio: auto;
+  height: auto;
+  overflow: hidden;
+  background: transparent;
+  border-radius: 0;
+  touch-action: pan-y;
+}
+
+#ls-einstieg #lf-preview .lf-case-stage .lf-pair {
+  position: relative;
+  left: auto;
+  top: auto;
+  width: 100%;
+  height: auto;
+  max-height: none;
+  aspect-ratio: auto;
+}
+#ls-einstieg #lf-preview .lf-simple-proof .lf-tag {
+  display: block;
+  width: auto;
+  height: auto;
+  min-width: 0;
+}

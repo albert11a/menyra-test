@@ -64,8 +64,8 @@ test("Messungen von vorher (Version 1) zaehlen in den Nummern von heute", () => 
   assert.deepEqual(alt({ s1: true, s3: true, tiefe: 3, ab: 3, bisDahin: 3, weg: "scroll" }),
     { gemessen: true, gesehen: [1, 2], tiefe: 3, weg: "scroll", ab: 2, bisDahin: 3 });
   const html = lies("apps/lifeskin-landing/index.html");
-  assert.ok(html.indexOf('id="held"') < html.indexOf('id="rezultatet"')
-    && html.indexOf('id="rezultatet"') < html.indexOf('id="pse"'), "die Faelle stehen nicht gleich unter dem ersten Blick");
+  assert.ok(html.indexOf('id="lf-entry-title"') < html.indexOf('id="pse"')
+    && html.indexOf('id="pse"') < html.indexOf('id="rezultatet"'), "die freigegebene Landing erklaert die Analyse vor dem Vergleich");
 });
 
 test("der Landing-Trichter zaehlt nur gemessene Besuche und vergleicht beide Wege", () => {
