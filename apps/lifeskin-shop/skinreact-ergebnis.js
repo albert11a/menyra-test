@@ -12,10 +12,6 @@ export function berichtAusRest(daten) {
   return Object.fromEntries(Object.entries(daten?.fields || {}).map(([k, v]) => [k, firestoreWert(v)]));
 }
 
-// One centered SVG owns both waiting and completion; it never implies a fake percentage.
-function ergebnisRing() {
-  return `<svg class="sr-result__orbit" viewBox="0 0 100 100" aria-hidden="true"><circle class="sr-orbit-track" cx="50" cy="50" r="48"/><circle class="sr-orbit-progress" cx="50" cy="50" r="48" pathLength="100"/></svg>`;
-}
 function ergebnisSchritte(fertig = false) {
   return `<ol class="sr-steps" aria-label="Hapat e skanimit"><li data-step="done">Skanimi</li><li data-step="${fertig ? "done" : "current"}" ${fertig ? "" : 'aria-current="step"'}>Kontrolli</li><li data-step="${fertig ? "current" : "next"}" ${fertig ? 'aria-current="step"' : ""}>Rezultati</li></ol>`;
 }
@@ -36,14 +32,9 @@ export class SkinreactErgebnis {
     this.vorbereiten();
     this.pruefen();
   }
-  vorbereiten({ zurueck = true } = {}) {
+  vorbereiten() {
     if (!this.wurzel) return;
-    this.wurzel.innerHTML = `<div class="sr-result">${ergebnisSchritte()}<p class="sr-result__eyebrow">SKINREACT</p><div class="sr-result__visual">${ergebnisRing()}<div class="sr-pending" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5a1 1 0 0 1 1-1h3m8 0h3a1 1 0 0 1 1 1v3m0 8v3a1 1 0 0 1-1 1h-3m-8 0H5a1 1 0 0 1-1-1v-3M9 9v1m6-1v1m-5 5c1 1 3 1 4 0"/><path class="sr-sweep" d="M6 12h12"/></svg></div><span class="sr-working">Po perpunohet</span></div><h1>Po kontrollohet skanimi yt.</h1><p data-sr-status role="status" aria-live="polite">Rezultati shfaqet këtu sapo të përfundojë kontrolli.</p><button type="button" class="sr-back">Vazhdo ne faqe</button></div>`;
-    this.wurzel.querySelector(".sr-back").addEventListener("click", () => {
-      this.stop();
-      globalThis.__lifeskinTrichter?.zeige("einstieg");
-    });
-    this.wurzel.querySelector(".sr-back").hidden = !zurueck;
+    this.wurzel.innerHTML = `<div class="sr-result sr-result--pending">${ergebnisSchritte()}<div class="sr-processing" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 16V10a2 2 0 0 1 2-2h6m16 0h6a2 2 0 0 1 2 2v6m0 16v6a2 2 0 0 1-2 2h-6m-16 0h-6a2 2 0 0 1-2-2v-6"/><path class="sr-processing__scan" d="M14 24h20"/></svg></div><h3>Po kontrollohet skanimi yt.</h3><p data-sr-status role="status" aria-live="polite">Rezultati shfaqet ketu sapo te perfundoje kontrolli.</p><div class="sr-processing__track" aria-hidden="true"><span></span></div></div>`;
   }
   stop() { this.aktiv = false; clearTimeout(this.takt); this.abbruch?.abort(); }
   async pruefen() {
@@ -62,8 +53,8 @@ export class SkinreactErgebnis {
       }
       const status = this.wurzel.querySelector("[data-sr-status]");
       if (status) status.textContent = Date.now() - this.beginn > 30000
-        ? "Kontrolli ende nuk ka përfunduar. Mund të vazhdosh në faqe dhe ta hapësh sërish skanimin për rezultatin."
-        : "Rezultati shfaqet këtu sapo të përfundojë kontrolli.";
+        ? "Kontrolli po vazhdon. Rezultati shfaqet ketu sapo te jete gati."
+        : "Rezultati shfaqet ketu sapo te perfundoje kontrolli.";
     } catch {
       if (!this.aktiv) return;
       const status = this.wurzel.querySelector("[data-sr-status]");
@@ -75,9 +66,8 @@ export class SkinreactErgebnis {
     this.angezeigt = bereich.id;
     this.sitzung.ergaenze?.({ berichtGeoeffnet: true });
     const pershtatet = bereich.min >= 60;
-    this.wurzel.innerHTML = `<div class="sr-result sr-result--ready">${ergebnisSchritte(true)}<p class="sr-result__eyebrow">SKINREACT · REZULTATI YT</p><div class="sr-result__visual sr-result__visual--ready">${ergebnisRing()}${pershtatet ? '<span class="sr-result__check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></span>' : ""}<div class="sr-result__range" aria-label="${bereich.text}">${bereichZiffern(bereich)}</div><span class="sr-working">Pershtatja me Acne Duo</span></div><h1>${pershtatet ? "Acne Duo i pershtatet lekures tende." : "Lekura jote meriton nje plan personal."}</h1><p>${pershtatet ? "Dy hapa per rutinen tende: trajtim per pucrrat dhe hidratim per lekuren." : "Sipas ketij vleresimi, kerko nje rekomandim personal para se ta zgjedhesh setin."}</p>${pershtatet ? '<div class="sr-result__products"><div class="sr-result__product"><strong>LF ACNE</strong><span>Trajton pucrrat aktive.</span></div><div class="sr-result__product"><strong>LF MOISTUR</strong><span>Hidraton dhe mbeshtet barrieren.</span></div></div>' : ""}<p class="sr-result__note">Vleresim orientues nga fotot, jo garanci rezultati.</p>${pershtatet ? '<button type="button" class="sr-order">Porosit Acne Duo</button>' : '<a class="sr-order" href="https://wa.me/436508564879">Merr nje rekomandim personal</a>'}<button type="button" class="sr-back">Kthehu ne faqe</button></div>`;
+    this.wurzel.innerHTML = `<div class="sr-result sr-result--ready">${ergebnisSchritte(true)}<div class="sr-result__heading"><span class="sr-result__eyebrow">REZULTATI YT</span>${pershtatet ? '<svg class="sr-result__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4 10-10"/></svg>' : ""}</div><div class="sr-match"><div class="sr-result__range" aria-label="${bereich.text}">${bereichZiffern(bereich)}</div><span>Pershtatja me Acne Duo</span></div><h3>${pershtatet ? "Acne Duo eshte per ty." : "Lekura jote meriton nje plan personal."}</h3>${pershtatet ? '<div class="sr-result__products"><div class="sr-result__product"><strong>LF ACNE</strong><span>Trajton pucrrat aktive.</span></div><div class="sr-result__product"><strong>LF MOISTUR</strong><span>Hidraton dhe mbeshtet barrieren.</span></div></div>' : '<p>Kerko nje rekomandim personal para se ta zgjedhesh setin.</p>'}${pershtatet ? '<button type="button" class="sr-order">Porosit Acne Duo</button>' : '<a class="sr-order" href="https://wa.me/436508564879">Merr nje rekomandim personal</a>'}<p class="sr-result__note">Vleresim orientues nga fotot, jo garanci rezultati.</p></div>`;
     this.wurzel.querySelector(".sr-order")?.addEventListener("click", () => { if (pershtatet) { this.stop(); this.kaufen(); } });
-    this.wurzel.querySelector(".sr-back").addEventListener("click", () => { this.stop(); globalThis.__lifeskinTrichter?.zeige("einstieg"); });
   }
 }
 

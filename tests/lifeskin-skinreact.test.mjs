@@ -152,3 +152,15 @@ test('processing reserves the start control and restores it after returning to t
   assert.equal(start.disabled, false);
   assert.equal(start.innerHTML, 'Fillo skanimin');
 });
+
+test('processing and result have no back-to-page action or circular result display', () => {
+  const root = { innerHTML: '', querySelector: () => ({ addEventListener() {} }) };
+  const ui = new SkinreactErgebnis({ sitzung: {}, wurzel: root, kaufen() {} });
+  ui.vorbereiten();
+  assert.match(root.innerHTML, /data-sr-status/);
+  assert.doesNotMatch(root.innerHTML, /sr-back|Kthehu|Vazhdo ne faqe|<circle/);
+  ui.anzeigen({ id: '85-90', min: 85, max: 90, text: '85–90%' });
+  assert.match(root.innerHTML, /REZULTATI YT/);
+  assert.match(root.innerHTML, /Porosit Acne Duo/);
+  assert.doesNotMatch(root.innerHTML, /sr-back|Kthehu|sr-result__visual|<circle/);
+});
