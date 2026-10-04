@@ -48,3 +48,13 @@ Trichter, Sticky-CTA oder Tracking.
 Pruefung der Korrektur: Build bestanden, keine getrackten Bundle-Aenderungen.
 11 gezielte Tests bestanden, einschliesslich aller drei Pixel-Sperrtests.
 Handy-Screenshot geprueft; kein Live-Test im mobilen Browser durchgefuehrt.
+
+## Vollstaendiges Foto statt Ausschnitt
+
+Umfang: Im zweiten Handy-Screenshot ist das Smartphone abgeschnitten.
+Das Foto wird deshalb zentriert und vollstaendig innerhalb der bestehenden
+kompakten Hoehe dargestellt, mit eigenen runden Ecken. Keine Aenderung
+an Texten, Analysewegen, CTA oder Tracking.
+
+Pruefung: Build und 11 gezielte Tests bestanden; keine getrackten
+Bundle-Aenderungen. Handy-Screenshot beurteilt, kein Live-Browsertest.

@@ -515,17 +515,18 @@
 }
 
 #ls-einstieg #lf-preview .lf-entry-photo {
-  margin: 19px -22px -17px;
+  margin: 19px 0 0;
   overflow: hidden;
-  border-radius: 0 0 22px 22px;
-  background: #e8e4de;
+  border-radius: 16px;
 }
 #ls-einstieg #lf-preview .lf-entry-photo img {
   display: block;
-  width: 100%;
+  width: auto;
+  max-width: 100%;
   height: 220px;
-  object-fit: cover;
-  object-position: 50% 45%;
+  margin: 0 auto;
+  border-radius: 16px;
+  object-fit: contain;
 }
 #ls-einstieg #lf-preview .lf-entry-icon {
   display: none;
@@ -539,11 +540,6 @@
 @media (max-width: 360px) {
   #ls-einstieg #lf-preview .lf-entry-photo img {
     height: 190px;
-  }
-  #ls-einstieg #lf-preview .lf-entry-photo {
-    margin-left: -18px;
-    margin-right: -18px;
-    margin-bottom: -15px;
   }
 }
 
