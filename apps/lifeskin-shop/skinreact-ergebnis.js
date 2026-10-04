@@ -62,6 +62,9 @@ export class SkinreactErgebnis {
   }
   vorbereiten() {
     if (!this.wurzel) return;
+    // Submission prepares this panel before polling starts on a new instance.
+    // Keep the existing nodes so the completion animation cannot restart.
+    if (this.wurzel.querySelector(".sr-result--pending")?.classList?.contains("sr-result--pending")) return;
     this.wurzel.innerHTML = `<div class="sr-result sr-result--pending"><div class="sr-complete" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4 10-10"/></svg><strong>Skanimi u kry.</strong></div>${ergebnisSchritte()}<div class="sr-processing" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="11" y="8" width="26" height="32" rx="5"/><path d="M17 18h14m-14 6h14m-14 6h8"/></svg></div><h3>Edhe pak.</h3><p data-sr-status role="status" aria-live="polite">Rezultati shfaqet ketu sapo te perfundoje kontrolli.</p><div class="sr-processing__track" aria-hidden="true"><span></span></div></div>`;
   }
   stop() { this.aktiv = false; clearTimeout(this.takt); this.abbruch?.abort(); }
