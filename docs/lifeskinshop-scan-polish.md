@@ -16,3 +16,8 @@ Validation:
 - No claim of universal screen compatibility or measured load-time improvement; these need device checks before release.
 
 Manual review before main: iPhone Safari/Instagram and Android Chrome at 320/360/390/430 px; short screen and text enlargement; allow/deny permission, cancel/reopen, capture progress, background/foreground; stored approval/high and low ranges; result → cart → checkout without placing a real order.
+
+## Correction requested 2026-10-04
+Keep the section footprint across idle, camera, processing and result. Render processing/result as an overlay within the original reserved section instead of collapsing header, guidance and controls. Hide the persistent shop CTA whenever the scan section intersects the viewport; restore it outside scan/hero. Replace the looping green preview progress/cartoon and scale/glow motion with a face-frame guide, quiet processing arc and actual three-phase status. Approved main publication continues from the same session.
+
+Correction validation: 88 scoped Node checks pass, including independent hero/scan observer notifications, return of sticky outside scan, retained disabled start-button placeholder through processing and restoration on back. Required build passes; tracked bundles unchanged. Physical mobile/visual camera verification remains outstanding (local cloud-preview access unavailable). No Pixel/CAPI lines changed.

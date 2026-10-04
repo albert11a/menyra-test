@@ -320,3 +320,28 @@ test("Kasse (01.10., Inhaber): Beruhigung, Ersparnis, Liefertag, WhatsApp, ohne 
   assert.doesNotMatch(kasaSet, /data-remove/);
   assert.match(js, /`Kurseni \$\{spart\} €`/);
 });
+
+
+test("sticky stays hidden throughout scan, independent of hero callback order", async () => {
+  const { shopStickyBeobachten } = await import("../apps/lifeskin-shop/shop.js");
+  const hero = {}, scan = {}, sticky = { hidden: true };
+  let notify;
+  const observed = [];
+  class Observer {
+    constructor(fn) { notify = fn; }
+    observe(element) { observed.push(element); }
+  }
+  shopStickyBeobachten({ sticky, hero, scan, Beobachter: Observer });
+  assert.deepEqual(observed, [hero, scan]);
+  notify([{ target: hero, isIntersecting: false }]);
+  assert.equal(sticky.hidden, false, "CTA returns in other sections");
+  notify([{ target: scan, isIntersecting: true }]);
+  assert.equal(sticky.hidden, true, "scan hides the entire CTA");
+  notify([{ target: hero, isIntersecting: false }]);
+  assert.equal(sticky.hidden, true, "hero cannot reshow it during scan");
+  notify([{ target: scan, isIntersecting: false }]);
+  assert.equal(sticky.hidden, false, "leaving scan restores CTA");
+  notify([{ target: scan, isIntersecting: true }, { target: hero, isIntersecting: true }]);
+  notify([{ target: scan, isIntersecting: false }]);
+  assert.equal(sticky.hidden, true, "hero still hides CTA after leaving scan");
+});

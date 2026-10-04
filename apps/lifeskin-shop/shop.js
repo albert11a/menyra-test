@@ -226,6 +226,18 @@ export const HERO_NUR_STAND = "?mask.fieldPaths=updatedAt&mask.fieldPaths=anzahl
 // gleich sein (tests/lifeskin-shop-weg.test.mjs).
 export const HERO_ADRESSE = `${BASIS}/${SHOP_HERO_DOK}`;
 
+// The hero and the complete scan section jointly own sticky visibility.
+export function shopStickyBeobachten({ sticky, hero, scan, Beobachter = globalThis.IntersectionObserver }) {
+  if (!sticky || !hero || !Beobachter) return null;
+  const sichtbar = new Map([[hero, true], ...(scan ? [[scan, false]] : [])]);
+  const beobachter = new Beobachter((eintraege) => {
+    for (const eintrag of eintraege) sichtbar.set(eintrag.target, eintrag.isIntersecting);
+    sticky.hidden = [...sichtbar.values()].some(Boolean);
+  }, { threshold: 0 });
+  for (const element of sichtbar.keys()) beobachter.observe(element);
+  return beobachter;
+}
+
 export class Dyqan {
   constructor({ dokument = document, speicher = globalThis.sessionStorage, holen, trichter,
     dauerSpeicher = (() => { try { return globalThis.localStorage || null; } catch { return null; } })() } = {}) {
@@ -990,7 +1002,7 @@ export class Dyqan {
     const hero = $(".hero", this.dok);
     if (!("IntersectionObserver" in globalThis)) return;
     if (sticky && hero) {
-      new IntersectionObserver((eintraege) => { sticky.hidden = eintraege[0].isIntersecting; }, { threshold: 0 }).observe(hero);
+      shopStickyBeobachten({ sticky, hero, scan: $(".skinreact-section", this.dok) });
     }
     const waechter = new IntersectionObserver((eintraege) => {
       if (!eintraege.some((x) => x.isIntersecting)) return;

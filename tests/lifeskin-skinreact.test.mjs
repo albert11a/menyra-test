@@ -137,3 +137,18 @@ test('result offers the original cart only for a suitable assessment; low range 
   assert.equal(purchases, 1);
   assert.equal(ui.aktiv, false);
 });
+
+test('processing reserves the start control and restores it after returning to the guide', () => {
+  const slot = {};
+  const start = { innerHTML: 'Fillo skanimin', dataset: {}, hidden: false, disabled: false };
+  const section = { dataset: {}, querySelector: () => slot };
+  const doc = { getElementById: id => ({ zgjedhja: section, 'ls-start': start })[id] };
+  skinreactEinbetten(doc, 'kamera');
+  assert.equal(start.innerHTML, 'Anulo skanimin');
+  skinreactEinbetten(doc, 'analyse');
+  assert.equal(start.hidden, false, 'control keeps its layout space');
+  assert.equal(start.disabled, true, 'reserved control cannot restart scan under result');
+  skinreactEinbetten(doc, 'einstieg');
+  assert.equal(start.disabled, false);
+  assert.equal(start.innerHTML, 'Fillo skanimin');
+});
