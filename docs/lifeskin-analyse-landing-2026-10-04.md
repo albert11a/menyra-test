@@ -36,3 +36,15 @@ Status: Umsetzung des von Albert freigegebenen Entwurfs auf main.
 - Keine Produktionsdaten fuer Tests. Mobiler Browser nicht geprueft;
   kein Playwright-/Smoke-Lauf (AGENTS.md). Die Mobil-CSS ist responsiv,
   der CTA nutzt Safe-Area-Abstand und bleibt nur im Einstieg sichtbar.
+
+## Korrektur des Einstiegsfotos
+
+Umfang: Nur die Fotogroesse in der ersten Card wird anhand des gelieferten
+Handy-Screenshots angepasst. Die feste Bildhoehe aus dem HTML wird per CSS
+ueberschrieben: 220 px, auf sehr schmalen Handys 190 px. Der zentrale
+Bildbereich mit dem Analysebild bleibt im Ausschnitt. Keine Aenderung am
+Trichter, Sticky-CTA oder Tracking.
+
+Pruefung der Korrektur: Build bestanden, keine getrackten Bundle-Aenderungen.
+11 gezielte Tests bestanden, einschliesslich aller drei Pixel-Sperrtests.
+Handy-Screenshot geprueft; kein Live-Test im mobilen Browser durchgefuehrt.

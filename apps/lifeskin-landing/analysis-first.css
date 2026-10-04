@@ -523,9 +523,9 @@
 #ls-einstieg #lf-preview .lf-entry-photo img {
   display: block;
   width: 100%;
-  aspect-ratio: 6/5;
+  height: 220px;
   object-fit: cover;
-  object-position: 50% 32%;
+  object-position: 50% 45%;
 }
 #ls-einstieg #lf-preview .lf-entry-icon {
   display: none;
@@ -537,6 +537,9 @@
   margin-bottom: 12px;
 }
 @media (max-width: 360px) {
+  #ls-einstieg #lf-preview .lf-entry-photo img {
+    height: 190px;
+  }
   #ls-einstieg #lf-preview .lf-entry-photo {
     margin-left: -18px;
     margin-right: -18px;
