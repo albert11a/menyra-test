@@ -1193,13 +1193,20 @@ export class Sitzung {
   // "Anschrift da, aber nicht bestellt" - die wertvollste im Bericht.
   ergaenze(daten) {
     const mit = { updatedAt: jetzt(), ...daten };
+    const masken = Object.keys(mit);
+    // Shop-Warenkorb: der Handlungstag darf nicht am Analysestart haengen.
+    // Blattmaske bewahrt Scan-Zeiten und andere Kaufmarken in timings.
+    if (daten?.imKorb === true) {
+      mit.timings = { ...(daten.timings || {}), korbAt: mit.updatedAt };
+      if (!daten.timings) masken.push("timings.korbAt");
+    }
     const neu = MELDE_MARKEN.some((f) => daten?.[f] === true && this.stand?.[f] !== true);
     // Die Nummer mit Einwilligung zum ersten Mal: das Lead, auf das die
     // Anzeigen lernen - zusaetzlich vom Server, sobald sie in Firestore
     // steht (Pixel-Aenderung erlaubt von Albert am 01.10.2026).
     const lead = daten?.phoneConsent === true && this.stand?.phoneConsent !== true;
     Object.assign(this.stand, daten);
-    const geschrieben = this.#sammeln(mit, Object.keys(mit));
+    const geschrieben = this.#sammeln(mit, masken);
     // Warenkorb oder Kasse zum ersten Mal: melden, sobald es in Firestore steht.
     if (neu) {
       const id = this.id;

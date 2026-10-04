@@ -773,6 +773,26 @@ export function warAnDerKasse(sitzung) {
   return sitzung?.kasseGeoeffnet === true || anschriftBegonnen(sitzung);
 }
 
+// Kaufaktivitaet ist keine Scan-Kohorte. Je Sitzung einmal im gewaehlten
+// Zeitraum zaehlen, anhand der Handlung; Altdaten ohne Zeit behalten tag.
+export function kaufImZeitraum(sitzung, art, zeitraum = "heute") {
+  const korb = art === "korb";
+  if (!(korb ? imWarenkorb(sitzung) : warAnDerKasse(sitzung))) return false;
+  if (zeitraum === "max") return true;
+  const zeit = korb
+    ? sitzung.timings?.korbAt || korbZeitpunkt(sitzung).t
+    : sitzung.kasseGeoeffnetAt || sitzung.timings?.kauf?.kasse;
+  let tage = statistikTag(zeit) ? [statistikTag(zeit)] : [];
+  // Bereits gespeicherte Tagesmarken enthalten auch wiederkehrende Besuche.
+  if (!korb || !tage.length) {
+    tage.push(...Object.entries(sitzung.timings?.ereignisse || {})
+      .filter(([, e]) => e?.kasseGeoeffnet || (!korb && e?.hatAnschrift))
+      .map(([tag]) => tag));
+  }
+  if (!tage.length) tage = [sitzung.hatBestellt ? bestellTag(sitzung) : sitzung.tag];
+  return imZeitraum(tage.map((tag) => ({ tag })), zeitraum).length > 0;
+}
+
 export function baueKauftrichter(sitzungen) {
   const alle = Array.isArray(sitzungen) ? sitzungen : [];
   const stufen = [
@@ -1235,7 +1255,7 @@ export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS, zeitraum = "" 
   // darunter die zwei Quoten und die zwei Abbrueche - je eine Zahl fuer
   // jeden der beiden Wege durch dieselbe Seite.
   const landing = imBlick.filter(istLanding).length;
-  const korbAlle = imBlick.filter(imWarenkorb);
+  const korbAlle = sitzungen.filter((s) => kaufImZeitraum(s, "korb", zeitraum || "heute"));
   // Was im Korb lag. Drei Quellen, eine Zahl: der Korb auf der
   // Landingpage (korbWert), die fertige Bestellung (ihre Summe) und,
   // wenn nur der Korb oder die Kasse der Befundseite aufging, der Preis
@@ -1244,7 +1264,7 @@ export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS, zeitraum = "" 
     + (alsZahl(s.korbWert) > 0 ? alsZahl(s.korbWert)
       : s.hatBestellt ? alsZahl(s.order?.total)
         : (s.kasseGeoeffnet || s.timings?.kauf?.knopf) ? setPreis : 0), 0);
-  const kaufAbbrueche = imBlick.filter((s) => istKaufAbbruch(s, jetzt));
+  const kaufAbbrueche = korbAlle.filter((s) => istKaufAbbruch(s, jetzt));
   const analyseAbbrueche = imBlick.filter((s) => istAnalyseAbbruch(s, jetzt));
 
   return {
@@ -1256,7 +1276,7 @@ export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS, zeitraum = "" 
     // Warenkoerbe und was darin lag.
     warenkoerbe: korbAlle.length,
     warenkorbWert: korbWert,
-    kasse: imBlick.filter(warAnDerKasse).length,
+    kasse: sitzungen.filter((s) => kaufImZeitraum(s, "kasse", zeitraum || "heute")).length,
     // Wie viele der Besucher eine Analyse abgegeben haben, und wie
     // viele angefangen und aufgehoert haben.
     analysenQuote: landing ? analysen(imBlick).length / landing : 0,
