@@ -723,19 +723,20 @@
 }
 #ls-einstieg #lf-preview .lf-benefit {
   display: grid;
-  grid-template-columns: minmax(0, 57fr) minmax(0, 43fr);
+  grid-template-columns: minmax(0, 60fr) minmax(0, 40fr);
   position: relative;
   isolation: isolate;
   overflow: hidden;
   border-radius: 21px;
-  min-height: 204px;
+  min-height: 198px;
 }
 #ls-einstieg #lf-preview .lf-benefit--therapy { background: #eff8f5; }
 #ls-einstieg #lf-preview .lf-benefit--analysis { background: #eef3ff; }
 #ls-einstieg #lf-preview .lf-benefit--scan { background: #fff7e9; }
 #ls-einstieg #lf-preview .lf-benefit-copy {
   min-width: 0;
-  padding: 18px 0 21px 18px;
+  padding: 18px 10px 22px 18px;
+  align-self: start;
   z-index: 1;
 }
 #ls-einstieg #lf-preview .lf-benefit-number {
@@ -753,37 +754,79 @@
 #ls-einstieg #lf-preview .lf-benefit--scan .lf-benefit-number { background: #ffebc1; color: #966012; }
 #ls-einstieg #lf-preview .lf-benefit h3 {
   font-size: 18px;
-  line-height: 1.18;
-  letter-spacing: -0.4px;
+  line-height: 1.2;
+  letter-spacing: -0.45px;
   font-weight: 700;
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   color: #152630;
 }
 #ls-einstieg #lf-preview .lf-benefit-copy p {
   font-size: 14px;
-  line-height: 1.5;
-  color: #596c7c;
+  line-height: 1.55;
+  color: #65717c;
   margin: 0;
 }
 #ls-einstieg #lf-preview .lf-benefit-phone {
   position: relative;
   min-width: 0;
-  margin: 0;
+  margin: 0 16px 0 0;
+  align-self: stretch;
 }
 #ls-einstieg #lf-preview .lf-benefit-phone img {
   display: block;
   position: absolute;
-  top: 8px;
-  right: -3%;
-  width: 114%;
+  top: 7px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 132%;
   height: auto;
   max-width: none;
   border-radius: 0;
-  mix-blend-mode: multiply;
+  clip-path: inset(4.4% 19.6% 3.8% 19.6% round 12% / 8.5%);
 }
 @media (max-width: 360px) {
   #ls-einstieg #lf-preview .lf-entry-card { padding: 22px 18px 20px; }
   #ls-einstieg #lf-preview .lf-simple-how.lf-benefits { margin-right: 12px; margin-left: 12px; }
-  #ls-einstieg #lf-preview .lf-benefit-copy { padding-left: 14px; }
-  #ls-einstieg #lf-preview .lf-benefit h3 { font-size: 17px; }
+  #ls-einstieg #lf-preview .lf-benefit-copy { padding-left: 15px; }
+  #ls-einstieg #lf-preview .lf-benefit h3 { font-size: 16px; }
+  #ls-einstieg #lf-preview .lf-benefit-copy p { font-size: 13px; }
+  #ls-einstieg #lf-preview .lf-benefit-phone { margin-right: 12px; }
 }
+
+/* Existing comparison controls, placed on the photos as in the approved preview. */
+#ls-einstieg #lf-preview .lf-case-stage .lf-gallery-arrows {
+  position: absolute;
+  inset: 0;
+  display: block;
+  z-index: 3;
+  pointer-events: none;
+}
+#ls-einstieg #lf-preview .lf-case-stage .lf-gallery-arrows button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+  box-shadow: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
+  pointer-events: auto;
+}
+#ls-einstieg #lf-preview .lf-case-stage [data-case-direction="prev"] { left: 0; }
+#ls-einstieg #lf-preview .lf-case-stage [data-case-direction="next"] { right: 0; }
+#ls-einstieg #lf-preview .lf-case-stage .lf-gallery-arrows svg {
+  width: 23px;
+  height: 23px;
+  stroke-width: 1.8;
+}
+#ls-einstieg #lf-preview .lf-case-stage .lf-gallery-arrows button:active { opacity: 0.7; }
+#ls-einstieg #lf-preview .lf-case-stage .lf-gallery-arrows button:disabled { visibility: hidden; }
