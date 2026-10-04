@@ -58,3 +58,15 @@ an Texten, Analysewegen, CTA oder Tracking.
 
 Pruefung: Build und 11 gezielte Tests bestanden; keine getrackten
 Bundle-Aenderungen. Handy-Screenshot beurteilt, kein Live-Browsertest.
+
+## Freigegebene Anpassung: breite Fotoflaeche und Online-Titel
+
+Umfang: Wieder das Foto ueber die gesamte Card-Breite mit runden unteren
+Ecken; etwas mehr Hoehe (320 px, auf schmalen Handys 280 px) und ein
+hoeherer Ausschnitt, damit das Smartphone besser erkennbar ist.
+Die erste Ueberschrift lautet jetzt "Analiza online". Nur Design und
+Titel; Analysewege, Sticky-CTA und Tracking unveraendert.
+
+Pruefung: Build und 11 gezielte Checks bestanden. Keine getrackten
+Bundle-Aenderungen. Vorliegenden Handy-Screenshot beruecksichtigt; kein
+Live-Test der neuen Fassung im mobilen Browser.
