@@ -679,3 +679,111 @@
   height: auto;
   min-width: 0;
 }
+
+/* Approved benefit-card preview, 04.10.2026: compact entry without hero photo. */
+#ls-einstieg #lf-preview .lf-entry-card {
+  background: #eef2ff;
+  padding: 25px 22px 22px;
+}
+#ls-einstieg #lf-preview .lf-entry-card h1 {
+  margin-bottom: 15px;
+}
+#ls-einstieg #lf-preview .lf-entry-copy {
+  font-size: 16px;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+#ls-einstieg #lf-preview .lf-entry-doctor {
+  margin-bottom: 15px;
+}
+#ls-einstieg #lf-preview .lf-entry-free {
+  font-size: 12px;
+}
+#ls-einstieg #lf-preview .lf-simple-how.lf-benefits {
+  margin: 27px 18px 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+}
+#ls-einstieg #lf-preview .lf-benefits h2 {
+  font-size: 28px;
+  line-height: 1.15;
+  letter-spacing: -0.9px;
+  margin: 0 0 6px;
+}
+#ls-einstieg #lf-preview .lf-benefits-intro {
+  color: #657585;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0 0 15px;
+}
+#ls-einstieg #lf-preview .lf-benefit-list {
+  display: grid;
+  gap: 11px;
+}
+#ls-einstieg #lf-preview .lf-benefit {
+  display: grid;
+  grid-template-columns: minmax(0, 57fr) minmax(0, 43fr);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 21px;
+  min-height: 204px;
+}
+#ls-einstieg #lf-preview .lf-benefit--therapy { background: #eff8f5; }
+#ls-einstieg #lf-preview .lf-benefit--analysis { background: #eef3ff; }
+#ls-einstieg #lf-preview .lf-benefit--scan { background: #fff7e9; }
+#ls-einstieg #lf-preview .lf-benefit-copy {
+  min-width: 0;
+  padding: 18px 0 21px 18px;
+  z-index: 1;
+}
+#ls-einstieg #lf-preview .lf-benefit-number {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  margin-bottom: 10px;
+  font-size: 15px;
+  font-weight: 700;
+}
+#ls-einstieg #lf-preview .lf-benefit--therapy .lf-benefit-number { background: #cde9de; color: #267d65; }
+#ls-einstieg #lf-preview .lf-benefit--analysis .lf-benefit-number { background: #d4e1ff; color: #365caa; }
+#ls-einstieg #lf-preview .lf-benefit--scan .lf-benefit-number { background: #ffebc1; color: #966012; }
+#ls-einstieg #lf-preview .lf-benefit h3 {
+  font-size: 18px;
+  line-height: 1.18;
+  letter-spacing: -0.4px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: #152630;
+}
+#ls-einstieg #lf-preview .lf-benefit-copy p {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #596c7c;
+  margin: 0;
+}
+#ls-einstieg #lf-preview .lf-benefit-phone {
+  position: relative;
+  min-width: 0;
+  margin: 0;
+}
+#ls-einstieg #lf-preview .lf-benefit-phone img {
+  display: block;
+  position: absolute;
+  top: 8px;
+  right: -3%;
+  width: 114%;
+  height: auto;
+  max-width: none;
+  border-radius: 0;
+  mix-blend-mode: multiply;
+}
+@media (max-width: 360px) {
+  #ls-einstieg #lf-preview .lf-entry-card { padding: 22px 18px 20px; }
+  #ls-einstieg #lf-preview .lf-simple-how.lf-benefits { margin-right: 12px; margin-left: 12px; }
+  #ls-einstieg #lf-preview .lf-benefit-copy { padding-left: 14px; }
+  #ls-einstieg #lf-preview .lf-benefit h3 { font-size: 17px; }
+}
