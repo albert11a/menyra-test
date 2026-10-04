@@ -1168,6 +1168,14 @@ export class Sitzung {
     return this.#sammeln({ timings: { landing: { ...daten } } }, felderListe.map((f) => `timings.landing.${f}`));
   }
 
+  // Dasselbe fuer die Karten der Landingpage /lifeskin
+  // (shared/lifeskin-landingkarten.js), unter timings.lpKarten.
+  landingKartenSchreiben(daten) {
+    const felderListe = Object.keys(daten || {});
+    if (!felderListe.length) return this.kette;
+    return this.#sammeln({ timings: { lpKarten: { ...daten } } }, felderListe.map((f) => `timings.lpKarten.${f}`));
+  }
+
   // MARKEN FUER HEART, OHNE SCHRITT UND OHNE PIXEL (29.09.): wo genau es
   // hakt - "bildDa" (die Kamera zeigt ein Bild, Scan oder Foto kann
   // beginnen), "nummerGetippt" (die erste Ziffer steht im Nummernfeld).

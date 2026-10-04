@@ -723,9 +723,24 @@ function restoreBewahrt(rootNode, stand) {
 // sonst sprang die Reihe bei jeder Live-Zahl zurueck an den Anfang. Eine
 // Reihe erkennt man an der Aktion ihrer Chips. Neu erschienene Reihen
 // ruecken den gewaehlten Chip ins Bild.
+//
+// JE BEREICH EINE EIGENE STELLE (04.10.): Heart zeichnet die Bereiche
+// (Skinreact, Lifeskin, Acne duo) nebeneinander, jeder mit seiner eigenen
+// Reihe "Fälle". Mit der Aktion allein als Schluessel bekam jede Reihe die
+// Stelle der letzten - "Offen" gewaehlt, aber Seite 2 im Bild.
+// Steht dieselbe Reihe in einem Bereich zweimal, zaehlt die Stelle mit.
 function chipReihen(rootNode) {
+  const gesehen = new Map();
   return [...(rootNode.querySelectorAll?.(".heart-lifeskin-chips") || [])]
-    .map((reihe) => [reihe.querySelector("[data-action]")?.getAttribute("data-action") || "", reihe])
+    .map((reihe) => {
+      const aktion = reihe.querySelector("[data-action]")?.getAttribute("data-action") || "";
+      if (!aktion) return ["", reihe];
+      const bereich = reihe.closest?.("[data-bereich]")?.getAttribute("data-bereich") || "";
+      const grund = `${bereich}|${aktion}`;
+      const nr = gesehen.get(grund) || 0;
+      gesehen.set(grund, nr + 1);
+      return [nr ? `${grund}|${nr}` : grund, reihe];
+    })
     .filter(([name]) => name);
 }
 
@@ -733,18 +748,44 @@ function chipReihen(rootNode) {
 // (heart-morph.js), hat ihre Stelle behalten - sie anzufassen hiesse nur,
 // den Browser die ganze Seite neu vermessen zu lassen. Gemessen am 25.09.:
 // fast eine Sekunde je Live-Zahl auf einem Telefon.
-function captureChipScroll(rootNode) {
+//
+// SEITENWEISE REIHEN (.heart-shopchip-pages, z. B. "Fälle") zeigen nach dem
+// Neuzeichnen immer die Seite mit dem GEWAEHLTEN Chip - ausser es ist
+// derselbe Knoten mit derselben Wahl (dann bleibt, wohin gewischt wurde).
+// Vorher stand dort "Offen" gewaehlt, die Reihe aber auf Seite 2 (Bestellt,
+// Später, Archiv): Die Stelle wurde aus einer anderen Wahl oder einem
+// anderen Tab uebernommen (04.10., Inhaber).
+const gewaehlterChip = (reihe) => reihe.querySelector('[aria-pressed="true"]');
+
+function seiteDesGewaehltenZeigen(reihe) {
+  const seite = gewaehlterChip(reihe)?.closest?.(".heart-shopchip-page");
+  if (!seite) return;
+  const index = [...reihe.children].indexOf(seite);
+  if (index < 0) return;
+  const ziel = index * reihe.clientWidth;
+  if (Math.abs(reihe.scrollLeft - ziel) > 1) reihe.scrollLeft = ziel;
+}
+
+export function captureChipScroll(rootNode) {
   const stand = new Map();
-  for (const [name, reihe] of chipReihen(rootNode)) stand.set(name, { reihe, links: reihe.scrollLeft });
+  for (const [name, reihe] of chipReihen(rootNode)) {
+    stand.set(name, { reihe, links: reihe.scrollLeft, wahl: gewaehlterChip(reihe)?.getAttribute("data-wert") || "" });
+  }
   return stand;
 }
 
-function restoreChipScroll(rootNode, stand) {
+export function restoreChipScroll(rootNode, stand) {
   for (const [name, reihe] of chipReihen(rootNode)) {
     const vorher = stand.get(name);
+    if (reihe.classList?.contains("heart-shopchip-pages")) {
+      const wahl = gewaehlterChip(reihe)?.getAttribute("data-wert") || "";
+      if (vorher?.reihe === reihe && vorher.wahl === wahl) continue;
+      seiteDesGewaehltenZeigen(reihe);
+      continue;
+    }
     if (vorher?.reihe === reihe) continue;
     if (vorher) { reihe.scrollLeft = vorher.links; continue; }
-    const an = reihe.querySelector('[aria-pressed="true"]');
+    const an = gewaehlterChip(reihe);
     if (an && an.offsetLeft + an.offsetWidth > reihe.clientWidth) reihe.scrollLeft = an.offsetLeft - 16;
   }
 }

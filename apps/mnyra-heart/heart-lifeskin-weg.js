@@ -12,7 +12,8 @@
 // Zeit bis zur Antwort daneben.
 import { wegDerSitzung, zaehltImWeg } from "../../shared/lifeskin-weg.js";
 import { stufenIndex, istPatient, istLanding, typVon } from "./heart-lifeskin-berechnung.js";
-import { SHOP_ABSCHNITTE, shopTiefe, TERAPIA_ABSCHNITTE, terapiaTiefe } from "../../shared/lifeskin-shopsicht.js";
+import { SHOP_ABSCHNITTE, shopTiefe, skanimGedrueckt, TERAPIA_ABSCHNITTE, terapiaTiefe } from "../../shared/lifeskin-shopsicht.js";
+import { LANDING_KARTEN, landingKartenGemessen, landingKartenTiefe } from "../../shared/lifeskin-landingkarten.js";
 
 // Nur die Faelle eines Wegs. "" ist der bisherige Weg (/lifeskin) - dort
 // bleiben alle Faelle ohne Merkmal, also auch jeder von vorher.
@@ -134,26 +135,41 @@ const istShopKauf = (s) => s?.hatBestellt === true;
 const imKorbS = (s) => s?.imKorb === true || s?.kasseGeoeffnet === true
   || Boolean(s?.timings?.kauf?.knopf) || istShopKauf(s);
 
-// DIE SEITE, ABSCHNITT FUER ABSCHNITT (1-9) - wie weit jemand gekommen
+// DIE SEITE, ABSCHNITT FUER ABSCHNITT (1-8) - wie weit jemand gekommen
 // ist (shared/lifeskin-shopsicht.js; die Namen hat der Inhaber vergeben).
 // Wer bis 5 gescrollt hat, zaehlt auch bei 1 bis 4: Die Zahl heisst "bis
-// hierher", und kein Balken kann laenger sein als der davor.
+// hierher", und kein Balken kann laenger sein als der davor. Wer im
+// Abschnitt SkinReact "Fillo skanimin" gedrueckt hat, war dort.
+const SKINREACT_NR = SHOP_ABSCHNITTE.find((a) => a.id === "skinreact")?.nr || 5;
 export const SHOP_SEITE = Object.freeze(SHOP_ABSCHNITTE.map((a) => Object.freeze({
   id: `s${a.nr}`,
   nr: a.nr,
   label: a.name,
-  gilt: a.nr === 1 ? (s) => istLanding(s) || shopTiefe(s) > 1 : (s) => shopTiefe(s) >= a.nr
+  gilt: a.nr === 1 ? (s) => istLanding(s) || shopTiefe(s) > 1 || skanimGedrueckt(s)
+    : a.nr <= SKINREACT_NR ? (s) => shopTiefe(s) >= a.nr || skanimGedrueckt(s)
+      : (s) => shopTiefe(s) >= a.nr
 })));
 
-// DER KAUF (10-13) - eine eigene Reihe und nicht die Fortsetzung der
+// UNTER "SKINREACT" (04.10., Inhaber): wie viele davon "Fillo skanimin"
+// gedrueckt haben. Eine Unterzeile, keine Stufe - sie zaehlt nicht in die
+// Reihe "bis hierher", sonst stuende Garancioni unter jedem, der scannt.
+function mitSkanimZeile(seite, liste) {
+  const gedrueckt = liste.filter(skanimGedrueckt).length;
+  return seite.map((stufe) => (stufe.nr === SKINREACT_NR
+    ? { ...stufe, unter: { label: "Fillo skanim", anzahl: gedrueckt } }
+    : stufe));
+}
+
+// DER KAUF (9-12) - eine eigene Reihe und nicht die Fortsetzung der
 // Seite: Wer oben auf "Porosit setin" tippt und kauft, war nie bei
-// "Fundi". In einer Reihe gezaehlt, stuende er dort trotzdem.
+// "F.A.Q". In einer Reihe gezaehlt, stuende er dort trotzdem.
+// Die Nummern laufen hinter der Seite weiter (seit 04.10.: 9-12).
 export const SHOP_KAUF = Object.freeze([
-  { id: "korb", nr: 10, label: "Shport", gilt: imKorbS },
-  { id: "kasse", nr: 11, label: "Arka", gilt: (s) => s?.kasseGeoeffnet === true || istShopKauf(s) },
-  { id: "anschrift", nr: 12, label: "Adresa", gilt: (s) => s?.adresseBegonnen === true || istShopKauf(s) },
-  { id: "bestellt", nr: 13, label: "Gotat Nalt", gilt: istShopKauf }
-].map((stufe) => Object.freeze(stufe)));
+  { id: "korb", label: "Shport", gilt: imKorbS },
+  { id: "kasse", label: "Arka", gilt: (s) => s?.kasseGeoeffnet === true || istShopKauf(s) },
+  { id: "anschrift", label: "Adresa", gilt: (s) => s?.adresseBegonnen === true || istShopKauf(s) },
+  { id: "bestellt", label: "Gotat Nalt", gilt: istShopKauf }
+].map((stufe, i) => Object.freeze({ ...stufe, nr: SHOP_ABSCHNITTE.length + 1 + i })));
 
 // ══ DIE CHIPS DER KARTE "SHOP": Scan, Foto, Analyse (29.09.) ═══════════
 //
@@ -247,7 +263,7 @@ function stufenZaehlen(liste, stufen) {
 
 export function baueShopWeg(sitzungen) {
   const liste = Array.isArray(sitzungen) ? sitzungen : [];
-  const seite = stufenZaehlen(liste, SHOP_SEITE);
+  const seite = mitSkanimZeile(stufenZaehlen(liste, SHOP_SEITE), liste);
   const kauf = stufenZaehlen(liste, SHOP_KAUF);
   const kaeufe = liste.filter(istShopKauf);
   const umsatz = kaeufe.reduce((summe, s) => summe + (Number(s?.order?.total) || 0), 0);
@@ -292,4 +308,20 @@ export function baueShopWeg(sitzungen) {
     kaufquote: liste.length ? kaeufe.length / liste.length : 0,
     nachSet: [...nachSet.entries()].sort((a, b) => b[1] - a[1])
   };
+}
+
+// ══ LANDINGPAGE /lifeskin: KARTE FUER KARTE (04.10., Wunsch Inhaber) ════
+//
+// Die acht Karten der Seite (shared/lifeskin-landingkarten.js), gezaehlt
+// "bis hierher" wie die Karte "Shop": Wer bis "Para - Pas" kam, zaehlt
+// auch bei 1 bis 4. Gezaehlt werden NUR Besuche mit Messung - Besuche von
+// vorher haben kein Feld und stuenden sonst als "nur Karte 1 gesehen" da.
+export const LANDING_KARTEN_STUFEN = Object.freeze(LANDING_KARTEN.map((k) => Object.freeze({
+  id: `k${k.nr}`, nr: k.nr, label: k.name, gilt: (s) => landingKartenTiefe(s) >= k.nr
+})));
+
+export function baueLandingKarten(sitzungen) {
+  const liste = (Array.isArray(sitzungen) ? sitzungen : []).filter(landingKartenGemessen);
+  const stufen = stufenZaehlen(liste, LANDING_KARTEN_STUFEN);
+  return { stufen, basis: stufen[0]?.anzahl || 0 };
 }

@@ -247,6 +247,35 @@ Erlaubt vom Inhaber (Albert) am 28.09.2026 - erst danach auf main.
   neutral ("Rasti juaj", "Terapia juaj"). Eine Aenderung traefe auch
   /lifeskin.
 
+## Karte "Shop" in Heart: neu geordnet (04.10.)
+
+Wunsch Inhaber: acht Abschnitte in der Reihenfolge der Seite. "Dërgesa" und
+"Fundi" fallen weg, "Mesazhe" und "Garancioni" stehen fuer sich.
+
+| Nr | Name | Abschnitt auf der Seite | Feld in `timings.shop` |
+|---|---|---|---|
+| 1 | Puçrrat | Titelbild "Largo puçrrat." | `pucrrat` |
+| 2 | Para - Pas | `#rezultate` | `paraPas` |
+| 3 | Mesazhe | `#klientet` "Mesazhe origjinale" | `mesazhe` |
+| 4 | Dy produkte | `#setet` | `produkte` |
+| 5 | SkinReact | `#zgjedhja` | `skinreact` |
+| 6 | Garancioni | `#garancia` (45 ditë garanci) | `garancia` |
+| 7 | Instagram | `.social-presence` | `instagram` |
+| 8 | F.A.Q | `.faq` | `faq` |
+
+Unter **5 SkinReact** steht eine Unterzeile **"Fillo skanim"**: wie viele
+den Knopf "Fillo skanimin" gedrueckt haben (`source.scanWorkflow =
+"skinreact"`). Sie ist keine eigene Stufe der Reihe "bis hierher".
+
+Danach unveraendert der Kauf, jetzt **9 Shport, 10 Arka, 11 Adresa,
+12 Gotat Nalt**.
+
+**Version 2:** gespeichert wird unter der Kennung (Tabelle), nicht mehr
+unter `sN`. Alte Felder (Version 1, `s1`-`s9`) liest `shopTiefe()` in die
+neuen Nummern um: s1→1, s2→2, s3→4, s4→5, s5→3, s6→6, s7→7, s8→8, s9→8.
+
+Der Rest dieses Abschnitts beschreibt die Fassung vom 29.09.
+
 ## Karte "Shop" in Heart: Abschnitt fuer Abschnitt (29.09.)
 
 Wunsch Inhaber: klare Schritte von oben bis ganz unten auf der Seite, kurze

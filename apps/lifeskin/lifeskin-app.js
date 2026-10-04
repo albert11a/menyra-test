@@ -43,6 +43,7 @@ import { starteKlickpfad } from "../../shared/lifeskin-klickpfad.js";
 import { Pixel } from "./lifeskin-pixel.js";
 import { untenNachziehenStarten } from "../../shared/lifeskin-unten.js";
 import { starteLandingtiefe } from "./lifeskin-landingtiefe.js";
+import { starteLandingkarten } from "./lifeskin-landingkarten.js";
 import { LIFESKIN_FIRESTORE_BASE, LIFESKIN_TENANT } from "./lifeskin-config.js";
 import { antwortzeitLaden, antwortzeitSatz } from "../../shared/lifeskin-antwortzeit.js";
 
@@ -965,6 +966,9 @@ export class Trichter {
     // naechsten Bild (IntersectionObserver) oder beim Tipp - also immer
     // nach dem Anlegen der Sitzung in der Zeile darunter.
     this.landingtiefe = starteLandingtiefe({ schreiben: (d) => this.sitzung.landingSchreiben(d) });
+    // Die acht Karten von /lifeskin (lifeskin-landingkarten.js) - dieselbe
+    // Reihenfolge: Geschrieben wird erst im naechsten Bild.
+    this.landingkarten = starteLandingkarten({ schreiben: (d) => this.sitzung.landingKartenSchreiben(d) });
     this.sitzung.starte({ sprache: this.sprache });
 
     // ZULETZT, und das ist die Reihenfolge, auf die es ankommt: Erst steht

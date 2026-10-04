@@ -38,7 +38,7 @@ import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 // Aufklappen, das ein Neuzeichnen ueberlebt.
 import { renderRaste, renderRastiEditor, renderBefundRasteAuswahl, rasteListe } from "./heart-lifeskin-raste.js";
 import { klappAttr, alsKlapp } from "./heart-lifeskin-klapp.js";
-import { nachWeg, baueLs2Weg, baueShopWeg, dauerText as ls2Dauer } from "./heart-lifeskin-weg.js";
+import { nachWeg, baueLs2Weg, baueShopWeg, baueLandingKarten, dauerText as ls2Dauer } from "./heart-lifeskin-weg.js";
 import { renderShopSetet, renderShopSetEditor, renderShopHero, renderShopHeroEditor, shopSetetListe } from "./heart-lifeskin-shopsets.js";
 import { wegGueltig } from "../../shared/lifeskin-weg.js";
 import { perputhjaGueltig, perputhjaAuto, perputhjaModusGueltig, PERPUTHJA_AUTO_VON, PERPUTHJA_AUTO_BIS } from "../../shared/lifeskin-perputhja.js";
@@ -553,7 +553,7 @@ function renderBereitschaft({ gruppen }) {
 // Alle sechs auf einmal gerechnet. EINE Stelle, damit der Chip dieselbe
 // Zahl traegt wie der Trichter darunter - zwei Rechnungen waeren zwei
 // Zahlen, die auseinander laufen.
-function baueTrichterListe(sitzungen, imBlick, zeitraum) {
+function baueTrichterListe(sitzungen, imBlick, zeitraum, weg = "") {
   const zweige = baueZweige(imBlick);
   const zweigVon = (id) => zweige.find((z) => z.id === id);
   return TRICHTER_CHIPS.map((chip) => {
@@ -571,6 +571,16 @@ function baueTrichterListe(sitzungen, imBlick, zeitraum) {
         fuss: b.basis
           ? "Antwort auf Frage 4 („A doni që Dr. Gashi t'ju përgatisë edhe terapinë?“). Wer „Po, sa më shpejt“ sagt und nicht bestellt hat: zuerst auf WhatsApp anschreiben (Marke „Will starten“ am Fall)."
           : "Noch keine Antworten – die Frage steht seit 27.09. im Trichter." };
+    }
+    if (chip.id === "landing" && !weg) {
+      // /lifeskin (04.10., Inhaber): die acht Karten der Seite, Karte fuer
+      // Karte "bis hierher" - im Aufbau der Karte "Shop" (Kreis, Name,
+      // Balken, Zahl). IM CHIP: die gemessenen Besuche (Karte 1).
+      const lk = baueLandingKarten(imBlick);
+      return { ...chip, chipStufe: 0, stufen: lk.stufen, schritte: true,
+        fuss: lk.basis
+          ? "Wie weit auf mnyra.com/lifeskin gescrollt wurde, Karte für Karte. Gezählt nur Besuche mit Messung."
+          : "Noch keine gemessenen Besuche – die Messung zählt ab jetzt." };
     }
     if (chip.id === "landing") {
       // IM CHIP: die gemessenen Landing-Besuche (erste Stufe).
@@ -617,18 +627,24 @@ function renderTrichter(liste, gewaehlt = "main") {
   const offen = liste.find((t) => t.id === gewaehlt) || liste[0];
   if (!offen) return "";
   const schlimmster = offen.stufen.reduce((a, b) => (b.verlust > (a?.verlust ?? -1) ? b : a), null);
+  const offenZahl = chips.find((c) => c.id === offen.id)?.anzahl ?? 0;
 
+  // DIE CHIPS STEHEN IN DER KARTE (04.10., Wunsch Inhaber) - wie bei
+  // "Fälle": unter dem Titel, seitenweise zum Wischen. Zugeklappt steht
+  // im Kopf die Zahl des offenen Trichters.
   return alsKlapp(`
-    ${renderChips(chips, offen.id, "lifeskin-trichter")}
-    <section class="heart-lifeskin-block">
+    <section class="heart-lifeskin-block heart-trichterkarte">
       <h3 class="heart-lifeskin-block__titel">Trichter · ${escapeHtml(offen.titel || offen.label)}</h3>
-      <div class="heart-lifeskin-trichter">${renderStufen(offen.stufen)}</div>
+      ${renderChipSeiten(chips, offen.id, "lifeskin-trichter")}
+      ${offen.schritte
+        ? `<div class="heart-shopschritte">${renderShopSchritte(offen.stufen, offen.stufen[0]?.anzahl || 0)}</div>`
+        : `<div class="heart-lifeskin-trichter">${renderStufen(offen.stufen)}</div>`}
       ${offen.extra || ""}
       ${offen.fuss ? `<p class="heart-lifeskin-block__fuss">${escapeHtml(offen.fuss)}</p>` : ""}
       ${schlimmster && schlimmster.verlust > 0.2
         ? `<p class="heart-lifeskin-block__fuss">Groesster Verlust bei „${escapeHtml(schlimmster.label)}" — ${escapeHtml(verloreneLeute(offen.stufen, schlimmster))}.</p>`
         : ""}
-    </section>`, "trichter");
+    </section>`, "trichter", { zahl: String(offenZahl) });
 }
 
 // LIFESKIN 2: DER WEG VOM ANZEIGENKLICK BIS ZUM KAUF, in einer Reihe -
@@ -650,21 +666,28 @@ function renderLs2Weg(weg, zeitraum = "") {
     </section>`, "ls2weg", { zahl: `${weg.stufen.at(-1)?.anzahl || 0} Käufe` });
 }
 
-// LIFESKIN SHOP: die Seite Abschnitt fuer Abschnitt (1-9), dann der Kauf
-// (10-13) - Namen und Aufbau vom Inhaber (29.09.): nummerierter Kreis,
+// LIFESKIN SHOP: die Seite Abschnitt fuer Abschnitt (1-8), dann der Kauf
+// (9-12) - Namen und Aufbau vom Inhaber (29.09.): nummerierter Kreis,
 // Name, Balken, Zahl. Alle Balken beginnen an derselben Stelle und messen
 // an derselben Zahl: den Shop-Besuchern (1).
+// stufe.unter: eine Unterzeile ohne eigene Nummer (SkinReact: "Fillo
+// skanim", 04.10.) - am selben Massstab, aber keine Stufe der Reihe.
 function renderShopSchritte(stufen, basis) {
-  return stufen.map((stufe) => {
-    const breite = stufe.anzahl ? Math.max(0.6, (stufe.anteil ?? (basis ? stufe.anzahl / basis : 0)) * 100) : 0;
-    return `
+  const breiteVon = (stufe) => (stufe.anzahl
+    ? Math.max(0.6, (stufe.anteil ?? (basis ? stufe.anzahl / basis : 0)) * 100) : 0);
+  return stufen.map((stufe) => `
       <div class="heart-shopschritt">
         <span class="heart-shopschritt__nr">${escapeHtml(stufe.nr)}</span>
         <span class="heart-shopschritt__name">${escapeHtml(stufe.label)}</span>
-        <span class="heart-shopschritt__spur"><span class="heart-shopschritt__balken" style="width:${Math.min(100, breite).toFixed(1)}%"></span></span>
+        <span class="heart-shopschritt__spur"><span class="heart-shopschritt__balken" style="width:${Math.min(100, breiteVon(stufe)).toFixed(1)}%"></span></span>
         <b class="heart-shopschritt__zahl">${stufe.anzahl}${stufe.geschaetzt ? "*" : ""}</b>
-      </div>`;
-  }).join("");
+      </div>${stufe.unter ? `
+      <div class="heart-shopschritt heart-shopschritt--unter">
+        <span class="heart-shopschritt__nr" aria-hidden="true">↳</span>
+        <span class="heart-shopschritt__name">${escapeHtml(stufe.unter.label)}</span>
+        <span class="heart-shopschritt__spur"><span class="heart-shopschritt__balken" style="width:${Math.min(100, breiteVon(stufe.unter)).toFixed(1)}%"></span></span>
+        <b class="heart-shopschritt__zahl">${stufe.unter.anzahl}</b>
+      </div>` : ""}`).join("");
 }
 
 // DIE CHIPS OBEN AN DER KARTE (29.09., Wunsch Inhaber): Shop, Scan, Foto,
@@ -3796,7 +3819,7 @@ function renderWegUebersicht(zustand, weg, offenerWeg = weg) {
   // IM LADEN KAUF UND BERICHT IN DER GEMEINSAMEN SHOP-KARTE:
   // Main, Skanim, Foto, Trup/Pytje und Landing stehen jetzt als Chips in
   // der Karte "Shop"; Gati hing an Frage 4, die es im Laden nicht mehr gibt.
-  const trichterListe = baueTrichterListe(sitzungen, imBlick, zeitraum)
+  const trichterListe = baueTrichterListe(sitzungen, imBlick, zeitraum, weg)
     .filter((t) => weg !== "lifeskinshop" || !SHOP_OHNE_TRICHTER.has(t.id));
   const shopWeg = weg === "lifeskinshop" ? baueShopWeg(imBlick) : null;
 

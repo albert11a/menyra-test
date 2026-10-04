@@ -138,9 +138,9 @@ test("Heart: Tab 'Lifeskin Shop' mit eigenem Trichter, Umsatz und Sets", async (
     { step: "ordered", shopKauf: true, hatBestellt: true, phone: "1", kasseGeoeffnet: true, adresseBegonnen: true, imKorb: true, korbWert: 39, order: { kind: "shop", total: 39, set: { titulli: "Seti për njollat" } } },
     { step: "numri", phone: "2", typ: "foto" }
   ]);
-  // Seite 1-9: ohne Messung zaehlt produkteGesehen als "bis Informata" (3).
-  assert.deepEqual(w.seite.map((s) => s.anzahl), [4, 1, 1, 0, 0, 0, 0, 0, 0]);
-  // Kauf 10-13: Shport, Arka, Adresa, Gotat Nalt.
+  // Seite 1-8: ohne Messung zaehlt produkteGesehen als "bis Dy produkte" (4).
+  assert.deepEqual(w.seite.map((s) => s.anzahl), [4, 1, 1, 1, 0, 0, 0, 0]);
+  // Kauf 9-12: Shport, Arka, Adresa, Gotat Nalt.
   assert.deepEqual(w.kauf.map((s) => s.anzahl), [2, 1, 1, 1]);
   assert.equal(w.besucher, 4);
   assert.deepEqual(w.analyse.map((s) => s.anzahl), [1, 1, 0], "ein Kauf mit Nummer an der Kasse ist kein Analyse-Lead");
