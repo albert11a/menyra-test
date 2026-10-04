@@ -3138,7 +3138,9 @@ export class Trichter {
     if (!schirm || !buehne) return;
     if (this.skinreact && schirm.closest?.("[data-sr-live]")) {
       schirm.style.height = "auto";
-      buehne.style.width = `${Math.max(0, Math.floor(Math.min(480, schirm.clientWidth)))}px`;
+      // CSS owns the viewport-aware slot. No fixed inline width that can
+      // become stale after rotation, resizing or browser-toolbar changes.
+      buehne.style.width = "100%";
       return;
     }
     const hoehe = window.visualViewport?.height || window.innerHeight;

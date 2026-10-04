@@ -117,3 +117,23 @@ test('Countdown in der Zeile mit Stopp - und unten in Heart, in jeder Ansicht', 
   assert.match(knoten.innerHTML, /<b>Besa<\/b> · Auto in <b>4<\/b> s/);
   assert.match(knoten.innerHTML, /heart-skinreact-leiste__stopp" data-action="lifeskin-skinreact-stopp"/);
 });
+
+test('result offers the original cart only for a suitable assessment; low range keeps personal advice', () => {
+  const listeners = new Map();
+  const root = { innerHTML: '', querySelector: selector => ({ addEventListener: (type, fn) => listeners.set(selector, fn) }) };
+  let purchases = 0;
+  const ui = new SkinreactErgebnis({ sitzung: {}, wurzel: root, kaufen: () => purchases++ });
+  ui.aktiv = true;
+  ui.anzeigen({ id: '55-60', min: 55, max: 60, text: '55–60%' });
+  assert.match(root.innerHTML, /rekomandim personal/);
+  assert.doesNotMatch(root.innerHTML, /sr-result__check|sr-result__products|Porosit Acne Duo/);
+  listeners.get('.sr-order')();
+  assert.equal(purchases, 0);
+  ui.anzeigen({ id: '85-90', min: 85, max: 90, text: '85–90%' });
+  assert.match(root.innerHTML, /LF ACNE/);
+  assert.match(root.innerHTML, /LF MOISTUR/);
+  assert.match(root.innerHTML, /sr-result__check/);
+  listeners.get('.sr-order')();
+  assert.equal(purchases, 1);
+  assert.equal(ui.aktiv, false);
+});

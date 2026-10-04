@@ -15,11 +15,21 @@ const section = document.getElementById("zgjedhja");
 const hint = section?.querySelector(".sr-hint");
 const liveHint = document.getElementById("ls-kamerahinweis");
 if (section && hint && liveHint) {
+  hint.setAttribute("role", "status");
+  hint.setAttribute("aria-live", "polite");
+  hint.setAttribute("aria-atomic", "true");
   const original = hint.innerHTML;
   const sync = () => {
-    if (section.dataset.srState === "kamera") hint.textContent = liveHint.textContent || "Lejo kamerën për me fillu.";
+    if (section.dataset.srState === "kamera") hint.textContent = liveHint.textContent || "Lejo kameren per me fillu.";
     else if (section.dataset.srState === "idle") hint.innerHTML = original;
   };
   new MutationObserver(sync).observe(liveHint, { childList:true, subtree:true, characterData:true });
   new MutationObserver(sync).observe(section, { attributes:true, attributeFilter:["data-sr-state"] });
+}
+
+// Offscreen preview motion should not spend a phone's rendering budget.
+if (section && "IntersectionObserver" in globalThis) {
+  new IntersectionObserver(([entry]) => {
+    section.dataset.srVisible = entry.isIntersecting ? "ja" : "nein";
+  }).observe(section);
 }
