@@ -1,3 +1,7 @@
+import { skinreactPlatzReservieren } from "./skinreact-ergebnis.js";
+
+skinreactPlatzReservieren(document);
+
 // Preview guide only: live scan progress comes from lifeskin-app's pose ring.
 const ticks = document.querySelector("#sr-ticks");
 if (ticks) {
