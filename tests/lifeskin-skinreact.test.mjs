@@ -164,3 +164,20 @@ test('processing and result have no back-to-page action or circular result displ
   assert.match(root.innerHTML, /Porosit Acne Duo/);
   assert.doesNotMatch(root.innerHTML, /sr-back|Kthehu|sr-result__visual|<circle/);
 });
+
+test('compact result uses the current shop price and keeps low assessments out of the cart', () => {
+  const prices = { cmimi: '35 €', vecmas: '58 €' };
+  const root = { innerHTML: '', ownerDocument: { querySelector: s => ({ textContent: prices[s.includes('vecmas') ? 'vecmas' : 'cmimi'] }) }, querySelector: () => ({ addEventListener() {} }) };
+  const ui = new SkinreactErgebnis({ sitzung: {}, wurzel: root, kaufen() {} });
+  ui.anzeigen({ id: '85-90', min: 85, max: 90, text: '85–90%' });
+  assert.match(root.innerHTML, /data-preis="cmimi">35 €/);
+  assert.match(root.innerHTML, /data-preis="vecmas" data-preis-zbritje>58 €/);
+  assert.match(root.innerHTML, /lf-acne-3.jpg/);
+  assert.match(root.innerHTML, /lf-moistur.jpg/);
+  prices.cmimi = '60 €';
+  ui.anzeigen({ id: '90-95', min: 90, max: 95, text: '90–95%' });
+  assert.match(root.innerHTML, /data-preis="cmimi">60 €/);
+  assert.doesNotMatch(root.innerHTML, /<del/);
+  ui.anzeigen({ id: '10-15', min: 10, max: 15, text: '10–15%' });
+  assert.doesNotMatch(root.innerHTML, /data-preis|<img|Porosit Acne Duo/);
+});
