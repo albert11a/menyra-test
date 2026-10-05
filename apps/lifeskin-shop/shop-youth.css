@@ -322,3 +322,13 @@
 #ls-einstieg .page .closing .closing-analysis{margin-top:22px;font-size:13px}
 #ls-einstieg .page .closing-analysis a{text-decoration:none;color:var(--ink)}
 #ls-einstieg .page .closing-analysis strong{text-decoration:underline;text-underline-offset:4px}
+
+/* Fotos & Videos der Kunden (05.10., Inhaber): die Reihe steht jetzt
+   zwischen den Mesazhe und "Dy produktet", ohne Instagram-Rahmen. */
+#ls-einstieg .page #rezultate .customer-rail{margin-top:28px}
+/* Kein blauer Rand beim Antippen eines Fotos oder Videos (05.10.,
+   Inhaber) - weder in der Reihe noch im Blatt. Die allgemeine
+   :focus-visible-Regel oben ueberstimmte die alte Ausnahme. */
+#ls-einstieg .customer-rail,#ls-einstieg .klient-kachel,#ls-einstieg #sheet .klient-buehne,#ls-einstieg #sheet .klient-medium,#ls-einstieg #sheet .klient-spiel{-webkit-tap-highlight-color:transparent}
+#ls-einstieg .page .customer-rail:focus,#ls-einstieg .page .customer-rail:focus-visible,#ls-einstieg .page .klient-kachel:focus,#ls-einstieg .page .klient-kachel:focus-visible,
+#ls-einstieg .customer-rail:focus-visible,#ls-einstieg .klient-kachel:focus-visible,#ls-einstieg #sheet .klient-medium:focus,#ls-einstieg #sheet .klient-medium:focus-visible,#ls-einstieg #sheet .klient-spiel:focus-visible{outline:none;box-shadow:none}
