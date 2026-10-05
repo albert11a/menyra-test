@@ -70,7 +70,8 @@ function mesazh(tekst, lloji = "") {
 }
 
 function vizato() {
-  const brenda = Boolean(gjendja.perdoruesi && gjendja.roli);
+  // Nur Riba und der Inhaber sehen die Liste - "asnje" (kein Zugang) nicht.
+  const brenda = Boolean(gjendja.perdoruesi) && (gjendja.roli === "riba" || gjendja.roli === "heart");
   shfaq("dg-hyrja", !gjendja.perdoruesi);
   shfaq("dg-pa-qasje", Boolean(gjendja.perdoruesi) && gjendja.roli === "asnje");
   shfaq("dg-faqja", brenda);

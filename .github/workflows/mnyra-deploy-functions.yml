@@ -221,7 +221,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
 
       - name: Regeln im Emulator pruefen
         if: contains(steps.ziele.outputs.only, 'firestore')
