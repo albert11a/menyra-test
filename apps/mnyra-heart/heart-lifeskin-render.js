@@ -1623,7 +1623,13 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
   // die Warteseitenmarke; reine Shopbestellungen sind keine Analysen.
   const fertige = sitzungen.filter((s) => istAnalyse(s) || istSkinreact(s));
   const faecher = skinreact ? [{ id: "skinreact", label: "SkinReact" }, ...FAECHER] : FAECHER;
-  const passt = (s, f) => f === "skinreact" ? istSkinreact(s) : imFach(s, berichte[s.id], f);
+  // SKINREACT IST EINE ARBEITSLISTE wie "Offen": Was von Hand abgehakt
+  // oder zurueckgelegt wurde, liegt nur noch in "Archiv" bzw. "Später" -
+  // sonst blieb ein archivierter Fall hier stehen (05.10., Inhaber:
+  // "archivieren klappt nicht").
+  const passt = (s, f) => f === "skinreact"
+    ? istSkinreact(s) && !["archiviert", "spaeter"].includes(fachVon(s, berichte[s.id]))
+    : imFach(s, berichte[s.id], f);
 
   const zaehler = Object.fromEntries(faecher.map((f) => [f.id,
     fertige.filter((s) => passt(s, f.id)).length]));

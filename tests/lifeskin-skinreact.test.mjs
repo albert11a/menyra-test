@@ -49,6 +49,15 @@ test('first SkinReact chip keeps ordered shop cases alongside pending ones',()=>
   const html=renderLifeskin({status:'ready',bereich:'acne',weg:'lifeskinshop',fach:'skinreact',sitzungen:sessions,berichte:{},produkte:[],kennzahlen:baueKennzahlen(sessions),trichter:baueTrichter(sessions),vorschau:{}});
   assert.match(html,/data-wert="skinreact"/);assert.match(html,/data-skinreact-fall="012345/);assert.match(html,/data-skinreact-fall="aaaaaaaa/);
 });
+test('archived or set-aside cases leave the SkinReact chip and show up under Archiv',()=>{
+  const spaeter=normalisiere('b'.repeat(32),{source,photos:['front'],step:'result',createdAt:'2026-10-03T05:00:00Z'});
+  const sessions=[session,spaeter];
+  const berichte={[id]:{archiviert:true,...skinreactFreigabe('95-100')},[spaeter.id]:{spaeter:true}};
+  const html=(fach)=>renderLifeskin({status:'ready',bereich:'acne',weg:'lifeskinshop',fach,sitzungen:sessions,berichte,produkte:[],kennzahlen:baueKennzahlen(sessions),trichter:baueTrichter(sessions),vorschau:{}});
+  assert.doesNotMatch(html('skinreact'),/data-skinreact-fall=/);
+  assert.match(html('archiviert'),/012345/);
+  assert.match(html('spaeter'),/bbbbbbbb/);
+});
 test('poller never substitutes a positive number for missing/failed approval',async()=>{
   let polls=0;
   const status={textContent:''};
