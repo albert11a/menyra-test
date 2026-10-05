@@ -674,6 +674,17 @@ export function bindHeartEvents({
       operations.setLifeskinBestellZeitraum?.(target.getAttribute("data-wert"));
       return;
     }
+    // Die Chips Porosiat / Dërguar / Pranuar / Anuluar der Karte
+    // "Bestellungen" (Stand aus /dergesat).
+    if (action === "lifeskin-bestellstatus") {
+      operations.setLifeskinBestellStatus?.(target.getAttribute("data-wert"));
+      return;
+    }
+    // Posta Beki in der Akte (heart-lifeskin-dergesat.js).
+    if (action === "dergesa") {
+      await operations.dergesa?.(target.getAttribute("data-was"), target);
+      return;
+    }
     // BEFUND ODER TEXTE - umgeschaltet OHNE den Zustand anzufassen.
     //
     // Der ganze Befundbogen lebt im DOM: Eingefuegtes JSON, getippte

@@ -71,7 +71,7 @@ test("Aktualisieren liest die offene Akte vor dem inkrementellen Abgleich", asyn
   const aufrufe = [];
   const kontext = vm.createContext({
     store: { getState: () => ({ lifeskin: { status: "ready", loadedFrom: "network", offen: "fall" } }) },
-    liveStarten() {}, ndjekjaOps: { starten() {} }, lifeskinAbgleichAb: zeit,
+    liveStarten() {}, ndjekjaOps: { starten() {} }, dergesatOps: { starten() {}, abgleich() {} }, lifeskinAbgleichAb: zeit,
     lifeskinSitzungAuffrischen: async (id) => aufrufe.push(id),
     lifeskinNachholen: async () => { aufrufe.push("abgleich"); return true; }
   });

@@ -50,6 +50,8 @@ import { renderProduktkosten } from "./heart-lifeskin-kosten.js";
 import { vorschauKasten } from "./heart-lifeskin-vorschau.js";
 import { ohneSeite, ohneSeiteTief } from "../../shared/lifeskin-ohne-seite.js";
 import { renderBetreuung, renderBetreuungFall, renderFallBestellung, renderKaufweg } from "./heart-lifeskin-ndjekja-render.js";
+import { renderDergesaChip, renderPostaBeki, statusVonSitzung } from "./heart-lifeskin-dergesat-render.js";
+import { STATUS_CHIPS } from "../../shared/lifeskin-dergesat.js";
 
 // Die Platzhalter im persoenlichen Satz.
 //
@@ -791,16 +793,28 @@ const BESTELL_ZEITRAEUME = Object.freeze([
   { id: "max", label: "Max" }
 ]);
 
-function renderBestellungen(sitzungen, zeitraum = "heute") {
+// DER STAND JEDER BESTELLUNG (05.10., Inhaber): dieselben vier Chips wie
+// auf /dergesat - Porosiat, Dërguar, Pranuar, Anuluar. Jede Bestellung
+// steht in genau einem davon (statusVonSitzung) und traegt ihren Stand
+// als kleinen Chip unter dem Namen, mit der Posta-Beki-Nummer.
+export function renderBestellungen(sitzungen, zeitraum = "heute", zustand = {}) {
   const alle = (sitzungen || []).filter((s) => s.hatBestellt);
-  const gewaehlt = bestellungenImZeitraum(alle, zeitraum);
-  // OHNE Zahl an den Chips: Mit ihr brechen vier Chips auf einem Telefon in
-  // zwei Reihen um, und wie viele es sind, steht ohnehin in der Liste
-  // darunter.
+  const imZeitraumListe = bestellungenImZeitraum(alle, zeitraum);
+  const stand = new Map(imZeitraumListe.map((s) => [s.id, statusVonSitzung(s, zustand)]));
+  const statusWahl = STATUS_CHIPS.some((c) => c.id === zustand.bestellStatus) ? zustand.bestellStatus : "porosi";
+  const gewaehlt = imZeitraumListe.filter((s) => stand.get(s.id) === statusWahl);
+  // OHNE Zahl an den Zeitraum-Chips: Mit ihr brechen vier Chips auf einem
+  // Telefon in zwei Reihen um, und wie viele es sind, steht ohnehin in der
+  // Liste darunter. Die Stand-Chips tragen ihre Zahl - in festen vier
+  // Spalten (wie die Chips der Karte "Shop").
   const chips = renderChips(BESTELL_ZEITRAEUME, zeitraum, "lifeskin-bestellzeitraum");
+  const statusChips = renderChipSeiten(STATUS_CHIPS.map((c) => ({
+    id: c.id, label: c.label, anzahl: imZeitraumListe.filter((s) => stand.get(s.id) === c.id).length
+  })), statusWahl, "lifeskin-bestellstatus");
 
   const zeitraumWort = (BESTELL_ZEITRAEUME.find((z) => z.id === zeitraum) || BESTELL_ZEITRAEUME[0]).label;
-  const zahl = `${gewaehlt.length} · ${zeitraumWort}`;
+  const statusWort = (STATUS_CHIPS.find((c) => c.id === statusWahl) || STATUS_CHIPS[0]).label;
+  const zahl = `${gewaehlt.length} ${statusWort} · ${zeitraumWort}`;
   if (!alle.length) {
     return alsKlapp(leererBlock("Bestellungen", "Noch keine Bestellung."), "bestellungen", { zahl: "keine" });
   }
@@ -812,10 +826,11 @@ function renderBestellungen(sitzungen, zeitraum = "heute") {
       <span class="heart-lifeskin-zeile__leib">
         <b>${escapeHtml(s.address?.name || s.name || "—")}</b>
         <small>${escapeHtml([s.address?.strasse, s.address?.ort].filter(Boolean).join(", "))}</small>
+        <span class="heart-dergesa-chips">${renderDergesaChip(stand.get(s.id), (zustand.dergesat || {})[s.id] || null)}</span>
       </span>
       <span class="heart-lifeskin-zeile__wert">${escapeHtml(euro(s.order?.total))}</span>
       <span class="heart-lifeskin-marke ${s.order?.still ? "heart-lifeskin-marke--offen" : "heart-lifeskin-marke--neu"}">${
-        escapeHtml(s.order?.still ? "still · Test?" : ({ bestaetigt: "bestätigt" })[s.order?.status] || s.order?.status || "neu")}</span>
+        escapeHtml(s.order?.still ? "still · Test?" : ({ bestaetigt: "bestätigt", storniert: "storniert" })[s.order?.status] || s.order?.status || "neu")}</span>
     </button>`).join("") + (gewaehlt.length > 300
     ? `<p class="heart-lifeskin-leer">+ ${gewaehlt.length - 300} ältere – kleineren Zeitraum wählen.</p>` : "");
 
@@ -823,9 +838,10 @@ function renderBestellungen(sitzungen, zeitraum = "heute") {
     <section class="heart-lifeskin-block">
       <h3 class="heart-lifeskin-block__titel">Bestellungen</h3>
       ${chips}
+      ${statusChips}
       ${zeilen ? `<div class="heart-lifeskin-zeilen">${zeilen}</div>`
-        : `<p class="heart-lifeskin-leer">In diesem Zeitraum keine Bestellung.</p>`}
-    </section>`, "bestellungen", { zahl, ton: gewaehlt.length ? "offen" : "" });
+        : `<p class="heart-lifeskin-leer">In diesem Zeitraum keine Bestellung unter „${escapeHtml(statusWort)}“.</p>`}
+    </section>`, "bestellungen", { zahl, ton: gewaehlt.length && statusWahl === "porosi" ? "offen" : "" });
 }
 
 // NACHFASSEN (30.09., Inhaber): JEDER WARENKORB, JEDE KASSE - SOFORT.
@@ -2421,7 +2437,8 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
         ${sitzung.order ? `<p class="heart-fall-zeile"><b>${escapeHtml(euro(sitzung.order.total))}</b> · ${escapeHtml(sitzung.order.orderId || "")} · ${escapeHtml(sitzung.order.payment || "")} · ${escapeHtml(sitzung.order.status || "")}</p>` : ""}
         ${sitzung.address ? `<div class="heart-fall-anschrift">
           ${kopierWert([sitzung.address.name, sitzung.address.strasse, [sitzung.address.plz, sitzung.address.ort].filter(Boolean).join(" "), sitzung.address.telefon].filter(Boolean).join(", "), "Anschrift")}
-        </div>` : ""}`, { meta: sitzung.order ? escapeHtml(euro(sitzung.order.total)) : "begonnen", stand: sitzung.order ? "voll" : "fehlt" }) : ""}
+        </div>` : ""}
+        ${renderPostaBeki(sitzung, zustand)}`, { meta: sitzung.order ? `${escapeHtml(euro(sitzung.order.total))} · ${escapeHtml((STATUS_CHIPS.find((c) => c.id === statusVonSitzung(sitzung, zustand)) || STATUS_CHIPS[0]).njejes)}` : "begonnen", stand: sitzung.order ? "voll" : "fehlt" }) : ""}
 
       ${renderFallBestellung(sitzung, bericht, zustand)}
 
@@ -3695,7 +3712,7 @@ function renderLifeskinBeide(zustand) {
       ${renderLiveKarte(live?.shop, "beide-shop", "Live · Shop")}
       ${renderLiveKarte(live?.analyse, "beide-analyse", "Live · Analyse")}`}
       ${renderKachelnBeide(zahlen, zeitraum)}
-      ${renderBestellungen(alle, zustand.bestellZeitraum || "heute")}`;
+      ${renderBestellungen(alle, zustand.bestellZeitraum || "heute", zustand)}`;
 }
 
 // DIE ACHT KACHELN BEIDER WEGE - zwei Spalten, die man von oben nach
@@ -3847,7 +3864,7 @@ function renderWegUebersicht(zustand, weg, offenerWeg = weg) {
         zustand.vorschau || {}, { auswahl: zustand.auswahl ?? null, auswahlLoeschen: !!zustand.auswahlLoeschen, skinreact: weg === "lifeskinshop",
           perputhjaModus: zustand.perputhjaModus, skinreactAuto: zustand.skinreactAuto || {} })}
       ${renderBetreuung(zustandWeg)}
-      ${renderBestellungen(alleDesWegs, zustand.bestellZeitraum || "heute")}
+      ${renderBestellungen(alleDesWegs, zustand.bestellZeitraum || "heute", zustand)}
       ${renderNachfassen(alleDesWegs)}
       ${renderMedienReaktionen(zustand)}
       ${renderProduktkosten(zustand, shopSetetListe(zustand))}

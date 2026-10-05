@@ -1,0 +1,260 @@
+// DIE REGELN VON /dergesat - gegen den Emulator. Riba (eingetragen in
+// dergesatZugang/riba) liest und geht nur vorwaerts; Barazuar, Riba
+// ausbezahlt, Posta Beki und Zuruecknehmen bleiben bei Heart. Ein
+// fremdes Konto sieht nichts.
+
+import test, { after, before, beforeEach } from "node:test";
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  assertFails,
+  assertSucceeds,
+  initializeTestEnvironment,
+} from "@firebase/rules-unit-testing";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+} from "firebase/firestore";
+
+import { dergesaLesen, ndryshimi } from "../../shared/lifeskin-dergesat.js";
+
+const repoRoot = dirname(
+  fileURLToPath(new URL("../../package.json", import.meta.url)),
+);
+const projectId = `${process.env.MNYRA_RULES_PROJECT_ID || "mnyra-local"}-dergesat`;
+const firestoreHost = process.env.FIRESTORE_EMULATOR_HOST || "127.0.0.1:8080";
+const [host, portText] = firestoreHost.split(":");
+const POROSI = "lifeskin/lifeskin/dergesat/fall1";
+const ZUGANG = "lifeskin/lifeskin/dergesatZugang/riba";
+const T = "2026-10-05T10:00:00.000Z";
+
+let testEnv;
+before(async () => {
+  const rules = await readFile(resolve(repoRoot, "firestore.rules"), "utf8");
+  testEnv = await initializeTestEnvironment({
+    projectId,
+    firestore: { host, port: Number(portText || 8080), rules },
+  });
+});
+beforeEach(async () => {
+  await testEnv.clearFirestore();
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    await setDoc(doc(db, "superadmins/heart-demo"), { active: true });
+    await setDoc(doc(db, ZUGANG), { uid: "riba-uid", perdoruesi: "kadrija" });
+    await setDoc(doc(db, POROSI), {
+      postaBeki: "PB-1",
+      kodi: "A1",
+      produkte: ["Acne Gel"],
+      cmimi: 39,
+      statusi: "porosi",
+      createdAt: T,
+      updatedAt: T,
+      nga: "heart",
+    });
+  });
+});
+after(async () => {
+  await testEnv?.cleanup();
+});
+
+const heart = () =>
+  testEnv
+    .authenticatedContext("heart-demo", {
+      email: "heart.local@example.test",
+      email_verified: true,
+    })
+    .firestore();
+const riba = () =>
+  testEnv
+    .authenticatedContext("riba-uid", { email: "kadrija@dergesat.mnyra.com" })
+    .firestore();
+const fremd = () =>
+  testEnv
+    .authenticatedContext("jemand", { email: "jemand@example.test" })
+    .firestore();
+const gast = () => testEnv.unauthenticatedContext().firestore();
+
+async function stand() {
+  let d = null;
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    d = (await getDoc(doc(ctx.firestore(), POROSI))).data();
+  });
+  return dergesaLesen(d, "fall1");
+}
+
+async function setze(felder) {
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await updateDoc(doc(ctx.firestore(), POROSI), felder);
+  });
+}
+
+test("Riba und Heart lesen die Liste, Fremde und Gaeste nicht", async () => {
+  await assertSucceeds(
+    getDocs(collection(riba(), "lifeskin/lifeskin/dergesat")),
+  );
+  await assertSucceeds(
+    getDocs(collection(heart(), "lifeskin/lifeskin/dergesat")),
+  );
+  await assertFails(getDocs(collection(fremd(), "lifeskin/lifeskin/dergesat")));
+  await assertFails(getDocs(collection(gast(), "lifeskin/lifeskin/dergesat")));
+  await assertFails(getDoc(doc(fremd(), POROSI)));
+});
+
+test("Zugang: Riba liest den eigenen Eintrag, Fremde nicht, schreiben nur Heart", async () => {
+  await assertSucceeds(getDoc(doc(riba(), ZUGANG)));
+  await assertSucceeds(getDoc(doc(heart(), ZUGANG)));
+  await assertFails(getDoc(doc(fremd(), ZUGANG)));
+  await assertFails(setDoc(doc(fremd(), ZUGANG), { uid: "jemand" }));
+  await assertFails(setDoc(doc(riba(), ZUGANG), { uid: "riba-uid", x: 1 }));
+  await assertSucceeds(setDoc(doc(heart(), ZUGANG), { uid: "riba-uid" }));
+});
+
+test("Riba: Te Beki, dann Pranuar - mit genau den Feldern aus shared/lifeskin-dergesat.js", async () => {
+  await assertSucceeds(
+    updateDoc(
+      doc(riba(), POROSI),
+      ndryshimi(await stand(), "derguar", { roli: "riba", jetzt: T }),
+    ),
+  );
+  assert.equal((await stand()).statusi, "derguar");
+  await assertSucceeds(
+    updateDoc(
+      doc(riba(), POROSI),
+      ndryshimi(await stand(), "pranuar", { roli: "riba", jetzt: T }),
+    ),
+  );
+  assert.equal((await stand()).statusi, "pranuar");
+});
+
+test("Riba: Dërguar -> Anuluar geht", async () => {
+  await setze({ statusi: "derguar", derguarAt: T });
+  await assertSucceeds(
+    updateDoc(
+      doc(riba(), POROSI),
+      ndryshimi(await stand(), "anuluar", { roli: "riba", jetzt: T }),
+    ),
+  );
+});
+
+test("Riba darf nicht springen, zuruecknehmen, abrechnen oder Daten aendern", async () => {
+  const r = doc(riba(), POROSI);
+  // Porosi direkt auf Pranuar oder Anuluar.
+  await assertFails(
+    updateDoc(r, {
+      statusi: "pranuar",
+      pranuarAt: T,
+      updatedAt: T,
+      nga: "riba",
+    }),
+  );
+  await assertFails(
+    updateDoc(r, {
+      statusi: "anuluar",
+      anuluarAt: T,
+      updatedAt: T,
+      nga: "riba",
+    }),
+  );
+  // Te Beki, aber mit geaendertem Preis oder Posta Beki.
+  await assertFails(
+    updateDoc(r, {
+      statusi: "derguar",
+      derguarAt: T,
+      updatedAt: T,
+      nga: "riba",
+      cmimi: 1,
+    }),
+  );
+  await assertFails(
+    updateDoc(r, {
+      statusi: "derguar",
+      derguarAt: T,
+      updatedAt: T,
+      nga: "riba",
+      postaBeki: "X",
+    }),
+  );
+  // Ohne "nga: riba".
+  await assertFails(
+    updateDoc(r, {
+      statusi: "derguar",
+      derguarAt: T,
+      updatedAt: T,
+      nga: "heart",
+    }),
+  );
+  // Pranuar zurueck, Barazuar, ausbezahlt.
+  await setze({ statusi: "pranuar", derguarAt: T, pranuarAt: T });
+  await assertFails(
+    updateDoc(r, { statusi: "derguar", updatedAt: T, nga: "riba" }),
+  );
+  await assertFails(updateDoc(r, { barazuarAt: T, updatedAt: T, nga: "riba" }));
+  await assertFails(
+    updateDoc(r, { ribaPaguarAt: T, updatedAt: T, nga: "riba" }),
+  );
+  // Anlegen und loeschen.
+  await assertFails(
+    setDoc(doc(riba(), "lifeskin/lifeskin/dergesat/neu"), {
+      statusi: "porosi",
+    }),
+  );
+});
+
+test("Ein Konto mit Ribas Adresse, aber ohne Eintrag, ist nicht Riba", async () => {
+  const falsch = testEnv
+    .authenticatedContext("anderes-konto", {
+      email: "kadrija@dergesat.mnyra.com",
+    })
+    .firestore();
+  await assertFails(getDoc(doc(falsch, POROSI)));
+  await assertFails(
+    updateDoc(doc(falsch, POROSI), {
+      statusi: "derguar",
+      derguarAt: T,
+      updatedAt: T,
+      nga: "riba",
+    }),
+  );
+});
+
+test("Heart legt an, aendert Posta Beki, rechnet ab und nimmt zurueck", async () => {
+  const h = doc(heart(), "lifeskin/lifeskin/dergesat/fall2");
+  await assertSucceeds(
+    setDoc(h, {
+      postaBeki: "PB-2",
+      statusi: "porosi",
+      cmimi: 39,
+      produkte: [],
+      createdAt: T,
+      updatedAt: T,
+      nga: "heart",
+    }),
+  );
+  await assertSucceeds(
+    updateDoc(h, { postaBeki: "PB-2b", updatedAt: T, nga: "heart" }),
+  );
+  await setze({ statusi: "pranuar", derguarAt: T, pranuarAt: T });
+  await assertSucceeds(
+    updateDoc(doc(heart(), POROSI), {
+      barazuarAt: T,
+      ribaPaguarAt: T,
+      updatedAt: T,
+      nga: "heart",
+    }),
+  );
+  await setze({ statusi: "derguar", barazuarAt: "", ribaPaguarAt: "" });
+  await assertSucceeds(
+    updateDoc(
+      doc(heart(), POROSI),
+      ndryshimi(await stand(), "porosi", { roli: "heart", jetzt: T }),
+    ),
+  );
+  assert.equal((await stand()).statusi, "porosi");
+});

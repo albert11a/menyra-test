@@ -1450,6 +1450,58 @@ service cloud.firestore {
       match /ndjekjaIntern/{kennung} {
         allow read, write: if isCeoActor();
       }
+
+      // DERGESAT (/dergesat, Versand ueber Posta Beki - Auftrag 05.10.).
+      //
+      // Je Bestellung ein Dokument (Kennung = Sitzung). Darin nur, was zum
+      // Versand gehoert: Posta-Beki-Nummer, Produkte, Preis, Stand. KEINE
+      // Anschrift, keine Nummer - die bleiben in der Sitzung beim CEO-Konto.
+      //
+      // Anlegen und alles Uebrige (Posta Beki, Barazuar, Riba ausbezahlt,
+      // Zuruecknehmen) darf nur Heart. Riba darf lesen und genau drei
+      // Schritte gehen: Porosi -> Dërguar, Dërguar -> Pranuar oder Anuluar
+      // (shared/lifeskin-dergesat.js, KALIMET_RIBA).
+      //
+      // Wer Riba ist, steht in dergesatZugang/riba (uid) - eingetragen von
+      // Heart. Ein Konto, das nur die Adresse kennt, ist damit noch nicht
+      // Riba.
+      function dergesaRiba() {
+        let zugang = /databases/$(database)/documents/lifeskin/$(tenantId)/dergesatZugang/riba;
+        return signedIn() && exists(zugang) && get(zugang).data.uid == request.auth.uid;
+      }
+
+      function dergesaZeitOk(wert) {
+        return wert is string && wert.size() >= 10 && wert.size() <= 40;
+      }
+
+      function dergesaRibaNdryshon() {
+        let neu = request.resource.data;
+        let alt = resource.data;
+        let keys = neu.diff(alt).affectedKeys();
+        return neu.nga == "riba"
+          && dergesaZeitOk(neu.updatedAt)
+          && ((alt.statusi == "porosi" && neu.statusi == "derguar"
+                && keys.hasOnly(["statusi", "derguarAt", "updatedAt", "nga"])
+                && dergesaZeitOk(neu.derguarAt))
+            || (alt.statusi == "derguar" && neu.statusi == "pranuar"
+                && keys.hasOnly(["statusi", "pranuarAt", "updatedAt", "nga"])
+                && dergesaZeitOk(neu.pranuarAt))
+            || (alt.statusi == "derguar" && neu.statusi == "anuluar"
+                && keys.hasOnly(["statusi", "anuluarAt", "updatedAt", "nga"])
+                && dergesaZeitOk(neu.anuluarAt)));
+      }
+
+      match /dergesat/{kennung} {
+        allow read: if isCeoActor() || dergesaRiba();
+        allow create, delete: if isCeoActor();
+        allow update: if isCeoActor() || (dergesaRiba() && dergesaRibaNdryshon());
+      }
+
+      // Wer Riba ist (uid). Lesen darf Riba nur den eigenen Eintrag.
+      match /dergesatZugang/{zugangId} {
+        allow read: if isCeoActor() || (signedIn() && resource.data.uid == request.auth.uid);
+        allow write: if isCeoActor();
+      }
     }
 
     match /restaurants/{restaurantId} {

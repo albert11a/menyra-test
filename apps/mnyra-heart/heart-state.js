@@ -126,6 +126,13 @@ export function createHeartLifeskinInitialState() {
     // man auch dann sehen will, wenn die Zahlen darueber auf "Heute" stehen -
     // eine Bestellung von vorgestern ist noch zu packen.
     bestellZeitraum: "heute",
+    // Welcher Stand der Bestellungen gezeigt wird - dieselben Chips wie auf
+    // /dergesat (shared/lifeskin-dergesat.js).
+    bestellStatus: "porosi",
+    // Die Bestellungen auf /dergesat (Kennung -> Eintrag), live.
+    dergesat: {},
+    dergesatStatus: "",
+    dergesatLaeuft: "",
     // Ein kleines Vorschaubild je Sitzung, fuer die Liste. Die grossen
     // Aufnahmen liegen in einer Untersammlung und werden erst beim Oeffnen
     // geholt; hier steht nur das erste Bild, auf 160 Punkte verkleinert.

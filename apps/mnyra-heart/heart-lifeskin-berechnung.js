@@ -336,6 +336,10 @@ export function normalisiere(id, rohdaten) {
     linkKopiert: daten.linkKopiert === true,
     // Die drei Zustaende, um die es im Bericht geht.
     hatBestellt: Boolean(bestellung?.orderId),
+    // Storniert (in Heart oder auf /dergesat "Anuluar"): bleibt als
+    // Bestellung sichtbar (Chip "Anuluar"), zaehlt aber in keinem Umsatz
+    // und in keiner Zahl der Bestellungen mehr (Wunsch Inhaber 05.10.).
+    storniert: bestellung?.status === "storniert",
     hatAnschrift: Boolean(daten.address && (daten.address.strasse || daten.address.ort))
       || Object.values(daten.timings?.ereignisse || {}).some((tag) => Boolean(tag.hatAnschrift)),
     hatTelefon: Boolean(daten.phone),
@@ -1236,7 +1240,7 @@ export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS, zeitraum = "" 
   // "Nachfassen" gehoert sie nicht mehr (siehe istAbbrecher).
   const kontakte = sitzungen.filter((s) => s.hatTelefon && !s.hatBestellt);
 
-  const umsatz = (liste) => liste.reduce((summe, s) => summe + alsZahl(s.order?.total), 0);
+  const umsatz = (liste) => liste.reduce((summe, s) => summe + (s.storniert ? 0 : alsZahl(s.order?.total)), 0);
 
   // Sitzungen, denen jedes Datum fehlt. Sie zaehlen in keiner Tageszahl mit
   // und sollen deshalb wenigstens benannt sein - eine Zahl, die lautlos
@@ -1297,7 +1301,7 @@ export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS, zeitraum = "" 
     quotenBasis: woche.length,
     umsatzHeute: umsatz(bestellungenImZeitraum(sitzungen, zeitraum || "heute")),
     umsatzWoche: umsatz(bestellungenImZeitraum(sitzungen, zeitraum || "woche")),
-    bestellungenHeute: bestellungenImZeitraum(sitzungen, zeitraum || "heute").length,
+    bestellungenHeute: bestellungenImZeitraum(sitzungen, zeitraum || "heute").filter((s) => !s.storniert).length,
     abbrecher,
     kontakte,
     offenerBetrag: abbrecher.length * setPreis,
@@ -1318,7 +1322,7 @@ export function baueHerkunft(sitzungen) {
     const eintrag = nachKampagne.get(schluessel) || { kampagne: schluessel, sitzungen: 0, abgeschlossen: 0, bestellt: 0, umsatz: 0 };
     eintrag.sitzungen += 1;
     if (istAnalyse(sitzung)) eintrag.abgeschlossen += 1;
-    if (sitzung.hatBestellt) { eintrag.bestellt += 1; eintrag.umsatz += alsZahl(sitzung.order?.total); }
+    if (sitzung.hatBestellt && !sitzung.storniert) { eintrag.bestellt += 1; eintrag.umsatz += alsZahl(sitzung.order?.total); }
     nachKampagne.set(schluessel, eintrag);
   }
   return Array.from(nachKampagne.values())
@@ -1358,7 +1362,7 @@ export function baueTagesverlauf(sitzungen, tage = 30) {
     const eintrag = nachTag.get(sitzung.tag);
     if (eintrag && istAnalyse(sitzung)) eintrag.analysen += 1;
     const bestellt = nachTag.get(bestellTag(sitzung));
-    if (bestellt && sitzung.hatBestellt) { bestellt.bestellungen += 1; bestellt.umsatz += alsZahl(sitzung.order?.total); }
+    if (bestellt && sitzung.hatBestellt && !sitzung.storniert) { bestellt.bestellungen += 1; bestellt.umsatz += alsZahl(sitzung.order?.total); }
   }
   return Array.from(nachTag.values());
 }

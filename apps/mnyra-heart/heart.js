@@ -58,6 +58,7 @@ import {
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
 import { createNdjekjaOperationen } from "./heart-lifeskin-ndjekja.js";
+import { createDergesatOperationen } from "./heart-lifeskin-dergesat.js";
 import { ladeLifeskin, ladeLifeskinSeit, ladeLifeskinSitzung, horcheLive, ladeFotos, ladeErstesFoto, gibSkinreactFrei, gibSkinreactAutoFrei, stoppeSkinreactAuto, loescheAlleSitzungen, loescheSitzung, setzeBerichtMarke, speichereProdukt, loescheProdukt, gibBerichtFrei,
   ladeBericht, setzeVersand, speichereAnbieter,
   ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX,
@@ -133,7 +134,15 @@ const actions = store.actions;
 // Die Begleitung nach dem Kauf (heart-lifeskin-ndjekja.js) - nur mit
 // Schalter (?ndjekja=1), solange sie nicht im Verkauf ist.
 const ndjekjaOps = createNdjekjaOperationen({
-  store, actions, setToast: (...a) => setToast(...a), berichteNachlesen: (ids) => lifeskinBerichteNachlesen(ids)
+  store, actions, setToast: (...a) => setToast(...a), berichteNachlesen: (ids) => lifeskinBerichteNachlesen(ids),
+  nachStorno: (id) => dergesatOps.nachStorno(id)
+});
+// Dergesat (/dergesat, Versand ueber Posta Beki): Posta Beki in der Akte,
+// Stand live aus /dergesat, Abgleich mit Therapieseite und Begleitung.
+const dergesatOps = createDergesatOperationen({
+  store, actions, setToast: (...a) => setToast(...a),
+  berichteNachlesen: (ids) => lifeskinBerichteNachlesen(ids),
+  sitzungAuffrischen: (id) => lifeskinSitzungAuffrischen(id)
 });
 const initialRouteView = resolveHeartRouteView();
 // Ohne ausdrueckliche Ansicht in der Adresse oeffnet Heart mit Lifeskin -
@@ -1030,6 +1039,7 @@ function liveStarten() {
 // niemand sieht.
 export function liveAnhalten() {
   ndjekjaOps.stoppen();
+  dergesatOps.stoppen();
   if (liveAbmelden) { try { liveAbmelden(); } catch { /* egal */ } liveAbmelden = null; }
   if (liveTakt) { globalThis.clearInterval(liveTakt); liveTakt = null; }
   liveSitzungen = [];
@@ -1115,6 +1125,7 @@ async function ladeLifeskinBereich({ force = false, voll = false } = {}) {
   liveStarten();
   if (store.getState().lifeskin?.ndjekja?.an && force) ndjekjaOps.laden();
   ndjekjaOps.starten();
+  dergesatOps.starten();
   const vorher = store.getState().lifeskin || {};
   if (force && vorher.offen) await lifeskinSitzungAuffrischen(vorher.offen);
   if (!force && vorher.status === "ready" && vorher.loadedFrom === "network") return;
@@ -1147,6 +1158,7 @@ async function ladeLifeskinBereich({ force = false, voll = false } = {}) {
     actions.setLifeskinData(frisch, "network");
     lifeskinAbgleichAb = new Date(ladeBeginn - ABGLEICH_LUFT_MS).toISOString();
     liveRechnen();
+    dergesatOps.abgleich();
     // "Reaktionen" war beim letzten Mal offen: gleich die Kommentare dazu.
     if (klappOffen("reaktionen")) medienKommentareLaden();
     if (klappOffen("produktkosten")) produktkostenLaden();
@@ -3797,6 +3809,7 @@ async function setzeLifeskinVersand(sitzungId, stand) {
     actions.patchLifeskin({ berichtStatus: "" });
     await lifeskinBerichteNachlesen([id]);
     ndjekjaOps.versandGemeldet(id, stand);
+    dergesatOps.nachVersand(id, stand);
     setToast("Versand", stand === "versandt" ? "Als versendet gemeldet." : "Als zugestellt gemeldet.", "success");
   } catch (fehler) {
     actions.patchLifeskin({ berichtStatus: "" });
@@ -4237,6 +4250,9 @@ const operations = {
   setLifeskinBestellZeitraum(id) {
     actions.patchLifeskin({ bestellZeitraum: String(id || "heute").trim() });
   },
+  setLifeskinBestellStatus(id) {
+    actions.patchLifeskin({ bestellStatus: String(id || "porosi").trim() });
+  },
   markiereLifeskinSitzung(id, marken) { return markiereLifeskinSitzung(id, marken); },
   lifeskinLinkKopieren(id) { return lifeskinLinkKopieren(id); },
   lifeskinTextKopieren(wert, was) { return lifeskinTextKopieren(wert, was); },
@@ -4350,6 +4366,7 @@ const operations = {
   lifeskinProduktSatzNeu(id) { return lifeskinTherapieNeu(id); },
   setzeLifeskinVersand(id, stand) { return setzeLifeskinVersand(id, stand); },
   ndjekja(was, knopf) { return ndjekjaOps.aktion(was, knopf); },
+  dergesa(was, knopf) { return dergesatOps.aktion(was, knopf); },
   openView(viewKey) {
     let safeViewKey = String(viewKey || "").trim() || "dashboard";
     // LIFESKIN UND LIFESKIN 2: dieselbe Ansicht, ein anderer Weg

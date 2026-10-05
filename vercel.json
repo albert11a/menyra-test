@@ -457,6 +457,14 @@
       "destination": "/apps/lifeskin-verkauf/index.html"
     },
     {
+      "source": "/dergesat",
+      "destination": "/apps/lifeskin-dergesat/index.html"
+    },
+    {
+      "source": "/dergesat/",
+      "destination": "/apps/lifeskin-dergesat/index.html"
+    },
+    {
       "source": "/lifeskinshop",
       "destination": "/apps/lifeskin-shop/index.html"
     },

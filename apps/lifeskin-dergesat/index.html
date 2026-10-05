@@ -1,0 +1,71 @@
+<!doctype html>
+<!-- /dergesat - VERSAND UEBER POSTA BEKI (Auftrag Inhaber 05.10.).
+     Riba (Benutzer "kadrija") und der Inhaber (Heart-Zugang). Aufbau:
+     dergesat.js, Zeichnen: dergesat-pamja.js, Regeln: firestore.rules
+     ("dergesat"). Kein Pixel, keine Messung - eine Arbeitsliste. -->
+<html lang="sq">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#f6f5f1">
+  <title>Dërgesat · LifeSkin</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/apps/lifeskin-dergesat/dergesat.css">
+  <script type="module" src="/apps/lifeskin-dergesat/dergesat.js"></script>
+</head>
+<body>
+  <header class="dg-kreu">
+    <span class="dg-marke">LIFESKIN <small>Dërgesat</small></span>
+    <span class="dg-kreu__djathtas">
+      <span class="dg-kush" id="dg-kush"></span>
+      <button type="button" class="dg-dil" id="dg-dil" hidden>Dil</button>
+    </span>
+  </header>
+
+  <main class="dg-faqe">
+    <p class="dg-mesazh" id="dg-mesazh" role="status" aria-live="polite" hidden></p>
+
+    <section class="dg-hyrja" id="dg-hyrja" hidden>
+      <h1>Hyrja</h1>
+      <form id="dg-forma" autocomplete="on" novalidate>
+        <label>Përdoruesi
+          <input name="perdoruesi" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+        </label>
+        <label>Fjalëkalimi
+          <input name="fjalekalimi" type="password" autocomplete="current-password" required>
+        </label>
+        <p class="dg-gabim" id="dg-gabim" hidden></p>
+        <button type="submit" class="dg-buton dg-buton--kryesor dg-buton--gjere">Hyr</button>
+      </form>
+    </section>
+
+    <p class="dg-bosh" id="dg-ngarkim" hidden>Po hapet…</p>
+
+    <section class="dg-hyrja" id="dg-pa-qasje" hidden>
+      <h1>Pa qasje</h1>
+      <p>Kjo llogari nuk ka qasje në dërgesat.</p>
+      <button type="button" class="dg-buton dg-buton--gjere" id="dg-pa-qasje-dil">Dil</button>
+    </section>
+
+    <div id="dg-faqja" hidden>
+      <section class="dg-karte dg-karte--lista">
+        <div class="dg-chips" id="dg-chips" role="group" aria-label="Statusi"></div>
+        <div class="dg-lista" id="dg-lista"></div>
+      </section>
+
+      <div class="dg-kartat" id="dg-kartat"></div>
+
+      <section class="dg-karte" id="dg-riba" hidden>
+        <h2>Hyrja e Ribës</h2>
+        <p class="dg-karte__pak" id="dg-riba-statusi"></p>
+        <form id="dg-riba-forma" class="dg-riba-forma" autocomplete="off">
+          <input name="fjalekalimi" type="password" autocomplete="new-password" placeholder="Fjalëkalimi për kadrija" aria-label="Fjalëkalimi për kadrija">
+          <button type="submit" class="dg-buton">Ruaj</button>
+        </form>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

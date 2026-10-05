@@ -37,7 +37,7 @@ function absenderMerken(name) {
   try { globalThis.localStorage?.setItem(ABSENDER, String(name || "").trim()); } catch { /* egal */ }
 }
 
-export function createNdjekjaOperationen({ store, actions, setToast, berichteNachlesen = async () => {} }) {
+export function createNdjekjaOperationen({ store, actions, setToast, berichteNachlesen = async () => {}, nachStorno = async () => {} }) {
   let abmelden = null;
   const stand = () => store.getState().lifeskin?.ndjekja || {};
   const setzen = (felder) => actions.patchLifeskin({ ndjekja: { ...stand(), ...felder } });
@@ -142,6 +142,7 @@ export function createNdjekjaOperationen({ store, actions, setToast, berichteNac
         if (!globalThis.confirm?.("Bestellung wirklich als storniert markieren?")) return;
         const ok = await laufen(`stornieren:${kennung}`, () => daten.bestellungStornieren({ kennung, zugang: zugangVon(kennung) }),
           { titel: "Bestellung", erfolg: "Als storniert markiert." });
+        if (ok) await nachStorno(kennung);
         if (ok) await laden();
         return;
       }

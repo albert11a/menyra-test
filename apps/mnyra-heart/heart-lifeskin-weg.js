@@ -266,7 +266,8 @@ export function baueShopWeg(sitzungen) {
   const seite = mitSkanimZeile(stufenZaehlen(liste, SHOP_SEITE), liste);
   const kauf = stufenZaehlen(liste, SHOP_KAUF);
   const kaeufe = liste.filter(istShopKauf);
-  const umsatz = kaeufe.reduce((summe, s) => summe + (Number(s?.order?.total) || 0), 0);
+  // Storniert zaehlt nicht (Wunsch Inhaber 05.10.).
+  const umsatz = kaeufe.reduce((summe, s) => summe + (s?.storniert ? 0 : (Number(s?.order?.total) || 0)), 0);
   // Was gekauft wurde: je Set, und Einzelmittel ohne Set.
   const nachSet = new Map();
   for (const s of kaeufe) {

@@ -76,6 +76,9 @@ const NON_SOCIAL_NAVIGATION_PREFIXES = [
   '/terapia',
   '/ndjekja',
   '/apps/lifeskin-verkauf',
+  // Der Versand ueber Posta Beki - eine eigene Seite, keine Social-Adresse.
+  '/dergesat',
+  '/apps/lifeskin-dergesat',
   '/120992',
   '/apps/mnyra-heart',
   '/apps/waiter',

@@ -1,0 +1,119 @@
+/* /dergesat - mobil zuerst: eine Spalte, Knoepfe mit Daumenhoehe. */
+:root {
+  --dg-bg: #f6f5f1;
+  --dg-surface: #ffffff;
+  --dg-text: #1c1b18;
+  --dg-muted: #6b6a64;
+  --dg-border: #e5e3dc;
+  --dg-accent: #1c1b18;
+  --dg-accent-text: #ffffff;
+  --dg-good: #15803d;
+  --dg-good-bg: #dcfce7;
+  --dg-bad: #b91c1c;
+  --dg-bad-bg: #fee2e2;
+  --dg-warn-bg: #fdf0d2;
+  --dg-warn: #8a5a00;
+  --dg-blue-bg: #dbe8ff;
+  --dg-blue: #1d4ed8;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--dg-bg); color: var(--dg-text);
+  font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+[hidden] { display: none !important; }
+
+.dg-kreu {
+  position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px; background: var(--dg-bg); border-bottom: 1px solid var(--dg-border);
+}
+.dg-marke { font-weight: 800; letter-spacing: .14em; font-size: 14px; }
+.dg-marke small { font-weight: 600; letter-spacing: .04em; color: var(--dg-muted); margin-left: 4px; }
+.dg-kreu__djathtas { display: flex; align-items: center; gap: 10px; }
+.dg-kush { font-size: 13px; color: var(--dg-muted); }
+.dg-dil { min-height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--dg-border); background: var(--dg-surface); color: inherit; font: inherit; font-size: 13px; font-weight: 600; }
+
+.dg-faqe { max-width: 720px; margin: 0 auto; padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); display: grid; gap: 12px; }
+#dg-faqja { display: grid; gap: 12px; }
+
+.dg-mesazh { position: sticky; top: 60px; z-index: 6; margin: 0; padding: 10px 12px; border-radius: 12px; font-weight: 600; background: var(--dg-good-bg); color: var(--dg-good); }
+.dg-mesazh[data-lloji="gabim"] { background: var(--dg-bad-bg); color: var(--dg-bad); }
+
+.dg-hyrja { background: var(--dg-surface); border: 1px solid var(--dg-border); border-radius: 16px; padding: 20px 16px; }
+.dg-hyrja h1 { margin: 0 0 12px; font-size: 22px; }
+.dg-hyrja form { display: grid; gap: 12px; }
+.dg-hyrja label { display: grid; gap: 6px; font-size: 13px; font-weight: 600; color: var(--dg-muted); }
+.dg-hyrja input, .dg-riba-forma input {
+  width: 100%; min-height: 48px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--dg-border);
+  background: #fff; color: var(--dg-text); font: inherit; font-size: 16px;
+}
+.dg-gabim { margin: 0; color: var(--dg-bad); font-weight: 600; font-size: 14px; }
+
+.dg-karte { background: var(--dg-surface); border: 1px solid var(--dg-border); border-radius: 16px; padding: 14px; min-width: 0; }
+.dg-karte h2 { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--dg-muted); }
+.dg-karte h2 small { text-transform: none; letter-spacing: 0; font-weight: 600; margin-left: 4px; }
+.dg-karte__shuma { margin: 6px 0 0; font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.dg-karte__pak { margin: 2px 0 0; font-size: 13px; color: var(--dg-muted); }
+.dg-karte--theksuar { border-color: var(--dg-good); }
+.dg-karte .dg-buton--gjere { margin-top: 12px; }
+.dg-kartat { display: grid; gap: 12px; }
+
+.dg-chips { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.dg-chip {
+  display: grid; justify-items: center; gap: 2px; min-width: 0; min-height: 52px; padding: 6px 4px; border-radius: 12px;
+  border: 1px solid var(--dg-border); background: var(--dg-bg); color: var(--dg-text); font: inherit; cursor: pointer;
+}
+.dg-chip span { font-size: 12.5px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dg-chip b { font-size: 16px; font-variant-numeric: tabular-nums; }
+.dg-chip--aktiv { background: var(--dg-accent); border-color: var(--dg-accent); color: var(--dg-accent-text); }
+
+.dg-lista { display: grid; gap: 8px; margin-top: 12px; }
+.dg-bosh { margin: 8px 0; color: var(--dg-muted); text-align: center; }
+
+/* Eine Bestellung: links Posta Beki, daneben die Produkte, rechts die Knoepfe. */
+.dg-rresht {
+  display: grid; grid-template-columns: minmax(78px, 28%) minmax(0, 1fr) auto; gap: 10px; align-items: start;
+  padding: 10px; border-radius: 12px; border: 1px solid var(--dg-border); background: var(--dg-bg);
+}
+.dg-beki { display: grid; gap: 2px; min-width: 0; }
+.dg-beki small { font-size: 11px; color: var(--dg-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.dg-beki b { font-size: 16px; overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; }
+.dg-produkte { min-width: 0; display: grid; gap: 4px; }
+.dg-produkte ul { margin: 0; padding: 0 0 0 16px; font-size: 14px; }
+.dg-produkte li { overflow-wrap: anywhere; }
+.dg-bosh-produkte { margin: 0; font-size: 13px; color: var(--dg-muted); }
+.dg-meta, .dg-koha { font-size: 12px; color: var(--dg-muted); }
+.dg-etiketat { display: flex; flex-wrap: wrap; gap: 4px; }
+.dg-etikete { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.dg-etikete--mire { background: var(--dg-good-bg); color: var(--dg-good); }
+.dg-butonat { display: grid; gap: 6px; justify-items: stretch; min-width: 96px; }
+
+.dg-buton {
+  min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--dg-border); background: var(--dg-surface);
+  color: var(--dg-text); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  touch-action: manipulation;
+}
+.dg-buton:disabled { opacity: .5; cursor: default; }
+.dg-buton--kryesor { background: var(--dg-accent); border-color: var(--dg-accent); color: var(--dg-accent-text); }
+.dg-buton--mire { background: var(--dg-good); border-color: var(--dg-good); color: #fff; }
+.dg-buton--keq { background: var(--dg-bad-bg); border-color: var(--dg-bad-bg); color: var(--dg-bad); }
+.dg-buton--lehte { min-height: 36px; font-size: 13px; font-weight: 600; color: var(--dg-muted); background: transparent; }
+.dg-buton--gjere { width: 100%; white-space: normal; }
+
+.dg-ndarja, .dg-historia { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.dg-ndarja li, .dg-historia li {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: baseline;
+  font-size: 13.5px; padding-top: 6px; border-top: 1px solid var(--dg-border);
+}
+.dg-ndarja li span:nth-child(2), .dg-historia li span:nth-child(2) { color: var(--dg-muted); }
+.dg-ndarja b, .dg-historia b { font-variant-numeric: tabular-nums; }
+
+.dg-riba-forma { display: flex; gap: 8px; margin-top: 10px; }
+.dg-riba-forma input { flex: 1 1 auto; min-width: 0; }
+
+@media (min-width: 720px) {
+  .dg-kartat { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

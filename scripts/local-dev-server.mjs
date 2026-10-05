@@ -151,6 +151,8 @@ function rewritePath(pathname = "/") {
   // Der Kundenbereich der Begleitung (vercel.json: /ndjekja). Der Zugang
   // steht im Fragment (#...) und kommt nie beim Server an.
   if (path === "/ndjekja") return "/apps/lifeskin-verkauf/ndjekja.html";
+  // Der Versand ueber Posta Beki (vercel.json: /dergesat).
+  if (path === "/dergesat") return "/apps/lifeskin-dergesat/index.html";
   if (path === "/lifeskinlifeskintesttest") return BERICHT_INDEX;
   // Die Vorlage: die fruehere Hauptanalyse, aufbewahrt unter eigener
   // Adresse, damit ihre Gestaltung nicht verloren geht.

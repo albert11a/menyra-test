@@ -135,6 +135,8 @@ const OHNE_KOMMENTARE = [
   "apps/lifeskin-bericht",
   // Die Verkaufsvorlage unter /120992.
   "apps/lifeskin-verkauf",
+  // Der Versand ueber Posta Beki unter /dergesat.
+  "apps/lifeskin-dergesat",
   "apps/mnyra-heart",
   "shared"
 ];
