@@ -59,7 +59,19 @@ body {
 .dg-karte__pak { margin: 2px 0 0; font-size: 13px; color: var(--dg-muted); }
 .dg-karte--theksuar { border-color: var(--dg-good); }
 .dg-karte .dg-buton--gjere { margin-top: 12px; }
-.dg-kartat { display: grid; gap: 12px; }
+/* Die Karten zum Wischen, rechts/links (05.10.): je Karte fast eine
+   Bildschirmbreite, die naechste schaut am Rand hervor. */
+.dg-kartat {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 86%; gap: 10px;
+  overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain;
+  margin: 0 -16px; padding: 0 16px 4px; scroll-padding: 0 16px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.dg-kartat::-webkit-scrollbar { display: none; }
+.dg-kartat > .dg-karte { scroll-snap-align: start; }
+.dg-punktet { display: flex; justify-content: center; gap: 6px; margin-top: -4px; }
+.dg-punktet span { width: 6px; height: 6px; border-radius: 999px; background: var(--dg-border); transition: background .2s, width .2s; }
+.dg-punktet span.aktiv { width: 16px; background: var(--dg-text); }
 
 .dg-chips { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .dg-chip {
@@ -73,23 +85,30 @@ body {
 .dg-lista { display: grid; gap: 8px; margin-top: 12px; }
 .dg-bosh { margin: 8px 0; color: var(--dg-muted); text-align: center; }
 
-/* Eine Bestellung: links Posta Beki, daneben die Produkte, rechts die Knoepfe. */
+/* Eine Bestellung (05.10.): oben links Beki + Nummer, daneben die Produkte
+   ("1 BPO"), oben rechts Fallnummer und Preis; darunter die Knoepfe, links
+   beginnend. */
 .dg-rresht {
-  display: grid; grid-template-columns: minmax(78px, 28%) minmax(0, 1fr) auto; gap: 10px; align-items: start;
-  padding: 10px; border-radius: 12px; border: 1px solid var(--dg-border); background: var(--dg-bg);
+  display: grid; gap: 10px; padding: 12px; border-radius: 14px;
+  border: 1px solid var(--dg-border); background: var(--dg-bg);
 }
-.dg-beki { display: grid; gap: 2px; min-width: 0; }
-.dg-beki small { font-size: 11px; color: var(--dg-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-.dg-beki b { font-size: 16px; overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; }
-.dg-produkte { min-width: 0; display: grid; gap: 4px; }
-.dg-produkte ul { margin: 0; padding: 0 0 0 16px; font-size: 14px; }
-.dg-produkte li { overflow-wrap: anywhere; }
-.dg-bosh-produkte { margin: 0; font-size: 13px; color: var(--dg-muted); }
-.dg-meta, .dg-koha { font-size: 12px; color: var(--dg-muted); }
+.dg-rresht__koka { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: start; }
+.dg-beki { display: grid; gap: 1px; min-width: 0; max-width: 132px; }
+.dg-beki small { font-size: 11px; color: var(--dg-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.dg-beki b { font-size: 17px; line-height: 1.2; overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; }
+.dg-produkte { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; min-width: 0; padding-top: 15px; }
+.dg-produkte li { font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+.dg-produkte li b { display: inline-block; min-width: 1.3em; font-variant-numeric: tabular-nums; }
+.dg-bosh-produkte { font-size: 13px !important; font-weight: 400 !important; color: var(--dg-muted); }
+.dg-rresht__djathtas { display: grid; justify-items: end; gap: 1px; text-align: right; }
+.dg-kodi { font-size: 12px; color: var(--dg-muted); font-weight: 600; }
+.dg-cmimi { font-size: 17px; font-variant-numeric: tabular-nums; }
+.dg-koha { font-size: 12px; color: var(--dg-muted); }
 .dg-etiketat { display: flex; flex-wrap: wrap; gap: 4px; }
 .dg-etikete { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 999px; font-size: 11px; font-weight: 700; }
 .dg-etikete--mire { background: var(--dg-good-bg); color: var(--dg-good); }
-.dg-butonat { display: grid; gap: 6px; justify-items: stretch; min-width: 96px; }
+.dg-butonat { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start; }
+.dg-butonat .dg-buton { flex: 0 0 auto; min-width: 104px; }
 
 .dg-buton {
   min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--dg-border); background: var(--dg-surface);
@@ -115,5 +134,6 @@ body {
 .dg-riba-forma input { flex: 1 1 auto; min-width: 0; }
 
 @media (min-width: 720px) {
-  .dg-kartat { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dg-kartat { grid-auto-columns: 46%; }
 }
+.dg-historia { max-height: 168px; overflow-y: auto; }

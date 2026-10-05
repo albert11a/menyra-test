@@ -7,7 +7,7 @@
 // Zuruecknehmen -, steht fuer Riba gar nicht erst da (firestore.rules
 // wuerde es ohnehin abweisen).
 
-import { STATUS_CHIPS, KALIMET_RIBA, euroSq, llogarit, mundTeKthehet, numeroPerChip, renditPerChip } from "../../shared/lifeskin-dergesat.js";
+import { STATUS_CHIPS, KALIMET_RIBA, euroSq, llogarit, mundTeKthehet, numeroPerChip, produkteNeDergesa, renditPerChip } from "../../shared/lifeskin-dergesat.js";
 
 export function esc(wert) {
   return String(wert ?? "").replace(/[&<>"']/g, (z) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[z]));
@@ -66,19 +66,32 @@ export function renderListe(liste, chip, roli, laeuft = "") {
     const bosh = { porosi: "Asnjë porosi për t'u dërguar.", derguar: "Asgjë në rrugë.", pranuar: "Ende asnjë e pranuar.", anuluar: "Asnjë e anuluar." }[chip];
     return `<p class="dg-bosh">${esc(bosh || "Asgjë.")}</p>`;
   }
-  return rreshtat.map((d) => `
+  // AUFBAU (Wunsch Inhaber 05.10.):
+  //   oben links   Beki + Nummer, daneben je Produkt "1 BPO"
+  //   oben rechts  Fallnummer und Preis
+  //   darunter     die Knoepfe, links beginnend
+  return rreshtat.map((d) => {
+    const produkte = produkteNeDergesa(d.produkte);
+    const butonat = butonatPer(d, roli, laeuft);
+    return `
       <article class="dg-rresht dg-rresht--${esc(d.statusi)}" data-kennung="${esc(d.kennung)}">
-        <div class="dg-beki">
-          <small>Posta Beki</small>
-          <b>${esc(d.postaBeki || "—")}</b>
+        <div class="dg-rresht__koka">
+          <div class="dg-beki">
+            <small>Beki</small>
+            <b>${esc(d.postaBeki || "—")}</b>
+          </div>
+          <ul class="dg-produkte">
+            ${produkte.length ? produkte.map((p) => `<li><b>${p.sasia}</b> ${esc(p.emri)}</li>`).join("") : `<li class="dg-bosh-produkte">Pa produkte</li>`}
+          </ul>
+          <div class="dg-rresht__djathtas">
+            ${d.kodi ? `<span class="dg-kodi">#${esc(d.kodi)}</span>` : ""}
+            <b class="dg-cmimi">${esc(euroSq(d.cmimi))}</b>
+          </div>
         </div>
-        <div class="dg-produkte">
-          ${d.produkte.length ? `<ul>${d.produkte.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : `<p class="dg-bosh-produkte">Pa produkte</p>`}
-          <small class="dg-meta">${esc([d.kodi ? `#${d.kodi}` : "", euroSq(d.cmimi)].filter(Boolean).join(" · "))}</small>
-          ${shenjat(d)}
-        </div>
-        <div class="dg-butonat">${butonatPer(d, roli, laeuft)}</div>
-      </article>`).join("");
+        ${butonat ? `<div class="dg-butonat">${butonat}</div>` : ""}
+        ${shenjat(d)}
+      </article>`;
+  }).join("");
 }
 
 function historia(grupet) {

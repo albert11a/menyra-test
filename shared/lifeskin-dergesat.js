@@ -78,6 +78,43 @@ export function postaBekiGueltig(wert) {
   return tekst(wert, DERGESA.postaBekiMax + 1).replace(/\s+/g, " ").slice(0, DERGESA.postaBekiMax);
 }
 
+// DIE NAMEN AUF /dergesat (Wunsch Inhaber 05.10.): Riba packt nach den
+// Namen auf der Flasche - LF ACNE heisst dort BPO, LF MOISTUR heisst DAILY.
+// Erst beim Zeichnen umbenannt: Was gespeichert ist, bleibt der echte Name,
+// und schon eingetragene Bestellungen zeigen sofort den kurzen.
+const KURZNAMEN = Object.freeze([
+  Object.freeze({ muster: /^lf[\s-]*acne$/i, emri: "BPO" }),
+  Object.freeze({ muster: /^lf[\s-]*moist(ur|ure)?$/i, emri: "DAILY" })
+]);
+// Ein Set ohne Einzelzeilen (nur sein Titel gespeichert): das Acne-Set ist
+// LF ACNE + LF MOISTUR.
+const SET_INHALT = Object.freeze([
+  Object.freeze({ muster: /^(acne duo|seti kundër akneve)$/i, produkte: Object.freeze(["BPO", "DAILY"]) })
+]);
+
+export function emriShkurt(emri) {
+  const e = tekst(emri, 80).replace(/\s+/g, " ");
+  return (KURZNAMEN.find((k) => k.muster.test(e)) || {}).emri || e;
+}
+
+// ["2× LF ACNE", "LF MOISTUR"] -> [{ sasia: 2, emri: "BPO" }, { sasia: 1, emri: "DAILY" }].
+// Derselbe Name zweimal wird zusammengezaehlt.
+export function produkteNeDergesa(produkte) {
+  const rreshtat = new Map();
+  for (const roh of produkte || []) {
+    const t = tekst(roh, 80);
+    if (!t) continue;
+    const m = t.match(/^(\d+)\s*[×x]\s*(.+)$/i);
+    const sasia = m ? Math.max(1, Number(m[1]) || 1) : 1;
+    const emri = m ? m[2] : t;
+    const set = SET_INHALT.find((x) => x.muster.test(emri.trim()));
+    for (const e of set ? set.produkte : [emriShkurt(emri)]) {
+      rreshtat.set(e, (rreshtat.get(e) || 0) + sasia);
+    }
+  }
+  return [...rreshtat.entries()].map(([emri, sasia]) => ({ sasia, emri }));
+}
+
 // Ein Dokument aus lifeskin/{tenant}/dergesat/{kennung}, sauber.
 export function dergesaLesen(roh = {}, kennung = "") {
   const statusi = STATUSET.includes(roh?.statusi) ? roh.statusi : "porosi";

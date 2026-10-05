@@ -54,6 +54,19 @@ if (!STATUS_CHIPS.some((c) => c.id === gjendja.chip)) gjendja.chip = "porosi";
 
 let ndalLive = null;
 
+// Die Punkte unter den Karten: welche gerade im Bild ist.
+function punktet() {
+  const kartat = $("dg-kartat");
+  const ku = $("dg-punktet");
+  if (!kartat || !ku) return;
+  const sa = kartat.children.length;
+  if (ku.childElementCount !== sa) ku.innerHTML = "<span></span>".repeat(sa);
+  const hap = kartat.children[1] ? kartat.children[1].offsetLeft - kartat.children[0].offsetLeft : 1;
+  const aktiv = Math.min(sa - 1, Math.max(0, Math.round(kartat.scrollLeft / Math.max(1, hap))));
+  [...ku.children].forEach((p, i) => p.classList.toggle("aktiv", i === aktiv));
+  ku.hidden = sa < 2;
+}
+
 function shfaq(id, po) {
   const el = $(id);
   if (el) el.hidden = !po;
@@ -92,7 +105,13 @@ function vizato() {
   } else {
     lista.innerHTML = renderListe(gjendja.liste, gjendja.chip, gjendja.roli, gjendja.laeuft);
   }
-  $("dg-kartat").innerHTML = gjendja.lidhja === "ok" ? renderKartat(gjendja.liste, gjendja.roli, gjendja.laeuft) : "";
+  // Die Karten wischt man seitlich - beim Neuzeichnen (jede Live-Aenderung)
+  // bleibt die Stelle, an der man gerade ist.
+  const kartat = $("dg-kartat");
+  const stelle = kartat.scrollLeft;
+  kartat.innerHTML = gjendja.lidhja === "ok" ? renderKartat(gjendja.liste, gjendja.roli, gjendja.laeuft) : "";
+  kartat.scrollLeft = stelle;
+  punktet();
 
   // Ribas Zugang - nur fuer den Inhaber, ausserhalb des Neuzeichnens (das
   // getippte Passwort bleibt stehen).
@@ -339,5 +358,7 @@ $("dg-riba-forma")?.addEventListener("submit", async (ngjarja) => {
     vizato();
   }
 });
+
+$("dg-kartat")?.addEventListener("scroll", () => punktet(), { passive: true });
 
 vizato();

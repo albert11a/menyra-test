@@ -245,3 +245,17 @@ test("Heart: jeder neue Knopf hat einen Behandler", () => {
   assert.match(heart, /setLifeskinBestellStatus\(id\)/);
   assert.match(heart, /dergesatOps\.nachVersand\(id, stand\)/);
 });
+
+test("/dergesat zeigt die Kurznamen: LF ACNE = BPO, LF MOISTUR = DAILY, mit Menge", async () => {
+  const { produkteNeDergesa, emriShkurt } = await import("../shared/lifeskin-dergesat.js");
+  assert.equal(emriShkurt("LF ACNE"), "BPO");
+  assert.equal(emriShkurt("LF Moisture"), "DAILY");
+  assert.equal(emriShkurt("LF PORE"), "LF PORE");
+  assert.deepEqual(produkteNeDergesa(["LF ACNE", "LF MOISTUR", "2× LF ACNE"]), [{ sasia: 3, emri: "BPO" }, { sasia: 1, emri: "DAILY" }]);
+  assert.deepEqual(produkteNeDergesa(["Acne Duo"]), [{ sasia: 1, emri: "BPO" }, { sasia: 1, emri: "DAILY" }]);
+  const html = renderListe([d("a", { kodi: "LS-1", produkte: ["LF ACNE", "LF MOISTUR"] })], "porosi", "riba");
+  assert.match(html, /<li><b>1<\/b> BPO<\/li>/);
+  assert.match(html, /<li><b>1<\/b> DAILY<\/li>/);
+  assert.match(html, /class="dg-kodi">#LS-1</);
+  assert.doesNotMatch(html, /LF ACNE/);
+});
