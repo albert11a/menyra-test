@@ -82,33 +82,44 @@ body {
 .dg-chip b { font-size: 16px; font-variant-numeric: tabular-nums; }
 .dg-chip--aktiv { background: var(--dg-accent); border-color: var(--dg-accent); color: var(--dg-accent-text); }
 
-.dg-lista { display: grid; gap: 8px; margin-top: 12px; }
+.dg-lista { display: grid; gap: 10px; margin-top: 12px; }
 .dg-bosh { margin: 8px 0; color: var(--dg-muted); text-align: center; }
 
-/* Eine Bestellung (05.10.): oben links Beki + Nummer, daneben die Produkte
-   ("1 BPO"), oben rechts Fallnummer und Preis; darunter die Knoepfe, links
-   beginnend. */
+/* Eine Bestellung als TICKET (Konzept C, 05.10.): Farbband = Stand,
+   Posta Beki gross, Produkte in gleich breiten Feldern, Knoepfe als
+   buendige Leiste am unteren Rand. */
 .dg-rresht {
-  display: grid; gap: 10px; padding: 12px; border-radius: 14px;
-  border: 1px solid var(--dg-border); background: var(--dg-bg);
+  border-radius: 16px; border: 1px solid var(--dg-border); background: var(--dg-surface);
+  overflow: hidden; box-shadow: inset 0 5px 0 var(--dg-band, var(--dg-border));
 }
-.dg-rresht__koka { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: start; }
-.dg-beki { display: grid; gap: 1px; min-width: 0; max-width: 132px; }
-.dg-beki small { font-size: 11px; color: var(--dg-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
-.dg-beki b { font-size: 17px; line-height: 1.2; overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; }
-.dg-produkte { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; min-width: 0; padding-top: 15px; }
-.dg-produkte li { font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
-.dg-produkte li b { display: inline-block; min-width: 1.3em; font-variant-numeric: tabular-nums; }
-.dg-bosh-produkte { font-size: 13px !important; font-weight: 400 !important; color: var(--dg-muted); }
-.dg-rresht__djathtas { display: grid; justify-items: end; gap: 1px; text-align: right; }
-.dg-kodi { font-size: 12px; color: var(--dg-muted); font-weight: 600; }
-.dg-cmimi { font-size: 17px; font-variant-numeric: tabular-nums; }
+.dg-rresht--porosi { --dg-band: #e0a21a; }
+.dg-rresht--derguar { --dg-band: #2563eb; }
+.dg-rresht--pranuar { --dg-band: var(--dg-good); }
+.dg-rresht--anuluar { --dg-band: var(--dg-bad); }
+.dg-rresht__brenda { padding: 16px 14px 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
+.dg-beki { display: grid; min-width: 0; }
+.dg-beki small, .dg-kodi { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--dg-muted); }
+.dg-beki b { font-size: 24px; line-height: 1.15; font-weight: 800; overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; }
+.dg-rresht__djathtas { display: grid; justify-items: end; align-content: start; text-align: right; }
+.dg-kodi { letter-spacing: .02em; }
+.dg-cmimi { font-size: 20px; line-height: 1.15; font-weight: 800; font-variant-numeric: tabular-nums; }
+.dg-produkte { grid-column: 1 / -1; list-style: none; margin: 8px 0 0; padding: 0; display: flex; gap: 6px; }
+.dg-produkte li {
+  flex: 1 1 0; min-width: 0; text-align: center; padding: 8px 6px; border: 1px dashed var(--dg-border); border-radius: 10px;
+  font-size: 16px; font-weight: 800; overflow-wrap: anywhere;
+}
+.dg-produkte li i { font-style: normal; font-weight: 600; color: var(--dg-muted); font-variant-numeric: tabular-nums; }
+.dg-bosh-produkte { font-weight: 500 !important; color: var(--dg-muted); font-size: 13px !important; }
+.dg-shenjat { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
 .dg-koha { font-size: 12px; color: var(--dg-muted); }
-.dg-etiketat { display: flex; flex-wrap: wrap; gap: 4px; }
 .dg-etikete { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 999px; font-size: 11px; font-weight: 700; }
 .dg-etikete--mire { background: var(--dg-good-bg); color: var(--dg-good); }
-.dg-butonat { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start; }
-.dg-butonat .dg-buton { flex: 0 0 auto; min-width: 104px; }
+.dg-butonat { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border-top: 1px solid var(--dg-border); }
+.dg-butonat .dg-buton { min-height: 52px; border: 0; border-radius: 0; }
+.dg-butonat .dg-buton + .dg-buton { border-left: 1px solid var(--dg-border); }
+.dg-butonat .dg-buton--lehte { min-height: 52px; font-size: 15px; background: var(--dg-surface); }
+
+.dg-buton { flex: 0 0 auto; min-width: 104px; }
 
 .dg-buton {
   min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--dg-border); background: var(--dg-surface);

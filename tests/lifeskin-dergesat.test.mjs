@@ -254,8 +254,8 @@ test("/dergesat zeigt die Kurznamen: LF ACNE = BPO, LF MOISTUR = DAILY, mit Meng
   assert.deepEqual(produkteNeDergesa(["LF ACNE", "LF MOISTUR", "2× LF ACNE"]), [{ sasia: 3, emri: "BPO" }, { sasia: 1, emri: "DAILY" }]);
   assert.deepEqual(produkteNeDergesa(["Acne Duo"]), [{ sasia: 1, emri: "BPO" }, { sasia: 1, emri: "DAILY" }]);
   const html = renderListe([d("a", { kodi: "LS-1", produkte: ["LF ACNE", "LF MOISTUR"] })], "porosi", "riba");
-  assert.match(html, /<li><b>1<\/b> BPO<\/li>/);
-  assert.match(html, /<li><b>1<\/b> DAILY<\/li>/);
+  assert.match(html, /<li><i>1×<\/i> BPO<\/li>/);
+  assert.match(html, /<li><i>1×<\/i> DAILY<\/li>/);
   assert.match(html, /class="dg-kodi">#LS-1</);
   assert.doesNotMatch(html, /LF ACNE/);
 });

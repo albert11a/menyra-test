@@ -57,7 +57,8 @@ function shenjat(d) {
   const etiketat = [];
   if (d.barazuarAt) etiketat.push(`<span class="dg-etikete dg-etikete--mire">Barazuar ✓</span>`);
   if (d.ribaPaguarAt) etiketat.push(`<span class="dg-etikete dg-etikete--mire">Riba paguar ✓</span>`);
-  return `${s.length ? `<small class="dg-koha">${esc(s.join(" · "))}</small>` : ""}${etiketat.length ? `<span class="dg-etiketat">${etiketat.join("")}</span>` : ""}`;
+  if (!s.length && !etiketat.length) return "";
+  return `<div class="dg-shenjat">${s.length ? `<small class="dg-koha">${esc(s.join(" · "))}</small>` : ""}${etiketat.join("")}</div>`;
 }
 
 export function renderListe(liste, chip, roli, laeuft = "") {
@@ -66,30 +67,31 @@ export function renderListe(liste, chip, roli, laeuft = "") {
     const bosh = { porosi: "Asnjë porosi për t'u dërguar.", derguar: "Asgjë në rrugë.", pranuar: "Ende asnjë e pranuar.", anuluar: "Asnjë e anuluar." }[chip];
     return `<p class="dg-bosh">${esc(bosh || "Asgjë.")}</p>`;
   }
-  // AUFBAU (Wunsch Inhaber 05.10.):
-  //   oben links   Beki + Nummer, daneben je Produkt "1 BPO"
-  //   oben rechts  Fallnummer und Preis
-  //   darunter     die Knoepfe, links beginnend
+  // AUFBAU "TICKET" (Konzept C, Wahl Inhaber 05.10.):
+  //   Farbband oben = Stand (gelb Porosi, blau Dërguar, grün Pranuar, rot Anuluar)
+  //   oben links    Posta Beki gross, oben rechts Fallnummer und Preis
+  //   darunter      die Produkte in gleich breiten Feldern ("1× BPO")
+  //   unten         die Knoepfe als buendige Leiste ueber die ganze Breite
   return rreshtat.map((d) => {
     const produkte = produkteNeDergesa(d.produkte);
     const butonat = butonatPer(d, roli, laeuft);
     return `
       <article class="dg-rresht dg-rresht--${esc(d.statusi)}" data-kennung="${esc(d.kennung)}">
-        <div class="dg-rresht__koka">
+        <div class="dg-rresht__brenda">
           <div class="dg-beki">
-            <small>Beki</small>
+            <small>Posta Beki</small>
             <b>${esc(d.postaBeki || "—")}</b>
           </div>
-          <ul class="dg-produkte">
-            ${produkte.length ? produkte.map((p) => `<li><b>${p.sasia}</b> ${esc(p.emri)}</li>`).join("") : `<li class="dg-bosh-produkte">Pa produkte</li>`}
-          </ul>
           <div class="dg-rresht__djathtas">
             ${d.kodi ? `<span class="dg-kodi">#${esc(d.kodi)}</span>` : ""}
             <b class="dg-cmimi">${esc(euroSq(d.cmimi))}</b>
           </div>
+          <ul class="dg-produkte">
+            ${produkte.length ? produkte.map((p) => `<li><i>${p.sasia}×</i> ${esc(p.emri)}</li>`).join("") : `<li class="dg-bosh-produkte">Pa produkte</li>`}
+          </ul>
+          ${shenjat(d)}
         </div>
         ${butonat ? `<div class="dg-butonat">${butonat}</div>` : ""}
-        ${shenjat(d)}
       </article>`;
   }).join("");
 }
