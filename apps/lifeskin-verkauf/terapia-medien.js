@@ -17,7 +17,7 @@
 // Jeder Fehler endet leise: Die Seite verkauft auch ohne diese Reihe.
 import { ansichtOeffnen, ansichtSchliessen } from "./ansicht.js";
 import {
-  MEDIEN_STANDARD, medienAuswahl, medienLaden, kommentareLaden, kommentarPruefen, kommentarSchreiben, viewZaehlen
+  MEDIEN_STANDARD, medienAuswahl, medienLaden, ausschnittStil, kommentareLaden, kommentarPruefen, kommentarSchreiben, viewZaehlen
 } from "../../shared/lifeskin-medien.js";
 
 const SCHLEIFE_SEKUNDEN = 4;
@@ -109,9 +109,9 @@ export class KundenMedien {
   // Kacheln mit gleichem Medium und Bild bleiben dieselben Knoten - kein
   // Flackern, wenn die Datenbank nur bestaetigt, was schon dasteht.
   #kacheln(liste) {
-    const alt = new Map([...this.reihe.children].map((k) => [k.dataset.medium + "|" + (k.dataset.bild || ""), k]));
+    const alt = new Map([...this.reihe.children].map((k) => [k.dataset.medium + "|" + (k.dataset.bild || "") + "|" + (k.dataset.stil || ""), k]));
     const neu = liste.map((m, i) => {
-      const schluessel = m.id + "|" + (m.bild || "");
+      const schluessel = m.id + "|" + (m.bild || "") + "|" + ausschnittStil(m.ausschnitt);
       const kachel = !m.leer && alt.get(schluessel);
       if (kachel) {
         kachel.dataset.index = String(i);
@@ -134,12 +134,16 @@ export class KundenMedien {
       return kachel;
     }
     kachel.dataset.bild = m.bild;
+    // Der Ausschnitt aus Heart - gilt fuer Standbild und Schleife.
+    const stil = ausschnittStil(m.ausschnitt);
+    if (stil) kachel.dataset.stil = stil;
     kachel.setAttribute("aria-label", `${m.art === "video" ? "Shikoni videon" : "Shikoni foton"}${m.produkt ? ` · ${m.produkt}` : ""}`);
     const bild = element("img", "medium__bild");
     bild.src = m.bild;
     bild.alt = "";
     bild.loading = i < 3 ? "eager" : "lazy";
     bild.decoding = "async";
+    if (stil) bild.style.cssText = stil;
     kachel.append(bild);
     if (m.art === "video" && m.video) {
       kachel.classList.add("medium--video");
@@ -206,6 +210,7 @@ export class KundenMedien {
       // Erst zeigen, wenn wirklich Bilder laufen - vorher bleibt das Standbild.
       video.addEventListener("playing", () => kachel.classList.add("medium--laeuft"), { once: true });
       video.addEventListener("error", () => video.remove(), { once: true });
+      if (kachel.dataset.stil) video.style.cssText = kachel.dataset.stil;
       video.src = kachel.dataset.video;
       kachel.insertBefore(video, kachel.querySelector(".medium__spiel"));
     }
@@ -295,6 +300,7 @@ export class KundenMedien {
       video.controls = true;
       video.preload = "auto";
       video.poster = m.bild;
+      video.style.cssText = ausschnittStil(m.ausschnitt);
       video.src = m.video;
       // Liefert der Server das Video nicht stueckweise (Safari braucht
       // das), holt die Seite es einmal ganz und spielt es von dort.
@@ -307,6 +313,7 @@ export class KundenMedien {
       bild.src = m.bild;
       bild.alt = m.produkt ? `Kliente me ${m.produkt}` : "Foto nga klientët";
       bild.decoding = "async";
+      bild.style.cssText = ausschnittStil(m.ausschnitt);
       buehne.replaceChildren(bild);
     }
   }

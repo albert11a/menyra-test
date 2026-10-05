@@ -10,6 +10,8 @@
 //   aktiv    false = in Heart ausgeblendet
 //   reihe    Reihenfolge in Heart
 //   views    wie oft geoeffnet (die Seite zaehlt +1, mehr erlaubt die Regel nicht)
+//   ausschnitt  { x, y, zoom } - wie das Medium im Hochformat-Rahmen sitzt
+//            (in Heart zugeschnitten), null = nie eingestellt
 // und darunter kommentare/{id}: name, text, createdAt, verborgen.
 //
 // SCHNELL: Die Seite laedt hier NUR die Eintraege, die der Befund gewaehlt
@@ -31,6 +33,36 @@ export function medienAuswahl(wert) {
   if (wert === true) return MEDIEN_STANDARD.map((m) => m.id);
   if (!Array.isArray(wert)) return [];
   return [...new Set(wert.map((x) => String(x || "").trim()).filter((x) => /^[A-Za-z0-9_-]{1,64}$/.test(x)))].slice(0, HOECHSTENS);
+}
+
+// ---------- Ausschnitt ----------
+// Alle Rahmen (Kacheln, Betrachter, Shop, Heart) sind Hochformat 9:16 und
+// fuellen ihn (object-fit: cover). x und y wie object-position in Prozent,
+// zoom vergroessert um genau diesen Punkt - so bleibt der Rand immer
+// gefuellt, egal wohin geschoben wird.
+export const AUSSCHNITT_STANDARD = Object.freeze({ x: 50, y: 25, zoom: 1 });
+export const ZOOM_MAX = 4;
+
+const grenze = (n, min, max) => Math.min(max, Math.max(min, n));
+
+export function ausschnittNormalisieren(roh) {
+  if (!roh || typeof roh !== "object") return null;
+  const x = Number(roh.x), y = Number(roh.y), zoom = Number(roh.zoom);
+  if (![x, y, zoom].every(Number.isFinite)) return null;
+  return {
+    x: Math.round(grenze(x, 0, 100) * 10) / 10,
+    y: Math.round(grenze(y, 0, 100) * 10) / 10,
+    zoom: Math.round(grenze(zoom, 1, ZOOM_MAX) * 100) / 100
+  };
+}
+
+// Inline-Stil fuer <img> oder <video> im Rahmen. Ohne Ausschnitt: nichts -
+// dann gilt, was das CSS der Seite schon immer zeigte.
+export function ausschnittStil(roh) {
+  const a = ausschnittNormalisieren(roh);
+  if (!a) return "";
+  const punkt = `${a.x}% ${a.y}%`;
+  return `object-fit:cover;object-position:${punkt}` + (a.zoom > 1 ? `;transform:scale(${a.zoom});transform-origin:${punkt}` : "");
 }
 
 // ---------- Firestore-REST: Werte ein- und auspacken ----------
@@ -57,7 +89,9 @@ export function medienAusDokument(doc) {
     text: String(wert(f.text) || ""),
     aktiv: wert(f.aktiv) !== false,
     reihe: Number(wert(f.reihe)) || 0,
-    views: Number(wert(f.views)) || 0
+    views: Number(wert(f.views)) || 0,
+    ausschnitt: ausschnittNormalisieren(Object.fromEntries(
+      Object.entries(f.ausschnitt?.mapValue?.fields || {}).map(([k, v]) => [k, wert(v)])))
   };
 }
 
@@ -222,6 +256,7 @@ export function mediumNormalisieren(roh = {}, id = roh.id) {
     aktiv: roh.aktiv !== false,
     reihe: Number.isFinite(Number(roh.reihe)) ? Number(roh.reihe) : 0,
     views: Math.max(0, Math.round(Number(roh.views) || 0)),
+    ausschnitt: ausschnittNormalisieren(roh.ausschnitt),
     createdAt: String(roh.createdAt || "")
   };
 }

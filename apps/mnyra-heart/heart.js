@@ -68,7 +68,7 @@ import { ladeLifeskin, ladeLifeskinSeit, ladeLifeskinSitzung, horcheLive, ladeFo
   ladeMedien, speichereMedien, speichereMedium, loescheMedium, ladeKommentare, setzeKommentarVerborgen, loescheKommentar, schreibeKommentare,
   ladeProduktkosten, speichereProduktkosten } from "./heart-lifeskin-adapter.js";
 import { medienListe, mediumNormalisieren, neueMediumId } from "../../shared/lifeskin-medien.js";
-import { kommentarVorschauSetzen } from "./heart-lifeskin-medien.js";
+import { kommentarVorschauSetzen, ausschnittGriff, ausschnittZoom, ausschnittLesen } from "./heart-lifeskin-medien.js";
 import { rasteListe, klappSetzen, klappOffen, rastiDom } from "./heart-lifeskin-raste.js";
 import { shopSetetListe } from "./heart-lifeskin-shopsets.js";
 import { schnittHoeren, schnittErgebnis, schnittZurueck } from "./heart-lifeskin-schnitt.js";
@@ -2787,6 +2787,8 @@ function medienEntwurfLesen(zusatz = {}) {
   const entwurf = { ...(stand.medienEntwurf || {}) };
   for (const feld of document.querySelectorAll("[data-mediumfeld]")) entwurf[feld.dataset.mediumfeld] = String(feld.value ?? "");
   for (const feld of document.querySelectorAll("[data-mediumfeld-an]")) entwurf[feld.dataset.mediumfeldAn] = feld.checked;
+  const ausschnitt = ausschnittLesen(document);
+  if (ausschnitt !== undefined) entwurf.ausschnitt = ausschnitt;
   return { ...entwurf, ...zusatz };
 }
 
@@ -2821,7 +2823,8 @@ function lifeskinMediumDatei(art, neu = false) {
     medienVorschauFrei();
     medienDatei = datei;
     medienVorschauUrl = URL.createObjectURL(datei);
-    const zusatz = { art: istVideo ? "video" : "foto", vorschau: medienVorschauUrl, datei: String(datei.name || "").slice(0, 80), groesse: datei.size };
+    // Neue Datei, neuer Ausschnitt - der alte passt nicht zu ihr.
+    const zusatz = { art: istVideo ? "video" : "foto", vorschau: medienVorschauUrl, datei: String(datei.name || "").slice(0, 80), groesse: datei.size, ausschnitt: null };
     actions.patchLifeskin(neu
       ? { medienOffen: "__neu", medienEntwurf: { ...entwurf, ...zusatz }, medienStatus: "", medienLoeschen: false }
       : { medienEntwurf: { ...entwurf, ...zusatz } });
@@ -2862,6 +2865,7 @@ async function speichereLifeskinMedium() {
       produkt: e.produkt ?? alt?.produkt ?? "",
       text: e.text ?? alt?.text ?? "",
       aktiv: e.aktiv !== false,
+      ausschnitt: e.ausschnitt !== undefined ? e.ausschnitt : alt?.ausschnitt ?? null,
       reihe,
       createdAt: alt?.createdAt || new Date().toISOString()
     }, id);
@@ -2978,6 +2982,19 @@ async function medienKommentareLaden() {
   } catch {
     actions.patchLifeskin({ medienKommentareStatus: "" });
   }
+}
+
+// AUSSCHNITT (Editor): die Geste lebt im DOM, erst am Ende in den Entwurf.
+function lifeskinAusschnittMerken() {
+  const stand = store.getState().lifeskin || {};
+  if (!stand.medienOffen || stand.medienStatus) return;
+  actions.patchLifeskin({ medienEntwurf: medienEntwurfLesen() });
+}
+
+function lifeskinAusschnittZurueck() {
+  const stand = store.getState().lifeskin || {};
+  if (!stand.medienOffen || stand.medienStatus) return;
+  actions.patchLifeskin({ medienEntwurf: medienEntwurfLesen({ ausschnitt: null }) });
 }
 
 // KOMMENTARE SCHREIBEN (Reaktionen): Das Formular lebt nur im DOM
@@ -4333,6 +4350,10 @@ const operations = {
   lifeskinMediumSchieben(id, richtung) { return lifeskinMediumSchieben(id, richtung); },
   lifeskinKommentar(was, medium, id) { return lifeskinKommentar(was, medium, id); },
   lifeskinKommentarVorschau() { lifeskinKommentarVorschau(); },
+  lifeskinAusschnittGriff(event) { ausschnittGriff(event, lifeskinAusschnittMerken); },
+  lifeskinAusschnittZoom(regler) { ausschnittZoom(regler); },
+  lifeskinAusschnittMerken() { lifeskinAusschnittMerken(); },
+  lifeskinAusschnittZurueck() { lifeskinAusschnittZurueck(); },
   lifeskinKommentareSpeichern() { return lifeskinKommentareSpeichern(); },
   speichereLifeskinRasti() { return speichereLifeskinRasti(); },
   loescheLifeskinRasti() { return loescheLifeskinRasti(); },

@@ -36,7 +36,7 @@ import {
   setetOderStandard, setetNormalisieren, aktiveSetet, nevojaKennung, setPreis
 } from "../../shared/lifeskin-shop-sets.js";
 
-import { medienListe } from "../../shared/lifeskin-medien.js";
+import { medienListe, ausschnittStil } from "../../shared/lifeskin-medien.js";
 import { PAK_SETE } from "../../shared/lifeskin-oferta.js";
 import { SHOP_ABSCHNITTE, shopSichtPatch } from "../../shared/lifeskin-shopsicht.js";
 import { schirmGesehen } from "../../shared/lifeskin-landingtiefe.js";
@@ -197,19 +197,21 @@ export function preiseAnwenden(dok, { cmimi, vecmas, zbritje }) {
   for (const el of dok.querySelectorAll?.("[data-preis-zbritje]") || []) el.hidden = !zbritje;
 }
 
+// Der Ausschnitt aus Heart (Zuschneiden im Editor) - alle Rahmen sind 9:16.
+const stil = m => { const s = ausschnittStil(m.ausschnitt); return s ? ` style="${s}"` : ''; };
 export function kundenAuswahl(roh) {
   return medienListe(roh).filter(m => m.aktiv && (m.art === 'video' ? m.video : m.bild));
 }
 export function kundenGalerie(roh) {
-  return kundenAuswahl(roh).map((m, i) => `<button type="button" class="klient-kachel" data-klient="${i}" aria-label="${m.art === 'video' ? 'Shikoni videon' : 'Shikoni foton'}${m.produkt ? ` · ${e(m.produkt)}` : ''}">${m.bild ? `<img src="${e(m.bild)}" alt="" loading="lazy" decoding="async" width="104" height="185">` : ''}${m.art === 'video' ? '<span class="klient-kachel__spiel" aria-hidden="true"></span>' : ''}${m.produkt ? `<span class="klient-kachel__emri">${e(m.produkt)}</span>` : ''}</button>`).join('');
+  return kundenAuswahl(roh).map((m, i) => `<button type="button" class="klient-kachel" data-klient="${i}" aria-label="${m.art === 'video' ? 'Shikoni videon' : 'Shikoni foton'}${m.produkt ? ` · ${e(m.produkt)}` : ''}">${m.bild ? `<img src="${e(m.bild)}" alt="" loading="lazy" decoding="async" width="104" height="185"${stil(m)}>` : ''}${m.art === 'video' ? '<span class="klient-kachel__spiel" aria-hidden="true"></span>' : ''}${m.produkt ? `<span class="klient-kachel__emri">${e(m.produkt)}</span>` : ''}</button>`).join('');
 }
 export function klientBlatt(m) {
   // Ohne schwarze Raender (Hochformat, zugeschnitten) und ohne die
   // Steuerung des Systems: nur ein eigener Knopf oben rechts (Wunsch
   // Inhaber 30.09.). Antippen des Videos schaltet ebenfalls um.
   const medium = m.art === 'video'
-    ? `<div class="klient-buehne" data-stand="pause"><video class="klient-medium" src="${e(m.video)}"${m.bild ? ` poster="${e(m.bild)}"` : ''} playsinline preload="metadata"></video><button type="button" class="klient-spiel" data-klient-spiel aria-label="Luaj videon"></button></div>`
-    : `<div class="klient-buehne"><img class="klient-medium" src="${e(m.bild)}" alt="${e(m.produkt || 'LifeSkin')}"></div>`;
+    ? `<div class="klient-buehne" data-stand="pause"><video class="klient-medium" src="${e(m.video)}"${m.bild ? ` poster="${e(m.bild)}"` : ''}${stil(m)} playsinline preload="metadata"></video><button type="button" class="klient-spiel" data-klient-spiel aria-label="Luaj videon"></button></div>`
+    : `<div class="klient-buehne"><img class="klient-medium" src="${e(m.bild)}" alt="${e(m.produkt || 'LifeSkin')}"${stil(m)}></div>`;
   return `${medium}${m.produkt ? `<h2 id="sheet-title">${e(m.produkt)}</h2>` : ''}${m.text ? `<p>${e(m.text)}</p>` : ''}`;
 }
 

@@ -6550,8 +6550,20 @@ html[data-heart-theme="tag"] .heart-faelle .heart-lifeskin-pill--gati.heart-life
   width: min(220px, 60vw); aspect-ratio: 9 / 16; margin: 6px auto 10px; border-radius: 14px; overflow: hidden; background: #000;
 }
 .heart-medium-editor__buehne img, .heart-medium-editor__buehne video { width: 100%; height: 100%; object-fit: cover; display: block; }
-.heart-medium-editor__buehne video { object-fit: contain; }
 .heart-medium-editor__buehne .heart-rasti-fotoleer { height: 100%; }
+/* Ausschnitt: im Rahmen ziehen und zoomen - der Rahmen ist derselbe 9:16
+   wie auf den Seiten, was hier steht, steht dort. */
+.heart-medium-editor__buehne[data-ausschnitt-buehne] {
+  position: relative; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none;
+  contain: layout paint;
+}
+.heart-medium-editor__buehne[data-ausschnitt-buehne]:active { cursor: grabbing; }
+.heart-medium-editor__buehne[data-ausschnitt-buehne] img,
+.heart-medium-editor__buehne[data-ausschnitt-buehne] video { pointer-events: none; -webkit-user-drag: none; }
+.heart-medium-editor__ausschnitt { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 0 auto 12px; max-width: 320px; text-align: center; }
+.heart-medium-editor__ausschnitt small { font-size: 12px; color: var(--heart-muted, #8f918d); }
+.heart-medium-editor__zoom { display: flex; align-items: center; gap: 10px; width: 100%; font-weight: 700; color: var(--heart-muted, #8f918d); }
+.heart-medium-editor__zoom input { flex: 1; min-width: 0; accent-color: #3d8bfd; height: 28px; }
 .heart-medium-editor__datei { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 12px; text-align: center; }
 .heart-medium-editor__datei small { font-size: 12px; color: var(--heart-muted, #8f918d); overflow-wrap: anywhere; }
 

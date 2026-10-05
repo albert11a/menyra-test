@@ -505,6 +505,10 @@ export function bindHeartEvents({
       await operations.loescheLifeskinMedium?.();
       return;
     }
+    if (action === "lifeskin-ausschnitt-zurueck") {
+      operations.lifeskinAusschnittZurueck?.();
+      return;
+    }
     if (action === "lifeskin-medium-schieben") {
       await operations.lifeskinMediumSchieben?.(target.getAttribute("data-id"), target.getAttribute("data-richtung"));
       return;
@@ -860,6 +864,10 @@ export function bindHeartEvents({
   }
 
   async function handleChange(event) {
+    if (event.target?.matches?.("[data-ausschnitt-zoom]")) {
+      operations.lifeskinAusschnittMerken?.();
+      return;
+    }
     if (event.target?.matches?.("[data-skinreact-bereich]")) {
       operations.skinreactWahlMerken?.(event.target.closest("[data-skinreact-fall]")?.getAttribute("data-skinreact-fall"), event.target.value);
       return;
@@ -981,6 +989,11 @@ export function bindHeartEvents({
     feld.style.height = `${feld.scrollHeight + 2}px`;
   }
 
+  // Ausschnitt eines Kundenfotos: ziehen und mit zwei Fingern zoomen.
+  function handlePointerDown(event) {
+    if (event.target?.closest?.("[data-ausschnitt-buehne]")) operations.lifeskinAusschnittGriff?.(event);
+  }
+
   function handleInput(event) {
     feldAnpassen(event.target);
     // Die Markierung am Feld folgt dem Tippen. Sie sagt "leer" oder
@@ -998,6 +1011,11 @@ export function bindHeartEvents({
     // Die Vorschau unter den Texten der Therapieseite folgt jedem Tastendruck.
     if (event.target?.matches?.("[data-shitja], [data-shitja-problem], [data-shitja-punkt]")) {
       operations.lifeskinVorschau?.();
+      return;
+    }
+    // Ausschnitt eines Kundenfotos: der Regler zoomt sofort.
+    if (event.target?.matches?.("[data-ausschnitt-zoom]")) {
+      operations.lifeskinAusschnittZoom?.(event.target);
       return;
     }
     // Kommentare schreiben: Vorschau "n Kommentare erkannt" bei jedem Zeichen.
@@ -1072,6 +1090,7 @@ export function bindHeartEvents({
   root.addEventListener("change", handleChange);
   root.addEventListener("input", handleInput);
   root.addEventListener("focusout", handleFocusOut);
+  root.addEventListener("pointerdown", handlePointerDown);
   // Aufgeklappte Karten merken (data-klapp), sonst klappt sie das naechste
   // Neuzeichnen wieder zu. "toggle" steigt nicht auf - daher capture.
   root.addEventListener("toggle", (event) => {
@@ -1089,5 +1108,6 @@ export function bindHeartEvents({
     root.removeEventListener("change", handleChange);
     root.removeEventListener("input", handleInput);
     root.removeEventListener("focusout", handleFocusOut);
+    root.removeEventListener("pointerdown", handlePointerDown);
   };
 }

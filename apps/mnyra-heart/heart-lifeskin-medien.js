@@ -13,7 +13,10 @@
 import { escapeHtml } from "./heart-ui-utils.js";
 import { renderHeartIcon } from "./heart-icons.js";
 import { klappAttr } from "./heart-lifeskin-klapp.js";
-import { medienListe, medienAuswahl, kommentareAusText, KOMMENTARE_JE_MAL } from "../../shared/lifeskin-medien.js";
+import {
+  medienListe, medienAuswahl, kommentareAusText, KOMMENTARE_JE_MAL,
+  ausschnittNormalisieren, ausschnittStil, AUSSCHNITT_STANDARD, ZOOM_MAX
+} from "../../shared/lifeskin-medien.js";
 
 const zahl = (n) => new Intl.NumberFormat("de-DE").format(Math.max(0, Number(n) || 0));
 
@@ -26,9 +29,10 @@ function zeitKurz(iso) {
   return gleich ? `heute ${uhr}` : `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}. ${uhr}`;
 }
 
-function kachelBild(m, klasse = "heart-medium__bild") {
+function kachelBild(m, klasse = "heart-medium__bild", mitAusschnitt = true) {
+  const stil = mitAusschnitt ? ausschnittStil(m.ausschnitt) : "";
   return m.bild
-    ? `<img class="${klasse}" src="${escapeHtml(m.bild)}" alt="" loading="lazy" decoding="async" />`
+    ? `<img class="${klasse}" src="${escapeHtml(m.bild)}" alt="" loading="lazy" decoding="async"${stil ? ` style="${stil}"` : ""} />`
     : `<span class="${klasse} heart-medium__bild--leer"></span>`;
 }
 
@@ -99,6 +103,9 @@ export function renderMediumEditor(zustand = {}, produkte = []) {
   const quelle = istVideo ? (e.vorschau || m.video) : "";
   const namen = [...new Set((produkte || []).map((p) => String(p.name || "").trim()).filter(Boolean))];
   const groesse = Number(e.groesse) > 0 ? `${(Number(e.groesse) / 1048576).toFixed(1).replace(".", ",")} MB` : "";
+  // Nie eingestellt: so, wie die Kacheln es schon immer zeigten.
+  const gesetzt = ausschnittNormalisieren(m.ausschnitt);
+  const a = gesetzt || AUSSCHNITT_STANDARD;
   const knopfText = status === "hochladen" ? "Wird hochgeladen …" : status === "speichern" ? "Wird gespeichert …" : "Speichern";
 
   return `
@@ -106,13 +113,23 @@ export function renderMediumEditor(zustand = {}, produkte = []) {
       <button type="button" class="heart-lifeskin-zurueck" data-action="lifeskin-medium-zu">← Alle Fotos &amp; Videos</button>
       <h3 class="heart-lifeskin-block__titel">${neu ? (istVideo ? "Neues Video" : "Neues Foto") : (istVideo ? "Video bearbeiten" : "Foto bearbeiten")}</h3>
 
-      <div class="heart-medium-editor__buehne">
+      <div class="heart-medium-editor__buehne"${vorschau || quelle ? ` data-ausschnitt-buehne data-gesetzt="${gesetzt ? "1" : ""}" data-x="${a.x}" data-y="${a.y}" data-zoom="${a.zoom}"` : ""}>
         ${vorschau || quelle
           ? (istVideo && quelle
-            ? `<video src="${escapeHtml(quelle)}" ${m.bild && !e.vorschau ? `poster="${escapeHtml(m.bild)}"` : ""} controls playsinline muted preload="metadata"></video>`
-            : `<img src="${escapeHtml(vorschau)}" alt="" />`)
+            ? `<video data-ausschnitt-medium src="${escapeHtml(quelle)}" ${m.bild && !e.vorschau ? `poster="${escapeHtml(m.bild)}"` : ""} style="${ausschnittStil(a)}" autoplay loop playsinline muted preload="metadata"></video>`
+            : `<img data-ausschnitt-medium src="${escapeHtml(vorschau)}" alt="" draggable="false" style="${ausschnittStil(a)}" />`)
           : `<div class="heart-rasti-fotoleer">${istVideo ? "noch kein Video" : "noch kein Foto"}</div>`}
       </div>
+      ${vorschau || quelle ? `
+      <div class="heart-medium-editor__ausschnitt">
+        <small>Ausschnitt: im Bild ziehen zum Verschieben, mit zwei Fingern oder dem Regler zoomen. So steht es auf allen Seiten.</small>
+        <label class="heart-medium-editor__zoom">
+          <span aria-hidden="true">−</span>
+          <input type="range" data-ausschnitt-zoom min="1" max="${ZOOM_MAX}" step="0.01" value="${a.zoom}" aria-label="Zoom" ${status ? "disabled" : ""} />
+          <span aria-hidden="true">+</span>
+        </label>
+        <button type="button" class="heart-rasti-mini" data-action="lifeskin-ausschnitt-zurueck" ${status || !gesetzt ? "disabled" : ""}>Ausschnitt zurücksetzen</button>
+      </div>` : ""}
       <div class="heart-medium-editor__datei">
         <button type="button" class="heart-lifeskin-fotoknopf" data-action="lifeskin-medium-datei" data-art="${istVideo ? "video" : "foto"}" ${status ? "disabled" : ""}>
           ${e.datei || !neu ? (istVideo ? "Anderes Video" : "Anderes Foto") : (istVideo ? "Video wählen" : "Foto wählen")}</button>
@@ -142,6 +159,112 @@ export function renderMediumEditor(zustand = {}, produkte = []) {
       </div>
       ${!neu && gespeichert ? `<p class="heart-lifeskin-block__fuss">${zahl(gespeichert.views)} Views${gespeichert.standard ? "" : " · Kommentare unter „Reaktionen“"}</p>` : ""}
     </section>`;
+}
+
+// ── Ausschnitt im Editor: ziehen, zwei Finger, Regler ──────────────────
+// Lebt waehrend der Geste nur im DOM (data-x/-y/-zoom an der Buehne) - kein
+// Neuzeichnen pro Bewegung. Am Ende ruft heart.js "fertig" und legt den
+// Wert in den Entwurf (ausschnittLesen).
+
+function ausschnittAusBuehne(buehne) {
+  return {
+    x: Number(buehne.dataset.x), y: Number(buehne.dataset.y), zoom: Number(buehne.dataset.zoom)
+  };
+}
+
+function ausschnittSetzen(buehne, roh) {
+  const a = ausschnittNormalisieren(roh);
+  if (!a) return;
+  buehne.dataset.x = String(a.x);
+  buehne.dataset.y = String(a.y);
+  buehne.dataset.zoom = String(a.zoom);
+  buehne.dataset.gesetzt = "1";
+  const medium = buehne.querySelector("[data-ausschnitt-medium]");
+  if (medium) medium.style.cssText = ausschnittStil(a);
+  const regler = buehne.parentElement?.querySelector("[data-ausschnitt-zoom]");
+  if (regler && Number(regler.value) !== a.zoom) regler.value = String(a.zoom);
+  const zurueck = buehne.parentElement?.querySelector('[data-action="lifeskin-ausschnitt-zurueck"]');
+  if (zurueck && !regler?.disabled) zurueck.disabled = false;
+}
+
+// Um wie viele Prozent verschiebt sich der Ausschnitt, wenn der Finger
+// dx/dy Pixel faehrt? Das Medium ist (cover * zoom) groesser als der Rahmen;
+// nur dieser Ueberstand laesst sich schieben.
+function verschieben(buehne, a, dx, dy) {
+  const medium = buehne.querySelector("[data-ausschnitt-medium]");
+  const w = medium?.naturalWidth || medium?.videoWidth || 0;
+  const h = medium?.naturalHeight || medium?.videoHeight || 0;
+  const W = buehne.clientWidth, H = buehne.clientHeight;
+  if (!w || !h || !W || !H) return a;
+  const deckt = Math.max(W / w, H / h) * a.zoom;
+  const ueberX = w * deckt - W, ueberY = h * deckt - H;
+  return {
+    ...a,
+    x: ueberX > 0.5 ? a.x - (dx * 100) / ueberX : a.x,
+    y: ueberY > 0.5 ? a.y - (dy * 100) / ueberY : a.y
+  };
+}
+
+let griff = null;
+
+export function ausschnittGriff(event, fertig) {
+  const buehne = event.target?.closest?.("[data-ausschnitt-buehne]");
+  if (!buehne || buehne.closest(".heart-medium-editor")?.querySelector("[data-ausschnitt-zoom]")?.disabled) return;
+  if (event.pointerType === "mouse" && event.button !== 0) return;
+  event.preventDefault();
+  if (!griff || griff.buehne !== buehne) {
+    griff?.ende();
+    const zeiger = new Map();
+    const lage = () => {
+      const p = [...zeiger.values()];
+      const mitte = { x: p.reduce((n, q) => n + q.x, 0) / p.length, y: p.reduce((n, q) => n + q.y, 0) / p.length };
+      const abstand = p.length > 1 ? Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) : 0;
+      return { mitte, abstand, zahl: p.length };
+    };
+    const bewegen = (e) => {
+      if (!zeiger.has(e.pointerId)) return;
+      const vorher = lage();
+      zeiger.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const jetzt = lage();
+      let a = ausschnittAusBuehne(buehne);
+      if (jetzt.zahl > 1 && vorher.abstand > 0) a.zoom = Math.min(ZOOM_MAX, Math.max(1, a.zoom * (jetzt.abstand / vorher.abstand)));
+      a = verschieben(buehne, a, jetzt.mitte.x - vorher.mitte.x, jetzt.mitte.y - vorher.mitte.y);
+      ausschnittSetzen(buehne, a);
+    };
+    const los = (e) => {
+      zeiger.delete(e.pointerId);
+      if (zeiger.size) return;
+      griff.ende();
+      fertig?.();
+    };
+    griff = {
+      buehne, zeiger,
+      ende() {
+        globalThis.removeEventListener("pointermove", bewegen);
+        globalThis.removeEventListener("pointerup", los);
+        globalThis.removeEventListener("pointercancel", los);
+        griff = null;
+      }
+    };
+    globalThis.addEventListener("pointermove", bewegen);
+    globalThis.addEventListener("pointerup", los);
+    globalThis.addEventListener("pointercancel", los);
+  }
+  griff.zeiger.set(event.pointerId, { x: event.clientX, y: event.clientY });
+}
+
+export function ausschnittZoom(regler) {
+  const buehne = regler?.closest?.(".heart-medium-editor")?.querySelector("[data-ausschnitt-buehne]");
+  if (!buehne) return;
+  ausschnittSetzen(buehne, { ...ausschnittAusBuehne(buehne), zoom: Number(regler.value) });
+}
+
+// Fuer den Entwurf: der eingestellte Ausschnitt, null = keiner,
+// undefined = kein Editor da (dann bleibt, was war).
+export function ausschnittLesen(wurzel = globalThis.document) {
+  const buehne = wurzel?.querySelector?.("[data-ausschnitt-buehne]");
+  if (!buehne) return undefined;
+  return buehne.dataset.gesetzt === "1" ? ausschnittNormalisieren(ausschnittAusBuehne(buehne)) : null;
 }
 
 // ── Reaktionen: Views und Kommentare (unter Nachfassen) ───────────────
@@ -274,7 +397,7 @@ export function renderBefundMedienAuswahl(zustand = {}, bericht = null) {
       ${liste.map((m) => `
       <label class="heart-rasti-wahl__karte heart-rasti-wahl__karte--medium">
         <input type="checkbox" data-befund-klienti value="${escapeHtml(m.id)}"${an.has(m.id) ? " checked" : ""} />
-        <span class="heart-rasti-wahl__bilder heart-rasti-wahl__bilder--eins">${kachelBild(m, "")}${m.art === "video" ? `<span class="heart-medium__art">${renderHeartIcon("play")}</span>` : ""}</span>
+        <span class="heart-rasti-wahl__bilder heart-rasti-wahl__bilder--eins">${kachelBild(m, "", false)}${m.art === "video" ? `<span class="heart-medium__art">${renderHeartIcon("play")}</span>` : ""}</span>
         <span class="heart-rasti-wahl__text"><b>${escapeHtml(m.produkt || (m.art === "video" ? "Video" : "Foto"))}</b><small>${escapeHtml(m.text)}</small></span>
       </label>`).join("")}
     </div>`;
