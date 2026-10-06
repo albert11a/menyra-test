@@ -222,6 +222,10 @@ export function klientBlatt(m) {
   return `${medium}${m.produkt ? `<h2 id="sheet-title">${e(m.produkt)}</h2>` : ''}${m.text ? `<p>${e(m.text)}</p>` : ''}`;
 }
 
+// Veroeffentlichtes Shop-Sets-Angebot, vom Inhaber am 06.10.2026 bestaetigt.
+// Keine Abhaengigkeit von Netz oder einem alten lokalen Preis beim Erstbesuch.
+export const SHOP_START_SETET = { lista: SETET_STANDARD.map(s => s.id === "acne" ? { ...s, cmimi: 19 } : s) };
+
 const pause = (ms) => new Promise((fertig) => setTimeout(fertig, ms));
 
 // Begrenzte oeffentliche Reads: ein haengendes Bild darf keinen Preis sperren.
@@ -294,7 +298,8 @@ export class Dyqan {
     this.trichterFn = trichter || (() => globalThis.__lifeskinTrichter);
     this.korb = korbLesen(this.speicher);
     this.mittel = mittelBauen([], this.#standardFotos(new Map()));
-    this.setet = acneDuoSets(aktiveSetet(setetNormalisieren(SETET_STANDARD)));
+    this.angebotSetDok = SHOP_START_SETET;
+    this.setet = acneDuoSets(aktiveSetet(setetOderStandard(this.angebotSetDok)));
     this.korb = acneDuoCart(this.korb, this.setet);
     korbSchreiben(this.speicher, this.korb);
     this.setFotos = new Map();
@@ -304,7 +309,7 @@ export class Dyqan {
     this.fotosBereit = false;
     this.filter = "all";
     this.sendet = false;
-    this.angebotBereit = false;
+    this.angebotBereit = true;
     this.angebotLaedt = false;
     this.opener = null;
   }
@@ -449,18 +454,18 @@ export class Dyqan {
     if (this.angebotLaedt) return;
     this.angebotLaedt = true;
     const status = $("#shop-preisstatus", this.dok);
-    if (status) { status.hidden = false; status.textContent = "Po ngarkohet cmimi…"; }
+    if (status) status.hidden = true;
     try {
       const setDok = await holeDok(SETET_DOK, this.holen);
       if (setDok && !Array.isArray(setDok.lista)) throw new Error("invalid offer");
-      this.angebotSetDok = setDok;
+      this.angebotSetDok = setDok || SHOP_START_SETET;
       this.angebotBereit = true;
-      await this.#setetUebernehmen(setDok);
+      await this.#setetUebernehmen(this.angebotSetDok);
       this.dok.documentElement?.setAttribute("data-shop-preis", this.setet.length ? "bereit" : "fehlt");
       if (status) { status.hidden = this.setet.length > 0; status.textContent = "Seti nuk eshte aktualisht i disponueshem."; }
     } catch {
-      // Netzfehler ist kein fehlendes Dokument: nie zum Standardpreis kaufen.
-      if (status) { status.hidden = false; status.innerHTML = 'Cmimi nuk u ngarkua. <button type="button" data-preis-retry>Provo perseri</button>'; }
+      // Bei Netzfehler bleibt das veroeffentlichte 19-EUR-Angebot nutzbar.
+      if (status) status.hidden = true;
     } finally { this.angebotLaedt = false; }
   }
 
@@ -584,6 +589,7 @@ export class Dyqan {
     this.#zeichneSetet();
     this.#zeichneMittel();
     this.#korbZahl();
+    if ($("#kasa", this.dok)?.hidden === false) this.#kasseZeichnen();
   }
 
   mittelVon(id) { return this.mittel.find((m) => m.id === id); }
@@ -630,8 +636,8 @@ export class Dyqan {
     return einzelAusSets(this.mittel, this.setet);
   }
 
-  // Nur der fuer diesen Aufruf bestaetigte Heart-Preis wird angezeigt.
-  // Kein letzter lokaler Preis und kein Zwischenpreis aus der Staffel.
+  // Veroeffentlichtes Angebot sofort, danach aktuelle Shop-Sets aus Heart.
+  // Kein alter lokaler Preis und kein Zwischenpreis aus der Staffel.
   #preiseZeigen(set) {
     const cmimi = setPreis(set);
     const vecmas = set.produkte.length * preisFuer(1);
