@@ -343,3 +343,32 @@
 #ls-einstieg button:is(.cta,.primary)[data-set]:focus-visible,#ls-einstieg #kasa-dergo:focus-visible{outline:3px solid #08686c;outline-offset:4px}
 /* Der Scan bleibt als zweiter Weg sichtbar und lesbar. */
 #ls-einstieg .page #zgjedhja #ls-start{background:#e8f2f0;color:#07565a;border:1px solid #b5cfcc}
+
+/* Mobile layout approved from the preview, 06.10.2026. Original media only. */
+#ls-einstieg .page .hero-proof-slot:empty,
+#ls-einstieg .page .mobile-products,
+#ls-einstieg .page .proof-more{display:none}
+@media(max-width:800px){
+ #ls-einstieg[data-mobile-proof="ja"] .announcement{font-size:11px;padding:6px 10px}
+ #ls-einstieg[data-mobile-proof="ja"] .page .nav{height:64px}
+ #ls-einstieg[data-mobile-proof="ja"] .page .hero{padding:24px 0 18px}
+ #ls-einstieg[data-mobile-proof="ja"] .page .hero h1{font-size:clamp(29px,8.8vw,38px);margin-bottom:18px}
+ #ls-einstieg[data-mobile-proof="ja"] .page .intro{font-size:15px;line-height:1.6;margin-bottom:20px}
+ #ls-einstieg[data-mobile-proof="ja"] .page .micro{margin-top:12px}
+ #ls-einstieg[data-mobile-proof="ja"] .page .hero-proof-slot{order:3;min-width:0;margin-top:20px;padding-top:18px;border-top:1px solid #10292122}
+ #ls-einstieg[data-mobile-proof="ja"] .page .hero-heading>.analysis-mini:last-child{order:4;font-size:12px;margin-top:16px}
+ #ls-einstieg[data-mobile-proof="ja"] .page .hero-proof-slot .section-top{margin-bottom:12px}
+ #ls-einstieg[data-mobile-proof="ja"] .page .hero-proof-slot .eyebrow,
+ #ls-einstieg[data-mobile-proof="ja"] .page .hero-proof-slot .sub{display:none}
+ #ls-einstieg[data-mobile-proof="ja"] .page .hero-proof-slot h2{font-size:24px;line-height:1.2;margin:0;letter-spacing:-.6px}
+ #ls-einstieg[data-mobile-proof="ja"] .page .hero-proof-slot .proof-pair img,
+ #ls-einstieg[data-mobile-proof="ja"] .page .hero-proof-slot .leer-bild{height:170px;object-position:50% 27%}
+ #ls-einstieg[data-mobile-proof="ja"] .page .hero-proof-slot .proof-pair figcaption{bottom:8px;left:8px;font-size:10px;padding:4px 8px}
+ #ls-einstieg[data-mobile-proof="ja"] .page .gallery-controls{margin-top:2px;gap:8px}
+ #ls-einstieg[data-mobile-proof="ja"] .page .proof-more{display:block;text-align:center;color:var(--ink);font-size:13px;font-weight:650;text-underline-offset:4px;margin-top:2px}
+ #ls-einstieg[data-mobile-proof="ja"] .page .mobile-products{display:block;padding:28px 0 0}
+ #ls-einstieg[data-mobile-proof="ja"] .page .mobile-products h2{font-size:26px;margin:0 0 16px}
+ #ls-einstieg[data-mobile-proof="ja"] .page .mobile-products .visual{margin:0}
+ #ls-einstieg[data-mobile-proof="ja"] .page #rezultate{padding-top:32px}
+ #ls-einstieg[data-mobile-proof="ja"] .page #rezultate .customer-proof{margin-top:0;padding-top:0;border-top:0}
+}
