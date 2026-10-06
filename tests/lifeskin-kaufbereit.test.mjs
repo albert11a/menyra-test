@@ -113,7 +113,7 @@ test("oeffentlich sind dieselben Texte wie im Trichter - ohne Gesundheitsangaben
 test("der Spiegel: Karte, Satz zum Probierten, sein Wort am Knopf", () => {
   const s = antwortenSpiegel({ anliegen: ["pucrrat", "njollat"], kohezgjatja: "vit", perdorimi: ["larje", "shume"], gatishmeria: "tani" });
   assert.deepEqual(s.zeilen.map((z) => z.marke), ["Ju shqetëson", "Që kur", "Keni provuar"]);
-  assert.match(s.zeilen[0].text, /Puçrrat · Njollat e errëta/);
+  assert.match(s.zeilen[0].text, /Aknet · Njollat e errëta/);
   // "Viele Produkte ohne Ergebnis" wiegt schwerer als "nur Seife".
   assert.match(s.satz, /^Shumë produkte pa plan/);
   assert.match(s.bereit, /doni të filloni sa më shpejt/);

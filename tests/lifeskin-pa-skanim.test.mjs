@@ -435,7 +435,7 @@ test("in Heart steht bei jedem Fall, was der Patient geantwortet hat", () => {
   // was der Patient wirklich angetippt hat.
   assert.match(html, /Was stört Sie am meisten\?/);
   assert.match(html, /Pickel; Dunkle Flecken/);
-  assert.match(html, /Puçrrat; Njollat e errëta/);
+  assert.match(html, /Aknet; Njollat e errëta/);
   assert.match(html, /Seit wann haben Sie das\?/);
   assert.match(html, /Einige Monate/);
   // Seit 24.09.: der Befund steht direkt unter den Fotos (Wunsch von

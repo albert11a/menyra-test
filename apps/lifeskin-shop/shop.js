@@ -158,7 +158,7 @@ export function acneDuoCart(cart, sets) {
 const DUO_HAPAT = [
   { id: 'lf-acne', hapi: 'HAPI 1 · MBRËMJE', aktiv: 'BPO 5 %',
     dobi: 'Largon aknet • shenjat • poret',
-    si: 'Në mbrëmje, një shtresë e hollë sa një bizele, vetëm në zonat me puçrra, mbi lëkurë të pastër e të thatë. Javën e parë çdo ditë të dytë, pastaj çdo mbrëmje.',
+    si: 'Në mbrëmje, një shtresë e hollë sa një bizele, vetëm në zonat me akne, mbi lëkurë të pastër e të thatë. Javën e parë çdo ditë të dytë, pastaj çdo mbrëmje.',
     kryesore: 'Benzoyl Peroxide (50 mg/g), Glycerin, Aqua',
     perberja: 'Benzoyl Peroxide (50 mg/g), Carbomer, Sodium Olefin Sulfonate, Glycerin, Methacrylate Copolymer, Sodium Hydroxide, Aqua.' },
   { id: 'lf-moistur', hapi: 'HAPI 2 · MËNGJES DHE MBRËMJE', aktiv: 'Ceramide + acid hialuronik',

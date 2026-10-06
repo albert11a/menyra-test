@@ -23,7 +23,7 @@
 
 export const ANTWORTEN_OEFFENTLICH = Object.freeze({
   anliegen: Object.freeze({
-    pucrrat: "Puçrrat",
+    pucrrat: "Aknet",
     poret: "Poret e mëdha",
     shkelqimi: "Shkëlqimi",
     njollat: "Njollat e errëta",
