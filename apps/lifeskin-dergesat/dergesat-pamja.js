@@ -319,7 +319,7 @@ export function renderDetajet(karta, liste, roli, laeuft = "", lenda = null) {
         </section>
         <section class="dg-pjese">
           <h3>Porosi të reja <small>${pb.reja.numri} · ${esc(euroSq(pb.reja.shuma))}</small></h3>
-          ${listeOse(pb.lista.filter((d) => d.statusi === "porosi").map((d) => rreshtDetaj(d, euroSq(netoPosta(d)))), "Asnjë.")}
+          ${listeOse(pb.lista.filter((d) => d.statusi === "porosi" || d.statusi === "gati").map((d) => rreshtDetaj(d, euroSq(netoPosta(d)))), "Asnjë.")}
         </section>` };
   } else if (karta === "barazuar") {
     t = { titull: "Barazuar", nen: `${ll.barazuar.numri} porosi · ${euroSq(ll.barazuar.shuma)}`,

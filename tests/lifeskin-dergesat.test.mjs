@@ -29,15 +29,16 @@ test("Rechnung: Pritje barazim = Preis - 2,50 € je Porosi/Dërguar/Pranuar bis
     d("b", { statusi: "derguar", derguarAt: T }),
     d("c", { statusi: "pranuar", derguarAt: T, pranuarAt: T }),
     d("x", { statusi: "anuluar", derguarAt: T, anuluarAt: T }),
-    d("p", { statusi: "porosi" })
+    d("p", { statusi: "porosi" }),
+    d("g", { statusi: "gati", gatiAt: T })
   ];
   const ll = llogarit(liste);
-  // 4 × (39 - 2,50) = 146 - Anuluar zaehlt nicht, neue Porosi schon.
-  assert.equal(ll.pritjeBarazim.shuma, 146);
-  assert.equal(ll.pritjeBarazim.numri, 4);
-  assert.deepEqual(ll.pritjeBarazim.reja, { numri: 1, shuma: 36.5 });
+  // 5 × (39 - 2,50) = 182,50 - Anuluar zaehlt nicht, neue Porosi/Gati schon.
+  assert.equal(ll.pritjeBarazim.shuma, 182.5);
+  assert.equal(ll.pritjeBarazim.numri, 5);
+  assert.deepEqual(ll.pritjeBarazim.reja, { numri: 2, shuma: 73 });
   assert.deepEqual(ll.pritjeBarazim.neRruge, { numri: 2, shuma: 73 });
-  assert.deepEqual(ll.pritjeBarazim.lista.map((x) => x.kennung).sort(), ["a", "b", "c", "p"]);
+  assert.deepEqual(ll.pritjeBarazim.lista.map((x) => x.kennung).sort(), ["a", "b", "c", "g", "p"]);
   assert.equal(ll.pritjeBarazim.gati.shuma, 36.5);
   assert.deepEqual(ll.pritjeBarazim.gati.kennungen, ["c"]);
   // Pritje për Riben: nur Dërguar. € për Riben: Pranuar, noch nicht bezahlt.
@@ -236,9 +237,9 @@ test("/dergesat: Riba sieht Gati, Te Beki und Pranuar/Anuluar, nie Barazuar oder
   const kartat = renderKartat(liste, "riba");
   for (const id of KARTAT_ID) assert.match(kartat, new RegExp(`data-veprim="hap-karten" data-karta="${id}"`), id);
   for (const titel of ["Ndepo", "Pritje barazim", "Barazuar", "Pritje për Riben", "€ për Riben", "Paguar Ribës"]) assert.ok(kartat.includes(titel), titel);
-  // Porosi a + Dërguar b + Pranuar c (Gati g zaehlt nicht).
-  assert.ok(kartat.includes(euroSq(109.5)), "3 × (39 − 2,50)");
-  assert.match(kartat, /Porosi të reja<\/span><span>1<\/span><b>36,50 €/);
+  // Porosi a + Gati g + Dërguar b + Pranuar c.
+  assert.ok(kartat.includes(euroSq(146)), "4 × (39 − 2,50)");
+  assert.match(kartat, /Porosi të reja<\/span><span>2<\/span><b>73 €/);
 });
 
 test("/dergesat wird ausgeliefert - im Betrieb, lokal, ohne Social-Shell, ohne Pixel, ohne Kommentare", () => {

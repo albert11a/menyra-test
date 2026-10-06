@@ -11,10 +11,12 @@
 //      ordnet sie in der Karte "Bestellungen" in denselben Chip ein.
 //
 // Geld (alles ohne Anuluar - eine stornierte Bestellung zaehlt nirgends):
-//   Pritje barazim  = je Bestellung, die Porosi (neu), Dërguar oder Pranuar
-//                     ist und noch nicht barazuar: Gesamtpreis - 2,50 €
-//                     (Post). Die neuen Porosiat stehen in der Karte als
-//                     eigene Zeile ueber Dërguar (Wunsch Inhaber 06.10.).
+//   Pritje barazim  = je Bestellung, die Porosi/Gati (neu), Dërguar oder
+//                     Pranuar ist und noch nicht barazuar: Gesamtpreis -
+//                     2,50 € (Post). Porosi und Gati sind fuers Geld
+//                     dasselbe (Gati heisst nur: abholbereit) und stehen in
+//                     der Karte zusammen als "Porosi të reja" ueber Dërguar
+//                     (Wunsch Inhaber 06.10.).
 //   Pritje për Riben = 2 € je Bestellung, die Dërguar ist.
 //   € për Riben     = 2 € je Bestellung, die Pranuar ist und Riba noch
 //                     nicht ausbezahlt wurde.
@@ -233,7 +235,7 @@ export function llogarit(liste) {
   const te = (liste || []).filter((d) => d && d.statusi !== "anuluar");
   const shuma = (l, vlera) => cent(l.reduce((s, d) => s + vlera(d), 0));
 
-  const reja = te.filter((d) => d.statusi === "porosi");
+  const reja = te.filter((d) => d.statusi === "porosi" || d.statusi === "gati");
   const neRruge = te.filter((d) => d.statusi === "derguar" && !d.barazuarAt);
   const gatiBarazim = te.filter((d) => d.statusi === "pranuar" && !d.barazuarAt);
   const barazuar = te.filter((d) => d.statusi === "pranuar" && d.barazuarAt);
