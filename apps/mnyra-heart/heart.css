@@ -10650,6 +10650,9 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 .heart-skinreact__kopf>.heart-lifeskin-pill{font-size:10px;padding:4px 7px;border-radius:6px;background:rgba(24,135,91,.10);color:#18875b;white-space:nowrap}
 
 .heart-shopchip-pages--skinreact .heart-shopchip-page{grid-template-columns:repeat(3,minmax(0,1fr))}
+/* Bestellungen: die fuenf Stand-Chips (Porosiat, Gati, Dërguar, Pranuar, Anuluar) auf einer Seite (06.10.). */
+.heart-shopchip-pages--fuenf .heart-shopchip-page{grid-template-columns:repeat(5,minmax(0,1fr))}
+.heart-shopchip-pages--fuenf .heart-lifeskin-chip{padding-inline:2px;font-size:12px;letter-spacing:-.1px}
 .heart-faelle .heart-shopchip-pages--skinreact [data-wert="skinreact"]{font-size:12px;letter-spacing:0}
 .heart-faelle .heart-shopchip-pages--skinreact [data-wert="skinreact"] span{font-size:11px;margin-left:3px}
 
@@ -10728,10 +10731,12 @@ html.heart-wischt--gleitet .heart-bereiche__band {
   background: #ffffff14; color: var(--heart-text-soft, #c7c7c2);
 }
 .heart-dergesa-chip--porosi { background: #f4b9422e; color: #f6cd7a; }
+.heart-dergesa-chip--gati { background: #a855f733; color: #d8b4fe; }
 .heart-dergesa-chip--derguar { background: #3b82f633; color: #9cc2ff; }
 .heart-dergesa-chip--pranuar { background: #22c55e2e; color: #6ee7a0; }
 .heart-dergesa-chip--anuluar { background: #ff6b572e; color: #ff9d8f; }
 :where(html[data-heart-theme="tag"]) .heart-dergesa-chip--porosi { background: #fdf0d2; color: #8a5a00; }
+:where(html[data-heart-theme="tag"]) .heart-dergesa-chip--gati { background: #f3e8ff; color: #7e22ce; }
 :where(html[data-heart-theme="tag"]) .heart-dergesa-chip--derguar { background: #dbe8ff; color: #1d4ed8; }
 :where(html[data-heart-theme="tag"]) .heart-dergesa-chip--pranuar { background: #dcfce7; color: #15803d; }
 :where(html[data-heart-theme="tag"]) .heart-dergesa-chip--anuluar { background: #fee2e2; color: #b91c1c; }

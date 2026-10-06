@@ -22,7 +22,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 
-import { dergesaLesen, ndryshimi } from "../../shared/lifeskin-dergesat.js";
+import { dergesaLesen, kthimNeDepo, ndryshimi } from "../../shared/lifeskin-dergesat.js";
 
 const repoRoot = dirname(
   fileURLToPath(new URL("../../package.json", import.meta.url)),
@@ -116,7 +116,14 @@ test("Zugang: Riba liest den eigenen Eintrag, Fremde nicht, schreiben nur Heart"
   await assertSucceeds(setDoc(doc(heart(), ZUGANG), { uid: "riba-uid" }));
 });
 
-test("Riba: Te Beki, dann Pranuar - mit genau den Feldern aus shared/lifeskin-dergesat.js", async () => {
+test("Riba: Gati, Te Beki, dann Pranuar - mit genau den Feldern aus shared/lifeskin-dergesat.js", async () => {
+  await assertSucceeds(
+    updateDoc(
+      doc(riba(), POROSI),
+      ndryshimi(await stand(), "gati", { roli: "riba", jetzt: T }),
+    ),
+  );
+  assert.equal((await stand()).statusi, "gati");
   await assertSucceeds(
     updateDoc(
       doc(riba(), POROSI),
@@ -143,8 +150,44 @@ test("Riba: Dërguar -> Anuluar geht", async () => {
   );
 });
 
+test("Riba: eine Anuluar, die unterwegs war, kommt einmal zurueck in die Depo", async () => {
+  await setze({ statusi: "anuluar", derguarAt: T, anuluarAt: T });
+  const r = doc(riba(), POROSI);
+  // Mit anderem Stand oder fremdem Feld nicht.
+  await assertFails(
+    updateDoc(r, { kthyerAt: T, updatedAt: T, nga: "riba", statusi: "porosi" }),
+  );
+  await assertFails(
+    updateDoc(r, { kthyerAt: T, updatedAt: T, nga: "riba", cmimi: 1 }),
+  );
+  await assertSucceeds(
+    updateDoc(r, kthimNeDepo(await stand(), { roli: "riba", jetzt: T })),
+  );
+  assert.equal((await stand()).kthyerAt, T);
+  // Ein zweites Mal nicht.
+  await assertFails(
+    updateDoc(r, { kthyerAt: "2026-10-06T10:00:00.000Z", updatedAt: T, nga: "riba" }),
+  );
+});
+
+test("Riba: eine Anuluar ohne Versand hat nichts zurueckzubringen", async () => {
+  await setze({ statusi: "anuluar", anuluarAt: T });
+  await assertFails(
+    updateDoc(doc(riba(), POROSI), { kthyerAt: T, updatedAt: T, nga: "riba" }),
+  );
+});
+
 test("Riba darf nicht springen, zuruecknehmen, abrechnen oder Daten aendern", async () => {
   const r = doc(riba(), POROSI);
+  // Porosi direkt auf Dërguar (ohne Gati).
+  await assertFails(
+    updateDoc(r, {
+      statusi: "derguar",
+      derguarAt: T,
+      updatedAt: T,
+      nga: "riba",
+    }),
+  );
   // Porosi direkt auf Pranuar oder Anuluar.
   await assertFails(
     updateDoc(r, {
@@ -162,6 +205,7 @@ test("Riba darf nicht springen, zuruecknehmen, abrechnen oder Daten aendern", as
       nga: "riba",
     }),
   );
+  await setze({ statusi: "gati", gatiAt: T });
   // Te Beki, aber mit geaendertem Preis oder Posta Beki.
   await assertFails(
     updateDoc(r, {
@@ -189,6 +233,10 @@ test("Riba darf nicht springen, zuruecknehmen, abrechnen oder Daten aendern", as
       updatedAt: T,
       nga: "heart",
     }),
+  );
+  // Gati zurueck auf Porosi.
+  await assertFails(
+    updateDoc(r, { statusi: "porosi", gatiAt: "", updatedAt: T, nga: "riba" }),
   );
   // Pranuar zurueck, Barazuar, ausbezahlt.
   await setze({ statusi: "pranuar", derguarAt: T, pranuarAt: T });
@@ -250,6 +298,13 @@ test("Heart legt an, aendert Posta Beki, rechnet ab und nimmt zurueck", async ()
     }),
   );
   await setze({ statusi: "derguar", barazuarAt: "", ribaPaguarAt: "" });
+  await assertSucceeds(
+    updateDoc(
+      doc(heart(), POROSI),
+      ndryshimi(await stand(), "gati", { roli: "heart", jetzt: T }),
+    ),
+  );
+  assert.equal((await stand()).statusi, "gati");
   await assertSucceeds(
     updateDoc(
       doc(heart(), POROSI),

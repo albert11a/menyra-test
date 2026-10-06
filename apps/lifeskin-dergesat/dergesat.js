@@ -1,10 +1,13 @@
 // /dergesat - DER VERSAND UEBER POSTA BEKI (Auftrag Inhaber 05.10.).
 //
 // Wer hier arbeitet:
-//   Riba     - Benutzer "kadrija". Sieht die Bestellungen, tippt "Te Beki",
-//              dann "Pranuar" oder "Anuluar".
+//   Riba     - Benutzer "kadrija". Sieht die Bestellungen, tippt "Gati",
+//              "Te Beki", dann "Pranuar" oder "Anuluar" - und bei einer
+//              Anuluar, die zurueckkommt, "E kthyem në depo" (06.10.).
 //   Inhaber  - mit seinem Heart-Zugang (E-Mail). Dazu: Barazuar, Riba
 //              ausbezahlt, einen Schritt zuruecknehmen, Ribas Zugang anlegen.
+//              Sieht in der Karte "Ndepo" auch Shishet/Stikerat/Kremet aus
+//              den Produktkosten (die darf nur das CEO-Konto lesen).
 //
 // Was eine Bestellung hierher bringt: Posta Beki in Heart (Akte, Karte
 // "Bestellung"). Was hier getippt wird, sieht Heart live; Heart zieht
@@ -31,12 +34,15 @@ import {
   runTransaction,
   setDoc
 } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
-import { DERGESA, STATUS_CHIPS, dergesaLesen, euroSq, hyrja, llogarit, ndryshimi, KTHIMI } from "/shared/lifeskin-dergesat.js";
-import { renderChips, renderKartat, renderListe } from "./dergesat-pamja.js";
+import { DERGESA, STATUS_CHIPS, dergesaLesen, euroSq, hyrja, kthimNeDepo, llogarit, ndryshimi, KTHIMI } from "/shared/lifeskin-dergesat.js";
+import { KARTAT_ID, renderChips, renderDetajet, renderKartat, renderListe } from "./dergesat-pamja.js";
 
 const TENANT = "lifeskin";
 const dergesaRef = (kennung) => doc(db, "lifeskin", TENANT, "dergesat", kennung);
 const zugangRef = () => doc(db, "lifeskin", TENANT, "dergesatZugang", "riba");
+// Shishet, Stikerat, Kremet - dieselbe Ablage wie Heart, Produktkosten
+// (apps/mnyra-heart/heart-lifeskin-kosten.js, KOSTEN_DOK). Nur CEO.
+const lendaRef = () => doc(db, "landingArchive", "lifeskin__produktkosten");
 const CHIP_KYC = "dergesat.chip";
 
 const $ = (id) => document.getElementById(id);
@@ -48,11 +54,15 @@ const gjendja = {
   chip: (() => { try { return globalThis.localStorage?.getItem(CHIP_KYC) || "porosi"; } catch { return "porosi"; } })(),
   laeuft: "",
   lidhja: "pritje",
-  ribaGati: null
+  ribaGati: null,
+  // Die offene Liste einer Karte oben ("" = keine).
+  karta: "",
+  lenda: null
 };
 if (!STATUS_CHIPS.some((c) => c.id === gjendja.chip)) gjendja.chip = "porosi";
 
 let ndalLive = null;
+let ndalLenda = null;
 
 // Die Punkte unter den Karten: welche gerade im Bild ist.
 function punktet() {
@@ -92,6 +102,8 @@ function vizato() {
   shfaq("dg-ngarkim", Boolean(gjendja.perdoruesi) && !gjendja.roli);
   if (!brenda) {
     $("dg-kush").textContent = "";
+    gjendja.karta = "";
+    vizatoFleten();
     return;
   }
 
@@ -109,9 +121,10 @@ function vizato() {
   // bleibt die Stelle, an der man gerade ist.
   const kartat = $("dg-kartat");
   const stelle = kartat.scrollLeft;
-  kartat.innerHTML = gjendja.lidhja === "ok" ? renderKartat(gjendja.liste, gjendja.roli, gjendja.laeuft) : "";
+  kartat.innerHTML = gjendja.lidhja === "ok" ? renderKartat(gjendja.liste, gjendja.roli, gjendja.laeuft, gjendja.lenda) : "";
   kartat.scrollLeft = stelle;
   punktet();
+  vizatoFleten();
 
   // Ribas Zugang - nur fuer den Inhaber, ausserhalb des Neuzeichnens (das
   // getippte Passwort bleibt stehen).
@@ -122,6 +135,39 @@ function vizato() {
       : gjendja.ribaGati ? `Gati – Riba hyn me përdoruesin „${DERGESA.ribaPerdoruesi}“.`
         : `Ende pa hyrje. Shkruani fjalëkalimin për „${DERGESA.ribaPerdoruesi}“ dhe ruajeni.`;
   }
+}
+
+// Die Liste einer Karte (06.10.). Beim Neuzeichnen (Live) bleibt die
+// Stelle, an der man in der Liste gerade ist.
+function vizatoFleten() {
+  const fleta = $("dg-flete");
+  if (!fleta) return;
+  const hapur = Boolean(gjendja.karta) && gjendja.lidhja === "ok";
+  if (!hapur) {
+    if (!fleta.hidden) {
+      fleta.hidden = true;
+      fleta.innerHTML = "";
+      document.documentElement.classList.remove("dg-pa-levizje");
+    }
+    return;
+  }
+  const trupi = fleta.querySelector(".dg-flete__trupi");
+  const stelle = trupi ? trupi.scrollTop : 0;
+  const ishte = !fleta.hidden;
+  fleta.innerHTML = renderDetajet(gjendja.karta, gjendja.liste, gjendja.roli, gjendja.laeuft, gjendja.lenda);
+  fleta.hidden = false;
+  document.documentElement.classList.add("dg-pa-levizje");
+  const iRi = fleta.querySelector(".dg-flete__trupi");
+  if (iRi) iRi.scrollTop = stelle;
+  if (!ishte) fleta.querySelector(".dg-flete__mbyll")?.focus({ preventScroll: true });
+}
+
+function mbyllFleten() {
+  if (!gjendja.karta) return;
+  const nga = gjendja.karta;
+  gjendja.karta = "";
+  vizatoFleten();
+  document.querySelector(`[data-karta="${nga}"]`)?.focus?.({ preventScroll: true });
 }
 
 // ── Wer bin ich? ────────────────────────────────────────────────────────
@@ -155,7 +201,22 @@ function nisLive() {
 function ndalo() {
   ndalLive?.();
   ndalLive = null;
+  ndalLenda?.();
+  ndalLenda = null;
   gjendja.liste = [];
+  gjendja.lenda = null;
+}
+
+// Nur fuer den Inhaber: die Zahlen aus den Produktkosten fuer "Ndepo".
+function nisLenden() {
+  ndalLenda?.();
+  ndalLenda = onSnapshot(lendaRef(), (snap) => {
+    gjendja.lenda = snap.exists() ? (snap.data() || {}) : null;
+    vizato();
+  }, () => {
+    gjendja.lenda = null;
+    vizato();
+  });
 }
 
 // DIESELBE ABLAGE WIE HEART (heart-auth.js): Heart legt die Anmeldung
@@ -175,6 +236,7 @@ onAuthStateChanged(auth, async (perdoruesi) => {
   gjendja.roli = roli;
   gjendja.ribaGati = ribaGati;
   if (roli === "riba" || roli === "heart") nisLive();
+  if (roli === "heart") nisLenden();
   vizato();
 });
 
@@ -215,6 +277,17 @@ $("dg-pa-qasje-dil")?.addEventListener("click", () => signOut(auth).catch(() => 
 // ── Ein Schritt ─────────────────────────────────────────────────────────
 // Im Vorgang gelesen: Hat jemand anderes inzwischen etwas getippt, gilt
 // dessen Stand, und der Schritt wird mit dem frischen Stand geprueft.
+async function kthePerDepo(kennung) {
+  const roli = gjendja.roli === "heart" ? "heart" : "riba";
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(dergesaRef(kennung));
+    if (!snap.exists()) throw new Error("Kjo porosi nuk ekziston më.");
+    const felder = kthimNeDepo(dergesaLesen(snap.data() || {}, kennung), { roli });
+    if (!felder) throw new Error("Kjo porosi është tashmë në depo.");
+    tx.update(dergesaRef(kennung), felder);
+  });
+}
+
 async function hapi(kennung, ne) {
   const roli = gjendja.roli === "heart" ? "heart" : "riba";
   return runTransaction(db, async (tx) => {
@@ -267,10 +340,28 @@ document.addEventListener("click", (ngjarja) => {
   const d = gjendja.liste.find((x) => x.kennung === kennung) || null;
   const celes = `${veprimi}:${kennung}`;
 
+  if (veprimi === "hap-karten") {
+    gjendja.karta = KARTAT_ID.includes(el.dataset.karta) ? el.dataset.karta : "";
+    vizatoFleten();
+    return;
+  }
+  if (veprimi === "mbyll-karten") {
+    mbyllFleten();
+    return;
+  }
   if (veprimi === "chip") {
     gjendja.chip = el.dataset.chip || "porosi";
     try { globalThis.localStorage?.setItem(CHIP_KYC, gjendja.chip); } catch { /* egal */ }
     vizato();
+    return;
+  }
+  if (veprimi === "gati") {
+    bej(celes, () => hapi(kennung, "gati"), `Gati: ${d?.postaBeki || ""} – tani te „Gati“.`);
+    return;
+  }
+  if (veprimi === "kthe-depo") {
+    if (!globalThis.confirm?.(`E kthyem në depo ${d?.postaBeki ? `(Posta Beki ${d.postaBeki})` : ""}?`)) return;
+    bej(celes, () => kthePerDepo(kennung), "Në depo ✓");
     return;
   }
   if (veprimi === "derguar") {
@@ -360,5 +451,15 @@ $("dg-riba-forma")?.addEventListener("submit", async (ngjarja) => {
 });
 
 $("dg-kartat")?.addEventListener("scroll", () => punktet(), { passive: true });
+
+// Tastatur: Karte mit Enter/Leertaste oeffnen, Liste mit Escape schliessen.
+document.addEventListener("keydown", (ngjarja) => {
+  if (ngjarja.key === "Escape" && gjendja.karta) { mbyllFleten(); return; }
+  const karta = ngjarja.target?.closest?.("[data-veprim=hap-karten]");
+  if (karta && ngjarja.target === karta && (ngjarja.key === "Enter" || ngjarja.key === " ")) {
+    ngjarja.preventDefault();
+    karta.click();
+  }
+});
 
 vizato();

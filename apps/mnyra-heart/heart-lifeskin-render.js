@@ -183,7 +183,7 @@ function renderChipSeiten(eintraege, aktiv, aktion, spalten = 4) {
     seiten.push(renderChips(eintraege.slice(i, i + spalten), aktiv, aktion, "shop")
       .replace("heart-lifeskin-chips heart-lifeskin-chips--shop", "heart-shopchip-page heart-lifeskin-chips--shop"));
   }
-  return `<div class="heart-lifeskin-chips heart-shopchip-pages${spalten === 3 ? " heart-shopchip-pages--skinreact" : ""}" role="group" aria-label="Auswahl – seitenweise wischen">${seiten.join("")}</div>`;
+  return `<div class="heart-lifeskin-chips heart-shopchip-pages${spalten === 3 ? " heart-shopchip-pages--skinreact" : spalten === 5 ? " heart-shopchip-pages--fuenf" : ""}" role="group" aria-label="Auswahl – seitenweise wischen">${seiten.join("")}</div>`;
 }
 
 // DIE ZEITRAEUME IM KOPF VON HEART (heart-render.js): Der Datum-Knopf
@@ -793,8 +793,9 @@ const BESTELL_ZEITRAEUME = Object.freeze([
   { id: "max", label: "Max" }
 ]);
 
-// DER STAND JEDER BESTELLUNG (05.10., Inhaber): dieselben vier Chips wie
-// auf /dergesat - Porosiat, Dërguar, Pranuar, Anuluar. Jede Bestellung
+// DER STAND JEDER BESTELLUNG (05.10., Inhaber): dieselben Chips wie
+// auf /dergesat - Porosiat, Gati, Dërguar, Pranuar, Anuluar (alle fuenf
+// auf einer Seite, 06.10.). Jede Bestellung
 // steht in genau einem davon (statusVonSitzung) und traegt ihren Stand
 // als kleinen Chip unter dem Namen, mit der Posta-Beki-Nummer.
 export function renderBestellungen(sitzungen, zeitraum = "heute", zustand = {}) {
@@ -810,7 +811,7 @@ export function renderBestellungen(sitzungen, zeitraum = "heute", zustand = {}) 
   const chips = renderChips(BESTELL_ZEITRAEUME, zeitraum, "lifeskin-bestellzeitraum");
   const statusChips = renderChipSeiten(STATUS_CHIPS.map((c) => ({
     id: c.id, label: c.label, anzahl: imZeitraumListe.filter((s) => stand.get(s.id) === c.id).length
-  })), statusWahl, "lifeskin-bestellstatus");
+  })), statusWahl, "lifeskin-bestellstatus", STATUS_CHIPS.length);
 
   const zeitraumWort = (BESTELL_ZEITRAEUME.find((z) => z.id === zeitraum) || BESTELL_ZEITRAEUME[0]).label;
   const statusWort = (STATUS_CHIPS.find((c) => c.id === statusWahl) || STATUS_CHIPS[0]).label;

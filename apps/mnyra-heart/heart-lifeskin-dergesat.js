@@ -122,7 +122,7 @@ export function createDergesatOperationen({ store, actions, setToast, berichteNa
     const ne = stand === "versandt" ? "derguar" : stand === "zugestellt" ? "pranuar" : "";
     const d = (lifeskin().dergesat || {})[kennung];
     if (!ne || !d || d.statusi === ne || d.statusi === "anuluar") return;
-    if (ne === "derguar" && d.statusi !== "porosi") return;
+    if (ne === "derguar" && !["porosi", "gati"].includes(d.statusi)) return;
     try { await daten.statusSetzen(kennung, ne); } catch { /* der Versand selbst ist gespeichert */ }
   }
 

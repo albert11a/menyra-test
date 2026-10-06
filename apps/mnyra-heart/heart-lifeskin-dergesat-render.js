@@ -75,8 +75,9 @@ export function renderPostaBeki(sitzung, zustand = {}) {
 }
 
 // Was auf der Therapieseite des Kunden und in der Begleitung stehen soll.
-const BERICHT_ZIEL = Object.freeze({ porosi: "bestellt", derguar: "versandt", pranuar: "zugestellt" });
-export const NDJEKJA_ZIEL = Object.freeze({ porosi: "konfirmuar", derguar: "derguar", pranuar: "dorezuar" });
+// Gati (gepackt, 06.10.) ist fuer den Kunden noch "bestellt".
+const BERICHT_ZIEL = Object.freeze({ porosi: "bestellt", gati: "bestellt", derguar: "versandt", pranuar: "zugestellt" });
+export const NDJEKJA_ZIEL = Object.freeze({ porosi: "konfirmuar", gati: "konfirmuar", derguar: "derguar", pranuar: "dorezuar" });
 const BESTELLT_STAENDE = Object.freeze(["bestellt", "versandt", "zugestellt"]);
 
 // Liefertag wie bei "Als versendet melden": zwei bis drei Tage ab Versand.
@@ -92,7 +93,7 @@ export function liefertag(iso, plus) {
 // Aenderung live und zieht nach:
 //   Dërguar  -> Therapieseite "versendet", Begleitung "derguar"
 //   Pranuar  -> Therapieseite "zugestellt", Begleitung "dorezuar"
-//   Porosi   -> (zurueckgenommen) wieder "bestellt"
+//   Porosi/Gati -> (zurueckgenommen) wieder "bestellt"
 //   Anuluar  -> Bestellung storniert - zaehlt in keinem Umsatz mehr
 // Nur, was abweicht - ein zweiter Lauf findet nichts mehr.
 export function abgleichSchritte({ dergesat = {}, sitzungen = [], berichte = {} } = {}) {

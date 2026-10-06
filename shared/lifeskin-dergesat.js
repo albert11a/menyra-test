@@ -4,7 +4,9 @@
 // Ablauf:
 //   1. Heart, Akte einer Analyse, Karte "Bestellung": Posta Beki eintragen.
 //      Erst damit steht die Bestellung auf /dergesat (Chip "Porosiat").
-//   2. /dergesat: "Te Beki" -> Dërguar. Dort "Pranuar" oder "Anuluar".
+//   2. /dergesat: "Gati" (gepackt) -> Gati. Dort "Te Beki" -> Dërguar.
+//      Dort "Pranuar" oder "Anuluar". Kommt eine Anuluar zurueck:
+//      "E kthyem në depo" (Auftrag Inhaber 06.10.).
 //   3. Heart zeigt denselben Stand als Chip unter der Bestellung und
 //      ordnet sie in der Karte "Bestellungen" in denselben Chip ein.
 //
@@ -35,12 +37,13 @@ export const DERGESA = Object.freeze({
   postaBekiMax: 60
 });
 
-export const STATUSET = Object.freeze(["porosi", "derguar", "pranuar", "anuluar"]);
+export const STATUSET = Object.freeze(["porosi", "gati", "derguar", "pranuar", "anuluar"]);
 
 // Die Chips: auf /dergesat und in Heart in DIESER Reihenfolge und mit
 // DIESEN Worten.
 export const STATUS_CHIPS = Object.freeze([
   Object.freeze({ id: "porosi", label: "Porosiat", njejes: "Porosi" }),
+  Object.freeze({ id: "gati", label: "Gati", njejes: "Gati" }),
   Object.freeze({ id: "derguar", label: "Dërguar", njejes: "Dërguar" }),
   Object.freeze({ id: "pranuar", label: "Pranuar", njejes: "Pranuar" }),
   Object.freeze({ id: "anuluar", label: "Anuluar", njejes: "Anuluar" })
@@ -49,7 +52,8 @@ export const STATUS_CHIPS = Object.freeze([
 // Welche Schritte es gibt - und welche Riba selbst gehen darf. Dieselben
 // Paare stehen in firestore.rules (dergesaRibaNdryshon).
 export const KALIMET_RIBA = Object.freeze({
-  porosi: Object.freeze(["derguar"]),
+  porosi: Object.freeze(["gati"]),
+  gati: Object.freeze(["derguar"]),
   derguar: Object.freeze(["pranuar", "anuluar"]),
   pranuar: Object.freeze([]),
   anuluar: Object.freeze([])
@@ -57,7 +61,7 @@ export const KALIMET_RIBA = Object.freeze({
 
 // Zurueck geht nur Heart, und nur, solange noch nichts abgerechnet ist.
 // Anuluar bleibt Anuluar - wie "Als storniert markieren" in Heart.
-export const KTHIMI = Object.freeze({ derguar: "porosi", pranuar: "derguar" });
+export const KTHIMI = Object.freeze({ gati: "porosi", derguar: "gati", pranuar: "derguar" });
 
 const tekst = (wert, max = 200) => String(wert ?? "").trim().slice(0, max);
 const zeit = (wert) => {
@@ -128,11 +132,14 @@ export function dergesaLesen(roh = {}, kennung = "") {
     nga: tekst(roh?.nga, 20),
     createdAt: zeit(roh?.createdAt),
     updatedAt: zeit(roh?.updatedAt),
+    gatiAt: zeit(roh?.gatiAt),
     derguarAt: zeit(roh?.derguarAt),
     pranuarAt: zeit(roh?.pranuarAt),
     anuluarAt: zeit(roh?.anuluarAt),
     barazuarAt: zeit(roh?.barazuarAt),
-    ribaPaguarAt: zeit(roh?.ribaPaguarAt)
+    ribaPaguarAt: zeit(roh?.ribaPaguarAt),
+    // Anuluar und wieder im Lager (Knopf "E kthyem në depo").
+    kthyerAt: zeit(roh?.kthyerAt)
   };
 }
 
@@ -173,8 +180,8 @@ export function ndryshimi(d, ne, { roli = "riba", jetzt = new Date().toISOString
   // "Als storniert markieren") - nicht aber eine schon abgerechnete.
   const storno = roli === "heart" && ne === "anuluar" && !d.barazuarAt && !d.ribaPaguarAt;
   // Heart meldet den Versand auch ueber die alten Knoepfe in der Akte -
-  // dann geht es von Porosi direkt auf Pranuar.
-  const kapercim = roli === "heart" && d.statusi === "porosi" && ne === "pranuar";
+  // dann geht es von Porosi oder Gati direkt auf Dërguar oder Pranuar.
+  const kapercim = roli === "heart" && ["porosi", "gati"].includes(d.statusi) && ["derguar", "pranuar"].includes(ne);
   if (!perpara && !kthim && !storno && !kapercim) return null;
   const felder = { statusi: ne, updatedAt: jetzt, nga: roli === "heart" ? "heart" : "riba" };
   if (kthim) {
@@ -187,6 +194,20 @@ export function ndryshimi(d, ne, { roli = "riba", jetzt = new Date().toISOString
   // (firestore.rules), und von Dërguar aus steht derguarAt ohnehin da.
   if (roli === "heart" && ne === "pranuar" && !d.derguarAt) felder.derguarAt = jetzt;
   return felder;
+}
+
+// Was zurueck muss: eine Anuluar, die schon unterwegs war (derguarAt) und
+// noch nicht wieder im Lager ist. Ohne derguarAt hat sie das Haus nie
+// verlassen.
+export function prituriKthim(d) {
+  return d?.statusi === "anuluar" && Boolean(d.derguarAt) && !d.kthyerAt;
+}
+
+// "E kthyem në depo" - Riba und Heart, nur bei prituriKthim. Dieselben
+// Felder stehen in firestore.rules (dergesaRibaKthen).
+export function kthimNeDepo(d, { roli = "riba", jetzt = new Date().toISOString() } = {}) {
+  if (!prituriKthim(d)) return null;
+  return { kthyerAt: jetzt, updatedAt: jetzt, nga: roli === "heart" ? "heart" : "riba" };
 }
 
 function grupoSipasKohes(liste, fusha, vlera) {
@@ -205,7 +226,7 @@ export function netoPosta(d) {
   return cent(Math.max(0, (Number(d?.cmimi) || 0) - DERGESA.postaTarifa));
 }
 
-// Die fuenf Karten unter der Liste.
+// Die Karten oben (ohne Ndepo - die rechnet llogaritDepon).
 export function llogarit(liste) {
   const te = (liste || []).filter((d) => d && d.statusi !== "anuluar");
   const shuma = (l, vlera) => cent(l.reduce((s, d) => s + vlera(d), 0));
@@ -218,8 +239,11 @@ export function llogarit(liste) {
   const paguarRiba = te.filter((d) => d.statusi === "pranuar" && d.ribaPaguarAt);
   const riba = () => DERGESA.ribaPerPorosi;
 
+  const sipasKohes = (l, fusha) => [...l].sort((a, b) => String(b[fusha] || "").localeCompare(String(a[fusha] || "")));
+
   return {
     pritjeBarazim: {
+      lista: sipasKohes([...neRruge, ...gatiBarazim], "updatedAt"),
       numri: neRruge.length + gatiBarazim.length,
       shuma: cent(shuma(neRruge, netoPosta) + shuma(gatiBarazim, netoPosta)),
       neRruge: { numri: neRruge.length, shuma: shuma(neRruge, netoPosta) },
@@ -228,15 +252,109 @@ export function llogarit(liste) {
     barazuar: {
       numri: barazuar.length,
       shuma: shuma(barazuar, netoPosta),
-      grupet: grupoSipasKohes(barazuar, "barazuarAt", netoPosta)
+      grupet: grupoSipasKohes(barazuar, "barazuarAt", netoPosta),
+      lista: sipasKohes(barazuar, "barazuarAt")
     },
-    pritjeRiba: { numri: pritjeRiba.length, shuma: shuma(pritjeRiba, riba) },
-    perRiba: { numri: perRiba.length, shuma: shuma(perRiba, riba), kennungen: perRiba.map((d) => d.kennung) },
+    pritjeRiba: { numri: pritjeRiba.length, shuma: shuma(pritjeRiba, riba), lista: sipasKohes(pritjeRiba, "derguarAt") },
+    perRiba: { numri: perRiba.length, shuma: shuma(perRiba, riba), kennungen: perRiba.map((d) => d.kennung), lista: sipasKohes(perRiba, "pranuarAt") },
     paguarRiba: {
       numri: paguarRiba.length,
       shuma: shuma(paguarRiba, riba),
-      grupet: grupoSipasKohes(paguarRiba, "ribaPaguarAt", riba)
+      grupet: grupoSipasKohes(paguarRiba, "ribaPaguarAt", riba),
+      lista: sipasKohes(paguarRiba, "ribaPaguarAt")
     }
+  };
+}
+
+// NDEPO - DER LAGERBESTAND (Auftrag Inhaber 06.10.).
+//
+// Woher: Heart, Karte mit den Einkaufszahlen je Produkt (die liest nur
+// das CEO-Konto; /dergesat holt sie fuer den Inhaber und gibt sie als
+// "lenda" hierher). Dort stehen die eingekauften Shishet und
+// Stikerat (Stueck) und die Kremet (Menge, je Produkt). Ein Produkt ist
+// 1 Shishe + 1 Stiker + Mbushja ml Krem (wie in Heart gerechnet).
+//
+// Was abgeht: jedes Produkt, das gepackt ist (Gati, Dërguar, Pranuar)
+// und jede Anuluar, die unterwegs war und noch nicht zurueck ist.
+// Anuluar ohne Versand hat das Haus nie verlassen - sie zaehlt nicht.
+// Kommt eine Anuluar zurueck ("E kthyem në depo"), steht sie als fertiges
+// Produkt im Lager ("Të gatshme") - und geht nicht noch einmal ab.
+//
+// lenda = null (Riba darf die Einkaufszahlen nicht lesen): dann nur, was
+// aus /dergesat selbst kommt - Pritje për kthim und Të gatshme.
+const DEPO_PRODUKTE = Object.freeze(["BPO", "DAILY"]);
+
+export function emriProduktitDepo(id) {
+  return emriShkurt(String(id || "").replace(/[-_]+/g, " ").toUpperCase());
+}
+
+function shtoProdukte(harta, d) {
+  for (const p of produkteNeDergesa(d.produkte)) harta.set(p.emri, (harta.get(p.emri) || 0) + p.sasia);
+}
+
+const numer = (wert) => {
+  const n = Number(String(wert ?? "").replace(",", "."));
+  return Number.isFinite(n) && n > 0 ? n : 0;
+};
+
+export function llogaritDepon(liste, lenda = null) {
+  const te = (liste || []).filter(Boolean);
+  const perdorur = te.filter((d) => ["gati", "derguar", "pranuar"].includes(d.statusi));
+  const kthim = te.filter(prituriKthim);
+  const kthyer = te.filter((d) => d.statusi === "anuluar" && d.kthyerAt);
+
+  const dalur = new Map();
+  for (const d of [...perdorur, ...kthim]) shtoProdukte(dalur, d);
+  const pritje = new Map();
+  for (const d of kthim) shtoProdukte(pritje, d);
+  const gatshme = new Map();
+  for (const d of kthyer) shtoProdukte(gatshme, d);
+  const copeDalur = [...dalur.values()].reduce((s, n) => s + n, 0);
+  const rreshta = (harta) => [...harta.entries()].map(([emri, sasia]) => ({ emri, sasia }))
+    .sort((a, b) => (DEPO_PRODUKTE.indexOf(a.emri) + 1 || 99) - (DEPO_PRODUKTE.indexOf(b.emri) + 1 || 99) || a.emri.localeCompare(b.emri));
+  const sipasKohes = (l, fusha) => [...l].sort((a, b) => String(b[fusha] || "").localeCompare(String(a[fusha] || "")));
+
+  let lendaLlogari = null;
+  if (lenda) {
+    const mbushja = numer(lenda.mbushja) || 30;
+    const shishe = { blere: Math.floor(numer(lenda.shisheStueck)), dalur: copeDalur };
+    shishe.mbetur = shishe.blere - shishe.dalur;
+    const stiker = { blere: Math.floor(numer(lenda.stikerStueck)), dalur: copeDalur };
+    stiker.mbetur = stiker.blere - stiker.dalur;
+    const ml = new Map();
+    for (const k of Array.isArray(lenda.kreme) ? lenda.kreme : []) {
+      if (!k?.produkt) continue;
+      const emri = emriProduktitDepo(k.produkt);
+      ml.set(emri, (ml.get(emri) || 0) + numer(k.menge) * (k.einheit === "l" ? 1000 : 1));
+    }
+    const emrat = [...new Set([...DEPO_PRODUKTE, ...ml.keys()])];
+    const produkte = emrat.map((emri) => {
+      const mlGjithsej = Math.round(ml.get(emri) || 0);
+      const mbushje = Math.floor(mlGjithsej / mbushja);
+      const del = dalur.get(emri) || 0;
+      const kremPer = mbushje - del;
+      // Wie viele noch gemacht werden koennen: das Knappste von Shishe,
+      // Stiker und Krem.
+      const mundTeBehen = Math.max(0, Math.min(kremPer, shishe.mbetur, stiker.mbetur));
+      return { emri, ml: mlGjithsej, mbushje, dalur: del, kremPer, mundTeBehen, gatshme: gatshme.get(emri) || 0 };
+    }).filter((p) => p.ml || p.dalur || p.gatshme);
+    lendaLlogari = { mbushja, shishe, stiker, produkte, updatedAt: String(lenda.updatedAt || "") };
+  }
+
+  // Die Zahl je Produkt oben auf der Karte: was gemacht werden kann plus
+  // was fertig zurueckgekommen ist.
+  const permbledhje = (lendaLlogari ? lendaLlogari.produkte.map((p) => p.emri) : DEPO_PRODUKTE)
+    .map((emri) => {
+      const p = lendaLlogari?.produkte.find((x) => x.emri === emri);
+      return { emri, sasia: (p ? p.mundTeBehen : 0) + (gatshme.get(emri) || 0), gatshme: gatshme.get(emri) || 0 };
+    });
+
+  return {
+    lenda: lendaLlogari,
+    permbledhje,
+    pritjeKthim: { numri: kthim.length, produkte: rreshta(pritje), lista: sipasKohes(kthim, "anuluarAt") },
+    gatshme: { numri: kthyer.length, produkte: rreshta(gatshme), lista: sipasKohes(kthyer, "kthyerAt") },
+    dalur: { numri: perdorur.length + kthim.length, cope: copeDalur, produkte: rreshta(dalur) }
   };
 }
 

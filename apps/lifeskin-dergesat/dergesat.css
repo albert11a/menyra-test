@@ -15,6 +15,8 @@
   --dg-warn: #8a5a00;
   --dg-blue-bg: #dbe8ff;
   --dg-blue: #1d4ed8;
+  --dg-gati: #7e22ce;
+  --dg-gati-bg: #f3e8ff;
   color-scheme: light;
 }
 
@@ -73,12 +75,14 @@ body {
 .dg-punktet span { width: 6px; height: 6px; border-radius: 999px; background: var(--dg-border); transition: background .2s, width .2s; }
 .dg-punktet span.aktiv { width: 16px; background: var(--dg-text); }
 
-.dg-chips { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+/* Alle fuenf Chips auf jeder Breite in EINER Reihe (06.10.) - bis 320 px:
+   Schrift und Abstand schrumpfen mit der Breite. */
+.dg-chips { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(3px, 1.2vw, 6px); }
 .dg-chip {
-  display: grid; justify-items: center; gap: 2px; min-width: 0; min-height: 52px; padding: 6px 4px; border-radius: 12px;
+  display: grid; justify-items: center; gap: 2px; min-width: 0; min-height: 52px; padding: 6px 1px; border-radius: 12px;
   border: 1px solid var(--dg-border); background: var(--dg-bg); color: var(--dg-text); font: inherit; cursor: pointer;
 }
-.dg-chip span { font-size: 12.5px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dg-chip span { font-size: clamp(10.5px, 3.1vw, 12.5px); letter-spacing: -.01em; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dg-chip b { font-size: 16px; font-variant-numeric: tabular-nums; }
 .dg-chip--aktiv { background: var(--dg-accent); border-color: var(--dg-accent); color: var(--dg-accent-text); }
 
@@ -93,6 +97,7 @@ body {
   overflow: hidden; box-shadow: inset 0 5px 0 var(--dg-band, var(--dg-border));
 }
 .dg-rresht--porosi { --dg-band: #e0a21a; }
+.dg-rresht--gati { --dg-band: #9333ea; }
 .dg-rresht--derguar { --dg-band: #2563eb; }
 .dg-rresht--pranuar { --dg-band: var(--dg-good); }
 .dg-rresht--anuluar { --dg-band: var(--dg-bad); }
@@ -114,6 +119,7 @@ body {
 .dg-koha { font-size: 12px; color: var(--dg-muted); }
 .dg-etikete { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 999px; font-size: 11px; font-weight: 700; }
 .dg-etikete--mire { background: var(--dg-good-bg); color: var(--dg-good); }
+.dg-etikete--keq { background: var(--dg-bad-bg); color: var(--dg-bad); }
 .dg-butonat { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border-top: 1px solid var(--dg-border); }
 .dg-butonat .dg-buton { min-height: 52px; border: 0; border-radius: 0; }
 .dg-butonat .dg-buton + .dg-buton { border-left: 1px solid var(--dg-border); }
@@ -148,3 +154,108 @@ body {
   .dg-kartat { grid-auto-columns: 46%; }
 }
 .dg-historia { max-height: 168px; overflow-y: auto; }
+
+/* KARTEN ANTIPPEN (06.10.): jede Karte oeffnet ihre Liste. */
+.dg-kartat > .dg-karte[data-veprim="hap-karten"] { cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .12s, box-shadow .12s; }
+.dg-kartat > .dg-karte[data-veprim="hap-karten"]:active { transform: scale(.985); }
+.dg-kartat > .dg-karte[data-veprim="hap-karten"]:focus-visible { outline: 2px solid var(--dg-accent); outline-offset: 2px; }
+.dg-karte h2 { display: flex; align-items: baseline; gap: 4px; }
+.dg-karte__shiko { margin-left: auto; padding-left: 8px; font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--dg-text); white-space: nowrap; }
+.dg-karte__shuma small { font-size: 14px; font-weight: 600; color: var(--dg-muted); }
+.dg-ndarja li.dg-ndarja--keq b { color: var(--dg-bad); }
+
+/* NDEPO: die Zahl je Produkt gross. */
+.dg-karte--depo { border-color: #c9b8ef; }
+.dg-depo-sasi { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 6px; }
+.dg-depo-sasi > * { display: grid; align-content: start; gap: 0; padding: 6px 10px; border-radius: 12px; background: var(--dg-bg); }
+.dg-depo-sasi b { font-size: 26px; line-height: 1.1; font-weight: 800; font-variant-numeric: tabular-nums; }
+.dg-depo-sasi span { font-size: 12px; font-weight: 700; letter-spacing: .06em; color: var(--dg-muted); }
+.dg-depo-sasi small { font-size: 11.5px; color: var(--dg-muted); }
+.dg-depo-sasi--madhe { margin: 0 0 12px; }
+.dg-depo-sasi--madhe b { font-size: 32px; }
+
+/* DIE LISTE ZU EINER KARTE: Telefon = Blatt von unten, breiter = mittig. */
+html.dg-pa-levizje, html.dg-pa-levizje body { overflow: hidden; }
+.dg-flete { position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-end; justify-content: center; }
+.dg-flete__sfond { position: absolute; inset: 0; background: rgba(20, 19, 16, .45); animation: dg-zbehu .18s ease-out; }
+.dg-flete__panel {
+  position: relative; width: 100%; max-height: min(88dvh, 88vh); display: flex; flex-direction: column;
+  background: var(--dg-bg); border-radius: 20px 20px 0 0; box-shadow: 0 -10px 40px rgba(0, 0, 0, .18);
+  padding-bottom: env(safe-area-inset-bottom); animation: dg-ngjitu .22s cubic-bezier(.2, .8, .2, 1);
+}
+.dg-flete__kreu {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--dg-border);
+}
+.dg-flete__kreu::before {
+  content: ""; position: absolute; top: 6px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: 999px; background: var(--dg-border);
+}
+.dg-flete__kreu h2 { margin: 0; font-size: 20px; font-weight: 800; }
+.dg-flete__kreu p { margin: 2px 0 0; font-size: 14px; color: var(--dg-muted); font-variant-numeric: tabular-nums; }
+.dg-flete__mbyll {
+  flex: none; width: 44px; height: 44px; border-radius: 999px; border: 1px solid var(--dg-border); background: var(--dg-surface);
+  color: var(--dg-text); font: inherit; font-size: 24px; line-height: 1; cursor: pointer;
+}
+.dg-flete__trupi { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 12px 16px 20px; display: grid; gap: 16px; }
+.dg-pjese { display: grid; gap: 8px; min-width: 0; }
+.dg-pjese h3, .dg-grup h4 { margin: 0; font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--dg-text); }
+.dg-pjese h3 small { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--dg-muted); }
+.dg-pjese__shenim { margin: 0; font-size: 12.5px; color: var(--dg-muted); }
+.dg-grup { display: grid; gap: 8px; }
+.dg-grup h4 { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: baseline; padding: 8px 10px; border-radius: 10px; background: var(--dg-good-bg); color: var(--dg-good); letter-spacing: 0; text-transform: none; font-size: 13.5px; }
+.dg-grup h4 b { font-variant-numeric: tabular-nums; }
+
+.dg-detajet { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.dg-detaj {
+  display: grid; gap: 6px; padding: 12px; border-radius: 14px; border: 1px solid var(--dg-border); background: var(--dg-surface);
+  border-left: 4px solid var(--dg-band, var(--dg-border)); min-width: 0;
+}
+.dg-detaj--porosi { --dg-band: #e0a21a; }
+.dg-detaj--gati { --dg-band: #9333ea; }
+.dg-detaj--derguar { --dg-band: #2563eb; }
+.dg-detaj--pranuar { --dg-band: var(--dg-good); }
+.dg-detaj--anuluar { --dg-band: var(--dg-bad); }
+.dg-detaj__kreu { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+.dg-detaj__beki { display: grid; min-width: 0; }
+.dg-detaj__beki small { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--dg-muted); }
+.dg-detaj__beki b { font-size: 18px; font-weight: 800; overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; }
+.dg-detaj__djathtas { display: grid; justify-items: end; gap: 4px; }
+.dg-detaj__djathtas > b { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.dg-detaj__statusi { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--dg-bg); color: var(--dg-muted); }
+.dg-detaj__statusi--porosi { background: var(--dg-warn-bg); color: var(--dg-warn); }
+.dg-detaj__statusi--gati { background: var(--dg-gati-bg); color: var(--dg-gati); }
+.dg-detaj__statusi--derguar { background: var(--dg-blue-bg); color: var(--dg-blue); }
+.dg-detaj__statusi--pranuar { background: var(--dg-good-bg); color: var(--dg-good); }
+.dg-detaj__statusi--anuluar { background: var(--dg-bad-bg); color: var(--dg-bad); }
+.dg-detaj__produkte { margin: 0; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 14px; font-weight: 700; }
+.dg-detaj__produkte span:first-child:not(:only-child) { color: var(--dg-muted); font-weight: 600; }
+.dg-detaj__produkte i { font-style: normal; font-weight: 600; color: var(--dg-muted); }
+.dg-detaj__kohet { list-style: none; margin: 0; padding: 6px 0 0; border-top: 1px dashed var(--dg-border); display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 3px 20px; }
+.dg-detaj__kohet li { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13px; min-width: 0; }
+.dg-detaj__kohet span { color: var(--dg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dg-detaj__kohet time { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dg-detaj__butonat { display: grid; }
+
+.dg-tabela-mbajtes { overflow-x: auto; border: 1px solid var(--dg-border); border-radius: 12px; background: var(--dg-surface); }
+.dg-tabela { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.dg-tabela th, .dg-tabela td { padding: 9px 10px; text-align: right; border-top: 1px solid var(--dg-border); white-space: nowrap; }
+.dg-tabela thead th { border-top: 0; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--dg-muted); }
+.dg-tabela th[scope="row"] { text-align: left; font-weight: 700; }
+.dg-tabela td:last-child { font-weight: 800; }
+.dg-tabela td small { display: block; font-size: 11.5px; font-weight: 500; color: var(--dg-muted); }
+@media (max-width: 360px) {
+  .dg-tabela { font-size: 13px; }
+  .dg-tabela th, .dg-tabela td { padding: 8px 6px; }
+}
+
+@keyframes dg-zbehu { from { opacity: 0; } }
+@keyframes dg-ngjitu { from { transform: translateY(24px); opacity: .6; } }
+
+@media (min-width: 720px) {
+  .dg-flete { align-items: center; padding: 24px; }
+  .dg-flete__panel { max-width: 640px; max-height: min(84dvh, 84vh); border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, .25); }
+  .dg-flete__kreu::before { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dg-flete__sfond, .dg-flete__panel { animation: none; }
+}

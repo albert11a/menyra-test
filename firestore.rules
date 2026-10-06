@@ -1458,9 +1458,11 @@ service cloud.firestore {
       // Anschrift, keine Nummer - die bleiben in der Sitzung beim CEO-Konto.
       //
       // Anlegen und alles Uebrige (Posta Beki, Barazuar, Riba ausbezahlt,
-      // Zuruecknehmen) darf nur Heart. Riba darf lesen und genau drei
-      // Schritte gehen: Porosi -> Dërguar, Dërguar -> Pranuar oder Anuluar
-      // (shared/lifeskin-dergesat.js, KALIMET_RIBA).
+      // Zuruecknehmen) darf nur Heart. Riba darf lesen und genau diese
+      // Schritte gehen: Porosi -> Gati, Gati -> Dërguar, Dërguar -> Pranuar
+      // oder Anuluar (shared/lifeskin-dergesat.js, KALIMET_RIBA) - und eine
+      // Anuluar, die unterwegs war, als "E kthyem në depo" markieren
+      // (kthyerAt, 06.10.).
       //
       // Wer Riba ist, steht in dergesatZugang/riba (uid) - eingetragen von
       // Heart. Ein Konto, das nur die Adresse kennt, ist damit noch nicht
@@ -1480,7 +1482,10 @@ service cloud.firestore {
         let keys = neu.diff(alt).affectedKeys();
         return neu.nga == "riba"
           && dergesaZeitOk(neu.updatedAt)
-          && ((alt.statusi == "porosi" && neu.statusi == "derguar"
+          && ((alt.statusi == "porosi" && neu.statusi == "gati"
+                && keys.hasOnly(["statusi", "gatiAt", "updatedAt", "nga"])
+                && dergesaZeitOk(neu.gatiAt))
+            || (alt.statusi == "gati" && neu.statusi == "derguar"
                 && keys.hasOnly(["statusi", "derguarAt", "updatedAt", "nga"])
                 && dergesaZeitOk(neu.derguarAt))
             || (alt.statusi == "derguar" && neu.statusi == "pranuar"
@@ -1488,7 +1493,12 @@ service cloud.firestore {
                 && dergesaZeitOk(neu.pranuarAt))
             || (alt.statusi == "derguar" && neu.statusi == "anuluar"
                 && keys.hasOnly(["statusi", "anuluarAt", "updatedAt", "nga"])
-                && dergesaZeitOk(neu.anuluarAt)));
+                && dergesaZeitOk(neu.anuluarAt))
+            || (alt.statusi == "anuluar" && neu.statusi == "anuluar"
+                && dergesaZeitOk(alt.get("derguarAt", ""))
+                && alt.get("kthyerAt", "") == ""
+                && keys.hasOnly(["kthyerAt", "updatedAt", "nga"])
+                && dergesaZeitOk(neu.kthyerAt)));
       }
 
       match /dergesat/{kennung} {
