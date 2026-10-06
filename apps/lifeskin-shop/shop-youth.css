@@ -335,3 +335,11 @@
 
 /* Der Preisstatus steht direkt beim Kaufbutton, vor den Produktfotos. */
 @media(max-width:800px){#ls-einstieg .page #shop-preisstatus{order:1}}
+
+/* 06.10., Inhaber: gleicher Petrolton fuer alle Kaufaktionen. */
+#ls-einstieg button:is(.cta,.primary)[data-set],#ls-einstieg #kasa-dergo{background:#08686c;color:#fff;border-color:#08686c}
+#ls-einstieg button:is(.cta,.primary)[data-set] del{color:#d3e8e7}
+#ls-einstieg button:is(.cta,.primary)[data-set]:hover,#ls-einstieg #kasa-dergo:hover{background:#07565a;border-color:#07565a}
+#ls-einstieg button:is(.cta,.primary)[data-set]:focus-visible,#ls-einstieg #kasa-dergo:focus-visible{outline:3px solid #08686c;outline-offset:4px}
+/* Der Scan bleibt als zweiter Weg sichtbar und lesbar. */
+#ls-einstieg .page #zgjedhja #ls-start{background:#e8f2f0;color:#07565a;border:1px solid #b5cfcc}
