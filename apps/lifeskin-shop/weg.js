@@ -17,7 +17,7 @@
 export const FRAGE_TIPPS = Object.freeze({
   anliegen: Object.freeze({
     marke: "A E DINIT?",
-    fett: "Puçrra fillon para se të shihet.",
+    fett: "Akneja fillon para se të shihet.",
     text: "Shumica fillojnë me një por të bllokuar, disa javë para se të dalin."
   }),
   kohezgjatja: Object.freeze({

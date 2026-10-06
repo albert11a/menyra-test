@@ -295,7 +295,7 @@ test("der kopierte Prompt traegt Name, Altersgruppe und die Antworten", () => {
   }
   // Und zwar wortgleich das, was auf dem Bildschirm stand.
   assert.equal(zeilen[0].pyetja, "Çka ju shqetëson më së shumti?");
-  assert.equal(zeilen[0].pergjigja, "Puçrrat; Njollat e errëta");
+  assert.equal(zeilen[0].pergjigja, "Aknet; Njollat e errëta");
   assert.equal(zeilen[3].pergjigja_de, "Roaccutane (Isotretinoin), jetzt oder in den letzten 6 Monaten");
   // Der Name ist keine Anamnese - er steht in pacienti und nicht als Frage.
   assert.ok(!zeilen.some((z) => /quheni|heißen/i.test(z.pyetja + z.pyetja_de)),

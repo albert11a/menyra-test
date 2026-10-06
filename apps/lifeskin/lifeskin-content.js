@@ -494,7 +494,7 @@ export const OBERFLAECHE = Object.freeze({
   frageKompaktFoto: { sq: "Fotoja u ruajt", de: "Foto gespeichert" },
   frageKompaktScan: { sq: "Skanimi mbaroi", de: "Scan abgeschlossen" },
   frageKompaktOhneFoto: { sq: "Na trego çka të shqetëson.", de: "Sag uns, was dich stört." },
-  frageKompaktPucrrat: { sq: "Puçrrat", de: "Pickel" },
+  frageKompaktPucrrat: { sq: "Aknet", de: "Pickel" },
   frageKompaktPoret: { sq: "Pore të mëdha", de: "Große Poren" },
   frageKompaktShkelqimi: { sq: "Lëkurë e yndyrshme", de: "Fettige Haut" },
   frageKompaktNjollat: { sq: "Njolla të errëta", de: "Dunkle Flecken" },
@@ -1023,7 +1023,7 @@ export const FRAGEN = Object.freeze([
     },
     unter: { sq: "Zgjidhni deri në dy", de: "Bis zu zwei auswählen" },
     antworten: [
-      { id: "pucrrat", text: { sq: "Puçrrat", de: "Pickel" } },
+      { id: "pucrrat", text: { sq: "Aknet", de: "Pickel" } },
       // Poren und Glanz getrennt, obwohl beide zum selben Set fuehren: Es
       // sind zwei verschiedene Beschwerden, und wer sie in eine Zeile
       // packt, erfaehrt nie, welche der beiden die Leute wirklich stoert.
