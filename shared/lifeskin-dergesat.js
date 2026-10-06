@@ -266,22 +266,28 @@ export function llogarit(liste) {
   };
 }
 
-// NDEPO - DER LAGERBESTAND (Auftrag Inhaber 06.10.).
+// NDEPO - DER LAGERBESTAND (Auftrag Inhaber 06.10., korrigiert 06.10.).
 //
-// Woher: Heart, Karte mit den Einkaufszahlen je Produkt (die liest nur
-// das CEO-Konto; /dergesat holt sie fuer den Inhaber und gibt sie als
-// "lenda" hierher). Dort stehen die eingekauften Shishet und
-// Stikerat (Stueck) und die Kremet (Menge, je Produkt). Ein Produkt ist
-// 1 Shishe + 1 Stiker + Mbushja ml Krem (wie in Heart gerechnet).
+// Gezeigt wird das MATERIAL im Lager, keine Produktzahl ("92 BPO" war
+// falsch verstanden): Shishet, Stikerat und je Krem die ml.
 //
-// Was abgeht: jedes Produkt, das gepackt ist (Gati, Dërguar, Pranuar)
-// und jede Anuluar, die unterwegs war und noch nicht zurueck ist.
-// Anuluar ohne Versand hat das Haus nie verlassen - sie zaehlt nicht.
-// Kommt eine Anuluar zurueck ("E kthyem në depo"), steht sie als fertiges
-// Produkt im Lager ("Të gatshme") - und geht nicht noch einmal ab.
+// Woher: Heart, Karte mit den Einkaufszahlen (die liest nur das
+// CEO-Konto; /dergesat holt sie fuer den Inhaber und gibt sie als
+// "lenda" hierher): Shishet und Stikerat (Stueck), Kremet (Menge, je
+// Produkt). Ein Produkt = 1 Shishe + 1 Stiker + Mbushja ml Krem.
 //
-// lenda = null (Riba darf die Einkaufszahlen nicht lesen): dann nur, was
-// aus /dergesat selbst kommt - Pritje për kthim und Të gatshme.
+// Was ABGEHT: jedes Produkt, das gepackt wurde - Gati, Dërguar, Pranuar
+// und jede Anuluar, die schon gepackt war (gatiAt oder derguarAt). Das
+// Material steckt in der Flasche und kommt nie zurueck ins Lager, auch
+// nicht bei einer Anuluar.
+//
+// ANULIME: Eine gepackte Anuluar wird ein fertiges Produkt im Lager
+// ("Produkte të gatshme") - sofort, wenn sie das Haus nie verlassen hat,
+// sonst sobald "E kthyem në depo" gedrueckt ist. Bis dahin: "Pritje për
+// kthim". Nie gepackt (Storno aus Porosi): zaehlt nirgends.
+//
+// lenda = null (Riba darf die Einkaufszahlen nicht lesen): nur
+// Produkte të gatshme und Pritje për kthim.
 const DEPO_PRODUKTE = Object.freeze(["BPO", "DAILY"]);
 
 export function emriProduktitDepo(id) {
@@ -297,64 +303,62 @@ const numer = (wert) => {
   return Number.isFinite(n) && n > 0 ? n : 0;
 };
 
+// Gepackt = das Material ist verbraucht.
+export function ePaketuar(d) {
+  if (!d) return false;
+  if (["gati", "derguar", "pranuar"].includes(d.statusi)) return true;
+  return d.statusi === "anuluar" && Boolean(d.gatiAt || d.derguarAt);
+}
+
+// Eine Anuluar, die als fertiges Produkt im Lager steht.
+export function eGatshmeNeDepo(d) {
+  return d?.statusi === "anuluar" && ePaketuar(d) && (Boolean(d.kthyerAt) || !d.derguarAt);
+}
+
 export function llogaritDepon(liste, lenda = null) {
   const te = (liste || []).filter(Boolean);
-  const perdorur = te.filter((d) => ["gati", "derguar", "pranuar"].includes(d.statusi));
+  const paketuar = te.filter(ePaketuar);
   const kthim = te.filter(prituriKthim);
-  const kthyer = te.filter((d) => d.statusi === "anuluar" && d.kthyerAt);
+  const gatshmeL = te.filter(eGatshmeNeDepo);
 
   const dalur = new Map();
-  for (const d of [...perdorur, ...kthim]) shtoProdukte(dalur, d);
+  for (const d of paketuar) shtoProdukte(dalur, d);
   const pritje = new Map();
   for (const d of kthim) shtoProdukte(pritje, d);
   const gatshme = new Map();
-  for (const d of kthyer) shtoProdukte(gatshme, d);
+  for (const d of gatshmeL) shtoProdukte(gatshme, d);
   const copeDalur = [...dalur.values()].reduce((s, n) => s + n, 0);
-  const rreshta = (harta) => [...harta.entries()].map(([emri, sasia]) => ({ emri, sasia }))
-    .sort((a, b) => (DEPO_PRODUKTE.indexOf(a.emri) + 1 || 99) - (DEPO_PRODUKTE.indexOf(b.emri) + 1 || 99) || a.emri.localeCompare(b.emri));
+  const rendit = (a, b) => (DEPO_PRODUKTE.indexOf(a) + 1 || 99) - (DEPO_PRODUKTE.indexOf(b) + 1 || 99) || a.localeCompare(b);
+  const rreshta = (harta) => [...harta.entries()].map(([emri, sasia]) => ({ emri, sasia })).sort((a, b) => rendit(a.emri, b.emri));
   const sipasKohes = (l, fusha) => [...l].sort((a, b) => String(b[fusha] || "").localeCompare(String(a[fusha] || "")));
 
   let lendaLlogari = null;
   if (lenda) {
     const mbushja = numer(lenda.mbushja) || 30;
-    const shishe = { blere: Math.floor(numer(lenda.shisheStueck)), dalur: copeDalur };
-    shishe.mbetur = shishe.blere - shishe.dalur;
-    const stiker = { blere: Math.floor(numer(lenda.stikerStueck)), dalur: copeDalur };
-    stiker.mbetur = stiker.blere - stiker.dalur;
+    const rresht = (blere, del) => ({ blere, dalur: del, mbetur: blere - del });
     const ml = new Map();
     for (const k of Array.isArray(lenda.kreme) ? lenda.kreme : []) {
       if (!k?.produkt) continue;
       const emri = emriProduktitDepo(k.produkt);
       ml.set(emri, (ml.get(emri) || 0) + numer(k.menge) * (k.einheit === "l" ? 1000 : 1));
     }
-    const emrat = [...new Set([...DEPO_PRODUKTE, ...ml.keys()])];
-    const produkte = emrat.map((emri) => {
-      const mlGjithsej = Math.round(ml.get(emri) || 0);
-      const mbushje = Math.floor(mlGjithsej / mbushja);
-      const del = dalur.get(emri) || 0;
-      const kremPer = mbushje - del;
-      // Wie viele noch gemacht werden koennen: das Knappste von Shishe,
-      // Stiker und Krem.
-      const mundTeBehen = Math.max(0, Math.min(kremPer, shishe.mbetur, stiker.mbetur));
-      return { emri, ml: mlGjithsej, mbushje, dalur: del, kremPer, mundTeBehen, gatshme: gatshme.get(emri) || 0 };
-    }).filter((p) => p.ml || p.dalur || p.gatshme);
-    lendaLlogari = { mbushja, shishe, stiker, produkte, updatedAt: String(lenda.updatedAt || "") };
+    // Krem je Produkt: was eingekauft ist, minus Mbushja je gepacktes Produkt.
+    const kremet = [...new Set([...ml.keys(), ...dalur.keys()])].sort(rendit)
+      .map((emri) => ({ emri, ...rresht(Math.round(ml.get(emri) || 0), Math.round((dalur.get(emri) || 0) * mbushja)) }));
+    lendaLlogari = {
+      mbushja,
+      shishe: rresht(Math.floor(numer(lenda.shisheStueck)), copeDalur),
+      stiker: rresht(Math.floor(numer(lenda.stikerStueck)), copeDalur),
+      kremet,
+      updatedAt: String(lenda.updatedAt || "")
+    };
   }
-
-  // Die Zahl je Produkt oben auf der Karte: was gemacht werden kann plus
-  // was fertig zurueckgekommen ist.
-  const permbledhje = (lendaLlogari ? lendaLlogari.produkte.map((p) => p.emri) : DEPO_PRODUKTE)
-    .map((emri) => {
-      const p = lendaLlogari?.produkte.find((x) => x.emri === emri);
-      return { emri, sasia: (p ? p.mundTeBehen : 0) + (gatshme.get(emri) || 0), gatshme: gatshme.get(emri) || 0 };
-    });
 
   return {
     lenda: lendaLlogari,
-    permbledhje,
     pritjeKthim: { numri: kthim.length, produkte: rreshta(pritje), lista: sipasKohes(kthim, "anuluarAt") },
-    gatshme: { numri: kthyer.length, produkte: rreshta(gatshme), lista: sipasKohes(kthyer, "kthyerAt") },
-    dalur: { numri: perdorur.length + kthim.length, cope: copeDalur, produkte: rreshta(dalur) }
+    gatshme: { numri: gatshmeL.length, produkte: rreshta(gatshme), lista: sipasKohes(gatshmeL, "anuluarAt") },
+    dalur: { numri: paketuar.length, cope: copeDalur }
   };
 }
 

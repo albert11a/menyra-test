@@ -171,8 +171,9 @@ body {
 .dg-depo-sasi b { font-size: 26px; line-height: 1.1; font-weight: 800; font-variant-numeric: tabular-nums; }
 .dg-depo-sasi span { font-size: 12px; font-weight: 700; letter-spacing: .06em; color: var(--dg-muted); }
 .dg-depo-sasi small { font-size: 11.5px; color: var(--dg-muted); }
-.dg-depo-sasi--madhe { margin: 0 0 12px; }
-.dg-depo-sasi--madhe b { font-size: 32px; }
+.dg-depo-sasi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.dg-depo-sasi b { font-size: 22px; white-space: nowrap; }
+.dg-depo-sasi--minus b { color: var(--dg-bad); }
 
 /* DIE LISTE ZU EINER KARTE: Telefon = Blatt von unten, breiter = mittig. */
 html.dg-pa-levizje, html.dg-pa-levizje body { overflow: hidden; }
@@ -242,7 +243,7 @@ html.dg-pa-levizje, html.dg-pa-levizje body { overflow: hidden; }
 .dg-tabela thead th { border-top: 0; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--dg-muted); }
 .dg-tabela th[scope="row"] { text-align: left; font-weight: 700; }
 .dg-tabela td:last-child { font-weight: 800; }
-.dg-tabela td small { display: block; font-size: 11.5px; font-weight: 500; color: var(--dg-muted); }
+.dg-tabela th small, .dg-tabela td small { display: block; font-size: 11.5px; font-weight: 500; color: var(--dg-muted); }
 @media (max-width: 360px) {
   .dg-tabela { font-size: 13px; }
   .dg-tabela th, .dg-tabela td { padding: 8px 6px; }

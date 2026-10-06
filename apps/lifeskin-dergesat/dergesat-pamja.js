@@ -108,12 +108,13 @@ export function renderListe(liste, chip, roli, laeuft = "") {
 // DIE KARTEN OBEN (Wischen). Jede Karte laesst sich antippen - dann kommt
 // ihre Liste mit Datum und Uhrzeit (renderDetajet, 06.10.).
 const KARTAT = Object.freeze([
-  Object.freeze({ id: "ndepo", titull: "Ndepo" }),
   Object.freeze({ id: "pritje-barazim", titull: "Pritje barazim" }),
   Object.freeze({ id: "barazuar", titull: "Barazuar" }),
   Object.freeze({ id: "pritje-riba", titull: "Pritje për Riben" }),
   Object.freeze({ id: "per-riba", titull: "€ për Riben" }),
-  Object.freeze({ id: "paguar-riba", titull: "Paguar Ribës" })
+  Object.freeze({ id: "paguar-riba", titull: "Paguar Ribës" }),
+  // Ndepo an letzter Stelle (Wunsch Inhaber 06.10.).
+  Object.freeze({ id: "ndepo", titull: "Ndepo" })
 ]);
 export const KARTAT_ID = Object.freeze(KARTAT.map((k) => k.id));
 
@@ -128,22 +129,28 @@ function historia(grupet) {
 
 const produkteTekst = (rreshta) => rreshta.length ? rreshta.map((p) => `${p.sasia} ${p.emri}`).join(" · ") : "—";
 
+const sasiSq = (n) => Number(n || 0).toLocaleString("de-DE");
+const mlSq = (n) => `${sasiSq(n)} ml`;
+
+// Was im Lager steht: Shishet, Stikerat, je Krem die ml (nach Abzug von
+// allem Gepackten). Dazu die Anulime: fertige Produkte und was noch
+// zurueckkommen muss.
 function karteNdepo(depo, roli) {
   const heart = roli === "heart";
-  const sasite = depo.lenda
-    ? `<ul class="dg-depo-sasi">${depo.permbledhje.map((p) => `<li><b>${p.sasia}</b><span>${esc(p.emri)}</span></li>`).join("")}</ul>`
-    : `<ul class="dg-depo-sasi">${depo.permbledhje.map((p) => `<li><b>${p.gatshme}</b><span>${esc(p.emri)} · të gatshme</span></li>`).join("")}</ul>`;
-  const lenda = depo.lenda
-    ? `<li><span>Shishet · Stikerat</span><span></span><b>${depo.lenda.shishe.mbetur} · ${depo.lenda.stiker.mbetur}</b></li>`
-    : "";
+  const l = depo.lenda;
+  const pllakat = l
+    ? [["Shishe", sasiSq(l.shishe.mbetur), l.shishe.mbetur < 0],
+      ["Stikera", sasiSq(l.stiker.mbetur), l.stiker.mbetur < 0],
+      ...l.kremet.map((k) => [`Krem ${k.emri}`, mlSq(k.mbetur), k.mbetur < 0])]
+    : [];
   return `
       <section class="dg-karte dg-karte--depo"${hapKarten("ndepo")}>
-        <h2>Ndepo <small>${heart ? (depo.lenda ? "Lagerbestand" : "Produktkosten mungojnë") : "Riba"}</small>${shiko}</h2>
-        ${sasite}
+        <h2>Ndepo${shiko}</h2>
+        ${pllakat.length ? `<ul class="dg-depo-sasi">${pllakat.map(([emri, vlera, minus]) => `<li${minus ? ` class="dg-depo-sasi--minus"` : ""}><b>${esc(vlera)}</b><span>${esc(emri)}</span></li>`).join("")}</ul>`
+          : heart ? `<p class="dg-karte__pak">Shishet, stikerat dhe kremet nuk u lexuan nga Heart.</p>` : ""}
         <ul class="dg-ndarja">
-          ${lenda}
-          <li><span>Të gatshme (kthyer)</span><span>${depo.gatshme.numri}</span><b>${esc(produkteTekst(depo.gatshme.produkte))}</b></li>
-          <li class="${depo.pritjeKthim.numri ? "dg-ndarja--keq" : ""}"><span>Anulime · pritje për kthim</span><span>${depo.pritjeKthim.numri}</span><b>${esc(produkteTekst(depo.pritjeKthim.produkte))}</b></li>
+          <li><span>Produkte të gatshme</span><span></span><b>${esc(produkteTekst(depo.gatshme.produkte))}</b></li>
+          <li class="${depo.pritjeKthim.numri ? "dg-ndarja--keq" : ""}"><span>Anulime · pritje për kthim</span><span></span><b>${esc(produkteTekst(depo.pritjeKthim.produkte))}</b></li>
         </ul>
       </section>`;
 }
@@ -153,8 +160,6 @@ export function renderKartat(liste, roli, laeuft = "", lenda = null) {
   const heart = roli === "heart";
   const pb = ll.pritjeBarazim;
   return `
-      ${karteNdepo(llogaritDepon(liste, heart ? lenda : null), roli)}
-
       <section class="dg-karte"${hapKarten("pritje-barazim")}>
         <h2>Pritje barazim <small>Posta Beki</small>${shiko}</h2>
         <p class="dg-karte__shuma">${esc(euroSq(pb.shuma))}</p>
@@ -193,7 +198,9 @@ export function renderKartat(liste, roli, laeuft = "", lenda = null) {
         <p class="dg-karte__shuma">${esc(euroSq(ll.paguarRiba.shuma))}</p>
         <p class="dg-karte__pak">${ll.paguarRiba.numri} porosi gjithsej</p>
         ${historia(ll.paguarRiba.grupet)}
-      </section>`;
+      </section>
+
+      ${karteNdepo(llogaritDepon(liste, heart ? lenda : null), roli)}`;
 }
 
 // ── DIE LISTE ZU EINER KARTE (06.10.) ───────────────────────────────────
@@ -251,7 +258,8 @@ function sipasGrupeve(lista, fusha, vlera) {
 
 // Eine Zelle ist eine Zahl oder [Zahl, kleine Zeile darunter].
 function tabelaRresht(emertimi, ...qelizat) {
-  return `<tr><th scope="row">${esc(emertimi)}</th>${qelizat.map((q) => (Array.isArray(q)
+  const [emri, njesia] = Array.isArray(emertimi) ? emertimi : [emertimi, ""];
+  return `<tr><th scope="row">${esc(emri)}${njesia ? `<small>${esc(njesia)}</small>` : ""}</th>${qelizat.map((q) => (Array.isArray(q)
     ? `<td>${esc(q[0])}<small>${esc(q[1])}</small></td>` : `<td>${esc(q)}</td>`)).join("")}</tr>`;
 }
 
@@ -259,40 +267,37 @@ function detajetNdepo(liste, roli, laeuft, lenda) {
   const heart = roli === "heart";
   const depo = llogaritDepon(liste, heart ? lenda : null);
   const pjeset = [];
-  if (depo.lenda) {
-    const l = depo.lenda;
+  const l = depo.lenda;
+  if (l) {
     pjeset.push(`
         <section class="dg-pjese">
-          <h3>Gjendja <small>nga Produktkosten në Heart${l.updatedAt ? ` · ${esc(kohaSqPlote(l.updatedAt))}` : ""}</small></h3>
-          <div class="dg-depo-sasi dg-depo-sasi--madhe">${depo.permbledhje.map((p) => `<div><b>${p.sasia}</b><span>${esc(p.emri)}</span>${p.gatshme ? `<small>prej tyre ${p.gatshme} të kthyera</small>` : ""}</div>`).join("")}</div>
+          <h3>Gjendja në depo${l.updatedAt ? ` <small>sasitë e blera u ruajtën në Heart më ${esc(kohaSqPlote(l.updatedAt))}</small>` : ""}</h3>
           <div class="dg-tabela-mbajtes"><table class="dg-tabela">
-            <thead><tr><th></th><th>Blerë</th><th>Dalë</th><th>Mbetur</th></tr></thead>
+            <thead><tr><th></th><th>Blerë</th><th>Dalë</th><th>Në depo</th></tr></thead>
             <tbody>
-              ${tabelaRresht("Shishet", l.shishe.blere, l.shishe.dalur, l.shishe.mbetur)}
-              ${tabelaRresht("Stikerat", l.stiker.blere, l.stiker.dalur, l.stiker.mbetur)}
-              ${l.produkte.map((p) => tabelaRresht(`Krem ${p.emri}`, [p.mbushje, `${p.ml} ml`], p.dalur, p.kremPer)).join("")}
+              ${tabelaRresht("Shishe", sasiSq(l.shishe.blere), `− ${sasiSq(l.shishe.dalur)}`, sasiSq(l.shishe.mbetur))}
+              ${tabelaRresht("Stikera", sasiSq(l.stiker.blere), `− ${sasiSq(l.stiker.dalur)}`, sasiSq(l.stiker.mbetur))}
+              ${l.kremet.map((k) => tabelaRresht([`Krem ${k.emri}`, "ml"], sasiSq(k.blere), `− ${sasiSq(k.dalur)}`, sasiSq(k.mbetur))).join("")}
             </tbody>
           </table></div>
-          <p class="dg-pjese__shenim">Një produkt = 1 shishe + 1 stiker + ${esc(String(l.mbushja).replace(".", ","))} ml krem. „Dalë“ = Gati, Dërguar, Pranuar dhe anulimet që ende s'janë kthyer.</p>
+          <p class="dg-pjese__shenim">Për çdo produkt të paketuar dalin nga depo 1 shishe, 1 stiker dhe ${esc(String(l.mbushja).replace(".", ","))} ml krem – te Gati, Dërguar, Pranuar dhe te anulimet e paketuara.</p>
         </section>`);
   } else if (heart) {
-    pjeset.push(`<p class="dg-bosh">Produktkosten në Heart nuk u lexuan – shishet, stikerat dhe kremet mungojnë.</p>`);
+    pjeset.push(`<p class="dg-bosh">Shishet, stikerat dhe kremet nuk u lexuan nga Heart.</p>`);
   }
   pjeset.push(`
         <section class="dg-pjese">
-          <h3>Të gatshme në depo <small>anulime të kthyera · ${esc(produkteTekst(depo.gatshme.produkte))}</small></h3>
-          ${listeOse(depo.gatshme.lista.map((d) => rreshtDetaj(d)), "Ende asnjë anulim i kthyer.")}
+          <h3>Produkte të gatshme <small>nga anulimet · ${esc(produkteTekst(depo.gatshme.produkte))}</small></h3>
+          ${listeOse(depo.gatshme.lista.map((d) => rreshtDetaj(d)), "Asnjë produkt i gatshëm.")}
         </section>
         <section class="dg-pjese">
           <h3>Anulime · pritje për kthim <small>${esc(produkteTekst(depo.pritjeKthim.produkte))}</small></h3>
           ${listeOse(depo.pritjeKthim.lista.map((d) => rreshtDetaj(d, "", {
             butonat: buton("kthe-depo", "E kthyem në depo", { kennung: d.kennung, klasa: "dg-buton--kryesor dg-buton--gjere", laeuft })
           })), "Asgjë në pritje për kthim.")}
-        </section>
-        <section class="dg-pjese">
-          <h3>Dalë nga depo <small>${depo.dalur.cope} copë · ${esc(produkteTekst(depo.dalur.produkte))}</small></h3>
         </section>`);
-  return { titull: "Ndepo", nen: depo.lenda ? depo.permbledhje.map((p) => `${p.sasia} ${p.emri}`).join(" · ") : `${depo.pritjeKthim.numri} në pritje për kthim`, trupi: pjeset.join("") };
+  const nen = l ? `${sasiSq(l.shishe.mbetur)} shishe · ${sasiSq(l.stiker.mbetur)} stikera` : `Të gatshme: ${produkteTekst(depo.gatshme.produkte)}`;
+  return { titull: "Ndepo", nen, trupi: pjeset.join("") };
 }
 
 export function renderDetajet(karta, liste, roli, laeuft = "", lenda = null) {

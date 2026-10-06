@@ -275,63 +275,73 @@ test("/dergesat zeigt die Kurznamen: LF ACNE = BPO, LF MOISTUR = DAILY, mit Meng
   assert.doesNotMatch(html, /LF ACNE/);
 });
 
-test("Anuluar, die unterwegs war: Pritje për kthim, bis 'E kthyem në depo' - dann Të gatshme", () => {
-  const unterwegs = d("x", { statusi: "anuluar", derguarAt: T, anuluarAt: T, produkte: ["LF ACNE", "LF MOISTUR"] });
-  const nieRaus = d("y", { statusi: "anuluar", anuluarAt: T, produkte: ["LF ACNE"] });
+test("Anuluar, die unterwegs war: Pritje për kthim, bis 'E kthyem në depo' - dann Produkte të gatshme", () => {
+  const unterwegs = d("x", { statusi: "anuluar", gatiAt: T, derguarAt: T, anuluarAt: T, produkte: ["LF ACNE", "LF MOISTUR"] });
+  const nieGepackt = d("y", { statusi: "anuluar", anuluarAt: T, produkte: ["LF ACNE"] });
+  const gepacktNieRaus = d("z", { statusi: "anuluar", gatiAt: T, anuluarAt: T, produkte: ["LF MOISTUR"] });
   assert.equal(prituriKthim(unterwegs), true);
-  assert.equal(prituriKthim(nieRaus), false, "ohne Versand muss nichts zurueck");
+  assert.equal(prituriKthim(nieGepackt), false, "ohne Versand muss nichts zurueck");
   assert.deepEqual(kthimNeDepo(unterwegs, { roli: "riba", jetzt: T }), { kthyerAt: T, updatedAt: T, nga: "riba" });
-  assert.equal(kthimNeDepo(nieRaus), null);
+  assert.equal(kthimNeDepo(nieGepackt), null);
   assert.equal(kthimNeDepo({ ...unterwegs, kthyerAt: T }), null, "nur einmal");
 
-  const html = renderListe([unterwegs, nieRaus], "anuluar", "riba");
+  const html = renderListe([unterwegs, nieGepackt], "anuluar", "riba");
   assert.match(html, /data-veprim="kthe-depo" data-kennung="x"[^>]*>E kthyem në depo</);
   assert.doesNotMatch(html, /data-veprim="kthe-depo" data-kennung="y"/);
   assert.match(html, /Pritje për kthim/);
   assert.match(renderListe([{ ...unterwegs, kthyerAt: T }], "anuluar", "riba"), /Në depo ✓/);
 
-  const vorher = llogaritDepon([unterwegs, nieRaus]);
+  const vorher = llogaritDepon([unterwegs, nieGepackt, gepacktNieRaus]);
   assert.deepEqual(vorher.pritjeKthim.produkte, [{ emri: "BPO", sasia: 1 }, { emri: "DAILY", sasia: 1 }]);
-  assert.equal(vorher.gatshme.numri, 0);
-  const nachher = llogaritDepon([{ ...unterwegs, kthyerAt: T }, nieRaus]);
+  assert.deepEqual(vorher.gatshme.produkte, [{ emri: "DAILY", sasia: 1 }], "gepackt, nie verschickt: sofort fertig im Lager");
+  const nachher = llogaritDepon([{ ...unterwegs, kthyerAt: T }, nieGepackt, gepacktNieRaus]);
   assert.equal(nachher.pritjeKthim.numri, 0);
-  assert.deepEqual(nachher.gatshme.produkte, [{ emri: "BPO", sasia: 1 }, { emri: "DAILY", sasia: 1 }]);
+  assert.deepEqual(nachher.gatshme.produkte, [{ emri: "BPO", sasia: 1 }, { emri: "DAILY", sasia: 2 }]);
 });
 
-test("Ndepo: Shishet, Stikerat und Krem aus den Produktkosten minus was abgegangen ist", () => {
+test("Ndepo: Material im Lager = eingekauft minus alles Gepackte - eine Rueckkehr gibt kein Material zurueck", () => {
   const lenda = {
-    shisheStueck: 100, stikerStueck: 90, mbushja: 30,
+    shisheStueck: 30, stikerStueck: 30, mbushja: 30,
     kreme: [{ name: "Acne", menge: 1.5, einheit: "l", produkt: "lf-acne" }, { name: "Daily", menge: 900, einheit: "ml", produkt: "lf-moistur" }]
   };
   const liste = [
     d("p", { produkte: ["LF ACNE", "LF MOISTUR"] }),                         // Porosi: noch nichts gepackt
-    d("g", { statusi: "gati", produkte: ["Acne Duo"] }),                     // 1 BPO + 1 DAILY
+    d("g", { statusi: "gati", gatiAt: T, produkte: ["Acne Duo"] }),          // 1 BPO + 1 DAILY
     d("s", { statusi: "derguar", derguarAt: T, produkte: ["2× LF ACNE"] }),  // 2 BPO
-    d("k", { statusi: "anuluar", derguarAt: T, anuluarAt: T, produkte: ["LF MOISTUR"] }), // unterwegs zurueck: 1 DAILY
-    d("r", { statusi: "anuluar", derguarAt: T, anuluarAt: T, kthyerAt: T, produkte: ["LF ACNE"] }) // zurueck: fertig
+    d("k", { statusi: "anuluar", derguarAt: T, anuluarAt: T, produkte: ["LF MOISTUR"] }),             // 1 DAILY, kommt zurueck
+    d("r", { statusi: "anuluar", derguarAt: T, anuluarAt: T, kthyerAt: T, produkte: ["LF ACNE"] }),   // 1 BPO, zurueck
+    d("n", { statusi: "anuluar", anuluarAt: T, produkte: ["LF ACNE"] })      // nie gepackt: zaehlt nicht
   ];
   const depo = llogaritDepon(liste, lenda);
-  assert.deepEqual(depo.lenda.shishe, { blere: 100, dalur: 5, mbetur: 95 });
-  assert.deepEqual(depo.lenda.stiker, { blere: 90, dalur: 5, mbetur: 85 });
-  const bpo = depo.lenda.produkte.find((x) => x.emri === "BPO");
-  const daily = depo.lenda.produkte.find((x) => x.emri === "DAILY");
-  // 1500 ml / 30 = 50 Fuellungen, 3 BPO abgegangen.
-  assert.deepEqual([bpo.mbushje, bpo.dalur, bpo.kremPer, bpo.mundTeBehen], [50, 3, 47, 47]);
-  // 900 ml / 30 = 30, 2 DAILY abgegangen (Gati + Anuluar unterwegs).
-  assert.deepEqual([daily.mbushje, daily.dalur, daily.kremPer, daily.mundTeBehen], [30, 2, 28, 28]);
-  // Oben auf der Karte: was gemacht werden kann + was fertig zurueck ist.
-  assert.deepEqual(depo.permbledhje.map((x) => [x.emri, x.sasia]), [["BPO", 48], ["DAILY", 28]]);
-  // Ohne Produktkosten (Riba): nur was aus /dergesat kommt.
+  // 6 Produkte gepackt: 30 - 6 = 24.
+  assert.deepEqual(depo.lenda.shishe, { blere: 30, dalur: 6, mbetur: 24 });
+  assert.deepEqual(depo.lenda.stiker, { blere: 30, dalur: 6, mbetur: 24 });
+  assert.deepEqual(depo.lenda.kremet, [
+    { emri: "BPO", blere: 1500, dalur: 120, mbetur: 1380 },  // 4 BPO × 30 ml
+    { emri: "DAILY", blere: 900, dalur: 60, mbetur: 840 }    // 2 DAILY × 30 ml
+  ]);
+  // Die Rueckkehr aendert das Material nicht.
+  const ohneRueckkehr = llogaritDepon(liste.map((x) => (x.kennung === "r" ? { ...x, kthyerAt: "" } : x)), lenda);
+  assert.deepEqual(ohneRueckkehr.lenda.shishe, depo.lenda.shishe);
+  assert.deepEqual(depo.gatshme.produkte, [{ emri: "BPO", sasia: 1 }]);
+  assert.deepEqual(depo.pritjeKthim.produkte, [{ emri: "DAILY", sasia: 1 }]);
+  // Ohne Einkaufszahlen (Riba): nur was aus /dergesat kommt.
   assert.equal(llogaritDepon(liste, null).lenda, null);
 });
 
-test("Antippen einer Karte: Liste mit Datum und Uhrzeit, fuer Riba ohne Lagerzahlen", () => {
+test("Antippen einer Karte: Liste mit Datum und Uhrzeit, Ndepo zuletzt und auf Albanisch, fuer Riba ohne Material", () => {
   const lenda = { shisheStueck: 10, stikerStueck: 10, kreme: [{ menge: 300, einheit: "ml", produkt: "lf-acne" }] };
   const liste = [
     d("a", { statusi: "derguar", gatiAt: T, derguarAt: "2026-10-05T14:22:00.000Z", produkte: ["LF ACNE"], kodi: "LS-1" }),
     d("b", { statusi: "pranuar", derguarAt: T, pranuarAt: T, barazuarAt: "2026-10-06T18:00:00.000Z" }),
     d("x", { statusi: "anuluar", derguarAt: T, anuluarAt: T, produkte: ["LF ACNE"] })
   ];
+  assert.equal(KARTAT_ID.at(-1), "ndepo", "Ndepo an letzter Stelle");
+  const kartat = renderKartat(liste, "heart", "", lenda);
+  assert.ok(kartat.lastIndexOf('data-karta="ndepo"') > kartat.lastIndexOf('data-karta="paguar-riba"'));
+  assert.match(kartat, /<b>8<\/b><span>Shishe<\/span>/);
+  assert.match(kartat, /<b>240 ml<\/b><span>Krem BPO<\/span>/);
+  assert.doesNotMatch(kartat + renderDetajet("ndepo", liste, "heart", "", lenda), /Lagerbestand|Produktkosten|prej tyre/);
   const pritje = renderDetajet("pritje-riba", liste, "riba");
   assert.match(pritje, /role="dialog"/);
   assert.match(pritje, /<b>PB-a<\/b>/);
@@ -340,10 +350,11 @@ test("Antippen einer Karte: Liste mit Datum und Uhrzeit, fuer Riba ohne Lagerzah
   assert.match(pritje, /<span>Gati<\/span><time/);
   assert.match(renderDetajet("barazuar", liste, "riba"), /class="dg-grup"[\s\S]*PB-b/);
   const depoRiba = renderDetajet("ndepo", liste, "riba", "", lenda);
-  assert.doesNotMatch(depoRiba, /Shishet|Stikerat/, "Riba sieht keine Produktkosten");
+  assert.doesNotMatch(depoRiba, /Shishe|Stikera/, "Riba sieht keine Einkaufszahlen");
   assert.match(depoRiba, /data-veprim="kthe-depo" data-kennung="x"/);
   const depoHeart = renderDetajet("ndepo", liste, "heart", "", lenda);
-  assert.match(depoHeart, /<th scope="row">Shishet<\/th><td>10<\/td><td>2<\/td><td>8<\/td>/);
+  assert.match(depoHeart, /<th scope="row">Shishe<\/th><td>10<\/td><td>− 2<\/td><td>8<\/td>/);
+  assert.match(depoHeart, /<th scope="row">Krem BPO<small>ml<\/small><\/th><td>300<\/td><td>− 60<\/td><td>240<\/td>/);
   assert.equal(renderDetajet("gibts-nicht", liste, "heart"), "");
 });
 

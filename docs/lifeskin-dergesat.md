@@ -22,10 +22,12 @@ Last updated: 2026-10-06
 - **Paguar Ribës** = schon ausbezahlt, je Auszahlung.
 
 ## Karten oben (antippen = Liste mit Datum und Uhrzeit)
-- **Ndepo** (Lagerbestand): Shishet, Stikerat und Kremet aus Heart → Produktkosten; ein Produkt = 1 Shishe + 1 Stiker
-  + Mbushja (30 ml) Krem. Ab geht jedes Produkt in Gati/Dërguar/Pranuar und jede Anuluar, die unterwegs war und noch
-  nicht zurück ist. Zurück („E kthyem në depo“) = **Të gatshme**. Riba sieht nur Të gatshme und Pritje për kthim
-  (die Produktkosten liest nur das CEO-Konto). Abgezogen wird nur, was auf /dergesat steht.
+- **Ndepo** (letzte Karte, alles auf Albanisch): das MATERIAL im Lager – Shishe, Stikera und je Krem die ml.
+  Quelle: Heart → Produktkosten (eingekauft). Ab geht je gepacktem Produkt (Gati, Dërguar, Pranuar und jede
+  Anuluar, die schon gepackt war) 1 Shishe + 1 Stiker + 30 ml Krem. Eine Anuluar gibt kein Material zurück –
+  sie wird ein **Produkt të gatshëm** (sofort, wenn sie nie verschickt war, sonst nach „E kthyem në depo“; bis
+  dahin „Pritje për kthim“). Keine Produktzahlen wie „92 BPO“. Riba sieht nur Produkte të gatshme und Pritje
+  për kthim (die Produktkosten liest nur das CEO-Konto). Abgezogen wird nur, was auf /dergesat steht.
 - Pritje barazim, Barazuar, Pritje për Riben, € për Riben, Paguar Ribës: je Bestellung alle Zeitpunkte und der Betrag.
 
 ## Zugang
