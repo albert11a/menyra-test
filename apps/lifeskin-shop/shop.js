@@ -445,7 +445,9 @@ export class Dyqan {
     // Weder Preis noch erster Fall wartet auf Produkt-/Markenbilder.
     const angebot = this.angebotLaden();
     const faelle = this.#faelleLaden();
-    shopBeiSicht($("#customer-media", this.dok), () => this.#kundenLaden());
+    // :empty wird per CSS ausgeblendet und kann deshalb nie intersecten.
+    // Medien sofort separat laden; weder Preis noch erster Fall wartet darauf.
+    void this.#kundenLaden();
     shopBeiSicht($("#setet", this.dok), () => this.#produktDatenLaden());
     await Promise.all([angebot, faelle]);
   }

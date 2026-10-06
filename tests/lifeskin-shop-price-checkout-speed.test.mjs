@@ -116,10 +116,38 @@ test('slow case index and large media cannot block the authoritative price', asy
     const loading = f.shop.laden(); await tick();
     assert.equal(f.shop.angebotBereit, true);
     assert.equal(f.price.textContent, '19 €');
-    assert.equal(requests.length, 2, 'optional media and product collections have not started');
+    assert.equal(requests.length, 3, 'customer media starts independently; optional product images still wait');
     assert.equal(typeof onVisible, 'function');
     index.resolve({ status: 404, ok: false }); await loading;
     assert.equal(f.node('#proof-bahn').children.length, 3);
+  } finally { globalThis.IntersectionObserver = oldObserver; }
+});
+
+test('photo and video rail loads even when empty rail never intersects', async () => {
+  const oldObserver = globalThis.IntersectionObserver;
+  globalThis.IntersectionObserver = class { constructor() {} observe() {} disconnect() {} };
+  const pendingMedia = deferred(), requests = [];
+  try {
+    const f = fixture(async url => {
+      requests.push(url);
+      if (url.endsWith('/shopSetet')) return offer(19);
+      if (url.endsWith('/raste')) return { ok: false, status: 404 };
+      if (url.includes('/medien?')) return pendingMedia.promise;
+      throw Error('unexpected product request');
+    });
+    await f.shop.laden();
+    assert.ok(requests.some(url => url.includes('/medien?')), 'media request starts without observer callback');
+    assert.equal(f.price.textContent, '19 €', 'pending media never blocks price');
+    const documents = [
+      { id: 'photo', art: 'foto', bild: 'https://example.com/photo.jpg', aktiv: true },
+      { id: 'video', art: 'video', bild: 'https://example.com/poster.jpg', video: 'https://example.com/video.mp4', aktiv: true }
+    ].map(({ id, ...data }) => ({ name: `medien/${id}`, fields: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, field(v)])) }));
+    pendingMedia.resolve({ ok: true, status: 200, json: async () => ({ documents }) });
+    await tick(); await tick();
+    assert.match(f.node('#customer-media').innerHTML, /photo.jpg/);
+    assert.match(f.node('#customer-media').innerHTML, /poster.jpg/);
+    assert.match(f.node('#customer-media').innerHTML, /klient-kachel__spiel/);
+    assert.equal(f.shop.klienten.find(m => m.id === 'video').video, 'https://example.com/video.mp4');
   } finally { globalThis.IntersectionObserver = oldObserver; }
 });
 
