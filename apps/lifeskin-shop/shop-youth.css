@@ -144,15 +144,15 @@
  #ls-einstieg .page .hero h1{font-size:clamp(31px,10vw,51px);letter-spacing:-1.8px;line-height:1.08;margin:0 0 28px;order:0}
  #ls-einstieg .page .hero h1 em{padding:3px 7px 6px;margin-top:8px}
  #ls-einstieg .page .intro{order:0;font-size:15px;line-height:1.7;margin:0 0 32px}
- #ls-einstieg .page .visual{order:1;margin:0 0 32px}
+ #ls-einstieg .page .visual{order:4;margin:24px 0 0}
  #ls-einstieg .page .product-pair{gap:10px}
  #ls-einstieg .page .visual-caption{display:none}
  #ls-einstieg .page .image-label{font-size:9px;letter-spacing:.2px;line-height:1.5;margin-top:9px}
- #ls-einstieg .page .buy{order:2}
+ #ls-einstieg .page .buy{order:1}
  #ls-einstieg .page .cta{min-height:56px;padding:15px 14px;font-size:14px;gap:9px}
  #ls-einstieg .page .cta del{font-size:12px}
- #ls-einstieg .page .micro{order:3;font-size:10px;margin:16px 0 0;gap:4px}
- #ls-einstieg .page .hero-heading>.analysis-mini:last-child{order:4;font-size:12px;line-height:1.65;margin:28px 0 0}
+ #ls-einstieg .page .micro{order:2;font-size:10px;margin:16px 0 0;gap:4px}
+ #ls-einstieg .page .hero-heading>.analysis-mini:last-child{order:3;font-size:12px;line-height:1.65;margin:28px 0 0}
  #ls-einstieg .page .section{padding:44px 0}
  #ls-einstieg .page h2{font-size:32px;letter-spacing:-1px;line-height:1.12}
  #ls-einstieg .page .section-top{display:block;margin-bottom:24px}
@@ -332,3 +332,6 @@
 #ls-einstieg .customer-rail,#ls-einstieg .klient-kachel,#ls-einstieg #sheet .klient-buehne,#ls-einstieg #sheet .klient-medium,#ls-einstieg #sheet .klient-spiel{-webkit-tap-highlight-color:transparent}
 #ls-einstieg .page .customer-rail:focus,#ls-einstieg .page .customer-rail:focus-visible,#ls-einstieg .page .klient-kachel:focus,#ls-einstieg .page .klient-kachel:focus-visible,
 #ls-einstieg .customer-rail:focus-visible,#ls-einstieg .klient-kachel:focus-visible,#ls-einstieg #sheet .klient-medium:focus,#ls-einstieg #sheet .klient-medium:focus-visible,#ls-einstieg #sheet .klient-spiel:focus-visible{outline:none;box-shadow:none}
+
+/* Der Preisstatus steht direkt beim Kaufbutton, vor den Produktfotos. */
+@media(max-width:800px){#ls-einstieg .page #shop-preisstatus{order:1}}

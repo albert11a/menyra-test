@@ -32,7 +32,7 @@ import { ansichtOeffnen, ansichtSchliessen } from "../../shared/lifeskin-ansicht
 import { mittelBauen, holeSammlung, FOTO_PRAEFIX } from "../lifeskin-landing/shop.js";
 import { RASTE_STANDARD, rasteLaden, rasteFuer, rasteMitBildern } from "../../shared/lifeskin-raste.js";
 import {
-  SETET_DOK, SET_FOTO_PRAEFIX, SHOP_HERO_DOK, SHOP_HERO_MAX, shopHeroDokId, SETET_STANDARD, MITTEL_FOTOS_STANDARD, MITTEL_NENTITUJ,
+  SETET_DOK, SHOP_HERO_DOK, SHOP_HERO_MAX, shopHeroDokId, SETET_STANDARD, MITTEL_FOTOS_STANDARD, MITTEL_NENTITUJ,
   setetOderStandard, setetNormalisieren, aktiveSetet, nevojaKennung, setPreis
 } from "../../shared/lifeskin-shop-sets.js";
 
@@ -111,7 +111,14 @@ export function bestellZeilen(korb, mittel) {
 
 // ── Firestore lesen, ohne die Firebase-App (REST, wie der ganze Trichter) ──
 async function holeDok(name, holen = fetch, suche = "") {
-  const antwort = await holen(`${BASIS}/${encodeURIComponent(name)}${suche}`);
+  const url = `${BASIS}/${encodeURIComponent(name)}${suche}`;
+  const vorab = name === SETET_DOK ? globalThis.__lsShopSetet : null;
+  let antwort;
+  if (vorab?.antwort && vorab.url === url) {
+    const lauf = vorab.antwort;
+    vorab.antwort = null;
+    antwort = await lauf;
+  } else antwort = await holen(url, { cache: "no-store" });
   if (antwort.status === 404) return null;
   if (!antwort.ok) throw new Error(`Firestore ${antwort.status}`);
   const d = await antwort.json();
@@ -185,7 +192,7 @@ export function duoCard(s, mittel, { fotos = true } = {}) {
 // in der Reihe steht nur sein Standbild.
 // Schreibt Preis, Einzelpreise und Rabatt in alle markierten Stellen
 // (data-preis="cmimi|vecmas|zbritje|zbritje-fjale"). Dieselbe Funktion
-// laeuft vorab aus dem Kopf von index.html mit dem gemerkten Preis.
+// nutzt ausschliesslich den fuer diesen Aufruf bestaetigten Preis.
 export function preiseAnwenden(dok, { cmimi, vecmas, zbritje }) {
   for (const el of dok.querySelectorAll?.("[data-preis]") || []) {
     const art = el.dataset.preis;
@@ -215,7 +222,44 @@ export function klientBlatt(m) {
   return `${medium}${m.produkt ? `<h2 id="sheet-title">${e(m.produkt)}</h2>` : ''}${m.text ? `<p>${e(m.text)}</p>` : ''}`;
 }
 
+// Veroeffentlichtes Shop-Sets-Angebot, vom Inhaber am 06.10.2026 bestaetigt.
+// Keine Abhaengigkeit von Netz oder einem alten lokalen Preis beim Erstbesuch.
+export const SHOP_START_SETET = { lista: SETET_STANDARD.map(s => s.id === "acne" ? { ...s, cmimi: 19 } : s) };
+
 const pause = (ms) => new Promise((fertig) => setTimeout(fertig, ms));
+
+// Begrenzte oeffentliche Reads: ein haengendes Bild darf keinen Preis sperren.
+export function shopFetch(holen = (...a) => fetch(...a), frist = 10000) {
+  return async (url, optionen = {}) => {
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    let timer;
+    try {
+      return await Promise.race([
+        holen(url, { ...optionen, ...(controller ? { signal: controller.signal } : {}) }),
+        new Promise((_, fehler) => { timer = setTimeout(() => { controller?.abort(); fehler(new Error("timeout")); }, frist); })
+      ]);
+    } finally { clearTimeout(timer); }
+  };
+}
+
+// Zusatzdaten erst, wenn ihr Abschnitt nahe ist; ohne Observer weiterhin nutzbar.
+export function shopBeiSicht(element, laden, Beobachter = globalThis.IntersectionObserver) {
+  let gestartet = false;
+  let beobachter;
+  const start = () => {
+    if (gestartet) return;
+    gestartet = true;
+    beobachter?.disconnect();
+    Promise.resolve().then(laden).catch(() => {});
+  };
+  if (!element || !Beobachter) { start(); return null; }
+  beobachter = new Beobachter(eintraege => {
+    if (eintraege.some(eintrag => eintrag.isIntersecting)) start();
+  }, { rootMargin: "200px" });
+  beobachter.observe(element);
+  return beobachter;
+}
+
 
 // Das Titelbild aus Heart, auf dem Geraet gemerkt (#titelbild) - mit dem
 // Stempel, den Heart beim Speichern setzt (config/shopHero.updatedAt).
@@ -248,13 +292,14 @@ export class Dyqan {
     // Fuer das Titelbild aus Heart: auf dem Geraet gemerkt, damit es beim
     // naechsten Oeffnen sofort dasteht (#titelbild).
     this.dauer = dauerSpeicher;
-    this.holen = holen || ((...a) => fetch(...a));
+    this.holen = shopFetch(holen || ((...a) => fetch(...a)));
     // Der Trichter wird bei Bedarf geholt: dieses Modul laeuft, bevor
     // lifeskin-app.js seine Instanz gesetzt hat.
     this.trichterFn = trichter || (() => globalThis.__lifeskinTrichter);
     this.korb = korbLesen(this.speicher);
     this.mittel = mittelBauen([], this.#standardFotos(new Map()));
-    this.setet = acneDuoSets(aktiveSetet(setetNormalisieren(SETET_STANDARD)));
+    this.angebotSetDok = SHOP_START_SETET;
+    this.setet = acneDuoSets(aktiveSetet(setetOderStandard(this.angebotSetDok)));
     this.korb = acneDuoCart(this.korb, this.setet);
     korbSchreiben(this.speicher, this.korb);
     this.setFotos = new Map();
@@ -264,26 +309,23 @@ export class Dyqan {
     this.fotosBereit = false;
     this.filter = "all";
     this.sendet = false;
+    this.angebotBereit = true;
+    this.angebotLaedt = false;
     this.opener = null;
   }
 
   starte() {
-    // Der gemerkte Preis gilt, bis Heart antwortet - sonst sprang die
-    // Karte vom Standardpreis auf den eigenen.
-    try {
-      const gemerkt = JSON.parse(this.dauer?.getItem?.("lifeskinshop:cmimi") || "null");
-      if (gemerkt?.cmimi > 0 && this.setet[0] && !this.setet[0].cmimi) this.setet[0] = { ...this.setet[0], cmimi: gemerkt.cmimi };
-      if (this.korb.ids.length && this.setet[0]) this.korb.cmimi = setPreis(this.setet[0]);
-    } catch { /* ohne Speicher: Staffel */ }
     if (!PAK_SETE) this.dok.querySelectorAll(".pak-sete").forEach((z) => z.remove());
     this.#zeichneSetet();
     this.#zeichneMittel();
     this.#korbZahl();
     this.#ereignisse();
     this.#beobachten();
-    // Das Titelbild zuerst: Die grossen Daten in laden() warten darauf.
-    this.titelbildFertig = this.titelbild();
     this.laden();
+    shopBeiSicht($(".hero-photo", this.dok), async () => {
+      await this.titelbild();
+      await this.#heroGalerie();
+    });
   }
 
   // ── Das Titelbild aus Heart (zugeschnitten 7:5) ─────────────────────
@@ -400,78 +442,81 @@ export class Dyqan {
   }
 
   async laden() {
-    // Independent of checkout/product loading; reuse Heart's existing media editor.
-    void holeSammlung("medien", this.holen).then(medien => {
-      const rail = $("#customer-media", this.dok);
-      if (!rail) return;
-      this.klienten = kundenAuswahl(medien);
-      rail.innerHTML = kundenGalerie(medien);
-      $("#klientet", this.dok)?.toggleAttribute("hidden", !rail.children.length && !$("#klientet [data-zitat-bild]", this.dok));
-      rail.addEventListener("play", event => {
-        rail.querySelectorAll("video").forEach(video => { if (video !== event.target) video.pause(); });
-      }, true);
-    }).catch(() => {
-      // Ohne Antwort: die Standardfotos statt der Platzhalter.
-      const rail = $("#customer-media", this.dok);
-      if (!rail) return;
-      this.klienten = kundenAuswahl(null);
-      rail.innerHTML = kundenGalerie(null);
-    });
-    // ZUERST, WAS OBEN STEHT UND KLEIN IST - dann die grossen Daten.
-    //
-    // Gemessen am 28.09. (Pruefstand, 1,6 Mbit/s, Erstbesuch): Produkte
-    // (~0,9 MB) und Landing-Fotos (~1 MB) liefen gleichzeitig mit allem
-    // anderen los. Das Set-Foto und die Vorher/Nachher-Bilder - direkt unter
-    // dem Titelbild - kamen erst nach ueber 13 s. Jetzt: Set und Faelle
-    // (klein), dann ihre Bilder, zuletzt Mittel und ihre Fotos, die erst im
-    // Blatt und weiter unten gebraucht werden. Bis dahin stehen die Bilder
-    // aus dem Aufbau da; kaufen laesst sich von Anfang an.
-    const [setDok, raste] = await Promise.all([
-      holeDok(SETET_DOK, this.holen).catch(() => null),
-      rasteLaden(BASIS).catch(() => null)
-    ]);
-    // Bilder erst nach dem Titelbild: Es steht oben und bekommt die Leitung
-    // fuer sich (hoechstens 6 s gewartet - haengt es, geht es trotzdem weiter).
-    await Promise.race([this.titelbildFertig, pause(6000)]);
-    // Die Faelle mit Ort "Shop" - sie zeichnen sich, sobald ihre Bilder da sind.
-    // Bis dahin stehen Platzhalter da; hat Heart keinen Fall (oder antwortet
-    // nicht), kommen die vorhandenen dokumentierten Acne-Faelle - nie erst er, dann andere.
-    const RUECKWEG = [{ para: "/apps/lifeskin/fall-vorher.jpg", pas: "/apps/lifeskin/fall-nachher.jpg", gjetja: "" }, ...RASTE_STANDARD.filter(r => ["r1", "r2"].includes(r.id))];
-    const faelle = raste
-      ? rasteMitBildern(rasteFuer(raste, "shop"), BASIS)
-        .then((liste) => this.#zeichneFaelle(liste.length ? liste : RUECKWEG))
-        .catch(() => this.#zeichneFaelle(RUECKWEG))
-      : Promise.resolve(this.#zeichneFaelle(RUECKWEG));
-    await this.#setetUebernehmen(setDok);
+    // Weder Preis noch erster Fall wartet auf Produkt-/Markenbilder.
+    const angebot = this.angebotLaden();
+    const faelle = this.#faelleLaden();
+    shopBeiSicht($("#customer-media", this.dok), () => this.#kundenLaden());
+    shopBeiSicht($("#setet", this.dok), () => this.#produktDatenLaden());
+    await Promise.all([angebot, faelle]);
+  }
 
+  async angebotLaden() {
+    if (this.angebotLaedt) return;
+    this.angebotLaedt = true;
+    const status = $("#shop-preisstatus", this.dok);
+    if (status) status.hidden = true;
+    try {
+      const setDok = await holeDok(SETET_DOK, this.holen);
+      if (setDok && !Array.isArray(setDok.lista)) throw new Error("invalid offer");
+      this.angebotSetDok = setDok || SHOP_START_SETET;
+      this.angebotBereit = true;
+      await this.#setetUebernehmen(this.angebotSetDok);
+      this.dok.documentElement?.setAttribute("data-shop-preis", this.setet.length ? "bereit" : "fehlt");
+      if (status) { status.hidden = this.setet.length > 0; status.textContent = "Seti nuk eshte aktualisht i disponueshem."; }
+    } catch {
+      // Bei Netzfehler bleibt das veroeffentlichte 19-EUR-Angebot nutzbar.
+      if (status) status.hidden = true;
+    } finally { this.angebotLaedt = false; }
+  }
+
+  async #faelleLaden() {
+    const rueckweg = [{ para: "/apps/lifeskin/fall-vorher.jpg", pas: "/apps/lifeskin/fall-nachher.jpg", gjetja: "" }, ...RASTE_STANDARD.filter(r => ["r1", "r2"].includes(r.id))];
+    const raste = await rasteLaden(BASIS, this.holen).catch(() => null);
+    const auswahl = raste ? rasteFuer(raste, "shop") : [];
+    if (!auswahl.length) { this.#zeichneFaelle(rueckweg); return; }
+    // Erster gueltiger Heart-Fall sofort, weitere Bilder erst bei Sichtnaehe.
+    for (let i = 0; i < auswahl.length; i++) {
+      const erste = await rasteMitBildern([auswahl[i]], BASIS, this.holen);
+      if (!erste.length) continue;
+      this.#zeichneFaelle(erste);
+      shopBeiSicht($("#proof-bahn", this.dok), async () => {
+        const weitere = await rasteMitBildern(auswahl.slice(i + 1), BASIS, this.holen);
+        if (weitere.length) this.#zeichneFaelle(weitere, true);
+      });
+      return;
+    }
+    this.#zeichneFaelle(rueckweg);
+  }
+
+  async #kundenLaden() {
+    const medien = await holeSammlung("medien", this.holen).catch(() => null);
+    const rail = $("#customer-media", this.dok);
+    if (!rail) return;
+    this.klienten = kundenAuswahl(medien);
+    rail.innerHTML = kundenGalerie(medien);
+    $("#klientet", this.dok)?.toggleAttribute("hidden", !rail.children.length && !$("#klientet [data-zitat-bild]", this.dok));
+    rail.addEventListener("play", event => {
+      rail.querySelectorAll("video").forEach(video => { if (video !== event.target) video.pause(); });
+    }, true);
+  }
+
+  async #produktDatenLaden() {
+    // Diese Daten koennen Bilder enthalten; sie entscheiden nicht ueber den Preis.
     const [produkte, konfig] = await Promise.all([
       holeSammlung("products", this.holen).catch(() => []),
       holeSammlung("config", this.holen, "fotot").catch(() => [])
     ]);
-    // Die Einzelmittel: Heart-Produkte mit ihren Bildern (Produkte ->
-    // Bilder der Landingpage), sonst die Aufnahmen dieser Seite.
     const fotos = new Map();
     for (const doku of konfig || []) {
       if (!String(doku.id).startsWith(FOTO_PRAEFIX)) continue;
       const liste = Array.isArray(doku.fotot) ? doku.fotot : [];
-      fotos.set(doku.id.slice(FOTO_PRAEFIX.length), liste.filter((f) => typeof f === "string" && f.startsWith("data:image/")));
+      fotos.set(doku.id.slice(FOTO_PRAEFIX.length), liste.filter(f => typeof f === "string" && f.startsWith("data:image/")));
     }
     this.mittel = mittelBauen(produkte || [], this.#standardFotos(fotos));
     this.fotosBereit = true;
-    // Noch einmal, jetzt mit den Mitteln aus Heart: nur Sets mit Mitteln,
-    // die es zu kaufen gibt.
-    await this.#setetUebernehmen(setDok);
-    await faelle;
-    // Zuletzt die weiteren Titelbilder - sie liegen ausserhalb des Blicks
-    // (zum Wischen) und sollen dem Rest die Leitung nicht nehmen.
-    await this.titelbildFertig;
-    await this.#heroGalerie();
+    if (this.angebotBereit) await this.#setetUebernehmen(this.angebotSetDok);
   }
 
-  // TITELBILD 2-5 ZUM WISCHEN (30.09., Inhaber). Bild 1 bleibt, wie es ist
-  // (schnell, gemerkt); die weiteren legen sich als Bahn darueber, deren
-  // erstes Feld leer ist - so steht beim Laden genau Bild 1 da, nichts
-  // springt, und ein Wischen zieht Bild 2 herein.
   async #heroGalerie() {
     const n = Math.min(SHOP_HERO_MAX, Number(this.heroAnzahl) || 0);
     const rahmen = $("#ls-einstieg .hero-photo", this.dok);
@@ -532,25 +577,19 @@ export class Dyqan {
     }, { passive: true });
   }
 
-  // Die Sets aus Heart, nur mit Mitteln, die es zu kaufen gibt - mit ihrem
-  // Foto (einmal geholt, danach aus this.setFotos) - und neu gezeichnet.
+  // Die Sets aus Heart, nur mit Mitteln, die es zu kaufen gibt.
   async #setetUebernehmen(setDok) {
     const da = new Set(this.mittel.map((m) => m.id));
     this.setet = acneDuoSets(aktiveSetet(setetOderStandard(setDok)))
       .map((s) => ({ ...s, produkte: s.produkte.filter((id) => da.has(id)) }))
       .filter((s) => s.produkte.length === 2);
-    await Promise.all(this.setet.filter((s) => s.bild && !this.setFotos.has(s.id)).map(async (s) => {
-      try {
-        const d = await holeDok(`${SET_FOTO_PRAEFIX}${s.id}`, this.holen);
-        if (typeof d?.foto === "string" && d.foto.startsWith("data:image/")) this.setFotos.set(s.id, d.foto);
-      } catch { /* dann das Bild des ersten Mittels */ }
-    }));
     // Der Korb darf nur Mittel tragen, die es noch gibt.
     this.korb = acneDuoCart(this.korb, this.setet);
     korbSchreiben(this.speicher, this.korb);
     this.#zeichneSetet();
     this.#zeichneMittel();
     this.#korbZahl();
+    if ($("#kasa", this.dok)?.hidden === false) this.#kasseZeichnen();
   }
 
   mittelVon(id) { return this.mittel.find((m) => m.id === id); }
@@ -564,8 +603,9 @@ export class Dyqan {
   #zeichneSetet() {
     const raster = $("#set-grid", this.dok);
     if (!raster) return;
-    const available = this.setet.length > 0;
+    const available = this.angebotBereit && this.setet.length > 0;
     for (const button of this.dok.querySelectorAll('.hero [data-set], #setet [data-set], #zgjedhja [data-set], .closing [data-set], #sticky-buy')) button.disabled = !available;
+    if (!this.angebotBereit) return;
     if (!available) { raster.innerHTML = '<p class="section-intro">Seti nuk është aktualisht i disponueshëm.</p>'; return; }
     raster.innerHTML = this.setet.map(s => duoCard(s, this.mittel, { fotos: this.fotosBereit })).join('');
     const numri = $("#set-numri", this.dok);
@@ -596,16 +636,12 @@ export class Dyqan {
     return einzelAusSets(this.mittel, this.setet);
   }
 
-  // DER PREIS AUS HEART UEBERALL, WO ER FEST IM AUFBAU STEHT (30.09.):
-  // Leiste, Titel-Angebot, Kaufknopf, Hinweis unter Dr. Gashi. Rabatt und
-  // "Veçmas" werden gerechnet; ist der Setpreis nicht unter den
-  // Einzelpreisen, verschwinden sie. Gemerkt auf dem Geraet, damit beim
-  // naechsten Oeffnen sofort der richtige Preis dasteht.
+  // Veroeffentlichtes Angebot sofort, danach aktuelle Shop-Sets aus Heart.
+  // Kein alter lokaler Preis und kein Zwischenpreis aus der Staffel.
   #preiseZeigen(set) {
     const cmimi = setPreis(set);
     const vecmas = set.produkte.length * preisFuer(1);
     const zbritje = vecmas > cmimi ? Math.round((1 - cmimi / vecmas) * 100) : 0;
-    try { this.dauer?.setItem?.("lifeskinshop:cmimi", JSON.stringify({ cmimi, vecmas, zbritje })); } catch { /* egal */ }
     preiseAnwenden(this.dok, { cmimi, vecmas, zbritje });
   }
 
@@ -614,14 +650,15 @@ export class Dyqan {
     if (raster) { raster.innerHTML = ''; raster.closest('.singles')?.setAttribute('hidden',''); }
   }
 
-  #zeichneFaelle(faelle) {
+  #zeichneFaelle(faelle, anhaengen = false) {
     const bahn = $("#proof-bahn", this.dok);
     if (!bahn) return;
     const bild = (src, alt) => `<img src="${e(src)}" width="600" height="800" alt="${e(alt)}" loading="lazy">`;
-    bahn.innerHTML = faelle.map((r) => `<article class="proof-rast"><div class="proof-pair"><figure>${bild(r.para, `Para: ${r.gjetja || ""}`)}<figcaption>PARA <span>Në fillim</span></figcaption></figure><figure>${bild(r.pas, `Pas 28 ditësh: ${r.gjetja || ""}`)}<figcaption>PAS <span>Pas 4 javësh</span></figcaption></figure></div></article>`).join("");
-    bahn.scrollLeft = 0;
+    const inhalt = faelle.map((r) => `<article class="proof-rast"><div class="proof-pair"><figure>${bild(r.para, `Para: ${r.gjetja || ""}`)}<figcaption>PARA <span>Në fillim</span></figcaption></figure><figure>${bild(r.pas, `Pas 28 ditësh: ${r.gjetja || ""}`)}<figcaption>PAS <span>Pas 4 javësh</span></figcaption></figure></div></article>`).join("");
+    if (anhaengen) bahn.insertAdjacentHTML("beforeend", inhalt);
+    else { bahn.innerHTML = inhalt; bahn.scrollLeft = 0; }
     let pikat = $("#proof-pikat", this.dok);
-    if (faelle.length < 2) { pikat?.remove(); return; }
+    if (bahn.children.length < 2) { pikat?.remove(); return; }
     if (!pikat) {
       pikat = this.dok.createElement("div");
       pikat.id = "proof-pikat";
@@ -629,7 +666,9 @@ export class Dyqan {
       pikat.setAttribute("aria-hidden", "true");
       bahn.after(pikat);
     }
-    pikat.innerHTML = faelle.map((_, i) => `<i data-an="${i === 0 ? "ja" : "nein"}"></i>`).join("");
+    pikat.innerHTML = Array.from(bahn.children, (_, i) => `<i data-an="${i === 0 ? "ja" : "nein"}"></i>`).join("");
+    if (this.proofScrollGebunden) return;
+    this.proofScrollGebunden = true;
     let wartet = false;
     bahn.addEventListener("scroll", () => {
       if (wartet) return;
@@ -737,13 +776,15 @@ export class Dyqan {
   }
 
   setLegen(id) {
+    if (!this.angebotBereit) return;
     const s = this.setVon(id);
     if (!s) return;
     // Ein Set ersetzt den Korb: eine Routine auf einmal, keine
     // zufaellige Mischung von Wirkstoffen.
     this.korb = { ids: [...s.produkte], set: s.id, cmimi: setPreis(s) };
     this.#nachLegen();
-    this.#korbBlatt();
+    // Gleicher Korb, gleiche Meldung, dann die bestehende Kasse ohne Zwischenblatt.
+    this.kasseOeffnen();
     const status = $("#status", this.dok);
     if (status) status.textContent = `${s.titulli} u shtua në shportë.`;
   }
@@ -763,6 +804,7 @@ export class Dyqan {
 
   // ── Die Kasse: eine eigene Ansicht an der Stelle des Ladens ─────────
   kasseOeffnen() {
+    if (!this.angebotBereit) return;
     const kasa = $("#kasa", this.dok);
     if (!kasa) return;
     this.#blattZu();
@@ -833,7 +875,7 @@ export class Dyqan {
   // Derselbe Ablauf wie auf /lifeskin: pruefen, Knopf sperren, schreiben,
   // und erst NACH der Antwort des Servers bestaetigen.
   async bestellen() {
-    if (this.sendet || !this.korb.ids.length) return;
+    if (this.sendet || !this.korb.ids.length || !this.angebotBereit) return;
     const feld = (id) => $(id, this.dok)?.value.trim() || "";
     const werte = { name: feld("#kasa-emri"), telefon: feld("#kasa-telefoni"), strasse: feld("#kasa-adresa"), ort: feld("#kasa-qyteti") };
     const gabim = $("#kasa-gabim", this.dok);
@@ -929,6 +971,7 @@ export class Dyqan {
       const knopf = ereignis.target.closest?.("button");
       if (!knopf) return;
       const d = knopf.dataset;
+      if ("preisRetry" in d) { void this.angebotLaden(); return; }
       if ("set" in d) { this.setLegen(d.set); return; }
       if ("zitatBild" in d) { this.#blatt(`<img class="zitat-gross" src="${e(d.zitatBild)}" alt="Mesazhi origjinal i klientit në Instagram">`, "MESAZH NË INSTAGRAM"); return; }
       if ("klientSpiel" in d) { this.#klientVideo(knopf.closest(".klient-buehne")); return; }
