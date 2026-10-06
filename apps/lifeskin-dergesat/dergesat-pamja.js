@@ -165,6 +165,7 @@ export function renderKartat(liste, roli, laeuft = "", lenda = null) {
         <p class="dg-karte__shuma">${esc(euroSq(pb.shuma))}</p>
         <p class="dg-karte__pak">${pb.numri} porosi · −2,50 € posta për porosi</p>
         <ul class="dg-ndarja">
+          <li><span>Porosi të reja</span><span>${pb.reja.numri}</span><b>${esc(euroSq(pb.reja.shuma))}</b></li>
           <li><span>Dërguar (në rrugë)</span><span>${pb.neRruge.numri}</span><b>${esc(euroSq(pb.neRruge.shuma))}</b></li>
           <li><span>Pranuar (gati për barazim)</span><span>${pb.gati.numri}</span><b>${esc(euroSq(pb.gati.shuma))}</b></li>
         </ul>
@@ -315,6 +316,10 @@ export function renderDetajet(karta, liste, roli, laeuft = "", lenda = null) {
         <section class="dg-pjese">
           <h3>Dërguar · në rrugë <small>${pb.neRruge.numri} · ${esc(euroSq(pb.neRruge.shuma))}</small></h3>
           ${listeOse(pb.lista.filter((d) => d.statusi === "derguar").map((d) => rreshtDetaj(d, euroSq(netoPosta(d)))), "Asnjë.")}
+        </section>
+        <section class="dg-pjese">
+          <h3>Porosi të reja <small>${pb.reja.numri} · ${esc(euroSq(pb.reja.shuma))}</small></h3>
+          ${listeOse(pb.lista.filter((d) => d.statusi === "porosi").map((d) => rreshtDetaj(d, euroSq(netoPosta(d)))), "Asnjë.")}
         </section>` };
   } else if (karta === "barazuar") {
     t = { titull: "Barazuar", nen: `${ll.barazuar.numri} porosi · ${euroSq(ll.barazuar.shuma)}`,

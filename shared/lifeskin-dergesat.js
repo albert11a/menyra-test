@@ -11,8 +11,10 @@
 //      ordnet sie in der Karte "Bestellungen" in denselben Chip ein.
 //
 // Geld (alles ohne Anuluar - eine stornierte Bestellung zaehlt nirgends):
-//   Pritje barazim  = je Bestellung, die Dërguar oder Pranuar ist und noch
-//                     nicht barazuar: Gesamtpreis - 2,50 € (Post).
+//   Pritje barazim  = je Bestellung, die Porosi (neu), Dërguar oder Pranuar
+//                     ist und noch nicht barazuar: Gesamtpreis - 2,50 €
+//                     (Post). Die neuen Porosiat stehen in der Karte als
+//                     eigene Zeile ueber Dërguar (Wunsch Inhaber 06.10.).
 //   Pritje për Riben = 2 € je Bestellung, die Dërguar ist.
 //   € për Riben     = 2 € je Bestellung, die Pranuar ist und Riba noch
 //                     nicht ausbezahlt wurde.
@@ -231,6 +233,7 @@ export function llogarit(liste) {
   const te = (liste || []).filter((d) => d && d.statusi !== "anuluar");
   const shuma = (l, vlera) => cent(l.reduce((s, d) => s + vlera(d), 0));
 
+  const reja = te.filter((d) => d.statusi === "porosi");
   const neRruge = te.filter((d) => d.statusi === "derguar" && !d.barazuarAt);
   const gatiBarazim = te.filter((d) => d.statusi === "pranuar" && !d.barazuarAt);
   const barazuar = te.filter((d) => d.statusi === "pranuar" && d.barazuarAt);
@@ -243,9 +246,10 @@ export function llogarit(liste) {
 
   return {
     pritjeBarazim: {
-      lista: sipasKohes([...neRruge, ...gatiBarazim], "updatedAt"),
-      numri: neRruge.length + gatiBarazim.length,
-      shuma: cent(shuma(neRruge, netoPosta) + shuma(gatiBarazim, netoPosta)),
+      lista: sipasKohes([...reja, ...neRruge, ...gatiBarazim], "updatedAt"),
+      numri: reja.length + neRruge.length + gatiBarazim.length,
+      shuma: cent(shuma(reja, netoPosta) + shuma(neRruge, netoPosta) + shuma(gatiBarazim, netoPosta)),
+      reja: { numri: reja.length, shuma: shuma(reja, netoPosta) },
       neRruge: { numri: neRruge.length, shuma: shuma(neRruge, netoPosta) },
       gati: { numri: gatiBarazim.length, shuma: shuma(gatiBarazim, netoPosta), kennungen: gatiBarazim.map((d) => d.kennung) }
     },
