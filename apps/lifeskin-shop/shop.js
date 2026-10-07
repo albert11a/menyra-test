@@ -751,7 +751,7 @@ export class Dyqan {
     const mittel = this.korb.ids.map((id) => this.mittelVon(id)).filter(Boolean);
     if (!mittel.length) return "";
     const s = this.setVon(this.korb.set);
-    const bilder = mittel.slice(0, 2).map((m) => `<img src="${e(m.fotot[0])}" alt="" width="40" height="50">`).join("");
+    const bilder = mittel.map((m) => `<img src="${e(m.fotot[0])}" alt="" width="40" height="50">`).join("");
     return `<div class="kasa-set"><span class="kasa-set__bilder">${bilder}</span><span class="kasa-set__text"><b>${e(s?.titulli || "Acne Duo")}</b><small>${e(mittel.map((m) => m.name).join(" + "))}${new Set(mittel.map((m) => m.inhalt || "30 ml")).size === 1 ? ` · ${e(mittel[0].inhalt || "30 ml")} secili` : ""}</small></span></div>`;
   }
 

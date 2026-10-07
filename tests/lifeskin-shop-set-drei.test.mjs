@@ -39,3 +39,22 @@ test("jede Stelle der Seite hat beide Fassungen, ohne Merkmal steht die 2er-Fass
   assert.doesNotMatch(ohneDrei, /LF CLEAN|TRE PRODUKTET|Të trija/);
   assert.match(lies("apps/lifeskin-shop/shop.js"), /setAttribute\("data-set-produkte", drei \? "3" : "2"\)/);
 });
+
+test("Heart: das Akne-Set hat die Knoepfe Me 2 produkte · 19 € und Me 3 produkte · 39 €", async () => {
+  const { ACNE_FASSUNGEN, acneFassung } = await import("../shared/lifeskin-shop-sets.js");
+  const { renderShopSetet } = await import("../apps/mnyra-heart/heart-lifeskin-shopsets.js");
+  assert.deepEqual({ ...ACNE_FASSUNGEN[2], produkte: [...ACNE_FASSUNGEN[2].produkte] }, { produkte: ["lf-acne", "lf-moistur"], cmimi: 19 });
+  assert.deepEqual({ ...ACNE_FASSUNGEN[3], produkte: [...ACNE_FASSUNGEN[3].produkte] }, { produkte: ["lf-clean", "lf-acne", "lf-moistur"], cmimi: 39 });
+  assert.equal(acneFassung(set(["lf-acne", "lf-moistur"])), 2);
+  assert.equal(acneFassung(set(["lf-clean", "lf-acne", "lf-moistur"])), 3);
+  assert.equal(acneFassung(set(["lf-pore", "lf-moistur"])), 0);
+  const html = renderShopSetet({ shopSetet: [
+    { id: "acne", titulli: "Seti kundër akneve", produkte: ["lf-acne", "lf-moistur"], cmimi: 19, aktiv: true },
+    { id: "pore", titulli: "Seti për poret", produkte: ["lf-pore", "lf-moistur"], aktiv: false }] }, []);
+  // Nur das Akne-Set bekommt die zwei Knoepfe; die aktuelle Fassung ist markiert.
+  assert.equal(html.split('data-action="lifeskin-shopset-fassung"').length - 1, 2);
+  assert.match(html, /aria-pressed="true"[^>]*>✓ Me 2 produkte · 19 €/);
+  assert.match(html, /aria-pressed="false"[^>]*>Me 3 produkte · 39 €/);
+  assert.match(lies("apps/mnyra-heart/heart.js"), /produkte: \[\.\.\.fassung\.produkte\], cmimi: fassung\.cmimi/);
+  assert.match(lies("apps/mnyra-heart/heart-events.js"), /lifeskin-shopset-fassung/);
+});

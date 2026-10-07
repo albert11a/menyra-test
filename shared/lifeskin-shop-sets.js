@@ -41,6 +41,25 @@ export const SET_PRODUKTE_MAX = 4;
 
 const ASSETS = "/apps/lifeskin-shop/assets/";
 
+// DAS AKNE-SET IN ZWEI FASSUNGEN (Inhaber 07.10.): In Heart ein Klick auf
+// "Me 2 produkte" oder "Me 3 produkte" - das Set bekommt dann genau diese
+// Mittel und diesen Preis, und /lifeskinshop zeigt die passende Seite.
+export const ACNE_FASSUNGEN = Object.freeze({
+  2: Object.freeze({ produkte: Object.freeze(["lf-acne", "lf-moistur"]), cmimi: 19 }),
+  3: Object.freeze({ produkte: Object.freeze(["lf-clean", "lf-acne", "lf-moistur"]), cmimi: 39 })
+});
+// Ein Set ist das Akne-Set, wenn es LF ACNE und LF MOISTUR traegt und
+// hoechstens noch LF CLEAN.
+export function istAcneSet(s) {
+  const p = Array.isArray(s?.produkte) ? s.produkte : [];
+  return p.includes("lf-acne") && p.includes("lf-moistur") && p.every((id) => ACNE_FASSUNGEN[3].produkte.includes(id));
+}
+// Welche Fassung das Set gerade hat (2 oder 3), sonst 0.
+export function acneFassung(s) {
+  if (!istAcneSet(s)) return 0;
+  return s.produkte.includes("lf-clean") ? 3 : 2;
+}
+
 export const SETET_STANDARD = Object.freeze([
   Object.freeze({
     id: "acne", titulli: "Seti kundër akneve", nevoja: "Akne", etiketa: "AKNE + HIDRATIM",
