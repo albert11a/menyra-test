@@ -68,7 +68,7 @@ test("erreichbar: Vercel, Entwicklungsserver, Service Worker, Build", () => {
 });
 
 test("Korb, Summe, Pflichtfelder und Zeilen der Bestellung", async () => {
-  const { korbLesen, korbSchreiben, summe, kasseFehler, bestellZeilen } = await import("../apps/lifeskin-shop/shop.js");
+  const { korbLesen, korbSchreiben, summe, kasseFehler, bestellZeilen, bestellNachricht } = await import("../apps/lifeskin-shop/shop.js");
   const speicher = new Map();
   const s = { getItem: (k) => speicher.get(k) ?? null, setItem: (k, v) => speicher.set(k, v) };
   assert.deepEqual(korbLesen(s), { ids: [], set: "" });
@@ -79,7 +79,11 @@ test("Korb, Summe, Pflichtfelder und Zeilen der Bestellung", async () => {
   assert.equal(summe({ ids: ["a"] }), 29);
   assert.equal(summe({ ids: ["a", "b"] }), 39);
   assert.equal(summe({ ids: ["a", "b", "c"] }), 49);
-  assert.match(kasseFehler({ name: "", telefon: "1", strasse: "x", ort: "y" }), /të gjitha fushat/);
+  // Seit 07.10. (Inhaber): auch leere Felder halten nichts auf - nur ganz leer.
+  assert.equal(kasseFehler({ name: "", telefon: "1", strasse: "x", ort: "y" }), "");
+  assert.equal(kasseFehler({ name: "A", telefon: "", strasse: "", ort: "" }), "");
+  assert.match(kasseFehler({ name: "", telefon: "", strasse: "", ort: "" }), /emrin dhe numrin/);
+  assert.match(bestellNachricht({ name: "A", telefon: "044", strasse: "", ort: "Prishtinë" }, 39), /Emri: A\nTelefoni: 044\nQyteti: Prishtinë/);
   // Seit 30.09. (Inhaber): jede Eingabe geht durch, nur leer nicht.
   for (const telefon of ["12", "044123456", "44123456", "+38344123456", "kdkekei8272€", "nuk e di"]) {
     assert.equal(kasseFehler({ name: "A", telefon, strasse: "x", ort: "y" }), "", telefon);

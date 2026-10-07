@@ -94,12 +94,28 @@ export function arrinDeri(heute) {
   return `${DITET[tag.getDay()]}, ${tag.getDate()} ${MUAJT[tag.getMonth()]}`;
 }
 
-// Die Pflichtfelder der Kasse. Dieselbe Regel wie auf /lifeskin: alle vier
-// ausgefuellt - und sonst nichts. Seit 30.09. (Inhaber) keine Mindestzahl
-// an Ziffern mehr: Jede Eingabe geht durch, geklaert wird am Telefon.
+// Die Felder der Kasse. Seit 07.10. (Inhaber: "egal was man schreibt,
+// alles akzeptieren"): Keine Eingabe haelt eine Bestellung mehr auf - auch
+// ein leeres Feld nicht. Geklaert wird am Telefon. Nur wer GAR NICHTS
+// geschrieben hat, bekommt den Hinweis: Eine Bestellung ohne jede Angabe
+// kann niemand ausliefern.
 export function kasseFehler(werte) {
-  if (!werte.name || !werte.telefon || !werte.strasse || !werte.ort) return "Ju lutemi plotësoni të gjitha fushat.";
+  if (!werte.name && !werte.telefon && !werte.strasse && !werte.ort) return "Ju lutemi shkruani emrin dhe numrin e telefonit.";
   return "";
+}
+
+// Die Bestellung als WhatsApp-Nachricht - fuer den Fall, dass sie nicht
+// gespeichert werden konnte. So kommt sie trotzdem an (07.10., Inhaber:
+// "die Bestellung muss ankommen").
+export function bestellNachricht(werte, betrag) {
+  const zeilen = [
+    `Përshëndetje, dua të porosis setin Acne Duo (${betrag} €).`,
+    werte.name && `Emri: ${werte.name}`,
+    werte.telefon && `Telefoni: ${werte.telefon}`,
+    werte.strasse && `Adresa: ${werte.strasse}`,
+    werte.ort && `Qyteti: ${werte.ort}`
+  ];
+  return zeilen.filter(Boolean).join("\n");
 }
 
 // Die Zeilen der Bestellung - je Zeile id, name, Preis, Anzahl, wie im
@@ -912,10 +928,12 @@ export class Dyqan {
     }
   }
 
-  // Wartet kurz auf die Sitzung des Trichters - wer sehr schnell bestellt,
-  // koennte vor ihr da sein.
+  // Wartet auf die Sitzung des Trichters - wer sehr schnell bestellt,
+  // koennte vor ihr da sein. Bis 15 s (vorher 3 s): Auf einer langsamen
+  // Leitung laedt der Trichter laenger, und ohne Sitzung ging die
+  // Bestellung nicht hinaus.
   async #sitzung() {
-    for (let i = 0; i < 30; i += 1) {
+    for (let i = 0; i < 150; i += 1) {
       const s = this.trichterFn()?.sitzung;
       if (s) return s;
       await new Promise((fertig) => setTimeout(fertig, 100));
@@ -931,8 +949,8 @@ export class Dyqan {
     const werte = { name: feld("#kasa-emri"), telefon: feld("#kasa-telefoni"), strasse: feld("#kasa-adresa"), ort: feld("#kasa-qyteti") };
     const gabim = $("#kasa-gabim", this.dok);
     const fehler = kasseFehler(werte);
-    for (const [id, wert] of [["#kasa-emri", werte.name], ["#kasa-telefoni", werte.telefon], ["#kasa-adresa", werte.strasse], ["#kasa-qyteti", werte.ort]]) {
-      $(id, this.dok)?.setAttribute("aria-invalid", wert ? "false" : "true");
+    for (const [id, wert] of [["#kasa-emri", werte.name], ["#kasa-telefoni", werte.telefon]]) {
+      $(id, this.dok)?.setAttribute("aria-invalid", fehler && !wert ? "true" : "false");
     }
     if (fehler) {
       gabim.textContent = fehler;
@@ -985,8 +1003,15 @@ export class Dyqan {
     knopf.disabled = false;
     text.textContent = "Porositni tani";
     if (!ok) {
-      gabim.textContent = "Porosia nuk u dërgua. Ju lutemi provoni sërish.";
+      gabim.textContent = "Porosia nuk u dërgua. Ju lutemi provoni sërish ose dërgojeni me WhatsApp më poshtë.";
       gabim.hidden = false;
+      // Die Bestellung darf nicht verloren gehen: Der WhatsApp-Knopf traegt
+      // jetzt alles, was eingegeben wurde - ein Tipp, und sie ist da.
+      const wa = $("#kasa-wa", this.dok);
+      if (wa) {
+        wa.href = `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(bestellNachricht(werte, betrag))}`;
+        wa.hidden = false;
+      }
       return;
     }
     // Woher die Bestellung kommt: aus dem Laden, nicht von der Befundseite.

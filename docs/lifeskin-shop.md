@@ -471,3 +471,21 @@ beiden Seiten dieselben Ereignisse wie vorher (Pruefstand).
 auf /lifeskinshop mit "20 Min" und auf /lifeskin mit "Morgen früh" bis zur
 Warteseite), Heart-Kopf als Bild (zu und mit offener Uhr-Reihe). Kein
 echtes Handy, Heart nicht angemeldet geoeffnet.
+
+## Kasse: jede Eingabe geht durch, keine Bestellung geht verloren (07.10.)
+
+Wunsch Inhaber: "egal was man schreibt, alles akzeptieren" und "die
+Bestellung muss ankommen".
+
+- `kasseFehler()` haelt keine Bestellung mehr wegen eines leeren Feldes auf.
+  Nur wenn alle vier Felder leer sind, kommt der Hinweis
+  "Ju lutemi shkruani emrin dhe numrin e telefonit."
+- Die Kasse wartet bis 15 s (vorher 3 s) auf die Sitzung des Trichters -
+  auf einer langsamen Leitung lud der Trichter laenger, und ohne Sitzung
+  ging die Bestellung nicht hinaus.
+- Scheitert das Speichern trotzdem, traegt der WhatsApp-Knopf der Kasse die
+  ganze Bestellung (Set, Betrag, Name, Telefon, Adresse, Ort) als fertige
+  Nachricht (`bestellNachricht()`), und der Fehlertext verweist darauf.
+- Pixel und Conversions API unveraendert: `schritt("ordered")` wird mit
+  denselben Daten zum selben Zeitpunkt gerufen
+  (`tests/lifeskin-pixel-sperre.test.mjs` gruen).
