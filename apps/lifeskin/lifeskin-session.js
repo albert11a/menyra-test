@@ -571,6 +571,9 @@ export class Sitzung {
     // Was danach kommt, darf nicht mehr VOR diese Aufgabe rutschen.
     this.sammel = null;
     this.kette = this.kette.then(aufgabe).catch((fehler) => {
+      // Der letzte Grund, fuer die Kasse des Ladens (Heart: "NICHT
+      // gespeichert (Firestore 403)" statt nur "keine Antwort").
+      this.letzterFehler = String(fehler?.message || fehler || "").slice(0, 80);
       // Bewusst nur eine Notiz: Der Trichter laeuft weiter. Eine Bestellung,
       // die an der Zaehlung scheitert, waere der teuerste denkbare Fehler.
       if (globalThis.console) console.warn("[lifeskin] Sitzung nicht gespeichert:", fehler?.message);
@@ -621,11 +624,16 @@ export class Sitzung {
         for (const t of neu.teile) t.antwort = antwort;
         return antwort;
       } catch (fehler) {
+        // Vor dem finally unten: Wer auf sein Teil wartet, findet den Grund.
+        this.letzterFehler = String(fehler?.message || fehler || "").slice(0, 80);
         if (neu.teile.length < 2 || !/Firestore 4\d\d/.test(String(fehler?.message))) throw fehler;
         let letzte;
         for (const t of neu.teile) {
           try { t.antwort = await this.#schreiben(t.daten, t.maske); letzte = t.antwort; }
-          catch (einzeln) { globalThis.console?.warn?.("[lifeskin] Teil nicht gespeichert:", einzeln?.message); }
+          catch (einzeln) {
+            this.letzterFehler = String(einzeln?.message || einzeln || "").slice(0, 80);
+            globalThis.console?.warn?.("[lifeskin] Teil nicht gespeichert:", einzeln?.message);
+          }
         }
         if (!letzte) throw fehler;
         return letzte;
@@ -1212,6 +1220,35 @@ export class Sitzung {
     const felderListe = Object.keys(daten || {});
     if (!felderListe.length) return this.kette;
     return this.#sammeln({ timings: { shop: { ...daten } } }, felderListe.map((f) => `timings.shop.${f}`));
+  }
+
+  // DIE KASSE DES LADENS, GENAU (07.10., Inhaber: "sofort sobald jemand
+  // was tippt ... sehen, was genau passiert ist"): was in den vier Feldern
+  // steht, und jeder Druck auf "Porositni tani" mit seinem Ausgang - unter
+  // timings.kasse (offene Karte in firestore.rules, keine neue Regel).
+  // Ohne updatedAt wie der Klickpfad: sonst rechnet Heart bei jedem
+  // Tastendruck alles neu.
+  //   felder        { name, telefon, strasse, ort } - der letzte Stand
+  //   zuletzt       wann zuletzt getippt
+  //   versuche.<id> { t, ergebnis, fehlt, ms, status }
+  kasseSchreiben(daten) {
+    const kasse = {};
+    const masken = [];
+    for (const [k, v] of Object.entries(daten || {})) {
+      if (k === "versuche" && v && typeof v === "object") {
+        kasse.versuche = {};
+        for (const [id, versuch] of Object.entries(v)) {
+          if (!/^[a-z0-9]{1,24}$/.test(id)) continue;
+          kasse.versuche[id] = versuch;
+          masken.push(`timings.kasse.versuche.${id}`);
+        }
+      } else if (/^[a-zA-Z]{1,24}$/.test(k)) {
+        kasse[k] = v;
+        masken.push(`timings.kasse.${k}`);
+      }
+    }
+    if (!masken.length) return this.kette;
+    return this.#sammeln({ timings: { kasse } }, masken);
   }
 
   // Einzelne Felder ergaenzen, ohne den Schritt zu bewegen.

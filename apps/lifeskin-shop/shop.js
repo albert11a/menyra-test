@@ -257,6 +257,30 @@ export const SHOP_START_SETET = { lista: SETET_STANDARD.map(s => s.id === "acne"
 
 const pause = (ms) => new Promise((fertig) => setTimeout(fertig, ms));
 
+// DIE KASSE GENAU SEHEN (07.10., Inhaber: "sofort sobald jemand was tippt
+// ... sehen, was genau passiert ist"). Vorher stand in Heart nur "Feld
+// angetippt" - ob jemand etwas geschrieben hatte und welchen Hinweis er
+// bekam, wusste niemand. Jetzt:
+//   - Klickpfad: "schreibt" beim ersten Zeichen je Feld, beim Verlassen
+//     des Feldes der Inhalt (oder "leer"), jeder Hinweis, jede Bestellung
+//     mit Ausgang (gespeichert / nicht gespeichert und warum).
+//   - timings.kasse in der Sitzung: der letzte Stand der vier Felder und
+//     jeder Druck auf "Porositni tani" (Sitzung.kasseSchreiben) - fuer das
+//     Nachfassen in Heart, auch ohne Bestellung.
+// Steht so in der Datenschutzerklaerung (privatesia.html, Abschnitt 2).
+export const KASSE_FELDNAMEN = Object.freeze({
+  "kasa-emri": "Emri", "kasa-telefoni": "Telefoni", "kasa-adresa": "Adresa", "kasa-qyteti": "Qyteti"
+});
+const KASSE_WERT_MAX = 100;
+export function kasseFelderStand(werte) {
+  const k = (v) => String(v || "").slice(0, KASSE_WERT_MAX);
+  return { name: k(werte.name), telefon: k(werte.telefon), strasse: k(werte.strasse), ort: k(werte.ort) };
+}
+export function kasseLeer(werte) {
+  return [["name", "Emri"], ["telefon", "Telefoni"], ["strasse", "Adresa"], ["ort", "Qyteti"]]
+    .filter(([k]) => !werte[k]).map(([, wort]) => wort).join(", ");
+}
+
 const SHOP_FOTOS_KLEIN = Object.freeze({
   "lf-acne": "/apps/lifeskin-shop/assets/lf-acne-3-klein.jpg",
   "lf-moistur": "/apps/lifeskin-shop/assets/lf-moistur-klein.jpg"
@@ -352,6 +376,38 @@ export class Dyqan {
     this.angebotBereit = true;
     this.angebotLaedt = false;
     this.opener = null;
+    this.kasseGetippt = new Set();
+    this.kasseZuletzt = new Map();
+    this.kasseTimer = null;
+  }
+
+  // ── Was in der Kasse geschieht, fuer Heart (siehe KASSE_FELDNAMEN) ──
+  #pfad(ereignis, text) {
+    try { this.trichterFn()?.klickpfad?.melde?.(ereignis, text); } catch { /* nie den Kauf stoeren */ }
+  }
+
+  #pfadSofort() {
+    try { this.trichterFn()?.klickpfad?.schicke?.(); } catch { /* egal */ }
+  }
+
+  #kasseWerte() {
+    const feld = (id) => $(id, this.dok)?.value.trim() || "";
+    return { name: feld("#kasa-emri"), telefon: feld("#kasa-telefoni"), strasse: feld("#kasa-adresa"), ort: feld("#kasa-qyteti") };
+  }
+
+  async #kasseSpeichern(daten) {
+    try {
+      const sitzung = await this.#sitzung();
+      if (!sitzung?.kasseSchreiben) return;
+      for (let i = 0; i < 50 && sitzung.angelegt !== true; i += 1) await pause(100);
+      if (sitzung.angelegt === true) await sitzung.kasseSchreiben(daten);
+    } catch { /* Messtechnik darf den Verkauf nie anhalten. */ }
+  }
+
+  #kasseFelderSpeichern() {
+    clearTimeout(this.kasseTimer);
+    this.kasseTimer = null;
+    return this.#kasseSpeichern({ felder: kasseFelderStand(this.#kasseWerte()), zuletzt: new Date().toISOString() });
   }
 
   starte() {
@@ -893,6 +949,7 @@ export class Dyqan {
       // InitiateCheckout, sobald die Kasse mit etwas darin aufgeht - wie
       // auf /lifeskin (Laden#oeffnen).
       this.trichterFn()?.pixel?.meldeKasse?.(summe(this.korb));
+      this.#pfad("kasse", `Kasse geöffnet · ${summe(this.korb)} € · kasa`);
       this.#merke({ kasseGeoeffnet: true, kasseGeoeffnetAt: new Date().toISOString() }, "kasseGeoeffnet");
       this.#live("kasa");
     }
@@ -954,11 +1011,22 @@ export class Dyqan {
   // Derselbe Ablauf wie auf /lifeskin: pruefen, Knopf sperren, schreiben,
   // und erst NACH der Antwort des Servers bestaetigen.
   async bestellen() {
-    if (this.sendet || !this.korb.ids.length || !this.angebotBereit) return;
-    const feld = (id) => $(id, this.dok)?.value.trim() || "";
-    const werte = { name: feld("#kasa-emri"), telefon: feld("#kasa-telefoni"), strasse: feld("#kasa-adresa"), ort: feld("#kasa-qyteti") };
+    if (this.sendet) { this.#pfad("fehler", "Porositni tani nochmal gedrückt – wird noch gesendet · kasa"); return; }
+    if (!this.korb.ids.length || !this.angebotBereit) {
+      this.#pfad("fehler", `Bestellung nicht möglich: ${!this.korb.ids.length ? "Warenkorb leer" : "Angebot lädt noch"} · kasa`);
+      this.#pfadSofort();
+      return;
+    }
+    const werte = this.#kasseWerte();
     const gabim = $("#kasa-gabim", this.dok);
     const fehler = kasseFehler(werte);
+    const versuchId = `v${Date.now().toString(36)}`;
+    const versuchAb = Date.now();
+    const leer = kasseLeer(werte);
+    const versuch = (ergebnis, mehr = {}) => this.#kasseSpeichern({
+      felder: kasseFelderStand(werte), zuletzt: new Date().toISOString(),
+      versuche: { [versuchId]: { t: new Date(versuchAb).toISOString(), ergebnis, fehlt: leer, ms: Date.now() - versuchAb, ...mehr } }
+    });
     for (const [id, wert] of [["#kasa-emri", werte.name], ["#kasa-telefoni", werte.telefon]]) {
       $(id, this.dok)?.setAttribute("aria-invalid", fehler && !wert ? "true" : "false");
     }
@@ -967,8 +1035,11 @@ export class Dyqan {
       gabim.hidden = false;
       // Direkt ins erste leere Feld - sonst sieht man auf dem Telefon nicht,
       // was fehlt.
-      const leer = [["#kasa-emri", werte.name], ["#kasa-telefoni", werte.telefon], ["#kasa-adresa", werte.strasse], ["#kasa-qyteti", werte.ort]].find(([, wert]) => !wert);
-      if (leer) $(leer[0], this.dok)?.focus?.();
+      const erstesLeer = [["#kasa-emri", werte.name], ["#kasa-telefoni", werte.telefon], ["#kasa-adresa", werte.strasse], ["#kasa-qyteti", werte.ort]].find(([, wert]) => !wert);
+      if (erstesLeer) $(erstesLeer[0], this.dok)?.focus?.();
+      this.#pfad("fehler", `Hinweis gezeigt: alle Felder leer · kasa`);
+      this.#pfadSofort();
+      void versuch("hinweis");
       return;
     }
     gabim.hidden = true;
@@ -982,6 +1053,7 @@ export class Dyqan {
     const betrag = summe(this.korb);
     const sitzung = await this.#sitzung();
     let ok = false;
+    let status = "";
     if (sitzung) {
       // schritt() setzt den Schritt auf "ordered", haelt die Zeit fest und
       // meldet den Pixel (Purchase) - ueber dieselbe Stelle wie jeder
@@ -1011,12 +1083,18 @@ export class Dyqan {
         }
       }).catch(() => null);
       ok = Boolean(antwort?.ok);
+      status = antwort?.status ? `HTTP ${antwort.status}` : (sitzung.letzterFehler || "keine Antwort vom Server");
     }
 
     this.sendet = false;
     knopf.disabled = false;
     text.textContent = "Porositni tani";
+    const dauer = Math.round((Date.now() - versuchAb) / 100) / 10;
     if (!ok) {
+      const grund = sitzung ? status : "Sitzung nicht geladen";
+      this.#pfad("fehler", `Bestellung NICHT gespeichert (${grund}, ${dauer} s)${leer ? ` · leer: ${leer}` : ""} · kasa`);
+      this.#pfadSofort();
+      void versuch(sitzung ? "fehler" : "keineSitzung", { status: grund });
       gabim.textContent = "Porosia nuk u dërgua. Ju lutemi provoni sërish ose dërgojeni me WhatsApp më poshtë.";
       gabim.hidden = false;
       // Die Bestellung darf nicht verloren gehen: Der WhatsApp-Knopf traegt
@@ -1028,6 +1106,9 @@ export class Dyqan {
       }
       return;
     }
+    this.#pfad("bestellt", `Bestellung gespeichert · ${sitzung?.code || ""} · ${dauer} s${leer ? ` · leer: ${leer}` : ""} · kasa`);
+    this.#pfadSofort();
+    void versuch("ok");
     // Woher die Bestellung kommt: aus dem Laden, nicht von der Befundseite.
     this.#merke({ shopKauf: true }, "shopKauf");
     this.korb = { ids: [], set: "" };
@@ -1148,6 +1229,30 @@ export class Dyqan {
       // Kasse und Kauf, wie auf /lifeskin.
       this.#merke({ adresseBegonnen: true }, "adresseBegonnen");
       this.#live("kasa");
+      // Das erste Zeichen je Feld sofort in den Klickpfad, der Stand der
+      // Felder kurz danach in die Sitzung.
+      const id = ereignis.target?.id;
+      const wort = KASSE_FELDNAMEN[id];
+      if (wort && !this.kasseGetippt.has(id)) {
+        this.kasseGetippt.add(id);
+        this.#pfad("eingabe", `${wort} · schreibt · kasa`);
+      }
+      clearTimeout(this.kasseTimer);
+      this.kasseTimer = setTimeout(() => this.#kasseFelderSpeichern(), 700);
+    });
+    // Beim Verlassen eines Feldes: was drinsteht (oder "leer"), einmal je
+    // neuem Stand.
+    forme?.addEventListener("focusout", (ereignis) => {
+      const id = ereignis.target?.id;
+      const wort = KASSE_FELDNAMEN[id];
+      if (!wort) return;
+      const wert = String(ereignis.target.value || "").trim();
+      if (this.kasseZuletzt.get(id) === wert) return;
+      const vorher = this.kasseZuletzt.has(id);
+      this.kasseZuletzt.set(id, wert);
+      if (!wert && !vorher && !this.kasseGetippt.has(id)) return;
+      this.#pfad("eingabe", `${wort}: ${wert ? `„${wert.slice(0, 40)}“` : "leer"} · kasa`);
+      this.#kasseFelderSpeichern();
     });
   }
 

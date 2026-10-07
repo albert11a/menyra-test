@@ -371,3 +371,43 @@ test("Laden nennt den Verkaeufer und verlinkt Kushtet, Privatesia, Shitesi - ohn
   assert.match(HTML, /class="kasa__ligjore"/);
   assert.doesNotMatch(HTML, /në vend të/);
 });
+
+// 07.10. (Inhaber): Nachfassen genau - was in der Kasse stand und wie jeder
+// Druck auf "Porositni tani" ausging, auch ohne Bestellung.
+test("Kasse: Stand der Felder, leere Felder und der Schreibweg timings.kasse", async () => {
+  const { kasseFelderStand, kasseLeer, KASSE_FELDNAMEN } = await import("../apps/lifeskin-shop/shop.js");
+  assert.deepEqual(Object.values(KASSE_FELDNAMEN), ["Emri", "Telefoni", "Adresa", "Qyteti"]);
+  assert.deepEqual(kasseFelderStand({ name: "A".repeat(150), telefon: "044", strasse: "", ort: undefined }),
+    { name: "A".repeat(100), telefon: "044", strasse: "", ort: "" });
+  assert.equal(kasseLeer({ name: "A", telefon: "", strasse: "", ort: "P" }), "Telefoni, Adresa");
+  assert.equal(kasseLeer({ name: "A", telefon: "1", strasse: "x", ort: "P" }), "");
+
+  const { Sitzung } = await import("../apps/lifeskin/lifeskin-session.js");
+  const rufe = [];
+  const s = new Sitzung({ speicher: null, fetchFn: async (url, o) => { rufe.push({ url, body: JSON.parse(o.body) }); return { ok: true }; } });
+  await s.kasseSchreiben({ felder: { name: "Arta", telefon: "", strasse: "", ort: "" }, zuletzt: "2026-10-07T10:00:00.000Z",
+    versuche: { vabc: { t: "2026-10-07T10:00:00.000Z", ergebnis: "hinweis", fehlt: "Telefoni" }, "../böse": { t: "x" } } });
+  const masken = [...new URL(rufe[0].url).searchParams.getAll("updateMask.fieldPaths")];
+  assert.deepEqual(masken.sort(), ["timings.kasse.felder", "timings.kasse.versuche.vabc", "timings.kasse.zuletzt"]);
+  assert.ok(!masken.includes("updatedAt"), "ohne updatedAt, sonst rechnet Heart bei jedem Tastendruck neu");
+  const kasse = rufe[0].body.fields.timings.mapValue.fields.kasse.mapValue.fields;
+  assert.equal(kasse.felder.mapValue.fields.name.stringValue, "Arta");
+  assert.equal(kasse.versuche.mapValue.fields.vabc.mapValue.fields.ergebnis.stringValue, "hinweis");
+});
+
+test("Heart: Nachfassen zeigt, was geschrieben wurde und wie jeder Versuch ausging", async () => {
+  const { kasseGenau, kasseInfo, KASSE_ERGEBNISSE } = await import("../apps/mnyra-heart/heart-lifeskin-berechnung.js");
+  assert.deepEqual(kasseGenau({}), { geschrieben: null, versuche: [] });
+  const sitzung = { kasseGeoeffnet: true, timings: { kasse: {
+    felder: { name: "Arta", telefon: "044 1", strasse: "", ort: "" },
+    versuche: { b: { t: "2026-10-07T10:01:00Z", ergebnis: "ok" }, a: { t: "2026-10-07T10:00:00Z", ergebnis: "hinweis", fehlt: "Telefoni" } }
+  } } };
+  const genau = kasseInfo(sitzung);
+  assert.equal(genau.geschrieben.telefon, "044 1");
+  assert.deepEqual(genau.versuche.map((v) => v.ergebnis), ["hinweis", "ok"], "zeitlich sortiert");
+  for (const e of ["ok", "hinweis", "fehler", "keineSitzung"]) assert.ok(KASSE_ERGEBNISSE[e], e);
+  const render = lies("apps/mnyra-heart/heart-lifeskin-render.js");
+  assert.match(render, /angetippt: \$\{kasse\.felder\.join/, "angetippt heisst nicht geschrieben");
+  assert.match(render, /In der Kasse geschrieben/);
+  assert.match(render, /eingabe: "Schreibt"/);
+});

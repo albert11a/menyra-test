@@ -1688,7 +1688,29 @@ export function kasseInfo(sitzung) {
   }
   const felder = [...new Set(pfad.filter((e) => e.e === "feld" && inDerKasse(e))
     .map((e) => { const name = String(e.d).split(" · ")[0]; return KASSE_FELDER[name] || name; }))];
-  return { ms: gemessen ? Math.max(gesehenMs, spanneMs) : null, felder, oeffnungen: auf.length || 1 };
+  return { ms: gemessen ? Math.max(gesehenMs, spanneMs) : null, felder, oeffnungen: auf.length || 1, ...kasseGenau(sitzung) };
+}
+
+// WAS WIRKLICH IN DER KASSE STAND (seit 07.10., /lifeskinshop): der letzte
+// Stand der vier Felder und jeder Druck auf "Porositni tani" mit Ausgang
+// (timings.kasse, apps/lifeskin-shop/shop.js). "felder" oben heisst nur
+// "angetippt" - ob etwas geschrieben wurde, steht erst hier.
+export const KASSE_ERGEBNISSE = Object.freeze({
+  ok: "gespeichert", hinweis: "Hinweis (alles leer)", fehler: "NICHT gespeichert", keineSitzung: "NICHT gesendet (Seite nicht geladen)"
+});
+export function kasseGenau(sitzung) {
+  const roh = sitzung?.timings?.kasse;
+  if (!roh || typeof roh !== "object") return { geschrieben: null, versuche: [] };
+  const f = roh.felder && typeof roh.felder === "object" ? roh.felder : null;
+  const geschrieben = f ? {
+    name: String(f.name || ""), telefon: String(f.telefon || ""), strasse: String(f.strasse || ""), ort: String(f.ort || "")
+  } : null;
+  const versuche = Object.values(roh.versuche && typeof roh.versuche === "object" ? roh.versuche : {})
+    .filter((v) => v && typeof v === "object")
+    .map((v) => ({ t: String(v.t || ""), ergebnis: String(v.ergebnis || ""), fehlt: String(v.fehlt || ""),
+      ms: Number(v.ms) || 0, status: String(v.status || "") }))
+    .sort((a, b) => a.t.localeCompare(b.t));
+  return { geschrieben, versuche };
 }
 
 // WANN KAM ER IN DEN WARENKORB? Das erste Tippen auf einen Korb-Knopf:
@@ -1729,7 +1751,7 @@ export function korbZeitpunkt(sitzung) {
 
 // WAS ER DANACH GETIPPT HAT - ohne Lesezeiten und Scrollen, die gehoeren in
 // den ganzen Klickpfad des Falls.
-const DANACH_ARTEN = new Set(["klick", "aufgeklappt", "feld", "korb", "kasse", "bestellt", "fehler", "verlassen", "zurueck", "bildschirm", "geoeffnet"]);
+const DANACH_ARTEN = new Set(["klick", "aufgeklappt", "feld", "eingabe", "korb", "kasse", "bestellt", "fehler", "verlassen", "zurueck", "bildschirm", "geoeffnet"]);
 export function nachDemKorb(sitzung, max = 8) {
   const pfad = pfadLesen(sitzung);
   const korb = korbZeitpunkt(sitzung);
