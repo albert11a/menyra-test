@@ -343,3 +343,11 @@
 #ls-einstieg button:is(.cta,.primary)[data-set]:focus-visible,#ls-einstieg #kasa-dergo:focus-visible{outline:3px solid #08686c;outline-offset:4px}
 /* Der Scan bleibt als zweiter Weg sichtbar und lesbar. */
 #ls-einstieg .page #zgjedhja #ls-start{background:#e8f2f0;color:#07565a;border:1px solid #b5cfcc}
+/* Wer verkauft + Rechtsseiten (07.10.) */
+#ls-einstieg .page .footer-shitesi{margin-top:22px;padding-top:16px;border-top:1px solid var(--line);font-size:11px;line-height:1.6;color:var(--muted)}
+#ls-einstieg .page .footer-shitesi p{font-size:11px;line-height:1.6}
+#ls-einstieg .page .footer-shitesi a{text-decoration:underline;text-underline-offset:3px}
+#ls-einstieg .page .footer-ligjore{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px}
+#ls-einstieg .page .footer-ligjore a{min-height:32px;display:inline-flex;align-items:center}
+#ls-einstieg .kasa__ligjore{font-size:11px;line-height:1.5;color:var(--muted);text-align:center;margin:10px 0 0}
+#ls-einstieg .kasa__ligjore a{text-decoration:underline;text-underline-offset:2px}

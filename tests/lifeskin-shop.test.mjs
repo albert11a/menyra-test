@@ -265,11 +265,13 @@ test("Acne-Duo-Kampagne laesst keine weiteren Sets oder halben Koerbe zu", async
   assert.equal((card.match(/<details/g)||[]).length,3, "ein Aufklapper fuer Anwendung, je ein 'Lexo më shumë'");
   // Seit 30.09. (Inhaber) kurz: "BPO 5 %".
   assert.match(card,/BPO 5 %/);
-  assert.match(card,/<s data-preis="vecmas" data-preis-zbritje>58 €<\/s>/);
-  // Seit 30.09. (Inhaber) wie oben im Kopf: 1–3 ditë, Paguani te dera, 4.8/5 vlerësim.
+  // Seit 07.10. (Inhaber, Einschraenkung durch Meta): kein Vergleichspreis,
+  // kein Rabatt, keine Sternbewertung ohne Quelle.
+  assert.doesNotMatch(card,/data-preis="vecmas"|ZBRITJE|vlerësim/);
+  // Seit 30.09. (Inhaber) wie oben im Kopf: 1–3 ditë, Paguani te dera.
   assert.match(card,/1–3 ditë/);
   assert.doesNotMatch(card,/Falas, 1–3 ditë/);
-  assert.match(card,/#Star"><\/use><\/svg>4\.8\/5 vlerësim/);
+  assert.match(card,/#ShieldCheck"><\/use><\/svg>45 ditë garanci/);
   assert.match(card,/data-set="custom-acne"/);
   assert.doesNotMatch(card,/data-single/);
   assert.equal((card.match(/<img/g)||[]).length,2, "kleine Produktfotos (Wunsch Inhaber 29.09.)");
@@ -348,4 +350,21 @@ test("sticky stays hidden throughout scan, independent of hero callback order", 
   notify([{ target: scan, isIntersecting: true }, { target: hero, isIntersecting: true }]);
   notify([{ target: scan, isIntersecting: false }]);
   assert.equal(sticky.hidden, true, "hero still hides CTA after leaving scan");
+});
+
+// 07.10. (Inhaber): Meta schraenkte lifeskin.ks ein ("irrefuehrende
+// Geschaeftspraktiken"). Der Laden nennt jetzt, wer verkauft, verlinkt
+// die drei Rechtsseiten, und diese melden nichts an Meta.
+test("Laden nennt den Verkaeufer und verlinkt Kushtet, Privatesia, Shitesi - ohne Pixel", () => {
+  const seiten = ["shitesi", "kushtet", "privatesia"];
+  for (const s of seiten) {
+    assert.match(HTML, new RegExp(`href="/apps/lifeskin-shop/${s}\\.html"`), s);
+    const seite = lies(`apps/lifeskin-shop/${s}.html`);
+    assert.match(seite, /<html lang="sq">/);
+    assert.match(seite, /data-anbieter="name"/);
+    assert.doesNotMatch(seite, /fbq|lifeskin-pixel|<script/, `${s}: kein Pixel, kein Skript`);
+  }
+  assert.match(HTML, /class="wrap footer-shitesi"/);
+  assert.match(HTML, /class="kasa__ligjore"/);
+  assert.doesNotMatch(HTML, /në vend të/);
 });

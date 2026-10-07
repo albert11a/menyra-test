@@ -489,3 +489,21 @@ Bestellung muss ankommen".
 - Pixel und Conversions API unveraendert: `schritt("ordered")` wird mit
   denselben Daten zum selben Zeitpunkt gerufen
   (`tests/lifeskin-pixel-sperre.test.mjs` gruen).
+
+## Wer verkauft, Rechtsseiten, kein Vergleichspreis (07.10.)
+
+Anlass: Meta hat am 07.10. das Konto lifeskin.ks eingeschraenkt (keine
+Links bis 06.11.) wegen "irrefuehrender Geschaeftspraktiken" - nachdem
+/lifeskinshop als Link geteilt wurde.
+
+- Fusszeile nennt den Verkaeufer (Name, Anschrift, E-Mail) und verlinkt
+  drei neue statische Seiten ohne Pixel und ohne Skript:
+  `apps/lifeskin-shop/shitesi.html`, `kushtet.html`, `privatesia.html`.
+  Solange die Firmendaten fehlen, stehen dort gelb markierte Platzhalter
+  (`data-anbieter="name|anschrift|email"`) - vor dem Livegang ersetzen.
+- Kasse: Hinweis auf Kushtet und Privatesia unter dem Bestellknopf.
+- `VERGLEICHSPREIS_ZEIGEN = false` (shop.js): kein "58 €", kein "−67 %",
+  kein "Kurseni". Die Leiste oben sagt "19 € për dy produktet".
+- "4.8/5 vlerësim" (ohne Quelle) ersetzt durch "45 ditë garanci".
+- Unveraendert und vom Inhaber zu entscheiden: "Vetëm edhe pak sete"
+  (PAK_SETE), Ueberschrift "Largo aknet.", "dermatologëve 24/7 online".
