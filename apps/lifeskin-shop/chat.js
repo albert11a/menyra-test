@@ -36,6 +36,10 @@ const AVATAR = "/apps/lifeskin/dr-gashi.jpg";
 const ENTWURF_MS = 350;
 const ONLINE_MS = 3 * 60 * 1000;
 const CACHE_SCHLUESSEL = "lifeskin:chatCache";
+const GRUSS_SCHLUESSEL = "lifeskin:chatGruss";
+// Die Sprechblase neben dem Knopf (wie bei den grossen Shops): einmal pro
+// Besuch, nach ein paar Sekunden - nie ueber Cookie-Fenster oder Kasse.
+const GRUSS_NACH_MS = 4000;
 
 const $ = (w, i = document) => i.querySelector(w);
 export function esc(w) {
@@ -131,6 +135,7 @@ export class Chat {
       this.konfigDa = true;
       this.#knopfStand();
       this.#kopfStand();
+      setTimeout(() => this.#grussZeigen(), GRUSS_NACH_MS);
     });
     // Gibt es schon einen Chat, im Leerlauf verbinden - fuer die Zahl der
     // ungelesenen Antworten am Knopf.
@@ -186,6 +191,9 @@ export class Chat {
     this.hinweis = $("#chat-hinweis", this.ansicht);
 
     this.knopf.addEventListener("click", () => this.#knopfTipp());
+    this.gruss = $("#chat-gruss", this.dok);
+    $("#chat-gruss-karte", this.dok)?.addEventListener("click", () => { this.#pfad("Begrüßung angetippt"); this.#grussWeg(); this.#knopfTipp(); });
+    $("#chat-gruss-zu", this.dok)?.addEventListener("click", () => this.#grussWeg());
     // Erst beim Fingeraufsetzen schon laden - dann steht das SDK fast
     // immer, bevor der Chat aufgeht.
     this.knopf.addEventListener("pointerdown", () => { if (this.konfig.aktiv || this.zugang) this.#sdk().catch(() => {}); }, { passive: true });
@@ -217,8 +225,44 @@ export class Chat {
     const wa = !this.konfig.aktiv && !this.zugang;
     this.knopf.dataset.art = wa ? "wa" : "chat";
     this.knopf.setAttribute("aria-label", wa ? "Na shkruani në WhatsApp" : "Hapni chat-in me LifeSkin");
-    $(".chat-knopf__ikone", this.knopf).innerHTML = wa ? SVG.wa : SVG.chat;
+    // Foto der Aerztin mit gruenem Punkt, wenn jemand in Heart da ist; sonst
+    // ein kleines Zeichen (Chat oder WhatsApp) an derselben Ecke.
+    const online = !wa && this.#online();
+    this.knopf.dataset.online = online ? "ja" : "nein";
+    $(".chat-knopf__ikone", this.knopf).innerHTML = online ? "" : wa ? SVG.wa : SVG.chat;
     this.knopf.hidden = !this.konfigDa && !this.zugang;
+    this.#grussStand();
+  }
+
+  #online() {
+    return (Date.now() - Date.parse(this.konfig.teamAktivAt || "")) < ONLINE_MS;
+  }
+
+  #grussGesehen() {
+    try { return this.fenster.sessionStorage?.getItem(GRUSS_SCHLUESSEL) === "1"; } catch { return false; }
+  }
+
+  #grussZeigen() {
+    if (!this.gruss || this.offen || !this.konfigDa || this.#grussGesehen()) return;
+    // Erst nach der Cookie-Wahl - sonst liegen zwei Fenster uebereinander.
+    if (this.dok.getElementById("ls-cookie")) { setTimeout(() => this.#grussZeigen(), 1500); return; }
+    this.#grussStand();
+    this.gruss.hidden = false;
+    this.#pfad("Begrüßung gezeigt");
+    try { this.fenster.sessionStorage?.setItem(GRUSS_SCHLUESSEL, "1"); } catch { /* egal */ }
+  }
+
+  #grussStand() {
+    const stand = $("#chat-gruss-stand", this.dok);
+    if (!stand) return;
+    const wa = !this.konfig.aktiv && !this.zugang;
+    const online = this.#online();
+    stand.textContent = online ? "Online" : wa ? "Na shkruani në WhatsApp" : "Ju përgjigjemi shpejt";
+    stand.dataset.online = online ? "ja" : "nein";
+  }
+
+  #grussWeg() {
+    if (this.gruss) this.gruss.hidden = true;
   }
 
   #knopfTipp() {
@@ -244,6 +288,7 @@ export class Chat {
     this.dok.documentElement.dataset.chat = "offen";
     this.ansicht.hidden = false;
     this.knopf.hidden = true;
+    this.#grussWeg();
     try { this.fenster.history.pushState({ ...(this.fenster.history.state || {}), lsChat: true }, ""); } catch { /* egal */ }
     this.#hoeheFolgen();
     this.#kopfStand();
