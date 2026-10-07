@@ -374,3 +374,38 @@
 /* MESAZHE ORIGJINALE (07.10., Inhaber): der Zitat-Titel nimmt nicht mehr die Aufmerksamkeit - klein und ruhig; ein Trenner zwischen den Nachrichten und den Fotos. */
 #ls-einstieg .page .proof-heading h3,#ls-einstieg .page #customers-title{font-size:17px!important;line-height:1.4;font-weight:600;color:var(--muted);letter-spacing:0}
 #ls-einstieg .page .proof-trenner{border:0;border-top:1px solid var(--line);margin:28px 0 0;height:0}
+/* MESAZHE ORIGJINALE ALS SCHLICHTE KARTEN (07.10., Inhaber): oben links das runde
+   Instagram-Profilbild mit Ring wie bei Instagram, daneben "lifeskin.ks", darunter das
+   Zitat und "Shiko screenshot" (Tippen oeffnet den Screenshot wie bisher). Wischen
+   wie bisher, die naechste Karte schaut rechts herein. Kein Zaehler. */
+#ls-einstieg .page .mesazhe-kopf{margin-bottom:16px}
+#ls-einstieg .page .mesazhe-kopf #customers-title{font-size:23px!important;line-height:1.2;font-weight:700;color:var(--ink);letter-spacing:-.4px;margin:2px 0 0}
+#ls-einstieg .page .mesazhe-meta{margin:8px 0 0;font-size:13px;line-height:1.4;color:var(--muted)}
+#ls-einstieg .page .mesazhe-yje{color:#f5a623;letter-spacing:1px;margin-right:4px}
+#ls-einstieg .page .message-rail{display:flex;grid-template-columns:none;gap:12px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;padding:2px 0 6px;-webkit-overflow-scrolling:touch}
+#ls-einstieg .page .message-card{position:static;display:flex;flex-direction:column;align-items:stretch;gap:12px;flex:0 0 80%;max-width:340px;min-height:0;aspect-ratio:auto;padding:16px 16px 14px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:none;overflow:visible;scroll-snap-align:start;scroll-snap-stop:always;text-align:left;color:var(--ink);cursor:pointer;-webkit-tap-highlight-color:transparent;grid-template-columns:none}
+#ls-einstieg .page .message-card:active{background:#f6f9f8}
+#ls-einstieg .page .message-picture{display:none}
+#ls-einstieg .page .message-kopf{display:flex;align-items:center;gap:10px}
+#ls-einstieg .page .message-kopf img{width:42px;height:42px;flex:none;border-radius:50%;object-fit:cover;padding:2px;border:2px solid transparent;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888) border-box}
+#ls-einstieg .page .message-kopf b{font-size:14px;font-weight:700;letter-spacing:-.1px}
+#ls-einstieg .page .message-copy{position:static;display:flex;flex-direction:column;flex:1;padding:0;background:none;border-radius:0;box-shadow:none}
+#ls-einstieg .page .message-copy::before{content:none}
+#ls-einstieg .page .message-copy strong{display:block;font-size:16px;line-height:1.45;font-weight:650;color:var(--ink);-webkit-line-clamp:unset}
+#ls-einstieg .page .message-copy>span{display:inline-flex;align-items:center;gap:4px;margin-top:auto;padding-top:12px;font-size:13px;font-weight:700;color:#087f86;text-decoration:none;line-height:1.2}
+#ls-einstieg .page .message-copy>span::after{content:"→";font-size:14px}
+@media (max-width:699px){
+ #ls-einstieg .page .message-rail{margin:0 -20px;padding-left:20px;padding-right:20px;scroll-padding:0 20px}
+}
+@media (min-width:700px){
+ #ls-einstieg .page .message-card{flex:0 0 300px}
+}
+/* ERSTE KARTE DER MESAZHE (07.10., Inhaber): das Profil @lifeskin.ks - Profilbild
+   mit Ring, Name, Follower und ein Ausschnitt des Profils, der den Rest der Karte
+   fuellt. Kein Titel, kein Knopf ("Porosit ne Instagram" steht unten bei den Sets).
+   ALLE KARTEN GLEICH HOCH: die Reihe streckt sie auf die hoechste. */
+#ls-einstieg .page #klientet .message-rail{align-items:stretch}
+#ls-einstieg .page .ig-erste{text-decoration:none;gap:12px}
+#ls-einstieg .page .message-kopf b small{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-top:1px}
+#ls-einstieg .page .ig-erste__bild{position:relative;display:block;flex:1;min-height:110px;margin:0 -16px -14px;overflow:hidden;background:#fff;border-radius:0 0 16px 16px}
+#ls-einstieg .page .ig-erste__bild img{position:absolute;left:50%;top:-4px;width:72%;max-width:240px;height:auto;transform:translateX(-50%)}
