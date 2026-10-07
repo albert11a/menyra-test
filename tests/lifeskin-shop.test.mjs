@@ -362,7 +362,10 @@ test("Laden nennt den Verkaeufer und verlinkt Kushtet, Privatesia, Shitesi - ohn
     const seite = lies(`apps/lifeskin-shop/${s}.html`);
     assert.match(seite, /<html lang="sq">/);
     assert.match(seite, /data-anbieter="name"/);
-    assert.doesNotMatch(seite, /fbq|lifeskin-pixel|<script/, `${s}: kein Pixel, kein Skript`);
+    assert.doesNotMatch(seite, /fbq|lifeskin-pixel|connect\.facebook/, `${s}: kein Pixel`);
+    // Einziges Skript: das Cookie-Fenster, damit die Wahl hier aenderbar ist.
+    assert.deepEqual(seite.match(/<script[^>]*>/g), [`<script type="module" src="/shared/lifeskin-zustimmung.js">`]);
+    assert.doesNotMatch(seite, /\[EMRI|\[EMAIL|\[ADRESA/, `${s}: keine Platzhalter`);
   }
   assert.match(HTML, /class="wrap footer-shitesi"/);
   assert.match(HTML, /class="kasa__ligjore"/);

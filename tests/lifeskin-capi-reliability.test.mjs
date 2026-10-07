@@ -9,7 +9,7 @@ const payload = require("../functions/lifeskin-capi-payload.js");
 const versand = require("../functions/lifeskin-capi-versand.js");
 const jetzt = Date.now();
 const sitzung = { step: "result", code: "LS-TEST-ABC", phone: "044111222", updatedAt: new Date(jetzt).toISOString(),
-  device: { ua: "TestBrowser" }, source: { fbc: "fb.1.1790000000000.click" } };
+  device: { ua: "TestBrowser", zustimmung: "ja" }, source: { fbc: "fb.1.1790000000000.click" } };
 
 // Firestore-Transaktionen werden atomar serialisiert; Netzverkehr bleibt ausserhalb.
 function datenbank() {
@@ -40,7 +40,7 @@ const antwort = (status, body) => ({ ok: status >= 200 && status < 300, status, 
 
 test("Warteseite: identischer Name und ID im Browser/Server, ohne vertrauliche Inhalte", () => {
   const rufe = [];
-  const pixel = new Pixel({ kennung: payload.PIXEL_ID, fbq: (...args) => rufe.push(args), dokument: null });
+  const pixel = new Pixel({ kennung: payload.PIXEL_ID, fbq: (...args) => rufe.push(args), dokument: null, einwilligung: true });
   pixel.starte(); pixel.melde("result", { code: sitzung.code }); pixel.melde("result", { code: sitzung.code });
   const server = payload.baueWarten(sitzung);
   assert.deepEqual(rufe.filter(r => r[0] === "trackCustom"), [

@@ -118,8 +118,10 @@ test("die eventID ist dieselbe wie im Browser", () => {
 // ══ WANN GEMELDET WIRD UND WANN NICHT ════════════════════════════════
 test("gemeldet wird der Uebergang, nicht der Zustand", () => {
   const order = { total: 53, orderId: "LS-1" };
-  assert.equal(capi.istKauf({ step: "address" }, { step: "ordered", order }), true);
-  assert.equal(capi.istKauf({}, { step: "ordered", order }), true,
+  // Seit 07.10. nur mit Zustimmung (Pixel-Aenderung erlaubt von Albert).
+  const device = { zustimmung: "ja" };
+  assert.equal(capi.istKauf({ step: "address" }, { step: "ordered", order, device }), true);
+  assert.equal(capi.istKauf({}, { step: "ordered", order, device }), true,
     "Eine Sitzung, die in einem Zug bis zur Bestellung geschrieben wird, faellt aus");
   // Der Trichter schreibt auch NACH der Bestellung weiter. Ohne diesen
   // Vergleich kaeme bei jedem dieser Schreibvorgaenge ein neuer Kauf.
@@ -282,4 +284,20 @@ test("der Trichter merkt sich die Klick-Kennung in der Herkunft", async () => {
   assert.ok(!("fbc" in herkunftAuslesen({ search: "?utm_source=ig" }, "", "", null)));
   // Unsinn im Parameter wird nicht gespeichert.
   assert.equal(klickKennung({ suche: new URLSearchParams("fbclid=<script>") }), "");
+});
+
+
+// ══ OHNE "PRANOJ" NICHTS VOM SERVER (07.10.) ═════════════════════════
+// Pixel-Aenderung erlaubt von Albert am 07.10.2026.
+test("Conversions API: Kauf, Warteseite und Lead nur mit Zustimmung", () => {
+  const order = { total: 19, orderId: "LS-2" };
+  for (const device of [undefined, {}, { zustimmung: "" }, { zustimmung: "nein" }]) {
+    assert.equal(capi.istKauf({ step: "address" }, { step: "ordered", order, device }), false, JSON.stringify(device));
+    assert.equal(capi.istWarten({ step: "numri" }, { step: "result", code: "LS-2", device: { ...device, ua: "x" } }), false);
+    assert.equal(capi.istLead({ phone: "044", phoneConsent: true, device }), false);
+  }
+  const ja = { zustimmung: "ja", ua: "x" };
+  assert.equal(capi.istKauf({ step: "address" }, { step: "ordered", order, device: ja }), true);
+  assert.equal(capi.istWarten({ step: "numri" }, { step: "result", code: "LS-2", device: ja }), true);
+  assert.equal(capi.istLead({ phone: "044", phoneConsent: true, device: ja }), true);
 });

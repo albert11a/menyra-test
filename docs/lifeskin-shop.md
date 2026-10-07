@@ -499,11 +499,35 @@ Links bis 06.11.) wegen "irrefuehrender Geschaeftspraktiken" - nachdem
 - Fusszeile nennt den Verkaeufer (Name, Anschrift, E-Mail) und verlinkt
   drei neue statische Seiten ohne Pixel und ohne Skript:
   `apps/lifeskin-shop/shitesi.html`, `kushtet.html`, `privatesia.html`.
-  Solange die Firmendaten fehlen, stehen dort gelb markierte Platzhalter
-  (`data-anbieter="name|anschrift|email"`) - vor dem Livegang ersetzen.
+  Verkaeufer vorerst nur "LifeSkin" mit WhatsApp und Instagram (Inhaber,
+  07.10.: "erstmal ohne Platzhalter"). Firmenname, Adresse, E-Mail kommen
+  nach - Stellen mit `data-anbieter` in allen vier Dateien.
 - Kasse: Hinweis auf Kushtet und Privatesia unter dem Bestellknopf.
 - `VERGLEICHSPREIS_ZEIGEN = false` (shop.js): kein "58 €", kein "−67 %",
   kein "Kurseni". Die Leiste oben sagt "19 € për dy produktet".
 - "4.8/5 vlerësim" (ohne Quelle) ersetzt durch "45 ditë garanci".
 - Unveraendert und vom Inhaber zu entscheiden: "Vetëm edhe pak sete"
   (PAK_SETE), Ueberschrift "Largo aknet.", "dermatologëve 24/7 online".
+
+
+## Cookie-Fenster: Meta nur nach "Pranoj" (07.10.)
+
+Pixel-Aenderung erlaubt von Albert am 07.10.2026 (Auftrag: "Cookies richtig,
+Datenschutz akzeptieren").
+
+- `shared/lifeskin-zustimmung.js`: Fenster unten mit "Refuzo" und "Pranoj"
+  (gleich gross), Wahl in `localStorage` (`lifeskin:zustimmung`), Ereignis
+  `lifeskin:zustimmung`. Erscheint auf jeder LifeSkin-Seite, die den Pixel
+  startet, solange nichts gewaehlt ist; nie im stillen Modus. Solange es
+  steht, bekommt die Seite unten Platz (Bestellknopf bleibt erreichbar).
+- `LIFESKIN_PIXEL_EINWILLIGUNG_NOETIG = true`. Der Pixel laedt erst nach
+  "Pranoj" und meldet dann die Seite (PageView) nach. Was vorher geschah,
+  bleibt ungemeldet.
+- Die Sitzung schreibt die Wahl nach `device.zustimmung` (Unterfeld von
+  `device`, keine neue Firestore-Regel noetig). Die Conversions API meldet
+  nur bei `"ja"`: `metaErlaubt()` in `functions/lifeskin-capi-payload.js`,
+  genutzt von Firebase-Trigger, Wiederholung und `api/lifeskin-capi.js`.
+- Wahl aendern: Link "Cookie" in der Fusszeile und auf den Rechtsseiten
+  (`window.lifeskinZustimmungZeigen()`).
+- Folge fuer die Anzeigen: Meta bekommt nur noch Ereignisse von Besuchern,
+  die zustimmen - erwartbar 20-40 % weniger gemeldete Ereignisse.

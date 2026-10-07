@@ -173,8 +173,16 @@ function leadKennung(code) {
 
 // Ein Lead ist: die Nummer mit Einwilligung (Trichter, Warteseite) oder der
 // Griff zu WhatsApp auf der Warteseite (wer dort keine Nummer gab).
+// DIE ZUSTIMMUNG (Pixel-Aenderung erlaubt von Albert am 07.10.2026): Die
+// Conversions API meldet nur, wer im Cookie-Fenster "Pranoj" gedrueckt hat
+// (shared/lifeskin-zustimmung.js -> device.zustimmung in der Sitzung).
+// Fehlt die Wahl oder ist sie "nein", geht nichts an Meta.
+function metaErlaubt(sitzung) {
+  return sitzung?.device?.zustimmung === "ja";
+}
+
 function istLead(sitzung) {
-  return Boolean((sitzung?.phoneConsent === true && text(sitzung?.phone)) || sitzung?.waClick === true);
+  return metaErlaubt(sitzung) && Boolean((sitzung?.phoneConsent === true && text(sitzung?.phone)) || sitzung?.waClick === true);
 }
 
 function baueLead(sitzung, { browser = null, quelleUrl = "https://mnyra.com/lifeskin", jetzt = Date.now() } = {}) {
@@ -196,7 +204,7 @@ function warteKennung(code) {
 }
 
 function istWarten(davor, danach) {
-  return text(danach?.step) === "result" && text(davor?.step) !== "result"
+  return metaErlaubt(danach) && text(danach?.step) === "result" && text(davor?.step) !== "result"
     && danach?.order?.still !== true && Boolean(text(danach?.device?.ua))
     && Boolean(warteKennung(danach?.code));
 }
@@ -223,6 +231,7 @@ function istKauf(davor, danach) {
   // sind eigene Probelaeufe - Meta bekommt sie nicht. Erlaubt von Albert
   // (Inhaber) am 28.09.2026.
   if (danach?.order?.still === true) return false;
+  if (!metaErlaubt(danach)) return false;
   return Boolean(danach?.order);
 }
 
@@ -241,6 +250,7 @@ module.exports = {
   baueKauf,
   leadKennung,
   istLead,
+  metaErlaubt,
   baueLead,
   istKauf,
   warteKennung,

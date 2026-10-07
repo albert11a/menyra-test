@@ -18,6 +18,10 @@ import { LIFESKIN_WEGE, wegGueltig } from "../../shared/lifeskin-weg.js";
 import { pfadPatch } from "../../shared/lifeskin-klickpfad.js";
 import { meldungAnstossen } from "../../shared/lifeskin-melden.js";
 import { capiAnstossen } from "../../shared/lifeskin-capi-anstossen.js";
+// Pixel-Aenderung erlaubt von Albert am 07.10.2026: die Wahl im
+// Cookie-Fenster steht als device.zustimmung in der Sitzung; die
+// Conversions API auf dem Server meldet nur bei "ja".
+import { zustimmungJetzt, ZUSTIMMUNG_EREIGNIS } from "../../shared/lifeskin-zustimmung.js";
 
 // Nach diesen Schritten geht eine Meldung an Dr. Gashi (api/lifeskin-meldung.js).
 const MELDE_SCHRITTE = new Set("result ordered".split(" "));
@@ -308,7 +312,10 @@ export function geraetAuslesen(
     // neues Feld oben haette hasOnly() verletzt - und hasOnly weist das
     // GANZE Dokument ab. Bis eine neue Regel eingespielt waere, haette der
     // Trichter still gar nichts mehr gezaehlt.
-    gesehen: dokument?.visibilityState === "visible"
+    gesehen: dokument?.visibilityState === "visible",
+    // "ja", "nein" oder leer (noch nicht gefragt) - ebenfalls in device,
+    // aus demselben Grund wie oben.
+    zustimmung: zustimmungJetzt()
   };
 }
 
@@ -680,7 +687,20 @@ export class Sitzung {
     this.angelegt = true;
     const geschrieben = this.#sammeln(daten, Object.keys(daten));
     this.#sichtbarkeitMerken(dokument);
+    this.#zustimmungHorchen();
     return geschrieben;
+  }
+
+  // Die Wahl im Cookie-Fenster nachtragen, sobald sie faellt - nur
+  // device.zustimmung, mit Maske, damit der Rest von device stehen bleibt.
+  #zustimmungHorchen() {
+    if (this.zustimmungHorcht || typeof globalThis.addEventListener !== "function") return;
+    this.zustimmungHorcht = true;
+    globalThis.addEventListener(ZUSTIMMUNG_EREIGNIS, (ereignis) => {
+      const zustimmung = ereignis?.detail === "ja" ? "ja" : "nein";
+      this.stand.device = { ...(this.stand.device || {}), zustimmung };
+      this.#sammeln({ device: { zustimmung }, updatedAt: jetzt() }, ["device.zustimmung", "updatedAt"]);
+    });
   }
 
   // Aus "war beim Laden nicht sichtbar" darf nicht "war nie sichtbar"

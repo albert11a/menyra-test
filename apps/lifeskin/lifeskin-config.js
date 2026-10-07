@@ -121,7 +121,11 @@ export const LIFESKIN_PIXEL_ID = "1347571994123884";
 // Der Unterschied ist eine Rechtsfrage und keine technische: Kosovo und
 // Albanien haben eigene, an die DSGVO angelehnte Gesetze, und Besucher aus
 // der Diaspora sitzen in der EU.
-export const LIFESKIN_PIXEL_EINWILLIGUNG_NOETIG = false;
+// Seit 07.10.2026 true (Pixel-Aenderung erlaubt von Albert am 07.10.2026):
+// Das Cookie-Fenster (shared/lifeskin-zustimmung.js) fragt, und erst nach
+// "Pranoj" laedt der Pixel. Die Conversions API auf dem Server prueft
+// dieselbe Wahl (device.zustimmung in der Sitzung).
+export const LIFESKIN_PIXEL_EINWILLIGUNG_NOETIG = true;
 
 // Die WhatsApp-Nummer von Dr. Gashi, in der Form, die wa.me verlangt:
 // nur Ziffern, mit Landesvorwahl, ohne Plus und ohne Leerzeichen.
