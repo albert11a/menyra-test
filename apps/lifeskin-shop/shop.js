@@ -257,7 +257,7 @@ export function klientBlatt(m) {
 
 // Veroeffentlichtes Shop-Sets-Angebot, vom Inhaber am 06.10.2026 bestaetigt.
 // Keine Abhaengigkeit von Netz oder einem alten lokalen Preis beim Erstbesuch.
-export const SHOP_START_SETET = { lista: SETET_STANDARD.map(s => s.id === "acne" ? { ...s, cmimi: 19 } : s) };
+export const SHOP_START_SETET = { lista: SETET_STANDARD.map(s => s.id === "acne" ? { ...s, cmimi: 25 } : s) };
 
 const pause = (ms) => new Promise((fertig) => setTimeout(fertig, ms));
 
@@ -573,7 +573,7 @@ export class Dyqan {
       this.dok.documentElement?.setAttribute("data-shop-preis", this.setet.length ? "bereit" : "fehlt");
       if (status) { status.hidden = this.setet.length > 0; status.textContent = "Seti nuk eshte aktualisht i disponueshem."; }
     } catch {
-      // Bei Netzfehler bleibt das veroeffentlichte 19-EUR-Angebot nutzbar.
+      // Bei Netzfehler bleibt das veroeffentlichte 25-EUR-Angebot nutzbar.
       if (status) status.hidden = true;
     } finally { this.angebotLaedt = false; }
   }
