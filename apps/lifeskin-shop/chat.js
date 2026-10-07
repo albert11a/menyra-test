@@ -336,34 +336,12 @@ export class Chat {
     const body = this.dok.body;
     this.gesperrt = { y: this.fenster.scrollY || 0, stil: body.getAttribute("style") || "" };
     Object.assign(body.style, { position: "fixed", top: `-${this.gesperrt.y}px`, left: "0", right: "0", width: "100%" });
-    // WISCHEN OHNE TASTATUR (Inhaber, 07.10.: "wenn ich scrolle, scrollt
-    // das ganze Fenster"). Wie body-scroll-lock: Gewischt wird nur in der
-    // Liste der Nachrichten (und im Eingabefeld, wenn es mehrzeilig ist) -
-    // und auch dort nicht ueber ihr oberes oder unteres Ende hinaus. Sonst
-    // nimmt iOS Safari (und die Browser in Instagram/Facebook, ebenfalls
-    // WebKit) die Bewegung fuer die ganze Seite und schiebt den Chat mit.
-    let startY = 0;
-    this.wischStart = (e) => { startY = e.touches?.[0]?.clientY ?? 0; };
-    this.wischen = (e) => {
-      if (!this.offen || (e.touches?.length || 0) > 1) return;
-      const dy = (e.touches?.[0]?.clientY ?? 0) - startY;
-      const rollt = e.target?.closest?.(".chat__liste, .chat__eingabe textarea, .chat-bildgross");
-      if (!rollt || !this.ansicht.contains(rollt)) { if (e.cancelable) e.preventDefault(); return; }
-      const kannRollen = rollt.scrollHeight > rollt.clientHeight + 1;
-      const oben = rollt.scrollTop <= 0;
-      const unten = rollt.scrollTop + rollt.clientHeight >= rollt.scrollHeight - 1;
-      if (!kannRollen || (oben && dy > 0) || (unten && dy < 0)) { if (e.cancelable) e.preventDefault(); }
-    };
-    this.dok.addEventListener("touchstart", this.wischStart, { passive: true });
-    this.dok.addEventListener("touchmove", this.wischen, { passive: false });
   }
 
   #seiteFreigeben() {
     if (!this.gesperrt) return false;
     const { y, stil } = this.gesperrt;
     this.gesperrt = null;
-    this.dok.removeEventListener("touchstart", this.wischStart);
-    this.dok.removeEventListener("touchmove", this.wischen);
     if (stil) this.dok.body.setAttribute("style", stil); else this.dok.body.removeAttribute("style");
     this.scrollY = y;
     return true;
@@ -374,24 +352,10 @@ export class Chat {
     // Einmal je Bild (requestAnimationFrame), nicht bei jedem Ereignis:
     // Beim Aufgehen der Tastatur feuert iOS Dutzende resize/scroll.
     let geplant = 0;
-    // iOS 26 SAFARI MELDET offsetTop FALSCH (WebKit-Fehler 300523, Apple
-    // Developer Forums 800154): Der Wert bleibt ueber 0 haengen - nach dem
-    // Oeffnen und nachdem die Tastatur zuging. Der Chat stand dann mitten
-    // im Bild, ragte unten hinaus, und die Seite liess sich samt Chat
-    // scrollen (Inhaber, 07.10., Screenshots). Darum: offsetTop nur, solange
-    // die Tastatur wirklich offen ist, sonst oben = 0 - und ein haengender
-    // Wert wird mit scrollTo(0, 0) zurueckgesetzt.
     const jetzt = () => {
       geplant = 0;
-      const innen = this.fenster.innerHeight;
-      const h = vv ? vv.height : innen;
-      const feld = this.dok.activeElement;
-      const tippt = Boolean(feld && this.ansicht.contains(feld) && /^(TEXTAREA|INPUT)$/.test(feld.tagName));
-      const tastatur = Boolean(vv) && tippt && innen - h > 120;
-      const oben = tastatur ? Math.max(0, Math.min(vv.offsetTop, innen - h)) : 0;
-      if (!tastatur && vv && vv.offsetTop > 1 && this.gesperrt) {
-        try { this.fenster.scrollTo(0, 0); } catch { /* egal */ }
-      }
+      const h = vv ? vv.height : this.fenster.innerHeight;
+      const oben = vv ? vv.offsetTop : 0;
       this.ansicht.style.setProperty("--chat-h", `${Math.round(h)}px`);
       this.ansicht.style.setProperty("--chat-oben", `${Math.round(oben)}px`);
       if (this.unten) this.#nachUnten(false);
@@ -405,16 +369,6 @@ export class Chat {
     vv?.addEventListener("resize", setzen);
     vv?.addEventListener("scroll", setzen);
     this.fenster.addEventListener("resize", setzen);
-    // Nachmessen, wenn Safari fertig ist: nach dem Sperren der Seite und
-    // nach dem Auf- und Zugehen der Tastatur (~300 ms Animation) - dann
-    // feuert iOS nicht immer noch ein Ereignis.
-    this.nachmessen = () => { for (const ms of [60, 320, 700]) setTimeout(() => this.hoeheSetzen?.(), ms); };
-    this.nachmessen();
-    if (!this.feldHorcht) {
-      this.feldHorcht = true;
-      this.ansicht.addEventListener("focusin", () => this.nachmessen?.());
-      this.ansicht.addEventListener("focusout", () => this.nachmessen?.());
-    }
   }
 
   #hoeheLoesen() {
