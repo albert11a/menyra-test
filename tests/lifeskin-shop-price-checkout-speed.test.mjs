@@ -196,11 +196,12 @@ test('hanging reads time out even on older browsers without AbortController', as
   finally { globalThis.AbortController = saved; }
 });
 
-test('initial HTML displays 19 EUR without waiting and mobile CSS puts purchase before product photos', () => {
+test('initial HTML displays 25 EUR without waiting and mobile CSS puts purchase before product photos', () => {
   const html = readFileSync(new URL('../apps/lifeskin-shop/index.html', import.meta.url), 'utf8');
   const prices = [...html.matchAll(/data-preis="cmimi">([^<]+)/g)].map(m => m[1]);
   assert.ok(prices.length > 4);
-  assert.ok(prices.every(price => price === "19 €"));
+  // 07.10. (Inhaber): Preis 25 € - dieselbe Zahl wie in Heart (Shop-Sets), sonst springt der Preis beim Laden.
+  assert.ok(prices.every(price => price === "25 €"));
   assert.doesNotMatch(html, /data-set="acne" disabled|visibility:hidden|Po ngarkohet cmimi/);
   assert.doesNotMatch(html, /lifeskinshop:cmimi/);
   const css = readFileSync(new URL('../apps/lifeskin-shop/shop-youth.css', import.meta.url), 'utf8');
