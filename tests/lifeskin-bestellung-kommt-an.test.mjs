@@ -155,7 +155,8 @@ test("Heart zeigt Faelle, von denen nur der Bericht ankam, und schneidet 'Offen'
   const adapter = ohneKommentare(lies("apps/mnyra-heart/heart-lifeskin-adapter.js"));
   assert.match(adapter, /nurBericht: true/);
   const render = ohneKommentare(lies("apps/mnyra-heart/heart-lifeskin-render.js"));
-  assert.match(render, /fach === "alle" \? imGewaehltenFach/);
+  // Seit SkinReact: "Offen" (alle) und SkinReact werden nie abgeschnitten.
+  assert.match(render, /\["alle", "skinreact"\]\.includes\(fach\) \? imGewaehltenFach/);
   assert.doesNotMatch(render, /gewaehlt\.slice\(0, 40\)/);
 });
 

@@ -13,7 +13,11 @@ const lies = (pfad) => readFileSync(new URL(`../${pfad}`, import.meta.url), "utf
 test("die freigegebenen Abschnitte behalten ihre bestehenden Messkennungen", () => {
   assert.deepEqual(LANDING_SCHIRME.map((s) => s.nr), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
   const html = lies("apps/lifeskin-landing/index.html");
-  const ids = ["held", "rezultatet", "pse", "mjekja", "produktet", "garancia", "fund"];
+  // SEIT DER FREIGEGEBENEN FASSUNG VOM 04.10. hat die Seite sechs statt neun
+  // Abschnitte. Ohne id="held" startete die Messung gar nicht mehr
+  // (starteLandingtiefe) - seit 07.10. tragen die neuen Abschnitte wieder die
+  // bestehenden Kennungen. Mjekja, Produktet und Menyrat gibt es dort nicht.
+  const ids = ["held", "pse", "rezultatet", "komuniteti", "garancia", "fund"];
   let previous = -1;
   for (const id of ids) {
     assert.ok(LANDING_SCHIRME.some((section) => section.id === id));

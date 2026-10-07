@@ -884,10 +884,12 @@ test("/lifeskin liefert die Landingpage aus - im Betrieb wie lokal", () => {
     "Die Kennung ls-start steht nicht genau einmal");
   // Seit der freigegebenen Fassung (01.10.) traegt jeder Knopf zusaetzlich
   // data-ls-quelle - gezaehlt wird das Merkmal, nicht wo es endet.
-  const weitere = (landing.match(/<button\b[^>]*\sdata-ls-start[\s>][^>]*>/g) || [])
-    .filter((knopf) => !knopf.includes('id="ls-start"'));
-  assert.ok(weitere.length >= 1,
-    "Die uebrigen Knoepfe tragen die Marke nicht, an der der Tipp weitergereicht wird");
+  // Seit der Fassung vom 04.10. gibt es nur noch den einen festen Knopf
+  // unten; wo weitere stehen, tragen sie dieselbe Marke und ihre Quelle.
+  const knoepfe = landing.match(/<button\b[^>]*\sdata-ls-start[\s>][^>]*>/g) || [];
+  assert.ok(knoepfe.some((knopf) => knopf.includes('id="ls-start"')),
+    "Der Startknopf traegt die Marke nicht, an der der Tipp weitergereicht wird");
+  for (const knopf of knoepfe) assert.match(knopf, /data-ls-quelle="[a-z-]+"/, knopf);
 
   // DIE BEIDEN FASSUNGEN DAVOR BLEIBEN LIEGEN: Der Weg zurueck ist ein
   // Austausch dieser Zeile, kein Wiederherstellen einer geloeschten Datei.
