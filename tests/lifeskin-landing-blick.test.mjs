@@ -10,6 +10,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { RASTE_STANDARD } from "../shared/lifeskin-raste.js";
 
 const lies = (pfad) => readFileSync(new URL(`../${pfad}`, import.meta.url), "utf8");
 // Die Seite, die die Reihe noch traegt.
@@ -108,23 +109,25 @@ test("Heart bestimmt, welche Faelle oben stehen - der Tipp findet den Fall ueber
   assert.match(lies("apps/mnyra-heart/heart.js"), /\["landing", "oben", "analiza", "shop"\]\.includes\(ort\)/);
 });
 
-// /lifeskin: the approved comparison has one frame and shared overlays.
-test("/lifeskin: die Analyse wird erklaert, danach folgt genau ein Vergleich", () => {
+// Approved compact revision replaces the old single-pair frame.
+test("/lifeskin: analysis explanation precedes the swipeable comparison rail", () => {
   const html = lies("apps/lifeskin-landing/index.html");
-  assert.ok(html.indexOf('id="lf-entry-title"') < html.indexOf('id="pse"'));
+  assert.ok(html.indexOf('id="hero-title"') < html.indexOf('id="pse"'));
   assert.ok(html.indexOf('id="pse"') < html.indexOf('id="rezultatet"'));
-  assert.equal((html.match(/class="lf-case-stage"/g) || []).length, 1);
-  assert.equal((html.match(/class="lf-sticker"/g) || []).length, 0);
+  assert.equal((html.match(/class="rail cases-rail"/g) || []).length, 1);
   assert.doesNotMatch(html, /id="rastet"|data:image|lf-screenshotcrop/);
 });
 
-test("/lifeskin: beide Fotos laden direkt und teilen sich einen festen Rahmen", () => {
+test("/lifeskin: fallback pairs use compact frames without vertical letterboxes", () => {
   const html = lies("apps/lifeskin-landing/index.html");
-  const comparison = html.slice(html.indexOf('class="lf-case-stage"'), html.indexOf('class="lf-gallery-bottom"'));
-  assert.equal((comparison.match(/<img /g) || []).length, 2);
-  assert.doesNotMatch(comparison, /loading="lazy"/);
-  const css = lies("apps/lifeskin-landing/approved.css");
-  assert.match(css, /aspect-ratio:1104\/645/);
-  assert.match(css, /\.lf-casebuttons button\{width:14.25cqw/);
-  assert.match(lies("apps/lifeskin-landing/approved.js"), /await load\(entry\)/);
+  const comparison = html.slice(html.indexOf('id="cases"'), html.indexOf('class="gallery-bottom"'));
+  assert.equal((comparison.match(/<img /g) || []).length, 8);
+  for (const r of RASTE_STANDARD) {
+    assert.ok(comparison.includes(r.para.replace(/\.jpg$/, '.webp')));
+    assert.ok(comparison.includes(r.pas.replace(/\.jpg$/, '.webp')));
+  }
+  const css = lies("apps/lifeskin-landing/redesign.css");
+  assert.match(css, /height:168px/);
+  assert.match(css, /object-fit:cover/);
+  assert.match(css, /scroll-snap-type:x mandatory/);
 });

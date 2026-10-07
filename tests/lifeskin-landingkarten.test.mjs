@@ -13,24 +13,18 @@ import { captureChipScroll, restoreChipScroll } from "../apps/mnyra-heart/heart-
 
 const lies = (pfad) => readFileSync(new URL(`../${pfad}`, import.meta.url), "utf8");
 
-test("/lifeskin: acht Karten in der Reihenfolge der Seite, mit den Namen des Inhabers", () => {
-  assert.deepEqual(LANDING_KARTEN.map((k) => k.name),
-    ["Analiza online", "01 Terapi", "02 Analiza", "03 Skanim", "Para - Pas", "Instagram", "Tash e din", "F.A.Q"]);
-  assert.deepEqual(LANDING_KARTEN.map((k) => k.nr), [1, 2, 3, 4, 5, 6, 7, 8]);
+test("the redesign retains measurement selectors only for matching content", () => {
+  // Historical session fields and names remain unchanged. Removed benefit
+  // cards are not falsely mapped to new content, and customer media does
+  // not masquerade as the existing Instagram proof event.
   const html = lies("apps/lifeskin-landing/index.html");
-  const seite = html.slice(html.indexOf('<main class="lf-page">'), html.indexOf("</main>"));
-  let vorher = -1;
-  for (const k of LANDING_KARTEN) {
-    const muster = k.wahl.startsWith("#") ? `id="${k.wahl.slice(1)}"` : k.wahl.slice(1);
-    const stelle = seite.indexOf(muster);
-    assert.ok(stelle > vorher, `${k.name} (${k.wahl}) fehlt oder steht in falscher Reihenfolge`);
-    vorher = stelle;
-  }
-  // Je Karte genau ein Element - sonst misst der Beobachter die falsche.
-  const klassen = [...html.matchAll(/class="([^"]*)"/g)].flatMap((m) => m[1].split(/\s+/));
-  for (const k of LANDING_KARTEN.filter((x) => !x.wahl.startsWith("#"))) {
-    assert.equal(klassen.filter((c) => c === k.wahl.slice(1)).length, 1, k.wahl);
-  }
+  for (const selector of ['lf-entry-card', 'id="rezultatet"', 'lf-warm-result', 'lf-faq', 'lf-community'])
+    assert.ok(html.includes(selector), selector);
+  for (const selector of ['lf-benefit--therapy', 'lf-benefit--analysis', 'lf-benefit--scan'])
+    assert.ok(!html.includes(selector), selector);
+  assert.match(html, /class="lf-community" id="komuniteti"><a href="https:\/\/www\.instagram\.com/);
+  assert.deepEqual(LANDING_KARTEN.map(k => k.id),
+    ['analiza', 'terapi', 'analizaDetaj', 'skanim', 'paraPas', 'instagram', 'tashEDin', 'faq']);
 });
 
 test("jede Karte schreibt nur ihre Kennung; die Tiefe kommt aus den Feldern", () => {

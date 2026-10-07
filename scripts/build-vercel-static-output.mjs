@@ -243,6 +243,7 @@ const EINZEL_EINSTIEGE = [
   "apps/lifeskin/lifeskin-app.js",
   "apps/lifeskin-landing/shop.js",
   "apps/lifeskin-landing/raste.js",
+  "apps/lifeskin-landing/redesign.js",
   // Der Laden unter /lifeskinshop - dieselbe Begruendung wie die
   // Landingpage (Werbeziel). Er teilt keinen Zustand auf Modulebene mit dem
   // Trichter; der Trichter kommt ueber globalThis.__lifeskinTrichter.

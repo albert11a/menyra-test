@@ -69,22 +69,23 @@ test("a failed next pair keeps the current photos and can be retried", async () 
   assert.equal(state.after.src, "/apps/lifeskin-landing/fotot/rasti-1-dita28.webp");
 });
 
-test("the analysis-first landing explains the next step and navigates the existing comparison pair", () => {
+test("the approved landing explains therapy and has two swipeable galleries", () => {
   assert.doesNotMatch(html, /Fillo nga problemi yt|data-problem|data-case="/);
-  assert.equal((html.match(/data-case-direction="prev"/g) || []).length, 1);
-  assert.equal((html.match(/data-case-direction="next"/g) || []).length, 1);
-  for (const id of ["rezultatet", "lf-case-pair", "lf-before", "lf-after", "lf-case-count"]) {
+  assert.equal((html.match(/data-prev="cases"/g) || []).length, 1);
+  assert.equal((html.match(/data-next="cases"/g) || []).length, 1);
+  for (const id of ["rezultatet", "cases", "customers", "cases-count", "viewer"]) {
     assert.ok(html.includes(`id="${id}"`), id);
   }
   assert.match(html, /Analiza e lekures/);
-  assert.match(html, /Online nga Dr\. Gashi/);
+  assert.match(html, /Dr\. Gashi e shikon dhe e analizon/);
+  assert.ok(html.indexOf('class="care') < html.indexOf('class="customers'));
   assert.doesNotMatch(html, /class="product-section"|data-clinical-start|↗️/);
 });
 
-test("the sole sticky CTA retains the existing funnel entry and all photo assets exist", () => {
-  assert.equal((html.match(/<button[^>]*\bdata-ls-start\b/g) || []).length, 1);
+test("all approved CTAs delegate to one existing funnel entry and all photos exist", () => {
+  assert.equal((html.match(/<button[^>]*\bdata-ls-start\b/g) || []).length, 3);
   assert.equal((html.match(/id="ls-start"/g) || []).length, 1);
-  assert.match(html, /class="ls-analysis-sticky"[\s\S]*data-ls-quelle="sticky" id="ls-start"/);
+  assert.match(html, /class="sticky"[\s\S]*data-ls-quelle="sticky" id="ls-start"/);
   for (const id of ["ls-wahl", "ls-fotopara", "ls-vorbereitung", "ls-analyse"]) {
     assert.ok(html.includes(`id="${id}"`), id);
   }
