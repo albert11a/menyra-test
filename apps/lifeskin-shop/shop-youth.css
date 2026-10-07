@@ -409,3 +409,33 @@
 #ls-einstieg .page .message-kopf b small{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-top:1px}
 #ls-einstieg .page .ig-erste__bild{position:relative;display:block;flex:1;min-height:110px;margin:0 -16px -14px;overflow:hidden;background:#fff;border-radius:0 0 16px 16px}
 #ls-einstieg .page .ig-erste__bild img{position:absolute;left:50%;top:-4px;width:72%;max-width:240px;height:auto;transform:translateX(-50%)}
+/* Kaufknopf oben: groessere Schrift (Inhaber 07.10.: "Text in Buttons zu klein"). */
+#ls-einstieg .page .hero .cta{font-size:18px;font-weight:700}
+#ls-einstieg .page .hero .cta .button-price{font-size:18px;font-weight:800}
+@media (max-width:380px){#ls-einstieg .page .hero .cta,#ls-einstieg .page .hero .cta .button-price{font-size:17px}}
+/* ZWEI STARKE PUNKTE UNTER DEN PRODUKTFOTOS (Inhaber 07.10.: schoen, uebersichtlich):
+   zwei weisse Kacheln nebeneinander - links die grosse 94 %, rechts Made in Germany
+   mit einem schmalen Flaggen-Streifen. Fussnote klein darunter. */
+#ls-einstieg .vorteile2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0 0}
+#ls-einstieg .vorteil2{display:flex;align-items:center;gap:10px;min-width:0;padding:12px;border-radius:14px;background:#fff;box-shadow:0 1px 0 #0000000a,0 6px 16px #123b3e0f}
+#ls-einstieg .vorteil2__zahl{flex:none;display:flex;align-items:flex-start;font-size:30px;line-height:1;font-weight:800;letter-spacing:-1.2px;color:#0a8a5b}
+#ls-einstieg .vorteil2__zahl small{font-size:15px;font-weight:800;letter-spacing:0;margin:2px 0 0 1px}
+#ls-einstieg .vorteil2__text{min-width:0;font-size:12px;line-height:1.3;color:var(--muted)}
+#ls-einstieg .vorteil2__text b{display:block;font-size:13px;font-weight:800;color:var(--ink);margin-bottom:1px}
+#ls-einstieg .vorteil2__flagge{flex:none;display:flex;flex-direction:column;width:30px;height:21px;border-radius:4px;overflow:hidden;box-shadow:0 0 0 1px #0000001a}
+#ls-einstieg .vorteil2__flagge i{flex:1}
+#ls-einstieg .vorteil2__flagge i:nth-child(1){background:#000}
+#ls-einstieg .vorteil2__flagge i:nth-child(2){background:#dd0000}
+#ls-einstieg .vorteil2__flagge i:nth-child(3){background:#ffce00}
+#ls-einstieg .vorteile2__fuss{margin:8px 0 0;font-size:10px;line-height:1.4;color:var(--muted)}
+/* Die Zeile "Dergesa · Pagesa · Garanci" ist jetzt das letzte <p> im Kopf - die alte
+   Regel fuer p:last-child (grosse Schrift) darf sie nicht treffen. */
+#ls-einstieg .page .hero-heading>p.micro:last-child{font-size:10px;line-height:1.4;margin:16px 0 0;max-width:none;text-align:inherit}
+@media (min-width:900px){#ls-einstieg .page .hero-heading>p.micro:last-child{font-size:11px}}
+@media (max-width:899px){
+ #ls-einstieg .vorteil2{flex-direction:column;justify-content:center;gap:6px;padding:14px 10px;text-align:center}
+ #ls-einstieg .vorteil2__zahl{font-size:32px}
+ #ls-einstieg .vorteil2__flagge{width:34px;height:24px;margin:4px 0}
+ #ls-einstieg .vorteil2__text{font-size:12px}
+ #ls-einstieg .vorteil2__text b{font-size:13.5px}
+}
