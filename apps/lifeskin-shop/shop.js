@@ -449,10 +449,10 @@ export class Dyqan {
 
   // ── Laden aus Heart ────────────────────────────────────────────────
   #standardFotos(fotos) {
-    // LF CLEAN hat noch kein eigenes Foto in den Standardbildern. Ohne Foto
+    // LF CLEAN steht (noch) nicht in MITTEL_FOTOS_STANDARD. Ohne Foto
     // faellt ein Mittel aus mittelBauen - und damit aus dem Set, bis Heart
     // geantwortet hat (Preis oben kurz mit 2 statt 3 Mitteln gerechnet).
-    for (const [id, bild] of Object.entries({ ...MITTEL_FOTOS_STANDARD, "lf-clean": "/apps/lifeskin-shop/assets/lf-clean-platzhalter.svg" })) {
+    for (const [id, bild] of Object.entries({ ...MITTEL_FOTOS_STANDARD, "lf-clean": "/apps/lifeskin-shop/assets/lf-clean.jpg" })) {
       if (!(fotos.get(id) || []).length) fotos.set(id, [bild]);
     }
     return fotos;
@@ -653,15 +653,10 @@ export class Dyqan {
   // DIE SEITE FUER 2 ODER 3 MITTEL (Inhaber 07.10.): Traegt das Set aus
   // Heart LF CLEAN, schaltet data-set-produkte="3" alle Texte und Bilder
   // auf drei Mittel um (ls-drei und .nur-drei in index.html). Sonst bleibt die Seite
-  // wie bisher. Das Foto von LF CLEAN kommt aus Heart, sobald es eines gibt.
+  // wie bisher.
   #setAnzahlZeigen(set) {
     const drei = set.produkte.includes("lf-clean");
     this.dok.documentElement?.setAttribute("data-set-produkte", drei ? "3" : "2");
-    const foto = this.mittelVon("lf-clean")?.fotot?.[0];
-    if (!drei || !foto) return;
-    for (const img of this.dok.querySelectorAll('img[data-mittel-foto="lf-clean"]')) {
-      if (img.getAttribute("src") !== foto) img.setAttribute("src", foto);
-    }
   }
 
   // Einzeln verkauft wird, was in einem Set steht, das im Shop ist (Wunsch

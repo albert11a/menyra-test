@@ -35,7 +35,7 @@ const produkteZwei = '<p>Trajtim + hidratim. Dy hapa te thjeshte.</p><div class=
   + produkt("01", "LF ACNE", "Trajton aknet.", "/apps/lifeskin-shop/assets/lf-acne-3.jpg", 600, 750)
   + produkt("02", "LF MOISTUR", "Hidraton lekuren.", "/apps/lifeskin-shop/assets/lf-moistur.jpg", 750, 1000) + '</div>';
 const produkteDrei = '<p>Pastrim + trajtim + hidratim. Tre hapa te thjeshte.</p><div class="sr-result__products sr-result__products--tre">'
-  + produkt("01", "LF CLEAN", "Pastron lekuren.", "/apps/lifeskin-shop/assets/lf-clean-platzhalter.svg", 600, 800)
+  + produkt("01", "LF CLEAN", "Pastron lekuren.", "/apps/lifeskin-shop/assets/lf-clean.jpg", 750, 1000)
   + produkt("02", "LF ACNE", "Trajton aknet.", "/apps/lifeskin-shop/assets/lf-acne-3.jpg", 600, 750)
   + produkt("03", "LF MOISTUR", "Hidraton lekuren.", "/apps/lifeskin-shop/assets/lf-moistur.jpg", 750, 1000) + '</div>';
 
