@@ -10436,6 +10436,7 @@ html:where([data-heart-theme="tag"]),
 .heart-nachfass-chip--kasse { background: #f4b9422e; color: #f6cd7a; }
 .heart-nachfass-chip--felder { background: #f4b942; color: #1d1a12; }
 .heart-nachfass-chip--bestellt { background: #22c55e; color: #fff; }
+.heart-nachfass-chip--fehler { background: #ef4444; color: #fff; }
 .heart-nachfass-korb__herkunft { font-size: 11.5px; color: var(--heart-text-soft, #9a9a95); overflow-wrap: anywhere; }
 .heart-nachfass-korb__titel { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--heart-text-soft, #8b8b86); margin-top: 2px; }
 .heart-nachfass-korb__danach { display: grid; gap: 3px; font-size: 12.5px; line-height: 1.35; }
@@ -10451,6 +10452,7 @@ html:where([data-heart-theme="tag"]),
 :where(html[data-heart-theme="tag"]) .heart-nachfass-chip--kasse { background: #fdf0d2; color: #8a5a00; }
 :where(html[data-heart-theme="tag"]) .heart-nachfass-chip--felder { background: #e0a21a; color: #fff; }
 :where(html[data-heart-theme="tag"]) .heart-nachfass-chip--bestellt { background: #16a34a; color: #fff; }
+:where(html[data-heart-theme="tag"]) .heart-nachfass-chip--fehler { background: #dc2626; color: #fff; }
 
 /* PRODUKTKOSTEN (01.10., Inhaber) - nur fuer das CEO-Konto. */
 .heart-kosten__form { display: grid; gap: 8px; margin-top: 10px; }

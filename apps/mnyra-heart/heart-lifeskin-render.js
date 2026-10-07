@@ -23,7 +23,7 @@ import { renderHeartIcon, renderGeraetZeichen } from "./heart-icons.js";
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
 import { LANDING_SCHIRME, landingLesen } from "../../shared/lifeskin-landingtiefe.js";
-import { nachfassKoerbe, analyseBesuche, kasseAbsicht, kaufChancen, tagesschluessel, ZEITRAEUME, TYPEN, typVon, istAnalyse, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueZweige, baueBereitschaft, baueMaintrichter, baueKauftrichter, baueLandingtrichter, ohneScanGelaufen, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
+import { nachfassKoerbe, KASSE_ERGEBNISSE, analyseBesuche, kasseAbsicht, kaufChancen, tagesschluessel, ZEITRAEUME, TYPEN, typVon, istAnalyse, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueZweige, baueBereitschaft, baueMaintrichter, baueKauftrichter, baueLandingtrichter, ohneScanGelaufen, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
 // (Die eigenen Texte der alten Analyseseite werden nicht mehr bearbeitet - sie reisen unsichtbar mit.)
 // Die Antworten aus dem Trichter, uebersetzt - aus DERSELBEN Quelle, aus
 // der auch der Prompt gefuellt wird. Eine eigene Tabelle hier waere eine
@@ -888,15 +888,28 @@ function renderNachfassen(sitzungen) {
   }
 
   const zeilen = koerbe.map(({ sitzung, zeit, herkunft, kasse, danach, bestellt }) => {
-    const nummer = sitzung.phone || sitzung.address?.telefon || "";
-    const wer = sitzung.name || sitzung.address?.name || sitzung.code || "Ohne Namen";
+    // Seit 07.10. auch, was in der Kasse stand, ohne Bestellung.
+    const g = kasse?.geschrieben || null;
+    const nummer = sitzung.phone || sitzung.address?.telefon || g?.telefon || "";
+    const wer = sitzung.name || sitzung.address?.name || g?.name || sitzung.code || "Ohne Namen";
     const chip = (klasse, text, titel = "") => `<span class="heart-nachfass-chip heart-nachfass-chip--${klasse}"${
       titel ? ` title="${escapeHtml(titel)}"` : ""}>${escapeHtml(text)}</span>`;
     const kasseChip = !kasse ? (bestellt ? "" : chip("korb", "Nur Warenkorb"))
       : chip("kasse", kasse.ms === null ? "Kasse · Dauer ?" : `Kasse ${sekundenText(kasse.ms)}`,
         kasse.oeffnungen > 1 ? `${kasse.oeffnungen}× geöffnet` : "");
+    // "angetippt" ist nur der Finger im Feld; was GESCHRIEBEN wurde, steht
+    // seit 07.10. in timings.kasse (kasseGenau).
     const felderChip = !kasse ? ""
-      : kasse.felder.length ? chip("felder", `getippt: ${kasse.felder.join(", ")}`) : chip("leer", "nichts getippt");
+      : g ? (Object.values(g).some(Boolean) ? chip("felder", "geschrieben") : chip("leer", "nichts geschrieben"))
+        : kasse.felder.length ? chip("felder", `angetippt: ${kasse.felder.join(", ")}`) : chip("leer", "nichts angetippt");
+    const versuche = kasse?.versuche || [];
+    const versuchChip = !versuche.length ? (kasse && g ? chip("leer", "Porositni nie gedrückt") : "")
+      : chip(versuche.some((v) => v.ergebnis === "ok") ? "bestellt" : "fehler",
+        `Porositni ${versuche.length}×: ${versuche.map((v) => KASSE_ERGEBNISSE[v.ergebnis] || v.ergebnis).join(", ")}`,
+        versuche.map((v) => `${uhrzeit(v.t)} ${KASSE_ERGEBNISSE[v.ergebnis] || v.ergebnis}${v.status ? ` (${v.status})` : ""}${v.fehlt ? ` · leer: ${v.fehlt}` : ""}`).join("\n"));
+    const feldWert = (wort, wert) => `<span><b>${escapeHtml(wort)}</b> ${wert ? escapeHtml(wert) : "<i>leer</i>"}</span>`;
+    const geschriebenBlock = g ? `<span class="heart-nachfass-korb__titel">In der Kasse geschrieben</span>
+      <span class="heart-nachfass-korb__danach">${feldWert("Emri", g.name)}${feldWert("Telefoni", g.telefon)}${feldWert("Adresa", g.strasse)}${feldWert("Qyteti", g.ort)}</span>` : "";
     const weiter = danach.eintraege.map((e) => `<span>${escapeHtml(korbSatz(e))}</span>`).join("")
       + (danach.mehr ? `<span class="heart-nachfass-korb__mehr">+ ${danach.mehr} weitere</span>` : "");
     const danachText = danach.eintraege.length
@@ -912,8 +925,9 @@ function renderNachfassen(sitzungen) {
         <time>${escapeHtml(datumKurz(zeit).replace(/\.$/, ""))} ${escapeHtml(uhrzeit(zeit))}</time>
       </span>
       <span class="heart-nachfass-korb__chips">
-        ${chip(`herkunft-${herkunft.art}`, herkunft.label, herkunft.detail)}${kasseChip}${felderChip}${bestellt ? chip("bestellt", "Bestellt") : ""}
+        ${chip(`herkunft-${herkunft.art}`, herkunft.label, herkunft.detail)}${kasseChip}${felderChip}${versuchChip}${bestellt ? chip("bestellt", "Bestellt") : ""}
       </span>
+      ${geschriebenBlock}
       ${herkunft.detail ? `<small class="heart-nachfass-korb__herkunft">${escapeHtml(herkunft.detail)}</small>` : ""}
       <span class="heart-nachfass-korb__titel">Nach dem Warenkorb</span>
       ${danachText}
@@ -1802,7 +1816,7 @@ const PFAD_WORTE = Object.freeze({
   geoeffnet: "Seite geöffnet", bildschirm: "Bildschirm", klick: "Tippt", aufgeklappt: "Klappt auf",
   zugeklappt: "Klappt zu", feld: "Feld angetippt", gesehen: "Liest", scroll: "Scrollt",
   verlassen: "Verlässt die Seite", zurueck: "Kommt zurück", korb: "Warenkorb", kasse: "Kasse", bestellt: "BESTELLT",
-  fehler: "Fehler", technik: "Technik"
+  fehler: "Fehler", technik: "Technik", eingabe: "Schreibt"
 });
 
 // Die Zusammenfassung ueber dem Verlauf: wo er am laengsten war, was er
