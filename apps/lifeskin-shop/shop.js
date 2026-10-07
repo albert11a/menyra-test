@@ -241,15 +241,19 @@ export function klientBlatt(m) {
 
 // Veroeffentlichtes Shop-Sets-Angebot, vom Inhaber am 06.10.2026 bestaetigt.
 // Keine Abhaengigkeit von Netz oder einem alten lokalen Preis beim Erstbesuch.
-// Seit 07.10.2026: Seti kundër akneve mit 3 Produkten (LF CLEAN dazu), 39 EUR -
-// dieselbe Fassung wie das HTML (data-set-produkte="3"), damit beim ersten
-// Laden nichts umspringt. Heart kann weiter auf 2 Produkte stellen.
+// Startangebot = die Fassung, die das HTML traegt (data-set-produkte):
+// index.html 3 Produkte / 39 EUR, index-2.html 2 Produkte / 19 EUR
+// (middleware.js waehlt nach Heart). So springt beim ersten Laden nichts um.
 const SHOP_FOTOS_KLEIN = Object.freeze({
   "lf-acne": "/apps/lifeskin-shop/assets/lf-acne-3-klein.jpg",
   "lf-moistur": "/apps/lifeskin-shop/assets/lf-moistur-klein.jpg",
   "lf-clean": "/apps/lifeskin-shop/assets/lf-clean-klein.jpg"
 });
-export const SHOP_START_SETET = { lista: SETET_STANDARD.map(s => s.id === "acne" ? { ...s, produkte: [...ACNE_FASSUNGEN[3].produkte], cmimi: ACNE_FASSUNGEN[3].cmimi } : s) };
+export function shopStartSetet(anzahl = 3) {
+  const fassung = ACNE_FASSUNGEN[anzahl] || ACNE_FASSUNGEN[3];
+  return { lista: SETET_STANDARD.map(s => s.id === "acne" ? { ...s, produkte: [...fassung.produkte], cmimi: fassung.cmimi } : s) };
+}
+export const SHOP_START_SETET = shopStartSetet(3);
 
 const pause = (ms) => new Promise((fertig) => setTimeout(fertig, ms));
 
@@ -323,7 +327,8 @@ export class Dyqan {
     this.trichterFn = trichter || (() => globalThis.__lifeskinTrichter);
     this.korb = korbLesen(this.speicher);
     this.mittel = mittelBauen([], this.#standardFotos(new Map()));
-    this.angebotSetDok = SHOP_START_SETET;
+    this.startSetDok = shopStartSetet(this.dok.documentElement?.getAttribute?.("data-set-produkte") === "2" ? 2 : 3);
+    this.angebotSetDok = this.startSetDok;
     this.setet = acneDuoSets(aktiveSetet(setetOderStandard(this.angebotSetDok)));
     this.korb = acneDuoCart(this.korb, this.setet);
     korbSchreiben(this.speicher, this.korb);
@@ -490,7 +495,7 @@ export class Dyqan {
     try {
       const setDok = await holeDok(SETET_DOK, this.holen);
       if (setDok && !Array.isArray(setDok.lista)) throw new Error("invalid offer");
-      this.angebotSetDok = setDok || SHOP_START_SETET;
+      this.angebotSetDok = setDok || this.startSetDok;
       this.angebotBereit = true;
       await this.#setetUebernehmen(this.angebotSetDok);
       this.dok.documentElement?.setAttribute("data-shop-preis", this.setet.length ? "bereit" : "fehlt");

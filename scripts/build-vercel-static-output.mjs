@@ -303,9 +303,21 @@ async function vorladenAufraeumen() {
 }
 const vorladenBereinigt = await vorladenAufraeumen();
 
+// /lifeskinshop MIT 2 PRODUKTEN: dieselbe Seite als index-2.html (Merkmal und
+// Preise). middleware.js liefert sie aus, wenn Heart das Akne-Set auf 2 stellt.
+async function shopZweiErzeugen() {
+  const quelle = resolve(distRoot, "apps/lifeskin-shop/index.html");
+  if (!(await exists(quelle))) return false;
+  const { shopHtmlFuerFassung } = await import("../shared/lifeskin-shop-fassung.js");
+  await writeFile(resolve(distRoot, "apps/lifeskin-shop/index-2.html"), shopHtmlFuerFassung(await readFile(quelle, "utf8"), 2), "utf8");
+  return true;
+}
+const shopZwei = await shopZweiErzeugen();
+
 console.log(`Prepared Vercel static output in ${relative(repoRoot, distRoot) || "dist"}`);
 console.log(`Copied: ${copied.join(", ")}`);
 console.log(`Inline bundle manifest: ${inlinedManifest ? "injected" : "skipped"}`);
 console.log(`Kommentare entfernt aus: ${entkommentiert} Dateien`);
 console.log(`Gebuendelt: ${gebuendelt} Einstiege`);
 console.log(`Vorladen bereinigt auf: ${vorladenBereinigt} Seiten`);
+console.log(`/lifeskinshop mit 2 Produkten: ${shopZwei ? "index-2.html erzeugt" : "FEHLT"}`);
