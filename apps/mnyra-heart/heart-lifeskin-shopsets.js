@@ -9,7 +9,7 @@
 import { escapeHtml } from "./heart-ui-utils.js";
 import { renderHeartIcon } from "./heart-icons.js";
 import { klappAttr } from "./heart-lifeskin-klapp.js";
-import { SETET_STANDARD, SET_PRODUKTE_MAX, setetNormalisieren, SHOP_HERO_VERHAELTNIS, SHOP_HERO_MAX, setPreis, ACNE_FASSUNGEN, acneFassung } from "../../shared/lifeskin-shop-sets.js";
+import { SETET_STANDARD, SET_PRODUKTE_MAX, setetNormalisieren, SHOP_HERO_VERHAELTNIS, SHOP_HERO_MAX, setPreis } from "../../shared/lifeskin-shop-sets.js";
 import { preisFuer } from "../../shared/lifeskin-preise.js";
 
 // Die Liste, mit der Heart arbeitet: gespeichert, sonst die drei Sets, die
@@ -24,18 +24,6 @@ function bildVon(s, zustand) {
 
 function produktName(produkte, id) {
   return (produkte || []).find((p) => String(p.id) === id)?.name || id;
-}
-
-// Akne-Set: ein Klick waehlt 2 oder 3 Produkte samt Preis (shop zeigt dann
-// die ganze Seite fuer diese Fassung).
-function acneFassungKnoepfe(s, status) {
-  const jetzt = acneFassung(s);
-  if (!jetzt) return "";
-  return [2, 3].map((n) => {
-    const an = jetzt === n && setPreis(s) === ACNE_FASSUNGEN[n].cmimi;
-    return `<button type="button" class="heart-rasti-ort${an ? " heart-rasti-ort--an" : ""}" data-action="lifeskin-shopset-fassung"
-                  data-id="${escapeHtml(s.id)}" data-anzahl="${n}" aria-pressed="${an ? "true" : "false"}" ${status ? "disabled" : ""}>${an ? "✓ " : ""}Me ${n} produkte · ${ACNE_FASSUNGEN[n].cmimi} €</button>`;
-  }).join("");
 }
 
 export function renderShopSetet(zustand, produkte) {
@@ -57,7 +45,6 @@ export function renderShopSetet(zustand, produkte) {
         <div class="heart-rasti-orte">
           <button type="button" class="heart-rasti-ort${s.aktiv ? " heart-rasti-ort--an" : ""}" data-action="lifeskin-shopset-aktiv"
                   data-id="${escapeHtml(s.id)}" aria-pressed="${s.aktiv ? "true" : "false"}" ${status ? "disabled" : ""}>${s.aktiv ? "✓ " : ""}Im Shop</button>
-          ${acneFassungKnoepfe(s, status)}
         </div>
         <div class="heart-rasti-aktionen">
           <button type="button" class="heart-rasti-mini" data-action="lifeskin-shopset-schieben" data-id="${escapeHtml(s.id)}" data-richtung="hoch"

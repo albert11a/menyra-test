@@ -72,7 +72,7 @@ import { kommentarVorschauSetzen, ausschnittGriff, ausschnittZoom, ausschnittLes
 import { rasteListe, klappSetzen, klappOffen, rastiDom } from "./heart-lifeskin-raste.js";
 import { shopSetetListe } from "./heart-lifeskin-shopsets.js";
 import { schnittHoeren, schnittErgebnis, schnittZurueck } from "./heart-lifeskin-schnitt.js";
-import { setetNormalisieren, setNormalisieren, neueSetId, SET_PRODUKTE_MAX, SHOP_HERO_MAX, ACNE_FASSUNGEN, acneFassung } from "../../shared/lifeskin-shop-sets.js";
+import { setetNormalisieren, setNormalisieren, neueSetId, SET_PRODUKTE_MAX, SHOP_HERO_MAX } from "../../shared/lifeskin-shop-sets.js";
 import { ANTWORTZEITEN, antwortzeitSatz } from "../../shared/lifeskin-antwortzeit.js";
 import { entwurfSchreiben, entwurfLoeschen, entwurfAusBogen, promptMerken } from "./heart-lifeskin-entwurf.js";
 import { befundStandAuffrischen, befundFelderAnpassen } from "./heart-lifeskin-befundstand.js";
@@ -2639,18 +2639,6 @@ async function shopSetAktiv(id) {
     `${set.titulli}: ${set.aktiv ? "nicht mehr im Shop" : "steht jetzt im Shop"}.`);
 }
 
-// Akne-Set auf 2 oder 3 Produkte stellen - Mittel und Preis in einem Schritt.
-async function shopSetFassung(id, anzahl) {
-  const stand = store.getState().lifeskin || {};
-  if (stand.shopSetetStatus) return;
-  const fassung = ACNE_FASSUNGEN[anzahl];
-  const liste = shopSetetListe(stand);
-  const set = liste.find((x) => x.id === id);
-  if (!fassung || !set || !acneFassung(set)) return;
-  await shopSetetSchreiben(liste.map((x) => (x.id === id ? { ...x, produkte: [...fassung.produkte], cmimi: fassung.cmimi } : x)),
-    `${set.titulli}: jetzt ${anzahl} Produkte · ${fassung.cmimi} €.`);
-}
-
 async function shopSetSchieben(id, richtung) {
   const stand = store.getState().lifeskin || {};
   if (stand.shopSetetStatus) return;
@@ -4338,7 +4326,6 @@ const operations = {
   speichereShopSet() { return speichereShopSet(); },
   loescheShopSet() { return loescheShopSet(); },
   shopSetAktiv(id) { return shopSetAktiv(id); },
-  shopSetFassung(id, anzahl) { return shopSetFassung(id, anzahl); },
   shopSetSchieben(id, richtung) { return shopSetSchieben(id, richtung); },
   neuesLifeskinRasti() {
     actions.patchLifeskin({ rastOffen: "__neu", rastEntwurf: null, rastLoeschen: false, rastStatus: "", rastBilderStatus: "" });

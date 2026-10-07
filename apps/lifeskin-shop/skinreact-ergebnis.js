@@ -25,25 +25,13 @@ function shopPreise(dokument) {
     const zahl = Number(text.replace("€", "").trim().replace(",", "."));
     return Number.isFinite(zahl) && zahl > 0 ? zahl : null;
   };
-  // Set mit LF CLEAN (shop.js #setAnzahlZeigen): die Karte nennt drei Mittel.
-  const drei = dokument?.documentElement?.getAttribute?.("data-set-produkte") === "3";
-  return { cmimi: preis("cmimi"), vecmas: preis("vecmas"), drei };
+  return { cmimi: preis("cmimi"), vecmas: preis("vecmas") };
 }
-
-const produkt = (nr, emri, tekst, bild, b, h) => `<div class="sr-result__product"><strong>${nr} / ${emri}</strong><span>${tekst}</span><figure><img src="${bild}" width="${b}" height="${h}" alt="LifeSkin ${emri}" decoding="async"></figure></div>`;
-const produkteZwei = '<p>Trajtim + hidratim. Dy hapa te thjeshte.</p><div class="sr-result__products">'
-  + produkt("01", "LF ACNE", "Trajton aknet.", "/apps/lifeskin-shop/assets/lf-acne-3-klein.jpg", 360, 450)
-  + produkt("02", "LF MOISTUR", "Hidraton lekuren.", "/apps/lifeskin-shop/assets/lf-moistur-klein.jpg", 360, 480) + '</div>';
-const produkteDrei = '<p>Pastrim + trajtim + hidratim. Tre hapa te thjeshte.</p><div class="sr-result__products sr-result__products--tre">'
-  + produkt("01", "LF CLEAN", "Pastron lekuren.", "/apps/lifeskin-shop/assets/lf-clean-klein.jpg", 360, 480)
-  + produkt("02", "LF ACNE", "Trajton aknet.", "/apps/lifeskin-shop/assets/lf-acne-3-klein.jpg", 360, 450)
-  + produkt("03", "LF MOISTUR", "Hidraton lekuren.", "/apps/lifeskin-shop/assets/lf-moistur-klein.jpg", 360, 480) + '</div>';
 
 function ergebnisKarte(bereich, preise = {}, reserve = false) {
   const pershtatet = bereich.min >= 60;
-  const name = preise.drei ? "setin" : "Acne Duo";
   const angebot = pershtatet ? `<div class="sr-offer">${preise.cmimi ? `<strong data-preis="cmimi">${preise.cmimi} €</strong>` : ""}${preise.vecmas > preise.cmimi && preise.cmimi ? `<del data-preis="vecmas" data-preis-zbritje>${preise.vecmas} €</del>` : ""}<span>Dergesa falas</span></div>` : "";
-  return `<div class="sr-result sr-result--ready${reserve ? " sr-result--reserve" : ""}"><div class="sr-result__top"><div class="sr-result__heading"><span class="sr-result__eyebrow">REZULTATI YT</span>${pershtatet ? '<svg class="sr-result__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4 10-10"/></svg>' : ""}</div><div class="sr-match"><div class="sr-result__range" aria-label="${bereich.text}">${bereichZiffern(bereich)}</div><span>Pershtatja me ${name}</span></div><h3>${pershtatet ? `Rutina jote me ${name}.` : "Lekura jote meriton nje plan personal."}</h3></div><div class="sr-result__body">${pershtatet ? (preise.drei ? produkteDrei : produkteZwei) : '<p>Kerko nje rekomandim personal para se ta zgjedhesh setin.</p>'}${angebot}${pershtatet ? `<button type="button" class="sr-order">Porosit ${preise.drei ? "setin" : "Acne Duo"}</button><p class="sr-result__trust">Pagesa te dera · 45 dite garanci</p>` : '<a class="sr-order" href="https://wa.me/436508564879">Merr nje rekomandim personal</a>'}</div></div>`;
+  return `<div class="sr-result sr-result--ready${reserve ? " sr-result--reserve" : ""}"><div class="sr-result__top"><div class="sr-result__heading"><span class="sr-result__eyebrow">REZULTATI YT</span>${pershtatet ? '<svg class="sr-result__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4 10-10"/></svg>' : ""}</div><div class="sr-match"><div class="sr-result__range" aria-label="${bereich.text}">${bereichZiffern(bereich)}</div><span>Pershtatja me Acne Duo</span></div><h3>${pershtatet ? "Rutina jote me Acne Duo." : "Lekura jote meriton nje plan personal."}</h3></div><div class="sr-result__body">${pershtatet ? '<p>Trajtim + hidratim. Dy hapa te thjeshte.</p><div class="sr-result__products"><div class="sr-result__product"><strong>01 / LF ACNE</strong><span>Trajton aknet.</span><figure><img src="/apps/lifeskin-shop/assets/lf-acne-3.jpg" width="600" height="750" alt="LifeSkin LF ACNE" decoding="async"></figure></div><div class="sr-result__product"><strong>02 / LF MOISTUR</strong><span>Hidraton lekuren.</span><figure><img src="/apps/lifeskin-shop/assets/lf-moistur.jpg" width="750" height="1000" alt="LifeSkin LF MOISTUR" decoding="async"></figure></div></div>' : '<p>Kerko nje rekomandim personal para se ta zgjedhesh setin.</p>'}${angebot}${pershtatet ? '<button type="button" class="sr-order">Porosit Acne Duo</button><p class="sr-result__trust">Pagesa te dera · 45 dite garanci</p>' : '<a class="sr-order" href="https://wa.me/436508564879">Merr nje rekomandim personal</a>'}</div></div>`;
 }
 
 // Inert, invisible content sizes the shared grid cell before any camera starts.

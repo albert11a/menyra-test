@@ -80,4 +80,3 @@
 @media(max-width:360px){#ls-einstieg #zgjedhja .sr-result__top{padding:16px}#ls-einstieg #zgjedhja .sr-result__body{padding:13px 16px 15px}#ls-einstieg #zgjedhja .sr-result h3{font-size:20px}#ls-einstieg #zgjedhja .sr-result__product figure{height:90px}}
 @media(max-width:280px){#ls-einstieg .page .skinreact-section .wrap{padding-inline:12px}.sr-offer span{width:100%;margin-left:0}#ls-einstieg #zgjedhja .sr-result__range{flex-wrap:wrap;white-space:normal;font-size:26px}#ls-einstieg #zgjedhja .sr-result h3{overflow-wrap:anywhere}}
 @media(prefers-reduced-motion:reduce){#zgjedhja .sr-complete{display:none}#zgjedhja *,#zgjedhja *::before,#zgjedhja *::after{animation:none!important;transition:none!important;stroke-dashoffset:0}}
-.sr-result__products--tre{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}

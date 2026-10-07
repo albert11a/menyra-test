@@ -543,7 +543,6 @@ export function bindHeartEvents({
     if (action === "lifeskin-krem-neu") { operations.kremNeu?.(); return; }
     if (action === "lifeskin-krem-weg") { operations.kremWeg?.(target); return; }
     if (action === "lifeskin-shopset-loeschen") { await operations.loescheShopSet?.(); return; }
-    if (action === "lifeskin-shopset-fassung") { await operations.shopSetFassung?.(target.getAttribute("data-id"), Number(target.getAttribute("data-anzahl"))); return; }
     if (action === "lifeskin-shopset-aktiv") { await operations.shopSetAktiv?.(target.getAttribute("data-id")); return; }
     if (action === "lifeskin-shopset-schieben") {
       await operations.shopSetSchieben?.(target.getAttribute("data-id"), target.getAttribute("data-richtung"));
