@@ -128,7 +128,15 @@
 }
 #ls-einstieg .chat svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 #ls-einstieg .chat__bild { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; object-position: 50% 25%; flex: none; }
-#ls-einstieg .chat__wer { display: flex; flex-direction: column; min-width: 0; }
+#ls-einstieg .chat__wer { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+/* SCHLIESSEN OBEN RECHTS - wo es jeder grosse Shop-Chat hat (Intercom,
+   Zendesk, Shopify Inbox). Der Pfeil links bleibt fuer "zurueck". */
+#ls-einstieg .chat__zu {
+  width: 44px; height: 44px; flex: none; margin-left: auto; border: 0; border-radius: 50%;
+  background: #eef3f2; color: #123b3e; display: grid; place-items: center; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+#ls-einstieg .chat__zu:active { background: #dfe8e6; }
+#ls-einstieg .chat__zu svg { width: 20px; height: 20px; }
 #ls-einstieg .chat__wer strong { font-size: 15px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #ls-einstieg .chat__wer span { font-size: 12.5px; color: #5d7577; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #ls-einstieg .chat__wer span[data-stand="online"]::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #22c55e; margin-right: 6px; vertical-align: 1px; }

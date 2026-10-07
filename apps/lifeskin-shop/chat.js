@@ -198,6 +198,7 @@ export class Chat {
     // immer, bevor der Chat aufgeht.
     this.knopf.addEventListener("pointerdown", () => { if (this.konfig.aktiv || this.zugang) this.#sdk().catch(() => {}); }, { passive: true });
     $("#chat-zurueck", this.ansicht)?.addEventListener("click", () => this.schliessen());
+    $("#chat-zu", this.ansicht)?.addEventListener("click", () => this.schliessen());
     this.feld.addEventListener("input", () => this.#eingabe());
     this.feld.addEventListener("keydown", (ereignis) => {
       // Am Rechner sendet Enter, Shift+Enter macht eine Zeile. Auf dem
@@ -289,6 +290,7 @@ export class Chat {
     this.ansicht.hidden = false;
     this.knopf.hidden = true;
     this.#grussWeg();
+    this.#seiteSperren();
     try { this.fenster.history.pushState({ ...(this.fenster.history.state || {}), lsChat: true }, ""); } catch { /* egal */ }
     this.#hoeheFolgen();
     this.#kopfStand();
@@ -308,27 +310,62 @@ export class Chat {
     this.ansicht.hidden = true;
     delete this.dok.documentElement.dataset.chat;
     this.#hoeheLoesen();
+    const warGesperrt = this.#seiteFreigeben();
     this.knopf.hidden = false;
     this.#knopfStand();
     this.#badge();
-    try { this.fenster.scrollTo({ top: this.scrollY || 0, behavior: "instant" }); } catch { this.fenster.scrollTo(0, this.scrollY || 0); }
+    // Zurueck an die Stelle von vorher - nur nach der Sperre (Telefon). Am
+    // Rechner durfte die Seite weiterscrollen, dort bleibt sie, wo sie ist.
+    if (warGesperrt) {
+      try { this.fenster.scrollTo({ top: this.scrollY || 0, behavior: "instant" }); } catch { this.fenster.scrollTo(0, this.scrollY || 0); }
+    }
     if (!vonZurueck && this.fenster.history.state?.lsChat) {
       try { this.fenster.history.back(); } catch { /* egal */ }
     }
   }
 
   // Die Hoehe des Fensters = der sichtbare Bereich (ueber der Tastatur).
+  // DIE SEITE DAHINTER STEHT STILL - wie bei den grossen Shop-Chats
+  // (Intercom, Shopify Inbox). overflow: hidden reicht auf iOS nicht:
+  // Geht die Tastatur auf, schiebt Safari die ganze Seite samt Chat nach
+  // oben, Kopf und Verlauf rutschen weg. Mit position: fixed am body kann
+  // er das nicht. Nur auf dem Telefon (Vollbild); am Rechner ist der Chat
+  // ein Fenster, die Seite darf weiter scrollen.
+  #seiteSperren() {
+    if (!this.fenster.matchMedia?.("(max-width: 599px)")?.matches) return;
+    const body = this.dok.body;
+    this.gesperrt = { y: this.fenster.scrollY || 0, stil: body.getAttribute("style") || "" };
+    Object.assign(body.style, { position: "fixed", top: `-${this.gesperrt.y}px`, left: "0", right: "0", width: "100%" });
+  }
+
+  #seiteFreigeben() {
+    if (!this.gesperrt) return false;
+    const { y, stil } = this.gesperrt;
+    this.gesperrt = null;
+    if (stil) this.dok.body.setAttribute("style", stil); else this.dok.body.removeAttribute("style");
+    this.scrollY = y;
+    return true;
+  }
+
   #hoeheFolgen() {
     const vv = this.fenster.visualViewport;
-    const setzen = () => {
+    // Einmal je Bild (requestAnimationFrame), nicht bei jedem Ereignis:
+    // Beim Aufgehen der Tastatur feuert iOS Dutzende resize/scroll.
+    let geplant = 0;
+    const jetzt = () => {
+      geplant = 0;
       const h = vv ? vv.height : this.fenster.innerHeight;
       const oben = vv ? vv.offsetTop : 0;
       this.ansicht.style.setProperty("--chat-h", `${Math.round(h)}px`);
       this.ansicht.style.setProperty("--chat-oben", `${Math.round(oben)}px`);
       if (this.unten) this.#nachUnten(false);
     };
+    const setzen = () => {
+      if (geplant) return;
+      geplant = (this.fenster.requestAnimationFrame || ((f) => setTimeout(f, 16)))(jetzt);
+    };
+    jetzt();
     this.hoeheSetzen = setzen;
-    setzen();
     vv?.addEventListener("resize", setzen);
     vv?.addEventListener("scroll", setzen);
     this.fenster.addEventListener("resize", setzen);
