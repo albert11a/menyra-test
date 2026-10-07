@@ -409,3 +409,22 @@
 #ls-einstieg .page .message-kopf b small{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-top:1px}
 #ls-einstieg .page .ig-erste__bild{position:relative;display:block;flex:1;min-height:110px;margin:0 -16px -14px;overflow:hidden;background:#fff;border-radius:0 0 16px 16px}
 #ls-einstieg .page .ig-erste__bild img{position:absolute;left:50%;top:-4px;width:72%;max-width:240px;height:auto;transform:translateX(-50%)}
+/* PREIS-PUNKT unter dem Kaufknopf oben (07.10., Inhaber): der Preis klein gerechnet
+   (pro Tag) und drei Gruende, die zum Kauf bewegen - kompakt, mit einem dezenten
+   Glanz ueber der Preis-Zeile (nur transform/opacity, nur einmal beim Laden). */
+#ls-einstieg .preis-punkt{position:relative;margin:18px 0 0;padding:14px 16px 12px;border-radius:16px;background:#fff;border:1px solid #b8e6cb;box-shadow:0 6px 18px #123b3e12;overflow:hidden;text-align:left}
+#ls-einstieg .preis-punkt::before{content:"";position:absolute;top:0;bottom:0;left:-40%;width:40%;background:linear-gradient(100deg,#fff0,#ffffffb3,#fff0);transform:translateX(0);animation:ls-glanz 2.4s ease-out .8s 1 both;pointer-events:none}
+@keyframes ls-glanz{from{transform:translateX(0)}to{transform:translateX(360%)}}
+#ls-einstieg .preis-punkt__rechnung{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:10px;border-bottom:1px dashed #cfe3d8}
+#ls-einstieg .preis-punkt__gross,#ls-einstieg .preis-punkt__tag{display:flex;flex-direction:column;line-height:1}
+#ls-einstieg .preis-punkt__gross b{font-size:30px;font-weight:800;letter-spacing:-1px;color:var(--ink)}
+#ls-einstieg .preis-punkt__tag{align-items:flex-end}
+#ls-einstieg .preis-punkt__tag b{font-size:30px;font-weight:800;letter-spacing:-1px;color:#0a8a5b;animation:ls-puls 2.6s ease-in-out 1.2s 2}
+@keyframes ls-puls{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+#ls-einstieg .preis-punkt small{font-size:12px;font-weight:600;color:var(--muted);margin-top:5px;letter-spacing:.1px}
+#ls-einstieg .preis-punkt__gleich{font-size:22px;font-weight:700;color:#9db5ad}
+#ls-einstieg .preis-punkt__liste{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px}
+#ls-einstieg .preis-punkt__liste li{display:flex;align-items:flex-start;gap:8px;font-size:14px;line-height:1.35;font-weight:600;color:var(--ink)}
+#ls-einstieg .preis-punkt__haken{flex:none;display:grid;place-items:center;width:18px;height:18px;margin-top:1px;border-radius:50%;background:#0a8a5b;color:#fff;font-size:11px;font-weight:800}
+@media (prefers-reduced-motion:reduce){#ls-einstieg .preis-punkt::before,#ls-einstieg .preis-punkt__tag b{animation:none}}
+@media (max-width:899px){#ls-einstieg .page .preis-punkt{order:3;margin-top:20px}}
