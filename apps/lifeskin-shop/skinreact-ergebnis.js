@@ -32,12 +32,12 @@ function shopPreise(dokument) {
 
 const produkt = (nr, emri, tekst, bild, b, h) => `<div class="sr-result__product"><strong>${nr} / ${emri}</strong><span>${tekst}</span><figure><img src="${bild}" width="${b}" height="${h}" alt="LifeSkin ${emri}" decoding="async"></figure></div>`;
 const produkteZwei = '<p>Trajtim + hidratim. Dy hapa te thjeshte.</p><div class="sr-result__products">'
-  + produkt("01", "LF ACNE", "Trajton aknet.", "/apps/lifeskin-shop/assets/lf-acne-3.jpg", 600, 750)
-  + produkt("02", "LF MOISTUR", "Hidraton lekuren.", "/apps/lifeskin-shop/assets/lf-moistur.jpg", 750, 1000) + '</div>';
+  + produkt("01", "LF ACNE", "Trajton aknet.", "/apps/lifeskin-shop/assets/lf-acne-3-klein.jpg", 360, 450)
+  + produkt("02", "LF MOISTUR", "Hidraton lekuren.", "/apps/lifeskin-shop/assets/lf-moistur-klein.jpg", 360, 480) + '</div>';
 const produkteDrei = '<p>Pastrim + trajtim + hidratim. Tre hapa te thjeshte.</p><div class="sr-result__products sr-result__products--tre">'
-  + produkt("01", "LF CLEAN", "Pastron lekuren.", "/apps/lifeskin-shop/assets/lf-clean.jpg", 750, 1000)
-  + produkt("02", "LF ACNE", "Trajton aknet.", "/apps/lifeskin-shop/assets/lf-acne-3.jpg", 600, 750)
-  + produkt("03", "LF MOISTUR", "Hidraton lekuren.", "/apps/lifeskin-shop/assets/lf-moistur.jpg", 750, 1000) + '</div>';
+  + produkt("01", "LF CLEAN", "Pastron lekuren.", "/apps/lifeskin-shop/assets/lf-clean-klein.jpg", 360, 480)
+  + produkt("02", "LF ACNE", "Trajton aknet.", "/apps/lifeskin-shop/assets/lf-acne-3-klein.jpg", 360, 450)
+  + produkt("03", "LF MOISTUR", "Hidraton lekuren.", "/apps/lifeskin-shop/assets/lf-moistur-klein.jpg", 360, 480) + '</div>';
 
 function ergebnisKarte(bereich, preise = {}, reserve = false) {
   const pershtatet = bereich.min >= 60;

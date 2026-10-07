@@ -30,7 +30,8 @@ function fixture(holen) {
   };
   const buttons = [node('hero-button'), node('footer-button')];
   buttons.forEach(button => { button.dataset.set = 'acne'; });
-  const price = node('price'); price.dataset.preis = 'cmimi'; price.textContent = '19 €';
+  // Startangebot seit 07.10.: 3 Produkte, 39 € (shop.js SHOP_START_SETET).
+  const price = node('price'); price.dataset.preis = 'cmimi'; price.textContent = '39 €';
   const documentElement = { dataset: {}, setAttribute(name, value) { this[name] = value; } };
   const dok = {
     documentElement, defaultView: {},
@@ -49,11 +50,11 @@ test('published Shop-Sets price is usable immediately despite slow Heart and sta
   const pending = deferred();
   const f = fixture(() => pending.promise);
   const loading = f.shop.angebotLaden();
-  assert.equal(f.shop.setVon('acne').cmimi, 19);
+  assert.equal(f.shop.setVon('acne').cmimi, 39);
   assert.equal(f.shop.angebotBereit, true);
   f.shop.setLegen('acne');
-  assert.deepEqual(f.events, [['AddToCart', 19], ['InitiateCheckout', 19]]);
-  assert.equal(f.node('#kasa-shuma').textContent, '19 €');
+  assert.deepEqual(f.events, [['AddToCart', 39], ['InitiateCheckout', 39]]);
+  assert.equal(f.node('#kasa-shuma').textContent, '39 €');
   pending.resolve(offer(19)); await loading;
   assert.equal(f.price.textContent, '19 €');
   assert.equal(f.dok.documentElement['data-shop-preis'], 'bereit');
@@ -78,13 +79,13 @@ test('buy button preserves full cart and AddToCart, then opens the real checkout
   assert.equal(f.node('#kasa-faleminderit').hidden, false);
 });
 
-test('offline keeps published 19 EUR purchasable; later Shop-Sets update also refreshes open checkout', async () => {
+test('offline keeps published 39 EUR purchasable; later Shop-Sets update also refreshes open checkout', async () => {
   let failure = true;
   const f = fixture(async () => { if (failure) throw Error('offline'); return offer(27); });
   await f.shop.angebotLaden(); f.shop.setLegen('acne');
   assert.equal(f.shop.angebotBereit, true);
   assert.equal(f.node('#shop-preisstatus').hidden, true);
-  assert.deepEqual(f.events, [['AddToCart', 19], ['InitiateCheckout', 19]]);
+  assert.deepEqual(f.events, [['AddToCart', 39], ['InitiateCheckout', 39]]);
   failure = false; await f.shop.angebotLaden();
   assert.equal(f.price.textContent, '27 €');
   assert.equal(f.node('#kasa-shuma').textContent, '27 €');
@@ -95,15 +96,15 @@ test('malformed config retains published Shop-Sets price', async () => {
   const f = fixture(async () => response({ broken: true }));
   await f.shop.angebotLaden();
   assert.equal(f.shop.angebotBereit, true);
-  assert.equal(f.shop.setVon('acne').cmimi, 19);
+  assert.equal(f.shop.setVon('acne').cmimi, 39);
 });
 
-test('missing Heart config retains 19 EUR instead of reverting to the old 39 EUR standard', async () => {
+test('missing Heart config retains the published 39 EUR instead of the 49 EUR standard for 3 products', async () => {
   const f = fixture(async () => ({ status: 404, ok: false }));
   await f.shop.angebotLaden();
-  assert.equal(f.price.textContent, '19 €');
+  assert.equal(f.price.textContent, '39 €');
   f.shop.setLegen('acne');
-  assert.equal(f.node('#kasa-shuma').textContent, '19 €');
+  assert.equal(f.node('#kasa-shuma').textContent, '39 €');
 });
 
 test('slow case index and large media cannot block the authoritative price', async () => {
@@ -196,11 +197,14 @@ test('hanging reads time out even on older browsers without AbortController', as
   finally { globalThis.AbortController = saved; }
 });
 
-test('initial HTML displays 19 EUR without waiting and mobile CSS puts purchase before product photos', () => {
+test('initial HTML displays the published 39 EUR (3 products) without waiting and mobile CSS puts purchase before product photos', () => {
   const html = readFileSync(new URL('../apps/lifeskin-shop/index.html', import.meta.url), 'utf8');
   const prices = [...html.matchAll(/data-preis="cmimi">([^<]+)/g)].map(m => m[1]);
   assert.ok(prices.length > 4);
-  assert.ok(prices.every(price => price === "19 €"));
+  assert.ok(prices.every(price => price === "39 €"));
+  // Startfassung im HTML = Startangebot im Code: nichts springt beim ersten Laden um.
+  assert.match(html, /<html [^>]*data-set-produkte="3">/);
+  assert.match(html, /data-preis="vecmas">87 €/);
   assert.doesNotMatch(html, /data-set="acne" disabled|visibility:hidden|Po ngarkohet cmimi/);
   assert.doesNotMatch(html, /lifeskinshop:cmimi/);
   const css = readFileSync(new URL('../apps/lifeskin-shop/shop-youth.css', import.meta.url), 'utf8');

@@ -181,8 +181,8 @@ test('compact result uses the current shop price and keeps low assessments out o
   ui.anzeigen({ id: '85-90', min: 85, max: 90, text: '85–90%' });
   assert.match(root.innerHTML, /data-preis="cmimi">35 €/);
   assert.match(root.innerHTML, /data-preis="vecmas" data-preis-zbritje>58 €/);
-  assert.match(root.innerHTML, /lf-acne-3.jpg/);
-  assert.match(root.innerHTML, /lf-moistur.jpg/);
+  assert.match(root.innerHTML, /lf-acne-3-klein\.jpg/);
+  assert.match(root.innerHTML, /lf-moistur-klein\.jpg/);
   prices.cmimi = '60 €';
   ui.anzeigen({ id: '90-95', min: 90, max: 95, text: '90–95%' });
   assert.match(root.innerHTML, /data-preis="cmimi">60 €/);

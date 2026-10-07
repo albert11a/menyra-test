@@ -33,7 +33,7 @@ import { mittelBauen, holeSammlung, FOTO_PRAEFIX } from "../lifeskin-landing/sho
 import { RASTE_STANDARD, rasteLaden, rasteFuer, rasteMitBildern } from "../../shared/lifeskin-raste.js";
 import {
   SETET_DOK, SHOP_HERO_DOK, SHOP_HERO_MAX, shopHeroDokId, SETET_STANDARD, MITTEL_FOTOS_STANDARD, MITTEL_NENTITUJ,
-  setetOderStandard, setetNormalisieren, aktiveSetet, nevojaKennung, setPreis
+  setetOderStandard, setetNormalisieren, aktiveSetet, nevojaKennung, setPreis, ACNE_FASSUNGEN
 } from "../../shared/lifeskin-shop-sets.js";
 
 import { medienListe, ausschnittStil } from "../../shared/lifeskin-medien.js";
@@ -153,7 +153,10 @@ export function acneDuoSets(sets) {
 }
 export function acneDuoCart(cart, sets) {
   const duo=sets[0];
-  const complete=duo && cart.ids?.length===duo.produkte.length && duo.produkte.every(id=>cart.ids.includes(id));
+  // Derselbe Set im Korb, den Heart inzwischen auf 2 oder 3 Mittel gestellt
+  // hat: der Korb folgt dem Set (statt leer zu werden und 0 € zu zeigen).
+  const gleichesSet=duo && cart.set===duo.id && cart.ids?.length>0;
+  const complete=duo && (gleichesSet || (cart.ids?.length===duo.produkte.length && duo.produkte.every(id=>cart.ids.includes(id))));
   return complete ? {ids:[...duo.produkte],set:duo.id,cmimi:setPreis(duo)} : {ids:[],set:''};
 }
 // Die Karte des Acne Duo, KOMPAKT (Wunsch Inhaber 29.09.): je Mittel eine
@@ -238,7 +241,15 @@ export function klientBlatt(m) {
 
 // Veroeffentlichtes Shop-Sets-Angebot, vom Inhaber am 06.10.2026 bestaetigt.
 // Keine Abhaengigkeit von Netz oder einem alten lokalen Preis beim Erstbesuch.
-export const SHOP_START_SETET = { lista: SETET_STANDARD.map(s => s.id === "acne" ? { ...s, cmimi: 19 } : s) };
+// Seit 07.10.2026: Seti kundër akneve mit 3 Produkten (LF CLEAN dazu), 39 EUR -
+// dieselbe Fassung wie das HTML (data-set-produkte="3"), damit beim ersten
+// Laden nichts umspringt. Heart kann weiter auf 2 Produkte stellen.
+const SHOP_FOTOS_KLEIN = Object.freeze({
+  "lf-acne": "/apps/lifeskin-shop/assets/lf-acne-3-klein.jpg",
+  "lf-moistur": "/apps/lifeskin-shop/assets/lf-moistur-klein.jpg",
+  "lf-clean": "/apps/lifeskin-shop/assets/lf-clean-klein.jpg"
+});
+export const SHOP_START_SETET = { lista: SETET_STANDARD.map(s => s.id === "acne" ? { ...s, produkte: [...ACNE_FASSUNGEN[3].produkte], cmimi: ACNE_FASSUNGEN[3].cmimi } : s) };
 
 const pause = (ms) => new Promise((fertig) => setTimeout(fertig, ms));
 
@@ -452,7 +463,9 @@ export class Dyqan {
     // LF CLEAN steht (noch) nicht in MITTEL_FOTOS_STANDARD. Ohne Foto
     // faellt ein Mittel aus mittelBauen - und damit aus dem Set, bis Heart
     // geantwortet hat (Preis oben kurz mit 2 statt 3 Mitteln gerechnet).
-    for (const [id, bild] of Object.entries({ ...MITTEL_FOTOS_STANDARD, "lf-clean": "/apps/lifeskin-shop/assets/lf-clean.jpg" })) {
+    // Im Laden stehen die Mittel nur klein (Set-Karte 72 px, Kasse 36 px) -
+    // deshalb die kleinen Dateien (360 px) statt der grossen Aufnahmen.
+    for (const [id, bild] of Object.entries({ ...MITTEL_FOTOS_STANDARD, ...SHOP_FOTOS_KLEIN })) {
       if (!(fotos.get(id) || []).length) fotos.set(id, [bild]);
     }
     return fotos;
