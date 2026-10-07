@@ -86,11 +86,8 @@
 @keyframes chat-gruss-rein { from { opacity: 0; transform: translateY(10px) scale(.96); } to { opacity: 1; transform: none; } }
 
 /* ── Das Fenster ─────────────────────────────────────────────────── */
-:root[data-chat] { overflow: hidden; overscroll-behavior: none; }
+:root[data-chat] { overflow: hidden; }
 :root[data-chat] body { overflow: hidden; overscroll-behavior: none; }
-/* Kein Ziehen-zum-Neuladen (Android Chrome) und kein Durchreichen des
-   Wischens an die Seite: Gewischt wird nur in der Liste (chat.js, wischen). */
-#ls-einstieg .chat { overscroll-behavior: none; }
 #ls-einstieg .chat {
   position: fixed;
   left: 0;
