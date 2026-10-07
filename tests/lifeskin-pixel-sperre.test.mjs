@@ -43,9 +43,11 @@ const HINWEIS = "Meta-Pixel/Conversions API geaendert. Das ist gesperrt: nur mit
 // und Conversions API (Browser, Vercel, Firebase, Wiederholung) nur nach
 // "Pranoj" (device.zustimmung === "ja"); das Fenster selbst steht seitdem
 // unter der Sperre.
+// Pixel-Aenderung erlaubt von Albert am 07.10.2026 (zweiter Auftrag): Fenster
+// "wie alle anderen Shops" - vorne "Pranoj" + "Cilësimet", Abwaehlen dort.
 const DATEIEN = Object.freeze({
   "apps/lifeskin/lifeskin-pixel.js": "c9fa98c2ff90c9a0",
-  "shared/lifeskin-zustimmung.js": "463ad2385bd5eb9f",
+  "shared/lifeskin-zustimmung.js": "adec1f5739b5ebbc",
   // Pixel-Aenderung erlaubt von Albert (albert11a, Inhaber) am 28.09.2026:
   // Bestellungen aus dem stillen Modus (order.still) gehen nicht an die CAPI.
   "functions/lifeskin-capi-payload.js": "cff0afe201cadbec",
