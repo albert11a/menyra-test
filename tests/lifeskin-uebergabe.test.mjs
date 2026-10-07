@@ -125,7 +125,8 @@ test('Abschluss-PATCH bleibt beim Wechsel zur Warteseite am Leben',async()=>{
 });
 
 test('der Ladebildschirm zeigt wieder Zeilen und Ring - neben dem Speichern, nicht statt ihm',()=>{
- assert.match(source,/const anzeige = this\.#aufbereitungZeigen\(\)/);
+ // Seit SkinReact: Im Laden-Scan zeigt SkinReact die Aufbereitung selbst.
+ assert.match(source,/const anzeige = (?:this\.skinreact \? Promise\.resolve\(\) : )?this\.#aufbereitungZeigen\(\)/);
  assert.match(source,/await anzeige;\s*\/\/ Erst ein bestaetigter Bericht/);
  const zeilen=source.slice(source.indexOf('  #aufbereitungZeilen() {'),source.indexOf('  async #aufbereitungZeigen() {'));
  for(const k of ['fotoAnalyseAufnahme','analyseZonen','textAnalyseAngaben'])assert.match(zeilen,new RegExp(k));

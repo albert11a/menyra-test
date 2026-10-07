@@ -79,12 +79,13 @@ test("im Laden kuerzer (29.09.): kein Pa detyrim, drei Foto-Regeln, Frage 1 ohne
   assert.deepEqual([...para.matchAll(/data-text="(fotoPara[A-Za-z]+)"/g)].map((m) => m[1]),
     ["fotoParaTitel", "fotoParaLicht", "fotoParaKlar", "fotoParaNah"]);
   assert.doesNotMatch(para, /weg-tipp|KËSHILLË PËR FOTON/);
-  // /lifeskin seit dem 01.10. ebenfalls ohne Make-up und Filter (Wunsch
-  // Inhaber), aber mit dem Tipp darunter.
+  // /lifeskin: Die freigegebene Fassung vom 04.10. ("approved LifeSkin")
+  // hat wieder fuenf Regeln mit Make-up und Filter und keinen Titel - der
+  // Laden bleibt bei seinen dreien.
   const lifeskin = lies("apps/lifeskin-landing/index.html");
-  const lifeskinPara = lifeskin.slice(lifeskin.indexOf('data-text="fotoParaTitel"'), lifeskin.indexOf('id="ls-fotoweiter"'));
+  const lifeskinPara = lifeskin.slice(lifeskin.indexOf('id="ls-fotopara"'), lifeskin.indexOf('id="ls-fotoweiter"'));
   assert.deepEqual([...lifeskinPara.matchAll(/data-text="(fotoPara[A-Za-z]+)"/g)].map((m) => m[1]),
-    ["fotoParaTitel", "fotoParaLicht", "fotoParaKlar", "fotoParaNah"]);
+    ["fotoParaMakeup", "fotoParaLicht", "fotoParaKlar", "fotoParaFilter", "fotoParaNah"]);
   // Frage 1 im Laden ohne "Shkëlqimi" und "Nuk e di", Frage 3 kuerzer.
   const { FRAGEN, frageFuerWeg } = await import("../apps/lifeskin/lifeskin-content.js");
   const frage = (id, weg) => frageFuerWeg(FRAGEN.find((f) => f.id === id), weg);
@@ -502,7 +503,8 @@ test("erst Korb und Kasse, dann die Kontrolle: der neue Fall steht unter Offen, 
 
 test("stille Links: kein Sprung auf einen Fall, den es im stillen Modus nicht gibt", () => {
   const app = lies("apps/lifeskin/lifeskin-app.js");
-  assert.match(app, /if \(this\.sitzung\.fortsetzbar\(\) && globalThis\.__mnyraStill !== true\) \{\s*globalThis\.location\.replace\(this\.sitzung\.berichtPfad\);/);
+  // Seit SkinReact zeigt der Laden sein Ergebnis selbst, statt zu springen.
+  assert.match(app, /if \(this\.sitzung\.fortsetzbar\(\) && globalThis\.__mnyraStill !== true\) \{\s*(?:if \(this\.skinreact\) \{ this\.#skinreactZeigen\(\); return; \}\s*)?globalThis\.location\.replace\(this\.sitzung\.berichtPfad\);/);
   assert.match(lies("apps/lifeskin-astra/astra.js"), /globalThis\.__mnyraStill === true\s*\? "Stiller Modus: Es wird kein Fall angelegt/);
 });
 
@@ -544,8 +546,9 @@ test("das Titelbild springt nicht: Rahmen von Anfang an 7:5, das eigene Bild kom
 test("der Abschnitt #zgjedhja spricht den Zweifel vor der Bestellung an (29.09., Wunsch Inhaber)", () => {
   const html = lies("apps/lifeskin-shop/index.html");
   const abschnitt = html.slice(html.indexOf('id="zgjedhja"'), html.indexOf("</section>", html.indexOf('id="zgjedhja"')));
-  assert.match(abschnitt, /çka i duhet lëkurës tënde\?/);
-  assert.match(abschnitt, /data-ls-start data-ls-quelle="shop">Bëje analizën/);
+  // Seit 04.10. (SkinReact, Wunsch Inhaber) ist #zgjedhja der Scan im Laden.
+  assert.match(abschnitt, /A i pershtatet lekures tende\?/);
+  assert.match(abschnitt, /data-ls-start data-ls-quelle="shop">Fillo skanimin/);
   assert.doesNotMatch(abschnitt, /data-set=/, "hier nur der Weg zu Dr. Gashi, gekauft wird oben");
   assert.doesNotMatch(lies("apps/lifeskin-shop/shop-weg.css"), /kontrolli/);
 });

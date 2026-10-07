@@ -161,7 +161,8 @@ test("die Therapieseite beginnt bei LifeSkin 2 mit dem Urteil und 'Rezervo setin
 
 test("Heart schreibt den Weg beim Freigeben in den Bericht", () => {
   const adapter = lies("apps/mnyra-heart/heart-lifeskin-adapter.js");
-  assert.match(adapter, /antworten = null, weg = "" \}\) \{/);
+  // Seit dem Analyse-Template (analyseTemplate) steht weg nicht mehr zuletzt.
+  assert.match(adapter, /antworten = null, weg = "",? /);
   assert.match(adapter, /weg: wegGueltig\(weg\),/);
   assert.match(lies("apps/mnyra-heart/heart.js"), /weg: wegDerSitzung\(findeSitzung\(store\.getState\(\)\.lifeskin \|\| \{\}, id\)\),/);
 });

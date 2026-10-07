@@ -129,7 +129,8 @@ test("zwischen Anzeige und Kamera steht nichts mehr", () => {
   // Anleitung dazwischen ist deshalb aus dem Weg: Der Tipp auf "Fillo
   // skanimin" fuehrt unmittelbar an die Kamera.
   const tippen = app.slice(app.indexOf("#startTippen() {"));
-  assert.match(tippen.slice(0, 1600),
+  // 3000 statt 1600 Zeichen: Seit SkinReact stehen davor zwei Zeilen mehr.
+  assert.match(tippen.slice(0, 3000),
     /if \(this\.variante === "kurz"\) \{ this\.#kameraStarten\(\); return; \}/,
     "Der Tipp fuehrt wieder auf einen Bildschirm dazwischen");
   // Und der Weg zurueck stimmt mit dem Weg vorwaerts ueberein: Er fuehrt

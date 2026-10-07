@@ -140,7 +140,8 @@ test("der Tipp fuehrt an die Menyra - aber nur, wo es sie gibt", () => {
   const tippen = methode(APP, "#startTippen");
   // Geprueft wird am Aufbau und nicht an der Fassung: So laufen die
   // beiden Seiten ohne diesen Bildschirm unveraendert weiter.
-  assert.match(tippen, /if \(\$\("#ls-wahl"\)\) \{/,
+  // Seit SkinReact: Der SkinReact-Scan im Laden geht an der Menyra vorbei.
+  assert.match(tippen, /if \((?:!this\.skinreact && )?\$\("#ls-wahl"\)\) \{/,
     "Der Tipp sucht die Menyra nicht am Aufbau");
   assert.match(tippen, /this\.sitzung\.schritt\("wahl"\);/,
     "Die Menyra hinterlaesst keine Spur - dann steht sie in keiner Zahl");
