@@ -134,6 +134,8 @@ function zeitAus(wert) {
 
 // Ist diese Sitzung gerade aktiv?
 export function istGeradeAktiv(sitzung, jetzt = Date.now(), fenster = LIVE_FENSTER_MS) {
+  // In Heart selbst angelegt: niemand ist gerade auf der Seite.
+  if (sitzung?.manuell === true || sitzung?.order?.manuell === true) return false;
   const zuletzt = zeitAus(sitzung?.updatedAt || sitzung?.createdAt);
   if (!zuletzt) return false;
   const alter = jetzt - zuletzt;

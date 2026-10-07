@@ -816,8 +816,11 @@ export function renderBestellungen(sitzungen, zeitraum = "heute", zustand = {}) 
   const zeitraumWort = (BESTELL_ZEITRAEUME.find((z) => z.id === zeitraum) || BESTELL_ZEITRAEUME[0]).label;
   const statusWort = (STATUS_CHIPS.find((c) => c.id === statusWahl) || STATUS_CHIPS[0]).label;
   const zahl = `${gewaehlt.length} ${statusWort} · ${zeitraumWort}`;
+  // OBEN RECHTS DAS "+" (07.10., Inhaber): eine Bestellung selbst anlegen
+  // (am Telefon, aus WhatsApp, im Chat) - heart-bestellung-neu.js.
+  const plus = `<button type="button" class="heart-bestellung-plus" data-action="lifeskin-bestellung-neu" aria-label="Bestellung selbst anlegen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>`;
   if (!alle.length) {
-    return alsKlapp(leererBlock("Bestellungen", "Noch keine Bestellung."), "bestellungen", { zahl: "keine" });
+    return alsKlapp(leererBlock("Bestellungen", "Noch keine Bestellung."), "bestellungen", { zahl: "keine", kopfExtra: plus });
   }
 
   // Nicht still abschneiden: bis 300 Zeilen, und darueber ein Hinweis.
@@ -831,7 +834,7 @@ export function renderBestellungen(sitzungen, zeitraum = "heute", zustand = {}) 
       </span>
       <span class="heart-lifeskin-zeile__wert">${escapeHtml(euro(s.order?.total))}</span>
       <span class="heart-lifeskin-marke ${s.order?.still ? "heart-lifeskin-marke--offen" : "heart-lifeskin-marke--neu"}">${
-        escapeHtml(s.order?.still ? "still · Test?" : ({ bestaetigt: "bestätigt", storniert: "storniert" })[s.order?.status] || s.order?.status || "neu")}</span>
+        escapeHtml(s.order?.still ? "still · Test?" : ({ bestaetigt: "bestätigt", storniert: "storniert" })[s.order?.status] || (s.order?.manuell ? "von Heart" : s.order?.status || "neu"))}</span>
     </button>`).join("") + (gewaehlt.length > 300
     ? `<p class="heart-lifeskin-leer">+ ${gewaehlt.length - 300} ältere – kleineren Zeitraum wählen.</p>` : "");
 
@@ -842,7 +845,7 @@ export function renderBestellungen(sitzungen, zeitraum = "heute", zustand = {}) 
       ${statusChips}
       ${zeilen ? `<div class="heart-lifeskin-zeilen">${zeilen}</div>`
         : `<p class="heart-lifeskin-leer">In diesem Zeitraum keine Bestellung unter „${escapeHtml(statusWort)}“.</p>`}
-    </section>`, "bestellungen", { zahl, ton: gewaehlt.length && statusWahl === "porosi" ? "offen" : "" });
+    </section>`, "bestellungen", { zahl, ton: gewaehlt.length && statusWahl === "porosi" ? "offen" : "", kopfExtra: plus });
 }
 
 // NACHFASSEN (30.09., Inhaber): JEDER WARENKORB, JEDE KASSE - SOFORT.

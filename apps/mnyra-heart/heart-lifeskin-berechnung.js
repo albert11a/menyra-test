@@ -333,6 +333,11 @@ export function normalisiere(id, rohdaten) {
     korbStueck: Number.isFinite(Number(daten.korbStueck)) ? Number(daten.korbStueck) : 0,
     adresseBegonnen: daten.adresseBegonnen === true,
     shopKauf: daten.shopKauf === true,
+    // IN HEART SELBST ANGELEGT (das "+" der Karte Bestellungen, 07.10.):
+    // eine echte Bestellung mit Umsatz - aber nie ein Besuch, ein
+    // Warenkorb oder eine Kasse auf der Seite. Sonst stuende jede
+    // Bestellung vom Telefon als "Shporta 1 · Arka 1" in den Zahlen.
+    manuell: bestellung?.manuell === true,
     linkKopiert: daten.linkKopiert === true,
     // Die drei Zustaende, um die es im Bericht geht.
     hatBestellt: Boolean(bestellung?.orderId),
@@ -759,11 +764,13 @@ export const KAUF_STUFEN = Object.freeze([
 // Kasse. Der Knopf steht als timings.kauf.knopf in der Sitzung - wer ihn
 // gedrueckt und die Kasse nicht geoeffnet hat, hatte trotzdem etwas im Korb.
 export function imWarenkorb(sitzung) {
+  if (sitzung?.manuell === true) return false;
   return sitzung?.imKorb === true || sitzung?.kasseGeoeffnet === true
     || Boolean(sitzung?.timings?.kauf?.knopf) || sitzung?.hatBestellt === true;
 }
 
 export function anschriftBegonnen(sitzung) {
+  if (sitzung?.manuell === true) return false;
   return sitzung?.adresseBegonnen === true || sitzung?.hatAnschrift === true
     || sitzung?.hatBestellt === true
     || stufenIndex(sitzung?.step) >= stufenIndex("address");
@@ -774,6 +781,7 @@ export function anschriftBegonnen(sitzung) {
 // Kasse des Ladens) oder die Anschrift wurde begonnen. Wer bestellt hat,
 // war zwangslaeufig dort (anschriftBegonnen nimmt hatBestellt mit).
 export function warAnDerKasse(sitzung) {
+  if (sitzung?.manuell === true) return false;
   return sitzung?.kasseGeoeffnet === true || anschriftBegonnen(sitzung);
 }
 
@@ -798,7 +806,7 @@ export function kaufImZeitraum(sitzung, art, zeitraum = "heute") {
 }
 
 export function baueKauftrichter(sitzungen) {
-  const alle = Array.isArray(sitzungen) ? sitzungen : [];
+  const alle = (Array.isArray(sitzungen) ? sitzungen : []).filter((s) => s?.manuell !== true);
   const stufen = [
     { ...KAUF_STUFEN[0], treffer: istLanding },
     {

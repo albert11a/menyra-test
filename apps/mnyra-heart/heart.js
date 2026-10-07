@@ -9,6 +9,7 @@ import { shitjaLesen } from "../../shared/lifeskin-shitja.js";
 import { promptV8Fuellen } from "./heart-lifeskin-prompt.js";
 import { meldeGeraetAn, meldeGeraetAb, istPushAngemeldet } from "./heart-push.js";
 import { starteHeartChat } from "./heart-chat.js";
+import { oeffneBestellungNeu } from "./heart-bestellung-neu.js";
 import { pfadSatz as chatPfadSatz } from "./heart-lifeskin-render.js";
 import { kannPush } from "./heart-push-utils.js";
 import { createHeartGoAdapter } from "./heart-go-adapter.js";
@@ -4153,6 +4154,15 @@ const operations = {
   openLifeskinSitzung(sitzungId) { return oeffneLifeskinSitzung(sitzungId); },
   // Der Chat mit den Kunden (heart-chat.js, Knopf oben).
   openChat() { heartChat?.oeffnen(); },
+  // Eine Bestellung selbst anlegen (das "+" der Karte "Bestellungen").
+  // Danach steht sie sofort unter Heute · Porosiat.
+  openBestellungNeu() {
+    const s = store.getState();
+    oeffneBestellungNeu({
+      autor: s.auth.profile?.displayName || s.auth.profile?.name || s.auth.user?.displayName || "",
+      nachher: () => actions.patchLifeskin({ bestellZeitraum: "heute", bestellStatus: "porosi" })
+    });
+  },
   closeLifeskinSitzung() { schliesseLifeskinSitzung(); },
   lifeskinZuruecksetzen() { return setzeLifeskinZurueck(); },
   lifeskinResetAbbrechen() { actions.patchLifeskin({ resetGefragt: false }); },
