@@ -40,7 +40,7 @@ test("die Seite: Laden als Einstieg, darunter die Bildschirme der Analyse", () =
   assert.doesNotMatch(HTML, /checkout-handoff|\/lifeskin2\?still|href="\/lifeskin2"/, "keine Weiterleitung mehr auf /lifeskin2");
 });
 
-test("das Stilblatt des Ladens fasst die Analyse nicht an, die Leiste haengt oben", () => {
+test("das Stilblatt des Ladens fasst die Analyse nicht an, die Leiste haengt unten (07.10.)", () => {
   const css = lies("apps/lifeskin-shop/shop.css");
   const selektoren = css.replace(/\/\*[\s\S]*?\*\//g, "").replace(/@keyframes[^{]*\{(?:[^{}]*\{[^}]*\})*[^}]*\}/g, "")
     .split("}").map((r) => r.split("{")[0]).filter((x) => x.trim() && !x.trim().startsWith("@"));
@@ -52,7 +52,10 @@ test("das Stilblatt des Ladens fasst die Analyse nicht an, die Leiste haengt obe
     }
   }
   const rahmen = lies("apps/lifeskin-shop/shop-rahmen.css");
-  assert.match(rahmen, /#ls-einstieg \.sticky \{\s*bottom: auto;\s*top: 100vh;\s*top: 100dvh;\s*transform: translate\(-50%, -100%\);/);
+  // An "bottom: 0", nicht mehr an 100dvh: dvh rechnet beim Scrollen nicht mit (die Leiste "kam nicht nach").
+  assert.match(rahmen, /#ls-einstieg \.sticky \{\s*top: auto;\s*bottom: 0;\s*transform: translateX\(-50%\);/);
+  // Offene Tastatur: Leiste weg (der alte Grund fuer dvh).
+  assert.match(rahmen, /:root\[data-tippt\] #ls-einstieg \.sticky \{ display: none; \}/);
   assert.match(rahmen, /:root\[data-ansicht\] #ls-einstieg > :not\(#kasa\) \{ display: none !important; \}/);
 });
 
@@ -142,9 +145,9 @@ test("Heart: Tab 'Lifeskin Shop' mit eigenem Trichter, Umsatz und Sets", async (
     { step: "ordered", shopKauf: true, hatBestellt: true, phone: "1", kasseGeoeffnet: true, adresseBegonnen: true, imKorb: true, korbWert: 39, order: { kind: "shop", total: 39, set: { titulli: "Seti për njollat" } } },
     { step: "numri", phone: "2", typ: "foto" }
   ]);
-  // Seite 1-8: ohne Messung zaehlt produkteGesehen als "bis Dy produkte" (4).
-  assert.deepEqual(w.seite.map((s) => s.anzahl), [4, 1, 1, 1, 0, 0, 0, 0]);
-  // Kauf 9-12: Shport, Arka, Adresa, Gotat Nalt.
+  // Seite 1-7 (Instagram ist seit 07.10. weg): ohne Messung zaehlt produkteGesehen als "bis Dy produkte" (4).
+  assert.deepEqual(w.seite.map((s) => s.anzahl), [4, 1, 1, 1, 0, 0, 0]);
+  // Kauf 8-11: Shport, Arka, Adresa, Gotat Nalt.
   assert.deepEqual(w.kauf.map((s) => s.anzahl), [2, 1, 1, 1]);
   assert.equal(w.besucher, 4);
   assert.deepEqual(w.analyse.map((s) => s.anzahl), [1, 1, 0], "ein Kauf mit Nummer an der Kasse ist kein Analyse-Lead");

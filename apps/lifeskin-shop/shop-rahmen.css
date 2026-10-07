@@ -28,17 +28,25 @@ body:has(#ls-einstieg[data-aktiv="ja"]) { font-size: 16px; line-height: normal; 
   letter-spacing: normal;
 }
 
-/* DIE LEISTE UNTEN HAENGT OBEN (100dvh) UND NICHT AN "bottom" - aus
- * demselben Grund wie auf /lifeskin (landing.css, .dock): iOS behaelt nach
- * der Tastatur eine zu kleine Hoehe fuer alles Feste, "unten" liegt dann
- * mitten im Bild. dvh folgt der Tastatur nicht. Versteckt ist sie
- * display: none (hidden) - dann faerbt Safari seine Leiste auch nicht mehr. */
+/* DIE LEISTE UNTEN HAENGT AN "bottom: 0" (07.10., Inhaber: "kommt beim
+ * Scrollen nicht nach"). Vorher hing sie an top: 100dvh - Safari und
+ * Chrome rechnen dvh beim Scrollen aber nicht mit, waehrend die
+ * Adressleiste ein- und ausfaehrt, sondern erst, wenn das Scrollen
+ * stoppt: Die Leiste hing so lange zu hoch oder halb unter dem Rand.
+ * "bottom: 0" folgt dem Bildschirmrand sofort. Der alte Grund fuer dvh
+ * (iOS: nach der Tastatur liegt "unten" mitten im Bild) ist anders
+ * geloest: Solange ein Feld den Fokus hat, ist die Leiste weg
+ * (shop.js, data-tippt). Versteckt bleibt sie display: none (hidden) -
+ * dann faerbt Safari seine Leiste auch nicht mehr. */
 #ls-einstieg .sticky {
-  bottom: auto;
-  top: 100vh;
-  top: 100dvh;
-  transform: translate(-50%, -100%);
+  top: auto;
+  bottom: 0;
+  transform: translateX(-50%);
+  animation: ls-sticky-rein .22s ease-out both;
 }
+:root[data-tippt] #ls-einstieg .sticky { display: none; }
+@keyframes ls-sticky-rein { from { transform: translate(-50%, 100%); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { #ls-einstieg .sticky { animation: none; } }
 
 /* Das Titelbild aus Heart ist schon auf 7:5 zugeschnitten: Der Rahmen
    nimmt genau dieses Verhaeltnis, damit nichts mehr abgeschnitten wird. */

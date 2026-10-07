@@ -41,14 +41,16 @@ export const SHOP_ABSCHNITTE = Object.freeze([
   { nr: 4, id: "produkte", wahl: "#setet", name: "Dy produkte" },
   { nr: 5, id: "skinreact", wahl: "#zgjedhja", name: "SkinReact" },
   { nr: 6, id: "garancia", wahl: "#garancia", name: "Garancioni" },
-  { nr: 7, id: "instagram", wahl: "main > .social-presence", name: "Instagram" },
-  { nr: 8, id: "faq", wahl: "main > .faq", name: "F.A.Q" }
+  // "Instagram" (main > .social-presence) ist seit dem 07.10. nicht mehr
+  // auf der Seite (Inhaber) - F.A.Q ist jetzt 7. Alte Besuche mit
+  // instagram: true waren an der Garantie vorbei (shopTiefe).
+  { nr: 7, id: "faq", wahl: "main > .faq", name: "F.A.Q" }
 ].map((a) => Object.freeze(a)));
 
 // Version 1 (s1 ... s9) in die Nummern von heute. Alt 6 ("Dërgesa",
 // #rutina) traegt die Garantie in sich, alt 9 ("Fundi") liegt unter der
 // F.A.Q - wer dort war, war an ihr vorbei.
-const V1_NACH_V2 = Object.freeze({ 1: 1, 2: 2, 3: 4, 4: 5, 5: 3, 6: 6, 7: 7, 8: 8, 9: 8 });
+const V1_NACH_V2 = Object.freeze({ 1: 1, 2: 2, 3: 4, 4: 5, 5: 3, 6: 6, 7: 6, 8: 7, 9: 7 });
 
 // Die Felder, die ein neu gesehener Abschnitt schreibt.
 export function shopSichtPatch(nr) {
@@ -64,7 +66,7 @@ export function skanimGedrueckt(sitzung) {
 }
 
 // Wie weit dieser Besuch gekommen ist: der tiefste gesehene Abschnitt
-// (1 ... 8). Wer die Seite geoeffnet hat, stand mindestens bei 1.
+// (1 ... 7). Wer die Seite geoeffnet hat, stand mindestens bei 1.
 //
 // BESUCHE VON VOR DER MESSUNG haben kein timings.shop. Fuer sie gilt, was
 // es schon gab: produkteGesehen (der Set-Abschnitt stand im Bild oder die
@@ -74,6 +76,7 @@ export function shopTiefe(sitzung) {
   if (!sicht || typeof sicht !== "object") return sitzung?.produkteGesehen === true ? 4 : 1;
   let tiefe = 1;
   for (const a of SHOP_ABSCHNITTE) if (sicht[a.id] === true) tiefe = Math.max(tiefe, a.nr);
+  if (sicht.instagram === true) tiefe = Math.max(tiefe, 6);
   for (const [alt, neu] of Object.entries(V1_NACH_V2)) if (sicht[`s${alt}`] === true) tiefe = Math.max(tiefe, neu);
   return tiefe;
 }
