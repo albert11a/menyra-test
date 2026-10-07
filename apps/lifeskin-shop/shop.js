@@ -340,7 +340,12 @@ export const HERO_NUR_STAND = "?mask.fieldPaths=updatedAt&mask.fieldPaths=anzahl
 // gleich sein (tests/lifeskin-shop-weg.test.mjs).
 export const HERO_ADRESSE = `${BASIS}/${SHOP_HERO_DOK}`;
 
-// The hero and the complete scan section jointly own sticky visibility.
+// DIE KAUFLEISTE UNTEN (07.10., Inhaber: "kommt beim Scrollen nicht nach").
+// Wie bei den grossen Shops: Sie steht, sobald der Kaufknopf oben aus dem
+// Bild ist ("hero" = dieser Knopf, nicht mehr der ganze, lange Kopf mit
+// den Fotos), und weg ist sie nur, solange er zu sehen ist oder der
+// Skan-Kreis mit "Fillo skanimin" ("scan" = .sr-workspace, nicht mehr der
+// ganze Abschnitt SkinReact) - dort hat die Seite ihren eigenen Knopf.
 export function shopStickyBeobachten({ sticky, hero, scan, Beobachter = globalThis.IntersectionObserver }) {
   if (!sticky || !hero || !Beobachter) return null;
   const sichtbar = new Map([[hero, true], ...(scan ? [[scan, false]] : [])]);
@@ -1301,7 +1306,17 @@ export class Dyqan {
     const hero = $(".hero", this.dok);
     if (!("IntersectionObserver" in globalThis)) return;
     if (sticky && hero) {
-      shopStickyBeobachten({ sticky, hero, scan: $(".skinreact-section", this.dok) });
+      shopStickyBeobachten({
+        sticky,
+        hero: $(".hero [data-set]", this.dok) || hero,
+        scan: $("#zgjedhja .sr-workspace", this.dok) || $(".skinreact-section", this.dok)
+      });
+      // OFFENE TASTATUR (ein Feld hat den Fokus): Leiste weg. Sonst schwebt
+      // sie auf iOS ueber der Tastatur mitten im Bild - der Grund, warum
+      // sie bisher an 100dvh hing statt unten (shop-rahmen.css).
+      const feld = (ziel) => ziel?.matches?.("input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]), textarea, select");
+      this.dok.addEventListener("focusin", (e) => { if (feld(e.target)) this.dok.documentElement.dataset.tippt = "ja"; });
+      this.dok.addEventListener("focusout", (e) => { if (feld(e.target)) delete this.dok.documentElement.dataset.tippt; });
     }
     const waechter = new IntersectionObserver((eintraege) => {
       if (!eintraege.some((x) => x.isIntersecting)) return;
