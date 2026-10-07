@@ -343,3 +343,6 @@
 #ls-einstieg button:is(.cta,.primary)[data-set]:focus-visible,#ls-einstieg #kasa-dergo:focus-visible{outline:3px solid #08686c;outline-offset:4px}
 /* Der Scan bleibt als zweiter Weg sichtbar und lesbar. */
 #ls-einstieg .page #zgjedhja #ls-start{background:#e8f2f0;color:#07565a;border:1px solid #b5cfcc}
+/* Set mit 3 Mitteln (data-set-produkte="3", siehe index.html): drei Bilder nebeneinander. */
+html[data-set-produkte="3"] #ls-einstieg .page .product-pair{grid-template-columns:1fr 1fr 1fr;gap:8px}
+html[data-set-produkte="3"] #ls-einstieg .page .product-pair .image-label{font-size:9px}

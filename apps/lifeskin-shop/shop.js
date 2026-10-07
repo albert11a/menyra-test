@@ -141,13 +141,19 @@ export function einzelAusSets(mittel, setet) {
   return imSet.size ? (mittel || []).filter((m) => imSet.has(m.id)) : (mittel || []);
 }
 
-// Current campaign sells only this complete duo; Heart still owns its title and images.
+// Current campaign sells only this complete set; Heart still owns its title, images and price.
+// LF ACNE + LF MOISTUR, wahlweise mit LF CLEAN als drittem Mittel (Wunsch
+// Inhaber 07.10.) - welches davon gilt, entscheidet das Set in Heart.
+const ACNE_SET_KERN = Object.freeze(['lf-acne', 'lf-moistur']);
+const ACNE_SET_DAZU = Object.freeze(['lf-clean']);
 export function acneDuoSets(sets) {
-  return (sets || []).filter(s => s.produkte?.length === 2 && s.produkte.includes('lf-acne') && s.produkte.includes('lf-moistur')).slice(0, 1);
+  const erlaubt = (id) => ACNE_SET_KERN.includes(id) || ACNE_SET_DAZU.includes(id);
+  return (sets || []).filter(s => Array.isArray(s.produkte) && ACNE_SET_KERN.every(id => s.produkte.includes(id))
+    && s.produkte.every(erlaubt) && new Set(s.produkte).size === s.produkte.length).slice(0, 1);
 }
 export function acneDuoCart(cart, sets) {
   const duo=sets[0];
-  const complete=duo && cart.ids?.length===2 && duo.produkte.every(id=>cart.ids.includes(id));
+  const complete=duo && cart.ids?.length===duo.produkte.length && duo.produkte.every(id=>cart.ids.includes(id));
   return complete ? {ids:[...duo.produkte],set:duo.id,cmimi:setPreis(duo)} : {ids:[],set:''};
 }
 // Die Karte des Acne Duo, KOMPAKT (Wunsch Inhaber 29.09.): je Mittel eine
@@ -155,13 +161,20 @@ export function acneDuoCart(cart, sets) {
 // Anwendung und volle Zusammensetzung (Angaben des Inhabers) stehen fuer
 // beide zusammen hinter EINEM Aufklapper - wer sie sucht, findet sie; wer
 // kaufen will, muss nicht daran vorbeiscrollen.
+// Die Reihenfolge ist die der Anwendung; die Nummer im Schritt zaehlt nur
+// die Mittel, die das Set wirklich traegt.
 const DUO_HAPAT = [
-  { id: 'lf-acne', hapi: 'HAPI 1 · MBRËMJE', aktiv: 'BPO 5 %',
+  { id: 'lf-clean', hapi: 'MËNGJES DHE MBRËMJE', aktiv: 'Pastrues i butë · pH 5.5',
+    dobi: 'Pastron · Nuk e than lëkurën',
+    si: 'Në lëkurë të lagësht, një pompim, 20 sekonda me lëvizje rrethore. Shpëlaje me ujë të vakët dhe thaje me prekje. Pastaj LF ACNE ose LF MOISTUR.',
+    kryesore: 'Amfoterikë të butë, Glycerin, Panthenol (B5)',
+    perberja: 'Amfoterikë të butë, Glycerin, Panthenol (B5) · pH 5.5.' },
+  { id: 'lf-acne', hapi: 'MBRËMJE', aktiv: 'BPO 5 %',
     dobi: 'Largon aknet • shenjat • poret',
     si: 'Në mbrëmje, një shtresë e hollë sa një bizele, vetëm në zonat me akne, mbi lëkurë të pastër e të thatë. Javën e parë çdo ditë të dytë, pastaj çdo mbrëmje.',
     kryesore: 'Benzoyl Peroxide (50 mg/g), Glycerin, Aqua',
     perberja: 'Benzoyl Peroxide (50 mg/g), Carbomer, Sodium Olefin Sulfonate, Glycerin, Methacrylate Copolymer, Sodium Hydroxide, Aqua.' },
-  { id: 'lf-moistur', hapi: 'HAPI 2 · MËNGJES DHE MBRËMJE', aktiv: 'Ceramide + acid hialuronik',
+  { id: 'lf-moistur', hapi: 'MËNGJES DHE MBRËMJE', aktiv: 'Ceramide + acid hialuronik',
     dobi: 'Hidraton · Forcon barrierën',
     si: 'Sa një kokërr bathe. Në mëngjes mbi lëkurë të pastër; në mbrëmje pas LF ACNE, kur lëkura e ka thithur.',
     kryesore: 'Ceramide NP, AP, EOP · Sodium Hyaluronate · Glycerin',
@@ -174,15 +187,16 @@ const PAK_SETE_ZEILE = '<span class="pak-sete"><i aria-hidden="true"></i>Vetëm 
 export function duoCard(s, mittel, { fotos = true } = {}) {
   const price=setPreis(s), vecmas=(s.produkte?.length||2)*preisFuer(1), zbritje=vecmas>price?Math.round((1-price/vecmas)*100):0;
   const emri=(h)=>e(mittel.find(m=>m.id===h.id)?.name || h.id.toUpperCase().replace('LF-','LF '));
-  const hapat=DUO_HAPAT.map(h=>{
+  const imSet=DUO_HAPAT.filter(h=>(s.produkte||ACNE_SET_KERN).includes(h.id));
+  const hapat=imSet.map((h,i)=>{
     const m=mittel.find(m=>m.id===h.id);
     const foto=fotos ? (m?.fotot?.[0] || MITTEL_FOTOS_STANDARD[h.id] || '') : '';
     // KEIN FREMDES FOTO VORAB (30.09.): Bis Heart antwortet, steht ein
     // ruhiger Platzhalter gleicher Groesse da - sonst sprang das
     // Standardfoto beim Neuladen auf das Foto aus Heart.
-    return `<div class="duo-hap">${foto ? `<img class="duo-hap-foto" src="${e(foto)}" width="72" height="90" alt="${emri(h)}" loading="lazy" decoding="async">` : '<span class="duo-hap-foto duo-hap-foto--leer" aria-hidden="true"></span>'}<div><small>${h.hapi}</small><h3>${emri(h)} <span>${e(m?.inhalt || '30 ml')}</span></h3><p class="duo-aktiv">${h.aktiv}</p><p class="duo-dobi">${h.dobi}</p></div></div>`;
+    return `<div class="duo-hap">${foto ? `<img class="duo-hap-foto" src="${e(foto)}" width="72" height="90" alt="${emri(h)}" loading="lazy" decoding="async">` : '<span class="duo-hap-foto duo-hap-foto--leer" aria-hidden="true"></span>'}<div><small>HAPI ${i+1} · ${h.hapi}</small><h3>${emri(h)} <span>${e(m?.inhalt || '30 ml')}</span></h3><p class="duo-aktiv">${h.aktiv}</p><p class="duo-dobi">${h.dobi}</p></div></div>`;
   }).join('');
-  const detaje=DUO_HAPAT.map(h=>`<h4>${emri(h)}</h4><p><b>Si përdoret:</b> ${h.si}</p><p class="duo-inci"><b>Përbërja kryesore:</b> ${h.kryesore}</p><details class="duo-inci-mehr"><summary>Lexo më shumë</summary><p class="duo-inci">${h.perberja}</p></details>`).join('');
+  const detaje=imSet.map(h=>`<h4>${emri(h)}</h4><p><b>Si përdoret:</b> ${h.si}</p><p class="duo-inci"><b>Përbërja kryesore:</b> ${h.kryesore}</p><details class="duo-inci-mehr"><summary>Lexo më shumë</summary><p class="duo-inci">${h.perberja}</p></details>`).join('');
   return `<article class="duo-card"><div class="duo-hapat">${hapat}</div><details class="duo-product"><summary><span class="duo-product-ikona">${ikone('FlaskConical')}</span><span class="duo-product-teksti">Përdorimi dhe përbërja<small>Si përdoret · përbërësit</small></span>${ikone('Plus')}</summary><div class="duo-product-body">${detaje}<p class="duo-shenim">Pa parfum · Kujdes dermatologjik nga Gjermania</p></div></details><div class="duo-ndjekje"><p class="duo-ndjekje-titull">${ikone('Stethoscope')}<b>Përfshirë në çmim</b></p><ul><li>${ikone('Check')}Mbështetje personale nga Dr. Violeta Gashi</li><li>${ikone('Check')}Plan ushqimor kundër akneve</li><li>${ikone('Check')}Këshilla për gjumin, stresin dhe kujdesin ditor</li><li>${ikone('Check')}Ndihmë e personalizuar gjatë gjithë kurës</li></ul></div><div class="duo-cmimi"><span class="duo-cmimi-etiketa">Çmimi:</span><span class="duo-cmimi-vlera">${zbritje ? `<s data-preis="vecmas" data-preis-zbritje>${vecmas} €</s>` : ""}<strong data-preis="cmimi">${price} €</strong></span>${zbritje ? `<em class="zbritje" data-preis="zbritje-fjale" data-preis-zbritje>ZBRITJE −${zbritje} %</em>` : "<span></span>"}${PAK_SETE ? PAK_SETE_ZEILE : "<span></span>"}</div><button type="button" class="primary" data-set="${e(s.id)}"><span>Porosit setin · <span data-preis="cmimi">${price} €</span></span> ${ikone('ArrowUpRight')}</button><ul class="besim"><li>${ikone('Truck')}1–3 ditë</li><li>${ikone('Banknote')}Paguani te dera</li><li aria-label="Vlerësimi i klientëve: 4.8 nga 5">${ikone('Star')}4.8/5 vlerësim</li></ul></article>`;
 }
 
@@ -435,7 +449,10 @@ export class Dyqan {
 
   // ── Laden aus Heart ────────────────────────────────────────────────
   #standardFotos(fotos) {
-    for (const [id, bild] of Object.entries(MITTEL_FOTOS_STANDARD)) {
+    // LF CLEAN hat noch kein eigenes Foto in den Standardbildern. Ohne Foto
+    // faellt ein Mittel aus mittelBauen - und damit aus dem Set, bis Heart
+    // geantwortet hat (Preis oben kurz mit 2 statt 3 Mitteln gerechnet).
+    for (const [id, bild] of Object.entries({ ...MITTEL_FOTOS_STANDARD, "lf-clean": "/apps/lifeskin-shop/assets/lf-clean-platzhalter.svg" })) {
       if (!(fotos.get(id) || []).length) fotos.set(id, [bild]);
     }
     return fotos;
@@ -583,8 +600,9 @@ export class Dyqan {
   async #setetUebernehmen(setDok) {
     const da = new Set(this.mittel.map((m) => m.id));
     this.setet = acneDuoSets(aktiveSetet(setetOderStandard(setDok)))
-      .map((s) => ({ ...s, produkte: s.produkte.filter((id) => da.has(id)) }))
-      .filter((s) => s.produkte.length === 2);
+      // Fehlt ein Mittel des Sets, faellt das ganze Set weg - nie ein
+      // kleineres Set zum Preis des groesseren.
+      .filter((s) => s.produkte.every((id) => da.has(id)));
     // Der Korb darf nur Mittel tragen, die es noch gibt.
     this.korb = acneDuoCart(this.korb, this.setet);
     korbSchreiben(this.speicher, this.korb);
@@ -629,6 +647,21 @@ export class Dyqan {
     const preis = $("#sticky-price", this.dok);
     if (preis) preis.textContent = `${setPreis(erstes)} €`;
     this.#preiseZeigen(erstes);
+    this.#setAnzahlZeigen(erstes);
+  }
+
+  // DIE SEITE FUER 2 ODER 3 MITTEL (Inhaber 07.10.): Traegt das Set aus
+  // Heart LF CLEAN, schaltet data-set-produkte="3" alle Texte und Bilder
+  // auf drei Mittel um (ls-drei und .nur-drei in index.html). Sonst bleibt die Seite
+  // wie bisher. Das Foto von LF CLEAN kommt aus Heart, sobald es eines gibt.
+  #setAnzahlZeigen(set) {
+    const drei = set.produkte.includes("lf-clean");
+    this.dok.documentElement?.setAttribute("data-set-produkte", drei ? "3" : "2");
+    const foto = this.mittelVon("lf-clean")?.fotot?.[0];
+    if (!drei || !foto) return;
+    for (const img of this.dok.querySelectorAll('img[data-mittel-foto="lf-clean"]')) {
+      if (img.getAttribute("src") !== foto) img.setAttribute("src", foto);
+    }
   }
 
   // Einzeln verkauft wird, was in einem Set steht, das im Shop ist (Wunsch
@@ -724,7 +757,7 @@ export class Dyqan {
     if (!mittel.length) return "";
     const s = this.setVon(this.korb.set);
     const bilder = mittel.slice(0, 2).map((m) => `<img src="${e(m.fotot[0])}" alt="" width="40" height="50">`).join("");
-    return `<div class="kasa-set"><span class="kasa-set__bilder">${bilder}</span><span class="kasa-set__text"><b>${e(s?.titulli || "Acne Duo")}</b><small>${e(mittel.map((m) => m.name).join(" + "))} · ${e(mittel[0].inhalt || "30 ml")} secili</small></span></div>`;
+    return `<div class="kasa-set"><span class="kasa-set__bilder">${bilder}</span><span class="kasa-set__text"><b>${e(s?.titulli || "Acne Duo")}</b><small>${e(mittel.map((m) => m.name).join(" + "))}${new Set(mittel.map((m) => m.inhalt || "30 ml")).size === 1 ? ` · ${e(mittel[0].inhalt || "30 ml")} secili` : ""}</small></span></div>`;
   }
 
   // In der Kasse ohne Muelleimer (01.10., Inhaber): Entfernen geht im
@@ -858,7 +891,7 @@ export class Dyqan {
     // WhatsApp als zweiter Weg - mit fertiger Nachricht.
     const wa = $("#kasa-wa", this.dok);
     if (wa) {
-      wa.href = `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(`Përshëndetje, dua të porosis setin Acne Duo (${summe(this.korb)} €).`)}`;
+      wa.href = `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(`Përshëndetje, dua të porosis setin ${this.korb.ids.includes("lf-clean") ? "kundër akneve" : "Acne Duo"} (${summe(this.korb)} €).`)}`;
       wa.hidden = n === 0;
     }
   }
