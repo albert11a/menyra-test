@@ -209,8 +209,11 @@ const stil = m => { const s = ausschnittStil(m.ausschnitt); return s ? ` style="
 export function kundenAuswahl(roh) {
   return medienListe(roh).filter(m => m.aktiv && (m.art === 'video' ? m.video : m.bild));
 }
+// Die ersten Kacheln der Leiste laden sofort (nach dem ersten Bildschirm),
+// die weiteren beim Wischen.
+const KUNDEN_SOFORT = 4;
 export function kundenGalerie(roh) {
-  return kundenAuswahl(roh).map((m, i) => `<button type="button" class="klient-kachel" data-klient="${i}" aria-label="${m.art === 'video' ? 'Shikoni videon' : 'Shikoni foton'}${m.produkt ? ` · ${e(m.produkt)}` : ''}">${m.bild ? `<img src="${e(m.bild)}" alt="" loading="lazy" decoding="async" width="104" height="185"${stil(m)}>` : ''}${m.art === 'video' ? '<span class="klient-kachel__spiel" aria-hidden="true"></span>' : ''}${m.produkt ? `<span class="klient-kachel__emri">${e(m.produkt)}</span>` : ''}</button>`).join('');
+  return kundenAuswahl(roh).map((m, i) => `<button type="button" class="klient-kachel" data-klient="${i}" aria-label="${m.art === 'video' ? 'Shikoni videon' : 'Shikoni foton'}${m.produkt ? ` · ${e(m.produkt)}` : ''}">${m.bild ? `<img src="${e(m.bild)}" alt=""${i < KUNDEN_SOFORT ? "" : ' loading="lazy"'} decoding="async" width="104" height="185"${stil(m)}>` : ''}${m.art === 'video' ? '<span class="klient-kachel__spiel" aria-hidden="true"></span>' : ''}${m.produkt ? `<span class="klient-kachel__emri">${e(m.produkt)}</span>` : ''}</button>`).join('');
 }
 export function klientBlatt(m) {
   // Ohne schwarze Raender (Hochformat, zugeschnitten) und ohne die
@@ -227,6 +230,17 @@ export function klientBlatt(m) {
 export const SHOP_START_SETET = { lista: SETET_STANDARD.map(s => s.id === "acne" ? { ...s, cmimi: 19 } : s) };
 
 const pause = (ms) => new Promise((fertig) => setTimeout(fertig, ms));
+
+const SHOP_FOTOS_KLEIN = Object.freeze({
+  "lf-acne": "/apps/lifeskin-shop/assets/lf-acne-3-klein.jpg",
+  "lf-moistur": "/apps/lifeskin-shop/assets/lf-moistur-klein.jpg"
+});
+// ERST DER ERSTE BILDSCHIRM, DANN DIE FOTOS WEITER UNTEN (07.10.): Faelle und
+// Kundenfotos teilten sich die Leitung mit den Produktfotos oben und
+// bremsten sie (gemessen: 3,5 s statt ~1,5 s bei langsamem Netz). Sie
+// kommen jetzt direkt danach - sofort im Hintergrund, nicht erst beim
+// Scrollen, damit sie da sind, wenn der Besucher hinscrollt.
+const ERSTER_BILDSCHIRM_MAX_MS = 2500;
 
 // Begrenzte oeffentliche Reads: ein haengendes Bild darf keinen Preis sperren.
 export function shopFetch(holen = (...a) => fetch(...a), frist = 10000) {
@@ -435,7 +449,9 @@ export class Dyqan {
 
   // ── Laden aus Heart ────────────────────────────────────────────────
   #standardFotos(fotos) {
-    for (const [id, bild] of Object.entries(MITTEL_FOTOS_STANDARD)) {
+    // Im Laden stehen die Mittel nur klein (Set-Karte 72 px, Kasse 36 px):
+    // dieselben kleinen Dateien wie oben auf der Seite (360 px).
+    for (const [id, bild] of Object.entries({ ...MITTEL_FOTOS_STANDARD, ...SHOP_FOTOS_KLEIN })) {
       if (!(fotos.get(id) || []).length) fotos.set(id, [bild]);
     }
     return fotos;
@@ -471,10 +487,30 @@ export class Dyqan {
     } finally { this.angebotLaedt = false; }
   }
 
+  // Wartet, bis die Produktfotos oben geladen sind (hoechstens 2,5 s).
+  #ersterBildschirm() {
+    if (!this.ersterBildschirmFertig) {
+      const bilder = [...(this.dok.querySelectorAll?.(".product-pair img") || [])];
+      const geladen = Promise.all(bilder.map((bild) => bild.complete ? null : new Promise((fertig) => {
+        bild.addEventListener?.("load", fertig, { once: true });
+        bild.addEventListener?.("error", fertig, { once: true });
+      })));
+      this.ersterBildschirmFertig = Promise.race([geladen, pause(ERSTER_BILDSCHIRM_MAX_MS)]);
+    }
+    return this.ersterBildschirmFertig;
+  }
+
+  // Erfuellt, sobald die Fotos des ersten Falls geladen sind.
+  #ersterFallGeladen() {
+    if (!this.ersterFall) this.ersterFall = new Promise((fertig) => { this.ersterFallFertig = fertig; });
+    return this.ersterFall;
+  }
+
   async #faelleLaden() {
     const rueckweg = [{ para: "/apps/lifeskin/fall-vorher.jpg", pas: "/apps/lifeskin/fall-nachher.jpg", gjetja: "" }, ...RASTE_STANDARD.filter(r => ["r1", "r2"].includes(r.id))];
     const raste = await rasteLaden(BASIS, this.holen).catch(() => null);
     const auswahl = raste ? rasteFuer(raste, "shop") : [];
+    await this.#ersterBildschirm();
     if (!auswahl.length) { this.#zeichneFaelle(rueckweg); return; }
     // Erster gueltiger Heart-Fall sofort, weitere Bilder erst bei Sichtnaehe.
     for (let i = 0; i < auswahl.length; i++) {
@@ -495,6 +531,10 @@ export class Dyqan {
     const rail = $("#customer-media", this.dok);
     if (!rail) return;
     this.klienten = kundenAuswahl(medien);
+    // In der Reihenfolge der Seite: erst oben, dann der erste Fall, dann die
+    // Kundenfotos (die stehen weiter unten).
+    await this.#ersterBildschirm();
+    await Promise.race([this.#ersterFallGeladen(), pause(ERSTER_BILDSCHIRM_MAX_MS)]);
     rail.innerHTML = kundenGalerie(medien);
     $("#klientet", this.dok)?.toggleAttribute("hidden", !rail.children.length && !$("#klientet [data-zitat-bild]", this.dok));
     rail.addEventListener("play", event => {
@@ -655,10 +695,19 @@ export class Dyqan {
   #zeichneFaelle(faelle, anhaengen = false) {
     const bahn = $("#proof-bahn", this.dok);
     if (!bahn) return;
-    const bild = (src, alt) => `<img src="${e(src)}" width="600" height="800" alt="${e(alt)}" loading="lazy">`;
-    const inhalt = faelle.map((r) => `<article class="proof-rast"><div class="proof-pair"><figure>${bild(r.para, `Para: ${r.gjetja || ""}`)}<figcaption>PARA <span>Në fillim</span></figcaption></figure><figure>${bild(r.pas, `Pas 28 ditësh: ${r.gjetja || ""}`)}<figcaption>PAS <span>Pas 4 javësh</span></figcaption></figure></div></article>`).join("");
+    // Der erste Fall laedt sofort (er steht beim Hinscrollen im Bild), die
+    // weiteren in der Wischleiste, wenn sie in die Naehe kommen.
+    const bild = (src, alt, sofort) => `<img src="${e(src)}" width="600" height="800" alt="${e(alt)}"${sofort ? ' decoding="async"' : ' loading="lazy"'}>`;
+    const erster = !anhaengen;
+    const inhalt = faelle.map((r, i) => `<article class="proof-rast"><div class="proof-pair"><figure>${bild(r.para, `Para: ${r.gjetja || ""}`, erster && i === 0)}<figcaption>PARA <span>Në fillim</span></figcaption></figure><figure>${bild(r.pas, `Pas 28 ditësh: ${r.gjetja || ""}`, erster && i === 0)}<figcaption>PAS <span>Pas 4 javësh</span></figcaption></figure></div></article>`).join("");
     if (anhaengen) bahn.insertAdjacentHTML("beforeend", inhalt);
-    else { bahn.innerHTML = inhalt; bahn.scrollLeft = 0; }
+    else {
+      bahn.innerHTML = inhalt; bahn.scrollLeft = 0;
+      const bilder = [...(bahn.querySelectorAll?.("article:first-child img") || [])];
+      this.#ersterFallGeladen();
+      Promise.all(bilder.map((b) => b.complete ? null : new Promise((f) => { b.addEventListener?.("load", f, { once: true }); b.addEventListener?.("error", f, { once: true }); })))
+        .then(() => this.ersterFallFertig?.());
+    }
     let pikat = $("#proof-pikat", this.dok);
     if (bahn.children.length < 2) { pikat?.remove(); return; }
     if (!pikat) {
