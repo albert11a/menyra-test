@@ -374,33 +374,29 @@
 /* MESAZHE ORIGJINALE (07.10., Inhaber): der Zitat-Titel nimmt nicht mehr die Aufmerksamkeit - klein und ruhig; ein Trenner zwischen den Nachrichten und den Fotos. */
 #ls-einstieg .page .proof-heading h3,#ls-einstieg .page #customers-title{font-size:17px!important;line-height:1.4;font-weight:600;color:var(--muted);letter-spacing:0}
 #ls-einstieg .page .proof-trenner{border:0;border-top:1px solid var(--line);margin:28px 0 0;height:0}
-/* MESAZHE ORIGJINALE ALS STORY-KARTEN (07.10., Inhaber: "viel besser zum Wischen").
-   Jede Karte zeigt den echten Chat (Screenshot) gross als Hintergrund - der Beweis -,
-   unten eine weisse Sprechblase mit Sternen, Zitat und "Shiko origjinalin". Die
-   naechste Karte schaut rechts herein; darunter eine Leiste "1 / 17" (shop.js). */
+/* MESAZHE ORIGJINALE ALS SCHLICHTE KARTEN (07.10., Inhaber): oben links das runde
+   Instagram-Profilbild mit Ring wie bei Instagram, daneben "lifeskin.ks", darunter das
+   Zitat und "Shiko screenshot" (Tippen oeffnet den Screenshot wie bisher). Wischen
+   wie bisher, die naechste Karte schaut rechts herein. Kein Zaehler. */
 #ls-einstieg .page .mesazhe-kopf{margin-bottom:16px}
 #ls-einstieg .page .mesazhe-kopf #customers-title{font-size:23px!important;line-height:1.2;font-weight:700;color:var(--ink);letter-spacing:-.4px;margin:2px 0 0}
 #ls-einstieg .page .mesazhe-meta{margin:8px 0 0;font-size:13px;line-height:1.4;color:var(--muted)}
 #ls-einstieg .page .mesazhe-yje{color:#f5a623;letter-spacing:1px;margin-right:4px}
-#ls-einstieg .page .message-rail{display:flex;grid-template-columns:none;gap:12px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;padding:4px 0 12px;-webkit-overflow-scrolling:touch}
-#ls-einstieg .page .message-card{position:relative;display:block;flex:0 0 76%;max-width:320px;aspect-ratio:4/5;min-height:0;padding:0;border:0;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 1px 0 var(--line),0 10px 26px #123b3e1c;scroll-snap-align:start;scroll-snap-stop:always;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;grid-template-columns:none;gap:0}
-#ls-einstieg .page .message-card:active{transform:scale(.985)}
-#ls-einstieg .page .message-picture{position:absolute;inset:0;padding:0;background:#fff;border-radius:0;overflow:hidden}
-#ls-einstieg .page .message-picture img{width:100%;height:100%;object-fit:cover;object-position:50% 6%;border:0;border-radius:0}
-#ls-einstieg .page .message-picture::after{content:"";position:absolute;left:0;right:0;bottom:0;height:62%;background:linear-gradient(#fff0,#0d2f3166 70%,#0d2f3199)}
-#ls-einstieg .page .message-copy{position:absolute;left:10px;right:10px;bottom:10px;padding:12px 14px 12px;background:#fff;border-radius:16px 16px 16px 6px;box-shadow:0 6px 18px #0b2b2d2e}
-#ls-einstieg .page .message-copy::before{content:"★★★★★";display:block;color:#f5a623;font-size:12px;letter-spacing:2px;line-height:1;margin-bottom:7px}
-#ls-einstieg .page .message-copy strong{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;font-size:15.5px;line-height:1.38;font-weight:700;color:var(--ink)}
-#ls-einstieg .page .message-copy>span{display:inline-flex;align-items:center;gap:4px;margin-top:9px;font-size:12.5px;font-weight:700;color:#087f86;text-decoration:none;line-height:1.2}
+#ls-einstieg .page .message-rail{display:flex;grid-template-columns:none;gap:12px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;padding:2px 0 6px;-webkit-overflow-scrolling:touch}
+#ls-einstieg .page .message-card{position:static;display:flex;flex-direction:column;align-items:stretch;gap:12px;flex:0 0 80%;max-width:340px;min-height:0;aspect-ratio:auto;padding:16px 16px 14px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:none;overflow:visible;scroll-snap-align:start;scroll-snap-stop:always;text-align:left;color:var(--ink);cursor:pointer;-webkit-tap-highlight-color:transparent;grid-template-columns:none}
+#ls-einstieg .page .message-card:active{background:#f6f9f8}
+#ls-einstieg .page .message-picture{display:none}
+#ls-einstieg .page .message-kopf{display:flex;align-items:center;gap:10px}
+#ls-einstieg .page .message-kopf img{width:42px;height:42px;flex:none;border-radius:50%;object-fit:cover;padding:2px;border:2px solid transparent;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888) border-box}
+#ls-einstieg .page .message-kopf b{font-size:14px;font-weight:700;letter-spacing:-.1px}
+#ls-einstieg .page .message-copy{position:static;display:flex;flex-direction:column;flex:1;padding:0;background:none;border-radius:0;box-shadow:none}
+#ls-einstieg .page .message-copy::before{content:none}
+#ls-einstieg .page .message-copy strong{display:block;font-size:16px;line-height:1.45;font-weight:650;color:var(--ink);-webkit-line-clamp:unset}
+#ls-einstieg .page .message-copy>span{display:inline-flex;align-items:center;gap:4px;margin-top:auto;padding-top:12px;font-size:13px;font-weight:700;color:#087f86;text-decoration:none;line-height:1.2}
 #ls-einstieg .page .message-copy>span::after{content:"→";font-size:14px}
-#ls-einstieg .page .mesazhe-fortschritt{display:flex;align-items:center;gap:12px;margin-top:6px}
-#ls-einstieg .page .mesazhe-fortschritt__spur{flex:1;height:3px;border-radius:2px;background:var(--line);overflow:hidden}
-#ls-einstieg .page .mesazhe-fortschritt__balken{display:block;height:100%;width:6%;border-radius:2px;background:var(--ink);transition:width .15s ease-out}
-#ls-einstieg .page .mesazhe-fortschritt__zahl{font-size:12px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums;min-width:44px;text-align:right}
 @media (max-width:699px){
  #ls-einstieg .page .message-rail{margin:0 -20px;padding-left:20px;padding-right:20px;scroll-padding:0 20px}
 }
 @media (min-width:700px){
- #ls-einstieg .page .message-card{flex:0 0 280px}
+ #ls-einstieg .page .message-card{flex:0 0 300px}
 }
-@media (prefers-reduced-motion:reduce){#ls-einstieg .page .mesazhe-fortschritt__balken{transition:none}}

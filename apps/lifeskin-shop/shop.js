@@ -426,36 +426,11 @@ export class Dyqan {
     this.#korbZahl();
     this.#ereignisse();
     this.#beobachten();
-    this.#mesazheFortschritt();
     this.laden();
     shopBeiSicht($(".hero-photo", this.dok), async () => {
       await this.titelbild();
       await this.#heroGalerie();
     });
-  }
-
-  // MESAZHE: die Leiste "1 / 17" unter den Story-Karten folgt dem Wischen.
-  #mesazheFortschritt() {
-    const bahn = $("#klientet .message-rail", this.dok);
-    const balken = $("#mesazhe-balken", this.dok);
-    const zahl = $("#mesazhe-zahl", this.dok);
-    if (!bahn || !balken || !zahl) return;
-    const n = bahn.children.length;
-    if (!n) return;
-    let geplant = false;
-    const setzen = () => {
-      geplant = false;
-      const max = bahn.scrollWidth - bahn.clientWidth;
-      const anteil = max > 0 ? Math.min(1, Math.max(0, bahn.scrollLeft / max)) : 0;
-      zahl.textContent = `${Math.min(n, Math.round(anteil * (n - 1)) + 1)} / ${n}`;
-      balken.style.width = `${Math.max(100 / n, anteil * 100)}%`;
-    };
-    bahn.addEventListener("scroll", () => {
-      if (geplant) return;
-      geplant = true;
-      (globalThis.requestAnimationFrame || ((f) => setTimeout(f, 16)))(setzen);
-    }, { passive: true });
-    setzen();
   }
 
   // ── Das Titelbild aus Heart (zugeschnitten 7:5) ─────────────────────
