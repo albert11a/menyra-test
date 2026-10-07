@@ -55,12 +55,12 @@ function dokumentBauen(werte) {
   // perputhja: die Zahl, die Dr. Gashi beim Laden (/lifeskinshop) setzt,
   // gefiltert durch perputhjaGueltig (shared/lifeskin-perputhja.js).
   const bauen = new Function("befund", "produkte", "preis", "schwere", "analyse", "raport", "texte", "nurStaff", "ohneBild", "raste", "klientet", "bereit",
-    "antworten", "antwortenFuerBericht", "weg", "wegGueltig", "perputhja", "perputhjaGueltig",
+    "antworten", "antwortenFuerBericht", "weg", "wegGueltig", "perputhja", "perputhjaGueltig", "analyseTemplate",
     `return (${literal});`);
   return bauen(werte.befund, werte.produkte, werte.preis, werte.schwere, werte.analyse, werte.raport,
     werte.texte || {}, false, false, werte.raste || [], werte.klientet || [], false,
     werte.antworten || null, antwortenFuerBericht, werte.weg || "", wegGueltig,
-    werte.perputhja ?? null, perputhjaGueltig);
+    werte.perputhja ?? null, perputhjaGueltig, werte.analyseTemplate);
 }
 
 const raport = raportLesen(
@@ -135,5 +135,11 @@ test("die Përputhja steht so im Bericht, wie Dr. Gashi sie gesetzt hat", () => 
       befund: "Text", produkte: [], preis: 39, schwere: "", analyse: {}, raport: null, perputhja: falsch
     });
     assert.equal(doc.perputhja, null, `${JSON.stringify(falsch)} kam als Zahl durch`);
+  }
+});
+
+ test("Template-Auswahl wird im freigegebenen Bericht normalisiert gespeichert", () => {
+  for (const [wahl, erwartet] of [[undefined, "analysis1"], ["", "analysis1"], ["fremd", "analysis1"], ["analysis1", "analysis1"], ["analysis2", "analysis2"]]) {
+    assert.equal(dokumentBauen({ analyseTemplate: wahl }).analyseTemplate, erwartet);
   }
 });

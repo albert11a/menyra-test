@@ -652,7 +652,7 @@ export async function ladeBericht(sitzungId) {
   return schnappschuss.exists() ? { id: schnappschuss.id, ...(schnappschuss.data() || {}) } : null;
 }
 
-export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport, texte, ohneBild = false, raste = [], klientet = [], nurStaff = false, bereit = false, perputhja = null, antworten = null, weg = "" }) {
+export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport, texte, ohneBild = false, raste = [], klientet = [], nurStaff = false, bereit = false, perputhja = null, antworten = null, weg = "", analyseTemplate = "analysis1" }) {
   if (!sitzungId) throw new Error("Bericht ohne Kennung");
   await setDoc(doc(db, "lifeskin", TENANT, "reports", sitzungId), {
     status: nurStaff || bereit ? "vorschau" : "fertig",
@@ -661,6 +661,8 @@ export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwe
     // zeigt im Fach Offen den Chip "Bereit". Beim Freigeben faellt die
     // Marke weg, der Bericht ist dann "fertig".
     bereit: bereit === true,
+    // Fehlende oder unbekannte Auswahl bleibt bei der bestehenden Seite.
+    analyseTemplate: analyseTemplate === "analysis2" ? "analysis2" : "analysis1",
     befund: String(befund || "").slice(0, 4000),
     produkte: (produkte || []).map((p) => ({
       id: String(p.id),

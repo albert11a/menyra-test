@@ -3210,6 +3210,7 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff: nurStaffGewaehlt = 
   try {
     await gibBerichtFrei(id, { befund, produkte, preis: produkte.length ? preis : 0, schwere, raport,
     texte, ohneBild: art === "pa-foto",
+    analyseTemplate: document.querySelector("#lifeskin-analyse-template")?.value === "analysis2" ? "analysis2" : "analysis1",
     // Seine Antworten aus dem Trichter - die Seite spiegelt sie zurueck.
     // Gefiltert wird im Adapter (shared/lifeskin-antworten.js).
     antworten: findeSitzung(store.getState().lifeskin || {}, id)?.anamnese || null,

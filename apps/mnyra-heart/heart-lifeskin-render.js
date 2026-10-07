@@ -2998,6 +2998,14 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({}), 
 
       <div data-bogen="befund">
       ${altWerte}
+      <label class="heart-lifeskin-feld" style="margin:16px 0">
+        <span>Befund-Template</span>
+        <select id="lifeskin-analyse-template" data-analyse-template${speichernAttr}>
+          <option value="analysis1"${bericht?.analyseTemplate !== "analysis2" ? " selected" : ""}>Analysis 1 — aktuelle Analyseseite</option>
+          <option value="analysis2"${shopFall ? " disabled" : ""}${bericht?.analyseTemplate === "analysis2" ? " selected" : ""}>Analysis 2 — neuer Entwurf</option>
+        </select>
+        <small>${shopFall ? "Shop-Fälle behalten ihre eigene Darstellung. Analysis 2 gilt für persönliche LifeSkin-Analysen." : "Gilt für diesen Fall. Wird mit Vorschau, Bereit oder Freigeben gespeichert."}</small>
+      </label>
 
       ${befundGruppe("vorbereitung", "Therapie, Prompt &amp; Antwort", `
         ${schritt(1, "Therapie wählen", `

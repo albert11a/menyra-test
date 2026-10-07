@@ -13,6 +13,7 @@
 //
 // Was sie NICHT hat: die Warteseite. Ein Fall, der noch nicht freigegeben
 // ist, geht nach /analiza/<kennung> - dort steht sie.
+import { persoenlicheSeite, kurzsetZeigen } from "./terapia-focus.js";
 import { AnalyseDaten, kennungAusPfad, dokument } from "../lifeskin-astra/astra-daten.js";
 import { Pixel, pixelKennungen, browserAngaben } from "../lifeskin/lifeskin-pixel.js";
 import { STANDARD_KONFIG } from "../lifeskin/lifeskin-catalog.js";
@@ -255,9 +256,11 @@ export class Terapia {
   // Das Wort auf jedem Kaufknopf.
   kaufWort(betrag = this.preis) {
     if (this.mitUrteil) return `Rezervo setin tim — ${euro(betrag)}`;
+    if (this.analyse2) return `Porosit terapine time — ${euro(betrag)}`;
     return this.perputhja !== null ? `Filloj rutinën time — ${euro(betrag)}` : `Fillo terapinë — ${euro(betrag)}`;
   }
   // Die neue Fassung (Begleitung, Angebot, Kasse) - siehe oben.
+  get analyse2() { return !this.shop && this.daten?.analyseTemplate === "analysis2"; }
   get neu() { return this.variante === KAUFWEG_VERSION.ndjekja; }
   get raport() { return this.daten?.raport || {}; }
   get preis() { return Number(this.daten?.preis) || STANDARD_KONFIG.setPreis; }
@@ -577,6 +580,8 @@ export class Terapia {
     this.#perputhjaWorte();
     this.#ndaje();
     if (this.shop && !this.ohneFoto) schreibe($("#t-analizasyri"), "Vlerësimi i plotë");
+    if (this.analyse2) persoenlicheSeite({ daten: d, raport: r, produkte: this.produkte,
+      bilderVon: (p) => this.#bilderVon(p), shop: this.shop });
   }
 
   // DIE PËRPUTHJA (nur Laden, nur mit Zahl): der Ring mit der Zahl von
@@ -760,6 +765,7 @@ export class Terapia {
     zeigen($("#t-mjetet"), sortiert.length > 0);
     this.#mjetetPunkte();
     this.#mjetetFotot();
+    if (this.analyse2) kurzsetZeigen(sortiert, (p) => this.#bilderVon(p));
 
     const n = this.produkte.length;
     const cipa = $("#t-seticipa");
