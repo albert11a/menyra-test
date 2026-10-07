@@ -965,6 +965,10 @@ export class Dyqan {
     if (fehler) {
       gabim.textContent = fehler;
       gabim.hidden = false;
+      // Direkt ins erste leere Feld - sonst sieht man auf dem Telefon nicht,
+      // was fehlt.
+      const leer = [["#kasa-emri", werte.name], ["#kasa-telefoni", werte.telefon], ["#kasa-adresa", werte.strasse], ["#kasa-qyteti", werte.ort]].find(([, wert]) => !wert);
+      if (leer) $(leer[0], this.dok)?.focus?.();
       return;
     }
     gabim.hidden = true;
@@ -1112,6 +1116,26 @@ export class Dyqan {
     blatt?.addEventListener("close", () => this.opener?.focus?.({ preventScroll: true }));
 
     const forme = $("#kasa-forma", this.dok);
+    // DIE TASTE "WEITER" IST KEIN BESTELLEN (07.10.). Enter in einem Feld
+    // schickte das Formular ab - der Browser drueckt dabei selbst auf
+    // "Porositni tani" (in Heart: "Tippt · Porositni tani"). Mit leeren
+    // Feldern stand der Hinweis unter der Tastatur, der Cursor blieb, wo er
+    // war: fuer den Kunden passierte nichts, und er ging. Seit jede Angabe
+    // durchgeht (kasseFehler), haette dieselbe Taste nach dem Namen eine
+    // halb leere Bestellung abgeschickt. Jetzt springt die
+    // Taste ins naechste leere Feld; ist alles ausgefuellt, geht die
+    // Tastatur zu und der Knopf steht frei. Bestellt wird nur mit dem Knopf.
+    forme?.addEventListener("keydown", (ereignis) => {
+      if (ereignis.key !== "Enter" || ereignis.isComposing) return;
+      const felder = [...forme.querySelectorAll("input")];
+      const hier = felder.indexOf(ereignis.target);
+      if (hier < 0) return;
+      ereignis.preventDefault();
+      const leer = (f) => !f.value.trim();
+      const naechstes = felder.slice(hier + 1).find(leer) || felder.find(leer);
+      if (naechstes && naechstes !== ereignis.target) naechstes.focus();
+      else ereignis.target.blur();
+    });
     forme?.addEventListener("submit", (ereignis) => {
       ereignis.preventDefault();
       this.bestellen();
