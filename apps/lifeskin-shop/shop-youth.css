@@ -428,3 +428,10 @@
 #ls-einstieg .page .hero .cta{font-size:18px;font-weight:700}
 #ls-einstieg .page .hero .cta .button-price{font-size:18px;font-weight:800}
 @media (max-width:380px){#ls-einstieg .preis-punkt{gap:10px;padding:9px 11px}#ls-einstieg .preis-punkt__tag{padding-right:10px}#ls-einstieg .preis-punkt__tag b{font-size:21px}#ls-einstieg .preis-punkt__text b{font-size:13.5px}#ls-einstieg .preis-punkt__text small{font-size:12px}#ls-einstieg .page .hero .cta,#ls-einstieg .page .hero .cta .button-price{font-size:17px}}
+/* Zahl der Kunden (Inhaber 07.10.: 70.000) - eine ruhige Zeile unter der Preis-Box. */
+#ls-einstieg .preis-vertrauen{margin:10px 0 0;font-size:13px;line-height:1.35;color:var(--ink);text-align:center}
+#ls-einstieg .preis-vertrauen span{color:#f5a623;letter-spacing:1px;margin-right:4px}
+#ls-einstieg .preis-vertrauen b{font-weight:800}
+@media (max-width:899px){#ls-einstieg .page .preis-vertrauen{order:3}}
+#ls-einstieg .preis-vertrauen{white-space:nowrap;margin-top:12px}
+@media (max-width:380px){#ls-einstieg .preis-vertrauen{font-size:12.5px}#ls-einstieg .preis-vertrauen span{letter-spacing:0}}
