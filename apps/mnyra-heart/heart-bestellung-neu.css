@@ -1,0 +1,109 @@
+/* EINE BESTELLUNG SELBST ANLEGEN (heart-bestellung-neu.js, 07.10.).
+   Telefon: Vollbild, der Knopf unten bleibt ueber der Tastatur
+   (--hbest-h aus visualViewport). Ab 700 px: ein Fenster in der Mitte.
+   Farben aus Heart (--heart-*), damit Nacht und Tag stimmen. Felder 16 px
+   (sonst zoomt Safari beim Antippen), Tippflaechen mindestens 44 px. */
+
+:root[data-hbest] { overflow: hidden; }
+:root[data-hbest] body { overflow: hidden; }
+
+.hbest {
+  position: fixed; left: 0; right: 0; top: var(--hbest-oben, 0px); height: var(--hbest-h, 100dvh);
+  z-index: 2147482100; display: flex; justify-content: center; align-items: stretch;
+  background: #000a; color: var(--heart-text, #f7f7f2);
+  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+.hbest svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.hbest button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent; }
+
+.hbest__blatt {
+  width: 100%; display: flex; flex-direction: column; min-height: 0;
+  background: var(--heart-bg, #040404);
+}
+@media (min-width: 700px) {
+  .hbest { align-items: center; padding: 24px; }
+  .hbest__blatt { width: 520px; max-height: 100%; border-radius: 20px; border: 1px solid var(--heart-border, #ffffff14); overflow: hidden; box-shadow: 0 24px 80px #0008; }
+}
+
+.hbest__kopf {
+  flex: none; display: flex; align-items: center; gap: 6px; min-height: 56px;
+  padding: calc(6px + var(--heart-safe-top, env(safe-area-inset-top, 0px))) 12px 6px 6px;
+  border-bottom: 1px solid var(--heart-border, #ffffff14); background: var(--heart-surface-strong, #0a0a0c);
+}
+.hbest__kopf h2 { margin: 0; font-size: 19px; font-weight: 700; }
+.hbest__zu { width: 44px; height: 44px; border: 0; border-radius: 50%; background: none; display: grid; place-items: center; cursor: pointer; flex: none; }
+.hbest__zu:active { background: var(--heart-surface-soft, #1c1c21); }
+
+.hbest__inhalt { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 4px 16px 20px; }
+.hbest-teil { padding: 14px 0 6px; }
+.hbest-teil + .hbest-teil { border-top: 1px solid var(--heart-border, #ffffff14); }
+.hbest-teil h3 {
+  margin: 0 0 10px; font-size: 12.5px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700;
+  color: var(--heart-text-muted, #8f918d);
+}
+
+/* Sets: ein Tipp = Produkte + Preis wie im Laden */
+.hbest-sets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.hbest-sets:empty { display: none; }
+.hbest-set {
+  min-height: 40px; padding: 8px 14px; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 14px;
+  border: 1px solid var(--heart-border-strong, #ffffff24); background: none;
+}
+.hbest-set--an { background: #23c48326; border-color: var(--heart-success, #23c483); }
+
+.hbest-produkte { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.hbest-produkt {
+  display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 6px 8px 6px 6px; border-radius: 14px; cursor: pointer;
+  border: 1px solid var(--heart-border, #ffffff14); background: var(--heart-surface-strong, #0a0a0c);
+}
+.hbest-produkt--an { border-color: var(--heart-success, #23c483); background: #23c48314; }
+.hbest-produkt img, .hbest-produkt__leer { width: 44px; height: 54px; object-fit: cover; border-radius: 9px; flex: none; background: var(--heart-surface-soft, #1c1c21); }
+.hbest-produkt__name { flex: 1; min-width: 0; }
+.hbest-produkt__name b { font-size: 15px; }
+.hbest-menge { display: flex; align-items: center; gap: 4px; flex: none; }
+.hbest-menge button {
+  width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--heart-border-strong, #ffffff24);
+  background: none; font-size: 20px; line-height: 1; cursor: pointer; display: grid; place-items: center;
+}
+.hbest-menge button:active { background: var(--heart-surface-soft, #1c1c21); }
+.hbest-produkt--an .hbest-menge button[data-menge="1"] { background: var(--heart-success, #23c483); border-color: transparent; color: #04140d; }
+.hbest-menge output { min-width: 22px; text-align: center; font-weight: 700; font-size: 16px; }
+
+.hbest-preis {
+  display: flex; align-items: center; gap: 8px; max-width: 220px; min-height: 52px; padding: 0 14px; border-radius: 12px;
+  border: 1px solid var(--heart-border-strong, #ffffff24); background: var(--heart-surface-strong, #0a0a0c);
+}
+.hbest-preis:focus-within { border-color: var(--heart-success, #23c483); }
+.hbest-preis input { flex: 1; min-width: 0; border: 0; background: none; color: inherit; font: 700 22px/1.2 system-ui, sans-serif; outline: none; padding: 0; }
+.hbest-preis span { font-size: 20px; font-weight: 700; color: var(--heart-text-muted, #8f918d); }
+.hbest-hinweis { margin: 8px 0 0; font-size: 13px; color: var(--heart-text-muted, #8f918d); }
+
+.hbest-feld { display: grid; gap: 5px; margin-bottom: 12px; }
+.hbest-feld span { font-size: 13px; font-weight: 600; color: var(--heart-text-soft, #c7c7c2); }
+.hbest-feld small { font-weight: 400; color: var(--heart-text-muted, #8f918d); }
+.hbest-feld input, .hbest-feld textarea {
+  width: 100%; box-sizing: border-box; min-height: 48px; padding: 12px 14px; border-radius: 12px; resize: none;
+  border: 1px solid var(--heart-border-strong, #ffffff24); background: var(--heart-surface-strong, #0a0a0c);
+  color: var(--heart-text, #f7f7f2); font: 16px/1.3 system-ui, -apple-system, sans-serif;
+}
+.hbest-feld input:focus, .hbest-feld textarea:focus { outline: none; border-color: var(--heart-success, #23c483); }
+
+.hbest__fuss {
+  flex: none; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--heart-border, #ffffff14); background: var(--heart-surface-strong, #0a0a0c);
+}
+.hbest-fehler { margin: 0 0 8px; font-size: 13.5px; color: var(--heart-danger, #ff6b57); }
+.hbest-fehler[hidden] { display: none; }
+.hbest-anlegen {
+  width: 100%; min-height: 52px; border: 0; border-radius: 14px; cursor: pointer; font-weight: 700 !important; font-size: 16px !important;
+  background: var(--heart-success, #23c483); color: #04140d !important;
+}
+.hbest-anlegen:disabled { opacity: .4; cursor: default; }
+
+/* Das "+" im Kopf der Karte "Bestellungen" */
+.heart-bestellung-plus {
+  display: grid; place-items: center; width: 36px; height: 36px; flex: none; margin: -4px -6px -4px 0;
+  border-radius: 12px; border: 0; background: transparent; color: var(--heart-text, #f7f7f2); cursor: pointer;
+}
+.heart-bestellung-plus:active { background: #ffffff14; }
+.heart-bestellung-plus svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }

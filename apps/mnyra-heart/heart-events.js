@@ -679,6 +679,11 @@ export function bindHeartEvents({
       operations.setLifeskinFach?.(target.getAttribute("data-wert"));
       return;
     }
+    // Das "+" der Karte "Bestellungen": selbst anlegen.
+    if (action === "lifeskin-bestellung-neu") {
+      operations.openBestellungNeu?.();
+      return;
+    }
     if (action === "lifeskin-bestellzeitraum") {
       operations.setLifeskinBestellZeitraum?.(target.getAttribute("data-wert"));
       return;
