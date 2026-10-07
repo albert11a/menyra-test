@@ -1451,6 +1451,109 @@ service cloud.firestore {
         allow read, write: if isCeoActor();
       }
 
+      // DER CHAT (/lifeskinshop <-> Heart, docs/lifeskin-chat.md, 07.10.).
+      //
+      // Wie die Begleitung: Der Kunde hat kein Konto, sein Chat haengt an
+      // einem ZUGANG aus 32 Hexzeichen, der nur auf seinem Geraet steht.
+      // Wer ihn kennt, liest den Chat und schreibt KUNDEN-Nachrichten;
+      // aufzaehlen kann nur Heart. Status, Team-Nachrichten, "schreibt"
+      // und "gelesen" des Teams schreibt nur Heart. Nachrichten sind
+      // unveraenderlich.
+      function chatZugangOk(zugang) {
+        return zugang.matches('^[0-9a-f]{32}$');
+      }
+
+      function chatZeitOk(wert) {
+        return wert is string && wert.size() >= 10 && wert.size() <= 40;
+      }
+
+      // "at" ist die SERVERZEIT (request.time) - Reihenfolge und "gelesen"
+      // haengen nie an der Uhr eines Telefons, die falsch gehen kann.
+      function chatLetzteOk(l) {
+        return l is map && l.keys().hasOnly(["text", "von", "t", "at"])
+          && l.text is string && l.text.size() <= 160
+          && l.von in ["kunde", "team"] && chatZeitOk(l.t)
+          && l.at is timestamp;
+      }
+
+      function chatEntwurfOk(e) {
+        return e is map && e.keys().hasOnly(["text", "t"])
+          && e.text is string && e.text.size() <= 2000 && chatZeitOk(e.t);
+      }
+
+      function chatNeuOk() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(["createdAt", "updatedAt", "sessionId", "code", "status", "letzte",
+            "entwurf", "kundeAktivAt", "kundeGelesenAt", "geraet"])
+          && chatZeitOk(d.createdAt) && chatZeitOk(d.updatedAt)
+          && d.sessionId is string && d.sessionId.size() <= 64
+          && d.code is string && d.code.size() <= 24
+          && d.status == "offen"
+          && (!("letzte" in d) || (chatLetzteOk(d.letzte) && d.letzte.von == "kunde" && d.letzte.at == request.time))
+          && (!("entwurf" in d) || chatEntwurfOk(d.entwurf))
+          && (!("kundeAktivAt" in d) || chatZeitOk(d.kundeAktivAt))
+          && (!("kundeGelesenAt" in d) || d.kundeGelesenAt == request.time)
+          && (!("geraet" in d) || (d.geraet is map && d.geraet.size() <= 6));
+      }
+
+      // Was der Kunde am Chat aendern darf: seine letzte Nachricht (fuer die
+      // Liste in Heart), seinen Entwurf, wann er aktiv war und bis wann er
+      // gelesen hat. Status und alles des Teams nicht.
+      function chatKundeAendert() {
+        let neu = request.resource.data;
+        let alt = resource.data;
+        let geaendert = neu.diff(alt).affectedKeys();
+        return geaendert.hasOnly(["updatedAt", "letzte", "entwurf", "kundeAktivAt", "kundeGelesenAt"])
+          && chatZeitOk(neu.updatedAt)
+          && (!geaendert.hasAny(["letzte"]) || (chatLetzteOk(neu.letzte) && neu.letzte.von == "kunde" && neu.letzte.at == request.time))
+          && (!geaendert.hasAny(["entwurf"]) || chatEntwurfOk(neu.entwurf))
+          && (!geaendert.hasAny(["kundeAktivAt"]) || chatZeitOk(neu.kundeAktivAt))
+          && (!geaendert.hasAny(["kundeGelesenAt"]) || neu.kundeGelesenAt == request.time);
+      }
+
+      // Eine Nachricht. Der Kunde schreibt Text, Fotos und Antworten auf ein
+      // Formular; das Team zusaetzlich Produktkarten (1-5) und Formulare.
+      function chatNachrichtOk(nachrichtId, von) {
+        let d = request.resource.data;
+        return nachrichtId.matches('^[a-z0-9]{8,40}$')
+          && d.keys().hasOnly(["von", "art", "text", "bild", "produkte", "summe", "formular", "antwort", "t", "at", "autor"])
+          && d.von == von
+          && d.at == request.time
+          && (von == "team" ? d.art in ["text", "bild", "produkte", "formular"] : d.art in ["text", "bild", "antwort"])
+          && chatZeitOk(d.t)
+          && (!("text" in d) || (d.text is string && d.text.size() <= 2000))
+          && (!("bild" in d) || (d.bild is string && d.bild.size() <= 950000
+            && d.bild.matches('data:image/(jpeg|png|webp);base64,.+')))
+          && (!("produkte" in d) || (d.produkte is list && d.produkte.size() >= 1 && d.produkte.size() <= 5))
+          && (!("summe" in d) || (d.summe is number && d.summe >= 0 && d.summe <= 10000))
+          && (!("formular" in d) || (d.formular is map && d.formular.keys().hasOnly(["felder", "titel"])
+            && d.formular.felder is list && d.formular.felder.size() >= 1 && d.formular.felder.size() <= 8))
+          && (!("antwort" in d) || (d.antwort is map && d.antwort.keys().hasOnly(["antwortAuf", "werte"])
+            && d.antwort.antwortAuf is string && d.antwort.antwortAuf.size() <= 40
+            && d.antwort.werte is map && d.antwort.werte.size() <= 8))
+          && (!("autor" in d) || (d.autor is string && d.autor.size() <= 60));
+      }
+
+      match /chats/{zugang} {
+        allow get: if isCeoActor() || chatZugangOk(zugang);
+        allow list: if isCeoActor();
+        allow create: if isCeoActor() || (chatZugangOk(zugang) && chatNeuOk());
+        allow update: if isCeoActor() || (chatZugangOk(zugang) && chatKundeAendert());
+        allow delete: if isCeoActor();
+
+        match /nachrichten/{nachrichtId} {
+          allow read: if isCeoActor() || chatZugangOk(zugang);
+          allow create: if (isCeoActor() && chatNachrichtOk(nachrichtId, "team"))
+            || (chatZugangOk(zugang)
+              // existsAfter: Chat und erste Nachricht gehen in EINEM
+              // Schreibvorgang hinaus (sonst haengt die erste Nachricht).
+              && existsAfter(/databases/$(database)/documents/lifeskin/$(tenantId)/chats/$(zugang))
+              && chatNachrichtOk(nachrichtId, "kunde"));
+          allow update: if false;
+          allow delete: if isCeoActor();
+        }
+      }
+
       // DERGESAT (/dergesat, Versand ueber Posta Beki - Auftrag 05.10.).
       //
       // Je Bestellung ein Dokument (Kennung = Sitzung). Darin nur, was zum

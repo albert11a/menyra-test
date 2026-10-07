@@ -562,6 +562,7 @@ function renderShell(state, runtime = {}) {
                 <button class="heart-icon-button heart-icon-button--zeit" data-action="lifeskin-zeitwahl"
                         aria-label="Zeitraum: ${escapeHtml(zeitraumName(zeitraum))}">${renderHeartIcon("calendar")}</button>
               ` : ""}
+              ${renderChatKnopf(state)}
               <button class="heart-icon-button heart-icon-button--refresh${state.shell.aktualisiert ? " heart-icon-button--dreht" : ""}" data-action="refresh-heart"
                       aria-label="Aktualisieren"${state.shell.aktualisiert ? ' aria-busy="true"' : ""}>${renderHeartIcon("refresh")}</button>
             `}
@@ -630,6 +631,14 @@ function restoreHeartActiveField(rootNode, snapshot) {
       next.setSelectionRange(Math.min(snapshot.selectionStart, len), Math.min(snapshot.selectionEnd, len));
     }
   } catch {}
+}
+
+// DER CHAT (heart-chat.js, docs/lifeskin-chat.md): ein Knopf oben, mit der
+// Zahl der ungelesenen Chats. Die Ansicht selbst liegt ausserhalb von #root.
+export function renderChatKnopf(state) {
+  const zahl = Number(state?.shell?.chatZahl) || 0;
+  return `<button class="heart-icon-button heart-chat-kopf${zahl ? " heart-chat-kopf--neu" : ""}" data-action="chat-oeffnen"
+          aria-label="Chat${zahl ? ` – ${zahl} ungelesen` : ""}">${renderHeartIcon("message")}${zahl ? `<span class="heart-chat-kopf__zahl">${zahl > 9 ? "9+" : zahl}</span>` : ""}</button>`;
 }
 
 export function renderHeartApp(rootNode, state, runtime = {}) {

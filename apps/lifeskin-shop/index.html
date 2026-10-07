@@ -109,6 +109,7 @@
        jede Regel haengt an data-ls-landing="lifeskinshop" data-ls-scan-workflow="skinreact". -->
   <link rel="stylesheet" href="/apps/lifeskin-shop/shop-weg.css" />
   <link rel="stylesheet" href="/apps/lifeskin-shop/shop-youth.css" />
+  <link rel="stylesheet" href="/apps/lifeskin-shop/chat.css" />
   <link rel="stylesheet" href="/apps/lifeskin-shop/skinreact.css" />
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-app.js" />
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-session.js" />
@@ -189,6 +190,17 @@
      auf apps/lifeskin-shop/shitesi.html - beide gleich halten. -->
 <div class="wrap footer-shitesi"><p><b>Shitësi:</b> <span data-anbieter="name">LifeSkin</span> · Kontakt në <a href="https://wa.me/436508564879">WhatsApp</a></p><nav class="footer-ligjore" aria-label="Informacione ligjore"><a href="/apps/lifeskin-shop/shitesi.html">Të dhënat e shitësit</a><a href="/apps/lifeskin-shop/kushtet.html">Kushtet e blerjes</a><a href="/apps/lifeskin-shop/privatesia.html">Politika e privatësisë</a><a href="#" onclick="window.lifeskinZustimmungZeigen&amp;&amp;window.lifeskinZustimmungZeigen();return false;">Cookie</a></nav></div></footer></div>
 <div class="sticky" id="sticky" hidden><div><span id="sticky-label">Seti kundër akneve</span><strong id="sticky-price" data-preis="cmimi">19 €</strong><em class="zbritje zbritje--vogel" data-preis="zbritje" data-preis-zbritje>−67%</em></div><button type="button" class="primary" id="sticky-buy" data-set="acne">Porosit setin <svg class="icon" aria-hidden="true"><use href="/apps/lifeskin-shop/icons.svg#ArrowUpRight"></use></svg></button></div>
+<!-- DER CHAT (apps/lifeskin-shop/chat.js, docs/lifeskin-chat.md, 07.10.).
+     Der Knopf steht nach #sticky, damit er ueber der Kaufleiste sitzt. Ist
+     der Chat in Heart aus, fuehrt derselbe Knopf zu WhatsApp. -->
+<button type="button" class="chat-knopf" id="chat-knopf" hidden aria-label="Hapni chat-in me LifeSkin"><span class="chat-knopf__ikone"></span><span class="chat-knopf__zahl" hidden>0</span></button>
+<section class="chat" id="chat" hidden role="dialog" aria-modal="true" aria-labelledby="chat-name">
+<header class="chat__kopf"><button type="button" class="chat__zurueck" id="chat-zurueck" aria-label="Mbyll chat-in"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button><img class="chat__bild" src="/apps/lifeskin/dr-gashi.jpg" alt="" width="40" height="40"><div class="chat__wer"><strong id="chat-name">Dr. Gashi &amp; ekipi LifeSkin</strong><span id="chat-status">Zakonisht përgjigjemi brenda pak minutash</span></div></header>
+<p class="chat__hinweis" id="chat-hinweis" role="status" hidden></p>
+<div class="chat__liste" id="chat-liste" aria-live="polite"></div>
+<button type="button" class="chat__runter" id="chat-runter" hidden aria-label="Te mesazhet e reja"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+<form class="chat__eingabe" id="chat-eingabe" onsubmit="return false"><button type="button" class="chat__foto" id="chat-foto-knopf" aria-label="Dërgo një foto"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="15" rx="3"/><circle cx="12" cy="12.5" r="3.5"/><path d="M8.5 5l1.5-2h4l1.5 2"/></svg></button><input type="file" id="chat-foto" accept="image/*" hidden><textarea id="chat-feld" rows="1" maxlength="2000" placeholder="Shkruani një mesazh …" aria-label="Mesazhi" enterkeyhint="enter" autocomplete="off"></textarea><button type="button" class="chat__senden" id="chat-senden" disabled aria-label="Dërgo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button></form>
+</section>
 <!-- Das Blatt von unten zeigt nur, was gewaehlt ist, und traegt KEIN Feld:
      Felder in einem festen Fenster mit Scroll-Sperre verschieben auf dem
      iPhone die Seite (derselbe Fehler wie auf /lifeskin am 28.09.). -->
@@ -764,6 +776,7 @@
 <!-- DER LADEN: Sets, Einzelmittel und Faelle aus Heart, Korb, Kasse,
      Bestellung in dieselbe Sitzung. -->
 <script type="module" src="/apps/lifeskin-shop/shop.js"></script>
+<script type="module" src="/apps/lifeskin-shop/chat.js"></script>
 <!-- Die Tipps unter den drei Fragen (docs/lifeskin-shop-perputhja.md) -
      Text neben dem Trichter, ohne Zaehlung und ohne Pixel. -->
 <script type="module" src="/apps/lifeskin-shop/weg.js"></script>

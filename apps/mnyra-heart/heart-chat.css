@@ -1,0 +1,155 @@
+/* DER CHAT IN HEART (heart-chat.js, heart-chat-render.js, 07.10.).
+   Telefon: Liste ODER Unterhaltung, jeweils Vollbild; der Kunde als Blatt
+   ueber "i". Ab 900 px: Liste | Unterhaltung | Kunde nebeneinander.
+   Farben aus Heart (--heart-*), damit Nacht und Tag stimmen. */
+
+.heart-chat-kopf { position: relative; }
+.heart-chat-kopf__zahl {
+  position: absolute; top: 2px; right: 2px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+  background: var(--heart-danger, #ff6b57); color: #fff; font: 700 11px/18px system-ui, sans-serif; text-align: center;
+}
+
+:root[data-hchat] { overflow: hidden; }
+:root[data-hchat] body { overflow: hidden; }
+
+.hchat {
+  position: fixed; left: 0; right: 0; top: var(--hchat-oben, 0px); height: var(--hchat-h, 100dvh);
+  z-index: 2147482000; display: flex; background: var(--heart-bg, #040404); color: var(--heart-text, #f7f7f2);
+  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+.hchat[hidden] { display: none; }
+.hchat svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.hchat button { font: inherit; color: inherit; }
+
+.hchat__liste, .hchat__gespraech { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.hchat__liste { width: 100%; }
+.hchat__gespraech { width: 100%; display: none; position: relative; }
+.hchat[data-ansicht="unterhaltung"] .hchat__liste { display: none; }
+.hchat[data-ansicht="unterhaltung"] .hchat__gespraech { display: flex; }
+
+.hchat__kopf {
+  flex: none; display: flex; align-items: center; gap: 8px; min-height: 56px;
+  padding: calc(6px + var(--heart-safe-top, 0px)) 10px 6px; border-bottom: 1px solid var(--heart-border, #ffffff14);
+  background: var(--heart-surface-strong, #0a0a0c);
+}
+.hchat__titel { font-size: 19px; flex: 1; }
+.hchat-rund { width: 44px; height: 44px; border-radius: 50%; border: 0; background: none; display: grid; place-items: center; cursor: pointer; flex: none; }
+.hchat-rund:active { background: var(--heart-surface-soft, #1c1c21); }
+.hchat__wer { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.hchat__wer b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hchat__wer span { font-size: 12.5px; color: var(--heart-text-muted, #8f918d); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hchat__hinweis { margin: 0; padding: 8px 12px; background: #f4b9422e; color: var(--heart-warning, #f4b942); font-size: 13px; }
+.hchat__hinweis[hidden] { display: none; }
+
+/* Ein/Aus */
+.hchat-schalter { display: flex; align-items: center; gap: 8px; cursor: pointer; min-height: 44px; }
+.hchat-schalter input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.hchat-schalter__bahn { width: 44px; height: 26px; border-radius: 13px; background: var(--heart-surface-soft, #2a2a30); position: relative; transition: background .15s; flex: none; }
+.hchat-schalter__bahn::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.hchat-schalter input:checked + .hchat-schalter__bahn { background: var(--heart-success, #23c483); }
+.hchat-schalter input:checked + .hchat-schalter__bahn::after { transform: translateX(18px); }
+.hchat-schalter input:focus-visible + .hchat-schalter__bahn { outline: 2px solid var(--heart-info, #4b8dff); outline-offset: 2px; }
+.hchat-schalter__text { font-size: 13px; color: var(--heart-text-soft, #c7c7c2); }
+
+/* Liste */
+.hchat__listeninhalt { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+.hchat-chips { display: flex; gap: 8px; padding: 10px 12px; position: sticky; top: 0; background: var(--heart-bg, #040404); z-index: 1; }
+.hchat-chip { flex: 1; min-height: 40px; border-radius: 20px; border: 1px solid var(--heart-border-strong, #ffffff24); background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; font-size: 14px; }
+.hchat-chip span { font-size: 12px; opacity: .7; }
+.hchat-chip[aria-selected="true"] { background: #23c48326; color: var(--heart-text, #f7f7f2); border-color: var(--heart-success, #23c483); }
+.hchat-zeile { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--heart-border, #ffffff14); background: none; cursor: pointer; min-height: 68px; }
+.hchat-zeile:active, .hchat-zeile--an { background: var(--heart-surface-soft, #1c1c21); }
+.hchat-zeile__bild { width: 44px; height: 44px; border-radius: 50%; flex: none; display: grid; place-items: center; background: #2c5f63; color: #fff; font-weight: 700; font-size: 17px; }
+.hchat-zeile__mitte { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.hchat-zeile__mitte b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hchat-zeile__mitte span { font-size: 13.5px; color: var(--heart-text-muted, #8f918d); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hchat-zeile__mitte i { color: var(--heart-success, #23c483); }
+.hchat-zeile--neu .hchat-zeile__mitte b, .hchat-zeile--neu .hchat-zeile__mitte span { color: var(--heart-text, #f7f7f2); font-weight: 700; }
+.hchat-zeile__rechts { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: none; }
+.hchat-zeile__rechts time { font-size: 12px; color: var(--heart-text-muted, #8f918d); }
+.hchat-punkt { width: 10px; height: 10px; border-radius: 50%; background: var(--heart-success, #23c483); display: block; }
+.hchat-leer { color: var(--heart-text-muted, #8f918d); text-align: center; padding: 28px 16px; margin: 0; }
+
+/* Status */
+.hchat__status { flex: none; display: flex; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--heart-border, #ffffff14); }
+.hchat-status { flex: 1; min-height: 36px; border-radius: 18px; border: 1px solid var(--heart-border-strong, #ffffff24); background: none; cursor: pointer; font-size: 13.5px; font-weight: 600; }
+.hchat-status[aria-pressed="true"] { background: #23c48326; border-color: var(--heart-success, #23c483); }
+
+/* Unterhaltung */
+.hchat__mitte { flex: 1; min-height: 0; display: flex; position: relative; }
+.hchat__nachrichten { flex: 1; min-width: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px 12px 6px; display: flex; flex-direction: column; }
+#hchat-verlauf, #hchat-entwurf { display: flex; flex-direction: column; gap: 4px; }
+#hchat-verlauf { margin-top: auto; }
+.hchat-tag { align-self: center; font-size: 12px; color: var(--heart-text-muted, #8f918d); background: var(--heart-surface-soft, #1c1c21); padding: 3px 10px; border-radius: 10px; margin: 10px 0 4px; }
+.hchat-blase { display: flex; flex-direction: column; }
+.hchat-blase--kunde { align-items: flex-start; }
+.hchat-blase--team { align-items: flex-end; }
+.hchat-blase__inhalt { max-width: min(80%, 460px); padding: 8px 12px 5px; border-radius: 18px; overflow-wrap: anywhere; }
+.hchat-blase--kunde .hchat-blase__inhalt { background: var(--heart-surface-soft, #1c1c21); border-bottom-left-radius: 6px; }
+.hchat-blase--team .hchat-blase__inhalt { background: #2c5f63; color: #fff; border-bottom-right-radius: 6px; }
+.hchat-blase__inhalt p { margin: 0; }
+.hchat-blase__inhalt a { color: inherit; }
+.hchat-blase__inhalt time { display: block; text-align: right; font-size: 11px; opacity: .65; margin-top: 2px; }
+.hchat-blase--entwurf .hchat-blase__inhalt { background: none; border: 1.5px dashed var(--heart-success, #23c483); font-style: italic; }
+.hchat-blase--entwurf time { color: var(--heart-success, #23c483); opacity: 1; }
+.hchat-blase--fehler .hchat-blase__inhalt { background: #7a2020; }
+.hchat-nochmal { border: 0; background: none; color: var(--heart-danger, #ff6b57); font-size: 12.5px; font-weight: 600; padding: 6px 2px; cursor: pointer; }
+.hchat-gelesen { align-self: flex-end; font-size: 11.5px; color: var(--heart-text-muted, #8f918d); padding: 2px 4px; }
+.hchat-bild { display: block; max-width: 260px; max-height: 320px; width: 100%; object-fit: cover; border-radius: 12px; margin: 0 -4px 4px; cursor: zoom-in; }
+.hchat-produkt ul { margin: 6px 0; padding-left: 18px; }
+.hchat-produkt strong { display: block; font-size: 18px; }
+.hchat-produkt small, .hchat-formular span, .hchat-formular em { display: block; font-size: 12px; opacity: .8; }
+.hchat-formular em { font-style: normal; margin-top: 4px; }
+.hchat-antwort { display: grid; gap: 2px; }
+.hchat-antwort em { font-style: normal; opacity: .7; margin-right: 6px; }
+
+/* Kunde */
+.hchat__kunde { display: none; }
+.hchat--info .hchat__kunde {
+  display: block; position: absolute; inset: 0; z-index: 2; overflow-y: auto; background: var(--heart-bg, #040404); padding: 12px 14px 24px;
+}
+.hchat-kunde dl { margin: 0; display: grid; gap: 8px; }
+.hchat-kunde dl div { display: grid; grid-template-columns: 130px 1fr; gap: 8px; font-size: 13.5px; }
+.hchat-kunde dt { color: var(--heart-text-muted, #8f918d); }
+.hchat-kunde dd { margin: 0; overflow-wrap: anywhere; }
+.hchat-kunde h4 { margin: 18px 0 8px; font-size: 14px; }
+.hchat-pfad { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 13px; }
+.hchat-pfad time { color: var(--heart-text-muted, #8f918d); margin-right: 8px; }
+
+/* Blatt: Produkte, Formular */
+.hchat__blatt:empty { display: none; }
+.hchat__blatt { flex: none; max-height: 60%; overflow-y: auto; border-top: 1px solid var(--heart-border, #ffffff14); background: var(--heart-surface-strong, #0a0a0c); }
+.hchat-blatt { padding: 10px 12px 12px; display: grid; gap: 10px; }
+.hchat-blatt__kopf { display: flex; align-items: center; justify-content: space-between; }
+.hchat-x { width: 40px; height: 40px; border: 0; background: none; font-size: 26px !important; cursor: pointer; }
+.hchat-wahl { display: grid; gap: 6px; }
+.hchat-wahl__eintrag { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--heart-border, #ffffff14); cursor: pointer; min-height: 52px; }
+.hchat-wahl__eintrag--an { border-color: var(--heart-success, #23c483); }
+.hchat-wahl__eintrag input { width: 20px; height: 20px; flex: none; accent-color: #23c483; }
+.hchat-wahl__eintrag img, .hchat-wahl__leer { width: 40px; height: 50px; object-fit: cover; border-radius: 6px; background: var(--heart-surface-soft, #1c1c21); flex: none; }
+.hchat-wahl__eintrag span { display: flex; flex-direction: column; }
+.hchat-wahl__eintrag small { color: var(--heart-text-muted, #8f918d); font-size: 12px; }
+.hchat-feldzeile { display: grid; gap: 4px; font-size: 12.5px; color: var(--heart-text-muted, #8f918d); }
+.hchat-feldzeile input { min-height: 44px; border-radius: 10px; border: 1px solid var(--heart-border-strong, #ffffff24); background: var(--heart-surface-soft, #1c1c21); color: var(--heart-text, #f7f7f2); padding: 8px 12px; font: 16px system-ui, sans-serif; }
+.hchat-knopf { min-height: 46px; border: 0; border-radius: 12px; background: var(--heart-success, #23c483); color: #04130c !important; font-weight: 700; cursor: pointer; }
+.hchat-knopf:disabled { opacity: .45; }
+.hchat-knopf--leise { background: var(--heart-surface-soft, #1c1c21); color: var(--heart-text, #f7f7f2) !important; margin-top: 16px; width: 100%; }
+
+/* Eingabe */
+.hchat__eingabe { flex: none; display: flex; align-items: flex-end; gap: 4px; padding: 8px 8px calc(8px + var(--heart-safe-bottom, 0px)); border-top: 1px solid var(--heart-border, #ffffff14); background: var(--heart-surface-strong, #0a0a0c); margin: 0; }
+.hchat-werkzeug { width: 40px; height: 44px; border: 0; background: none; display: grid; place-items: center; cursor: pointer; flex: none; color: var(--heart-text-soft, #c7c7c2) !important; }
+.hchat__eingabe textarea { flex: 1; min-width: 0; min-height: 44px; max-height: 140px; padding: 11px 14px; border-radius: 22px; border: 1px solid var(--heart-border-strong, #ffffff24); background: var(--heart-surface-soft, #1c1c21); color: var(--heart-text, #f7f7f2); font: 16px/1.35 system-ui, sans-serif; resize: none; }
+.hchat__eingabe textarea:focus { outline: none; border-color: var(--heart-success, #23c483); }
+.hchat-senden { width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--heart-success, #23c483); color: #04130c !important; display: grid; place-items: center; cursor: pointer; flex: none; }
+.hchat-senden:disabled { opacity: .35; }
+
+@media (min-width: 900px) {
+  .hchat__liste { width: 340px; flex: none; border-right: 1px solid var(--heart-border, #ffffff14); }
+  .hchat[data-ansicht="unterhaltung"] .hchat__liste { display: flex; }
+  .hchat__gespraech { display: flex; flex: 1; }
+  .hchat[data-ansicht="liste"] .hchat__gespraech > :not(.hchat__kopf) { visibility: hidden; }
+  .hchat [data-zurueck] { display: none; }
+  .hchat__kunde { display: block; width: 320px; flex: none; overflow-y: auto; border-left: 1px solid var(--heart-border, #ffffff14); padding: 12px 14px; }
+  .hchat--info .hchat__kunde { position: static; }
+  .hchat [data-info] { display: none; }
+}

@@ -311,3 +311,7 @@ export default async function lifeskinMeldung(req, res) {
     res.end(JSON.stringify({ ok: false }));
   }
 }
+
+// Fuer /api/lifeskin-chat (Chat auf /lifeskinshop, 07.10.): derselbe Weg
+// zum Telefon - Zugang, Empfaenger, Zustellung mit Sperre, FCM.
+export { schluessel, zugangHolen, lies, wert, empfaenger, meldungAnlegen, schicken, zustellungAendern };
