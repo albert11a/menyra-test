@@ -409,4 +409,3 @@
 #ls-einstieg .page .message-kopf b small{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-top:1px}
 #ls-einstieg .page .ig-erste__bild{position:relative;display:block;flex:1;min-height:110px;margin:0 -16px -14px;overflow:hidden;background:#fff;border-radius:0 0 16px 16px}
 #ls-einstieg .page .ig-erste__bild img{position:absolute;left:50%;top:-4px;width:72%;max-width:240px;height:auto;transform:translateX(-50%)}
-#ls-einstieg .page .ig-erste__bild::after{content:"";position:absolute;left:0;right:0;bottom:0;height:56px;background:linear-gradient(#fff0,#fff)}
