@@ -68,7 +68,7 @@ test("erreichbar: Vercel, Entwicklungsserver, Service Worker, Build", () => {
 });
 
 test("Korb, Summe, Pflichtfelder und Zeilen der Bestellung", async () => {
-  const { korbLesen, korbSchreiben, summe, kasseFehler, bestellZeilen } = await import("../apps/lifeskin-shop/shop.js");
+  const { korbLesen, korbSchreiben, summe, kasseFehler, bestellZeilen, bestellNachricht } = await import("../apps/lifeskin-shop/shop.js");
   const speicher = new Map();
   const s = { getItem: (k) => speicher.get(k) ?? null, setItem: (k, v) => speicher.set(k, v) };
   assert.deepEqual(korbLesen(s), { ids: [], set: "" });
@@ -79,7 +79,11 @@ test("Korb, Summe, Pflichtfelder und Zeilen der Bestellung", async () => {
   assert.equal(summe({ ids: ["a"] }), 29);
   assert.equal(summe({ ids: ["a", "b"] }), 39);
   assert.equal(summe({ ids: ["a", "b", "c"] }), 49);
-  assert.match(kasseFehler({ name: "", telefon: "1", strasse: "x", ort: "y" }), /të gjitha fushat/);
+  // Seit 07.10. (Inhaber): auch leere Felder halten nichts auf - nur ganz leer.
+  assert.equal(kasseFehler({ name: "", telefon: "1", strasse: "x", ort: "y" }), "");
+  assert.equal(kasseFehler({ name: "A", telefon: "", strasse: "", ort: "" }), "");
+  assert.match(kasseFehler({ name: "", telefon: "", strasse: "", ort: "" }), /emrin dhe numrin/);
+  assert.match(bestellNachricht({ name: "A", telefon: "044", strasse: "", ort: "Prishtinë" }, 39), /Emri: A\nTelefoni: 044\nQyteti: Prishtinë/);
   // Seit 30.09. (Inhaber): jede Eingabe geht durch, nur leer nicht.
   for (const telefon of ["12", "044123456", "44123456", "+38344123456", "kdkekei8272€", "nuk e di"]) {
     assert.equal(kasseFehler({ name: "A", telefon, strasse: "x", ort: "y" }), "", telefon);
@@ -261,11 +265,13 @@ test("Acne-Duo-Kampagne laesst keine weiteren Sets oder halben Koerbe zu", async
   assert.equal((card.match(/<details/g)||[]).length,3, "ein Aufklapper fuer Anwendung, je ein 'Lexo më shumë'");
   // Seit 30.09. (Inhaber) kurz: "BPO 5 %".
   assert.match(card,/BPO 5 %/);
-  assert.match(card,/<s data-preis="vecmas" data-preis-zbritje>58 €<\/s>/);
-  // Seit 30.09. (Inhaber) wie oben im Kopf: 1–3 ditë, Paguani te dera, 4.8/5 vlerësim.
+  // Seit 07.10. (Inhaber, Einschraenkung durch Meta): kein Vergleichspreis,
+  // kein Rabatt, keine Sternbewertung ohne Quelle.
+  assert.doesNotMatch(card,/data-preis="vecmas"|ZBRITJE|vlerësim/);
+  // Seit 30.09. (Inhaber) wie oben im Kopf: 1–3 ditë, Paguani te dera.
   assert.match(card,/1–3 ditë/);
   assert.doesNotMatch(card,/Falas, 1–3 ditë/);
-  assert.match(card,/#Star"><\/use><\/svg>4\.8\/5 vlerësim/);
+  assert.match(card,/#ShieldCheck"><\/use><\/svg>45 ditë garanci/);
   assert.match(card,/data-set="custom-acne"/);
   assert.doesNotMatch(card,/data-single/);
   assert.equal((card.match(/<img/g)||[]).length,2, "kleine Produktfotos (Wunsch Inhaber 29.09.)");
@@ -344,4 +350,24 @@ test("sticky stays hidden throughout scan, independent of hero callback order", 
   notify([{ target: scan, isIntersecting: true }, { target: hero, isIntersecting: true }]);
   notify([{ target: scan, isIntersecting: false }]);
   assert.equal(sticky.hidden, true, "hero still hides CTA after leaving scan");
+});
+
+// 07.10. (Inhaber): Meta schraenkte lifeskin.ks ein ("irrefuehrende
+// Geschaeftspraktiken"). Der Laden nennt jetzt, wer verkauft, verlinkt
+// die drei Rechtsseiten, und diese melden nichts an Meta.
+test("Laden nennt den Verkaeufer und verlinkt Kushtet, Privatesia, Shitesi - ohne Pixel", () => {
+  const seiten = ["shitesi", "kushtet", "privatesia"];
+  for (const s of seiten) {
+    assert.match(HTML, new RegExp(`href="/apps/lifeskin-shop/${s}\\.html"`), s);
+    const seite = lies(`apps/lifeskin-shop/${s}.html`);
+    assert.match(seite, /<html lang="sq">/);
+    assert.match(seite, /data-anbieter="name"/);
+    assert.doesNotMatch(seite, /fbq|lifeskin-pixel|connect\.facebook/, `${s}: kein Pixel`);
+    // Einziges Skript: das Cookie-Fenster, damit die Wahl hier aenderbar ist.
+    assert.deepEqual(seite.match(/<script[^>]*>/g), [`<script type="module" src="/shared/lifeskin-zustimmung.js">`]);
+    assert.doesNotMatch(seite, /\[EMRI|\[EMAIL|\[ADRESA/, `${s}: keine Platzhalter`);
+  }
+  assert.match(HTML, /class="wrap footer-shitesi"/);
+  assert.match(HTML, /class="kasa__ligjore"/);
+  assert.doesNotMatch(HTML, /në vend të/);
 });

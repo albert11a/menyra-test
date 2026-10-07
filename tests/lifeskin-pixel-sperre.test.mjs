@@ -39,21 +39,27 @@ const HINWEIS = "Meta-Pixel/Conversions API geaendert. Das ist gesperrt: nur mit
 // fuer Lead/Purchase als SHA-256-Hash, ohne zusaetzlichen UI-Haken.
 // Pixel-Aenderung erlaubt von Albert am 02.10.2026: Warteseite Browser + Server
 // mit gemeinsamer ID und dauerhafte, begrenzte Kauf-Wiederholung.
+// Pixel-Aenderung erlaubt von Albert am 07.10.2026: Cookie-Fenster - Pixel
+// und Conversions API (Browser, Vercel, Firebase, Wiederholung) nur nach
+// "Pranoj" (device.zustimmung === "ja"); das Fenster selbst steht seitdem
+// unter der Sperre.
 const DATEIEN = Object.freeze({
-  "apps/lifeskin/lifeskin-pixel.js": "a674a2519a217be8",
+  "apps/lifeskin/lifeskin-pixel.js": "c9fa98c2ff90c9a0",
+  "shared/lifeskin-zustimmung.js": "463ad2385bd5eb9f",
   // Pixel-Aenderung erlaubt von Albert (albert11a, Inhaber) am 28.09.2026:
   // Bestellungen aus dem stillen Modus (order.still) gehen nicht an die CAPI.
-  "functions/lifeskin-capi-payload.js": "95e4046e25068ab3",
+  "functions/lifeskin-capi-payload.js": "cff0afe201cadbec",
   "functions/lifeskin-capi-versand.js": "a9e20d0c8088c119",
-  "functions/lifeskin-capi.js": "07273a6f83a093a7",
-  "api/lifeskin-capi.js": "8d809123318ab7ea",
+  "functions/lifeskin-capi.js": "191c7b6306a11b24",
+  "api/lifeskin-capi.js": "42ebf7a9c167bb5b",
   "shared/lifeskin-capi-anstossen.js": "ebd17d59c01e266c"
 });
 
 // 2. DIE KENNUNG UND DIE EINWILLIGUNG - genau diese zwei Zeilen.
 const KONFIG = Object.freeze({
   LIFESKIN_PIXEL_ID: '"1347571994123884"',
-  LIFESKIN_PIXEL_EINWILLIGUNG_NOETIG: "false"
+  // Seit 07.10.2026 true - Pixel-Aenderung erlaubt von Albert am 07.10.2026.
+  LIFESKIN_PIXEL_EINWILLIGUNG_NOETIG: "true"
 });
 
 // 3. JEDE ZEILE IN DEN SEITEN, DIE DEN PIXEL AUFRUFT.

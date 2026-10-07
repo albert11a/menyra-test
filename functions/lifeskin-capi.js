@@ -5,7 +5,7 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const { buildEventLogContext, logFunctionInfo, logFunctionError } = require("./logging");
-const { text, baueKauf, istKauf, baueWarten, istWarten, baueLead } = require("./lifeskin-capi-payload");
+const { text, baueKauf, istKauf, baueWarten, istWarten, baueLead, metaErlaubt } = require("./lifeskin-capi-payload");
 const { versenden, darfWiederholen } = require("./lifeskin-capi-versand");
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
@@ -72,7 +72,8 @@ exports.lifeskinCapiRetry = functions.region("us-central1")
           if (!sitzung.exists) return;
           const daten = sitzung.data();
           const bau = { Purchase: baueKauf, Lead: baueLead, lifeskin_waiting_reached: baueWarten }[stand.eventName];
-          if (!bau || daten.order?.still === true) return;
+          // Pixel-Aenderung erlaubt von Albert am 07.10.2026: ohne "Pranoj" nichts.
+          if (!bau || daten.order?.still === true || !metaErlaubt(daten)) return;
           const nutzlast = bau(daten, { browser: stand.browser || null });
           if (nutzlast.event_id !== stand.eventId) return;
           if (stand.eventName === "Purchase" && Number.isFinite(stand.value)) nutzlast.custom_data.value = stand.value;

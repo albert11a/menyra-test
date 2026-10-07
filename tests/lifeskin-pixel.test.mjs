@@ -208,12 +208,18 @@ test("Kennung und Schalter stehen so, dass der Pixel wirklich laeuft", async () 
 
   assert.match(LIFESKIN_PIXEL_ID, /^\d{15,16}$/,
     "Die Pixel-Kennung ist keine Nummer mehr - der Pixel laedt dann gar nicht");
-  assert.equal(LIFESKIN_PIXEL_EINWILLIGUNG_NOETIG, false,
-    "Der Pixel wartet wieder auf eine Zustimmung, die es auf dieser Seite nicht gibt - er bliebe stumm");
+  // Seit 07.10. (Pixel-Aenderung erlaubt von Albert am 07.10.2026): erst
+  // nach "Pranoj" im Cookie-Fenster (shared/lifeskin-zustimmung.js).
+  assert.equal(LIFESKIN_PIXEL_EINWILLIGUNG_NOETIG, true,
+    "Der Pixel meldet wieder ohne Zustimmung");
 
-  // Und der Standard des Konstruktors folgt dieser einen Stelle.
+  // Ohne Zustimmung: nichts. Mit "Pranoj": er meldet.
   const { fbq, rufe } = schreiber();
   const pixel = new Pixel({ fbq, dokument: null });
+  assert.equal(pixel.aktiv, false, "Ohne Zustimmung darf der Pixel nicht aktiv sein");
+  assert.equal(pixel.melde("opened"), false);
+  assert.equal(rufe.length, 0, "Ohne Zustimmung ging etwas an Meta");
+  pixel.erlaube(true);
   assert.equal(pixel.aktiv, true, "Mit der Kennung aus der Konfiguration ist er trotzdem aus");
   assert.equal(pixel.melde("opened"), true);
   assert.ok(rufe.length > 0, "Es geht nichts hinaus");
@@ -258,7 +264,7 @@ test("der kopierte Basiscode steht in keiner Seite", async () => {
 test("Landingpage, Warteseite und Befund melden drei verschiedene Namen", () => {
   const gemeldet = ["trichter", "warteseite", "befund"].map((seite) => {
     const { fbq, ereignisse, eigene } = schreiber();
-    const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null, seite });
+    const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null, seite, einwilligung: true });
     pixel.melde("opened");
     // PageView geht von jeder Seite hinaus - eine Seite ist eine Seite.
     assert.deepEqual(ereignisse(), ["PageView"], `${seite} meldet kein PageView`);
@@ -330,5 +336,38 @@ test("jede Stelle, die phoneConsent setzt, meldet auch Lead", () => {
     // Browser mit dem vom Server zusammen (api/lifeskin-capi.js).
     assert.match(umfeld, /meldeLead\(this\.sitzung\?\.code\)/,
       "Eine Stelle nimmt die Nummer an, ohne Lead (mit Fallnummer) zu melden - dort optimiert Meta ins Leere");
+  }
+});
+
+
+// ══ DAS COOKIE-FENSTER (07.10.) ══════════════════════════════════════
+// Pixel-Aenderung erlaubt von Albert am 07.10.2026: Pixel und Conversions
+// API erst nach "Pranoj". "Refuzo" heisst: nichts an Meta, auch vom Server.
+test("Cookie-Fenster: Pranoj startet den Pixel und meldet die Seite nach, Refuzo nie", async () => {
+  const z = await import("../shared/lifeskin-zustimmung.js");
+  const speicher = new Map();
+  const lager = { getItem: (k) => speicher.get(k) ?? null, setItem: (k, v) => speicher.set(k, String(v)) };
+  assert.equal(z.zustimmungLesen(lager), "");
+  assert.equal(z.zustimmungSetzen("ja", lager), "ja");
+  assert.equal(z.zustimmungLesen(lager), "ja");
+  assert.equal(z.zustimmungSetzen("irgendwas", lager), "nein", "alles ausser ja ist nein");
+
+  const horcher = [];
+  const altAdd = globalThis.addEventListener;
+  globalThis.addEventListener = (name, f) => horcher.push([name, f]);
+  try {
+    const { fbq, ereignisse } = schreiber();
+    const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null, einwilligung: false });
+    assert.equal(pixel.starte(), false);
+    assert.deepEqual(ereignisse(), []);
+    assert.equal(horcher.filter(([n]) => n === z.ZUSTIMMUNG_EREIGNIS).length, 1, "wartet nicht auf die Wahl");
+    horcher[0][1]({ detail: "nein" });
+    assert.equal(pixel.aktiv, false);
+    assert.deepEqual(ereignisse(), [], "nach Refuzo ging etwas an Meta");
+    horcher[0][1]({ detail: "ja" });
+    assert.equal(pixel.aktiv, true);
+    assert.deepEqual(ereignisse(), ["PageView"], "nach Pranoj fehlt die Seite");
+  } finally {
+    globalThis.addEventListener = altAdd;
   }
 });

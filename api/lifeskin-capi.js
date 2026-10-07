@@ -141,6 +141,9 @@ async function aendern(pfad, daten, token, updateTime = "") {
 // Was fuer diese Sitzung auf diesen Anstoss hin faellig ist.
 export function ereignisseFuer(sitzung, art, { jetzt = Date.now() } = {}) {
   if (!sitzung || typeof sitzung !== "object") return [];
+  // Pixel-Aenderung erlaubt von Albert am 07.10.2026: nur nach "Pranoj"
+  // im Cookie-Fenster (device.zustimmung).
+  if (!capi.metaErlaubt(sitzung)) return [];
   if (art === "kauf") {
     const order = sitzung.order || {};
     const gespeichert = Date.parse(String(order.createdAt || ""));

@@ -94,12 +94,28 @@ export function arrinDeri(heute) {
   return `${DITET[tag.getDay()]}, ${tag.getDate()} ${MUAJT[tag.getMonth()]}`;
 }
 
-// Die Pflichtfelder der Kasse. Dieselbe Regel wie auf /lifeskin: alle vier
-// ausgefuellt - und sonst nichts. Seit 30.09. (Inhaber) keine Mindestzahl
-// an Ziffern mehr: Jede Eingabe geht durch, geklaert wird am Telefon.
+// Die Felder der Kasse. Seit 07.10. (Inhaber: "egal was man schreibt,
+// alles akzeptieren"): Keine Eingabe haelt eine Bestellung mehr auf - auch
+// ein leeres Feld nicht. Geklaert wird am Telefon. Nur wer GAR NICHTS
+// geschrieben hat, bekommt den Hinweis: Eine Bestellung ohne jede Angabe
+// kann niemand ausliefern.
 export function kasseFehler(werte) {
-  if (!werte.name || !werte.telefon || !werte.strasse || !werte.ort) return "Ju lutemi plotësoni të gjitha fushat.";
+  if (!werte.name && !werte.telefon && !werte.strasse && !werte.ort) return "Ju lutemi shkruani emrin dhe numrin e telefonit.";
   return "";
+}
+
+// Die Bestellung als WhatsApp-Nachricht - fuer den Fall, dass sie nicht
+// gespeichert werden konnte. So kommt sie trotzdem an (07.10., Inhaber:
+// "die Bestellung muss ankommen").
+export function bestellNachricht(werte, betrag) {
+  const zeilen = [
+    `Përshëndetje, dua të porosis setin Acne Duo (${betrag} €).`,
+    werte.name && `Emri: ${werte.name}`,
+    werte.telefon && `Telefoni: ${werte.telefon}`,
+    werte.strasse && `Adresa: ${werte.strasse}`,
+    werte.ort && `Qyteti: ${werte.ort}`
+  ];
+  return zeilen.filter(Boolean).join("\n");
 }
 
 // Die Zeilen der Bestellung - je Zeile id, name, Preis, Anzahl, wie im
@@ -171,8 +187,18 @@ const DUO_HAPAT = [
 // (shared/lifeskin-oferta.js).
 export { PAK_SETE };
 const PAK_SETE_ZEILE = '<span class="pak-sete"><i aria-hidden="true"></i>Vetëm edhe pak sete</span>';
+// KEIN VERGLEICHSPREIS MEHR (07.10., Inhaber): "19 € statt 58 €" und
+// "−67 %" nannten einen Preis, zu dem das Set nirgends verkauft wird. Meta
+// hat das Konto lifeskin.ks am 07.10. wegen "irrefuehrender
+// Geschaeftspraktiken" eingeschraenkt; ein Rabatt ohne echten Normalpreis
+// ist dafuer ein typischer Ausloeser. Auf true nur, wenn es den hoeheren
+// Preis wirklich gibt.
+export const VERGLEICHSPREIS_ZEIGEN = false;
+export function rabattVon(cmimi, vecmas) {
+  return VERGLEICHSPREIS_ZEIGEN && vecmas > cmimi ? Math.round((1 - cmimi / vecmas) * 100) : 0;
+}
 export function duoCard(s, mittel, { fotos = true } = {}) {
-  const price=setPreis(s), vecmas=(s.produkte?.length||2)*preisFuer(1), zbritje=vecmas>price?Math.round((1-price/vecmas)*100):0;
+  const price=setPreis(s), vecmas=(s.produkte?.length||2)*preisFuer(1), zbritje=rabattVon(price, vecmas);
   const emri=(h)=>e(mittel.find(m=>m.id===h.id)?.name || h.id.toUpperCase().replace('LF-','LF '));
   const hapat=DUO_HAPAT.map(h=>{
     const m=mittel.find(m=>m.id===h.id);
@@ -183,7 +209,7 @@ export function duoCard(s, mittel, { fotos = true } = {}) {
     return `<div class="duo-hap">${foto ? `<img class="duo-hap-foto" src="${e(foto)}" width="72" height="90" alt="${emri(h)}" loading="lazy" decoding="async">` : '<span class="duo-hap-foto duo-hap-foto--leer" aria-hidden="true"></span>'}<div><small>${h.hapi}</small><h3>${emri(h)} <span>${e(m?.inhalt || '30 ml')}</span></h3><p class="duo-aktiv">${h.aktiv}</p><p class="duo-dobi">${h.dobi}</p></div></div>`;
   }).join('');
   const detaje=DUO_HAPAT.map(h=>`<h4>${emri(h)}</h4><p><b>Si përdoret:</b> ${h.si}</p><p class="duo-inci"><b>Përbërja kryesore:</b> ${h.kryesore}</p><details class="duo-inci-mehr"><summary>Lexo më shumë</summary><p class="duo-inci">${h.perberja}</p></details>`).join('');
-  return `<article class="duo-card"><div class="duo-hapat">${hapat}</div><details class="duo-product"><summary><span class="duo-product-ikona">${ikone('FlaskConical')}</span><span class="duo-product-teksti">Përdorimi dhe përbërja<small>Si përdoret · përbërësit</small></span>${ikone('Plus')}</summary><div class="duo-product-body">${detaje}<p class="duo-shenim">Pa parfum · Kujdes dermatologjik nga Gjermania</p></div></details><div class="duo-ndjekje"><p class="duo-ndjekje-titull">${ikone('Stethoscope')}<b>Përfshirë në çmim</b></p><ul><li>${ikone('Check')}Mbështetje personale nga Dr. Violeta Gashi</li><li>${ikone('Check')}Plan ushqimor kundër akneve</li><li>${ikone('Check')}Këshilla për gjumin, stresin dhe kujdesin ditor</li><li>${ikone('Check')}Ndihmë e personalizuar gjatë gjithë kurës</li></ul></div><div class="duo-cmimi"><span class="duo-cmimi-etiketa">Çmimi:</span><span class="duo-cmimi-vlera">${zbritje ? `<s data-preis="vecmas" data-preis-zbritje>${vecmas} €</s>` : ""}<strong data-preis="cmimi">${price} €</strong></span>${zbritje ? `<em class="zbritje" data-preis="zbritje-fjale" data-preis-zbritje>ZBRITJE −${zbritje} %</em>` : "<span></span>"}${PAK_SETE ? PAK_SETE_ZEILE : "<span></span>"}</div><button type="button" class="primary" data-set="${e(s.id)}"><span>Porosit setin · <span data-preis="cmimi">${price} €</span></span> ${ikone('ArrowUpRight')}</button><ul class="besim"><li>${ikone('Truck')}1–3 ditë</li><li>${ikone('Banknote')}Paguani te dera</li><li aria-label="Vlerësimi i klientëve: 4.8 nga 5">${ikone('Star')}4.8/5 vlerësim</li></ul></article>`;
+  return `<article class="duo-card"><div class="duo-hapat">${hapat}</div><details class="duo-product"><summary><span class="duo-product-ikona">${ikone('FlaskConical')}</span><span class="duo-product-teksti">Përdorimi dhe përbërja<small>Si përdoret · përbërësit</small></span>${ikone('Plus')}</summary><div class="duo-product-body">${detaje}<p class="duo-shenim">Pa parfum · Kujdes dermatologjik nga Gjermania</p></div></details><div class="duo-ndjekje"><p class="duo-ndjekje-titull">${ikone('Stethoscope')}<b>Përfshirë në çmim</b></p><ul><li>${ikone('Check')}Mbështetje personale nga Dr. Violeta Gashi</li><li>${ikone('Check')}Plan ushqimor kundër akneve</li><li>${ikone('Check')}Këshilla për gjumin, stresin dhe kujdesin ditor</li><li>${ikone('Check')}Ndihmë e personalizuar gjatë gjithë kurës</li></ul></div><div class="duo-cmimi"><span class="duo-cmimi-etiketa">Çmimi:</span><span class="duo-cmimi-vlera">${zbritje ? `<s data-preis="vecmas" data-preis-zbritje>${vecmas} €</s>` : ""}<strong data-preis="cmimi">${price} €</strong></span>${zbritje ? `<em class="zbritje" data-preis="zbritje-fjale" data-preis-zbritje>ZBRITJE −${zbritje} %</em>` : "<span></span>"}${PAK_SETE ? PAK_SETE_ZEILE : "<span></span>"}</div><button type="button" class="primary" data-set="${e(s.id)}"><span>Porosit setin · <span data-preis="cmimi">${price} €</span></span> ${ikone('ArrowUpRight')}</button><ul class="besim"><li>${ikone('Truck')}1–3 ditë</li><li>${ikone('Banknote')}Paguani te dera</li><li>${ikone('ShieldCheck')}45 ditë garanci</li></ul></article>`;
 }
 
 // KLEINE KACHELN WIE AUF DER THERAPIESEITE (Wunsch Inhaber 29.09.): eine
@@ -683,7 +709,7 @@ export class Dyqan {
   #preiseZeigen(set) {
     const cmimi = setPreis(set);
     const vecmas = set.produkte.length * preisFuer(1);
-    const zbritje = vecmas > cmimi ? Math.round((1 - cmimi / vecmas) * 100) : 0;
+    const zbritje = rabattVon(cmimi, vecmas);
     preiseAnwenden(this.dok, { cmimi, vecmas, zbritje });
   }
 
@@ -898,7 +924,7 @@ export class Dyqan {
     // Ersparnis als Pille neben dem Preis (statt eigener Zeile).
     const s = this.setVon(this.korb.set);
     const einzeln = n * preisFuer(1);
-    const spart = n > 1 ? einzeln - summe(this.korb) : 0;
+    const spart = n > 1 && VERGLEICHSPREIS_ZEIGEN ? einzeln - summe(this.korb) : 0;
     const vorher = $("#kasa-vecmas", this.dok);
     if (vorher) { vorher.textContent = spart > 0 ? `${einzeln} €` : ""; vorher.hidden = !(spart > 0); }
     const pille = $("#kasa-kurseni", this.dok);
@@ -912,10 +938,12 @@ export class Dyqan {
     }
   }
 
-  // Wartet kurz auf die Sitzung des Trichters - wer sehr schnell bestellt,
-  // koennte vor ihr da sein.
+  // Wartet auf die Sitzung des Trichters - wer sehr schnell bestellt,
+  // koennte vor ihr da sein. Bis 15 s (vorher 3 s): Auf einer langsamen
+  // Leitung laedt der Trichter laenger, und ohne Sitzung ging die
+  // Bestellung nicht hinaus.
   async #sitzung() {
-    for (let i = 0; i < 30; i += 1) {
+    for (let i = 0; i < 150; i += 1) {
       const s = this.trichterFn()?.sitzung;
       if (s) return s;
       await new Promise((fertig) => setTimeout(fertig, 100));
@@ -931,8 +959,8 @@ export class Dyqan {
     const werte = { name: feld("#kasa-emri"), telefon: feld("#kasa-telefoni"), strasse: feld("#kasa-adresa"), ort: feld("#kasa-qyteti") };
     const gabim = $("#kasa-gabim", this.dok);
     const fehler = kasseFehler(werte);
-    for (const [id, wert] of [["#kasa-emri", werte.name], ["#kasa-telefoni", werte.telefon], ["#kasa-adresa", werte.strasse], ["#kasa-qyteti", werte.ort]]) {
-      $(id, this.dok)?.setAttribute("aria-invalid", wert ? "false" : "true");
+    for (const [id, wert] of [["#kasa-emri", werte.name], ["#kasa-telefoni", werte.telefon]]) {
+      $(id, this.dok)?.setAttribute("aria-invalid", fehler && !wert ? "true" : "false");
     }
     if (fehler) {
       gabim.textContent = fehler;
@@ -985,8 +1013,15 @@ export class Dyqan {
     knopf.disabled = false;
     text.textContent = "Porositni tani";
     if (!ok) {
-      gabim.textContent = "Porosia nuk u dërgua. Ju lutemi provoni sërish.";
+      gabim.textContent = "Porosia nuk u dërgua. Ju lutemi provoni sërish ose dërgojeni me WhatsApp më poshtë.";
       gabim.hidden = false;
+      // Die Bestellung darf nicht verloren gehen: Der WhatsApp-Knopf traegt
+      // jetzt alles, was eingegeben wurde - ein Tipp, und sie ist da.
+      const wa = $("#kasa-wa", this.dok);
+      if (wa) {
+        wa.href = `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(bestellNachricht(werte, betrag))}`;
+        wa.hidden = false;
+      }
       return;
     }
     // Woher die Bestellung kommt: aus dem Laden, nicht von der Befundseite.

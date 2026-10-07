@@ -27,6 +27,8 @@ function sitzungKauf(zusatz = {}) {
     createdAt: jetztIso(3600000), updatedAt: jetztIso(),
     address: { name: "Arta Berisha", strasse: "Rruga B 12", ort: "Prishtinë" },
     source: { utmSource: "ig", fbc: "fb.1.1790000000000.IwErsterBesuch" },
+    // Seit 07.10.: nur nach "Pranoj" im Cookie-Fenster.
+    device: { zustimmung: "ja" },
     order: { createdAt: jetztIso(1000), total: 49, orderId: "LS-0110-ABCDE", ua: "Mozilla/5.0 (Kauf)", seite: "https://www.mnyra.com/terapia", ...zusatz }
   };
 }
@@ -84,8 +86,11 @@ test("was faellig ist: frische Kaeufe und Leads, nie Probelaeufe, nie Altes", ()
   assert.deepEqual(ereignisseFuer(sitzungKauf({ still: true }), "kauf"), []);
   assert.deepEqual(ereignisseFuer(sitzungKauf({ createdAt: jetztIso(2 * 86400000) }), "kauf"), []);
   assert.deepEqual(ereignisseFuer({ ...sitzungKauf(), step: "result" }, "kauf"), []);
-  const lead = { code: "LS-1", phone: "044", phoneConsent: true, createdAt: jetztIso(600000), updatedAt: jetztIso() };
+  const lead = { code: "LS-1", phone: "044", phoneConsent: true, createdAt: jetztIso(600000), updatedAt: jetztIso(), device: { zustimmung: "ja" } };
   assert.deepEqual(ereignisseFuer(lead, "lead"), ["lead"]);
+  // Seit 07.10. (Pixel-Aenderung erlaubt von Albert): ohne "Pranoj" nichts.
+  assert.deepEqual(ereignisseFuer({ ...lead, device: { zustimmung: "nein" } }, "lead"), []);
+  assert.deepEqual(ereignisseFuer({ ...sitzungKauf(), device: {} }, "kauf"), []);
   assert.deepEqual(ereignisseFuer({ ...lead, updatedAt: jetztIso(2 * 3600000) }, "lead"), [], "ein Lead von heute frueh ist keine Meldung mehr");
   assert.deepEqual(ereignisseFuer({ ...lead, phoneConsent: false }, "lead"), []);
   assert.deepEqual(ereignisseFuer({ ...lead, phoneConsent: false, waClick: true }, "lead"), ["lead"]);
@@ -215,7 +220,7 @@ test("Kauf: genau einmal an Meta, auch wenn die Seite dreimal anstoesst", async 
 test("Lead: einmal, mit eigener Marke neben der des Kaufs", async () => {
   await mitUmgebung({ MNYRA_FIREBASE_ADMIN_KEY: SCHLUESSEL, META_CAPI_TOKEN: "tok" }, async () => {
     const w = welt();
-    w.docs.set(SESSION_PFAD, { fields: alsFelder({ code: "LS-0110-ABCDE", phone: "044111222", phoneConsent: true, createdAt: jetztIso(300000), updatedAt: jetztIso(), step: "numri" }), updateTime: "x" });
+    w.docs.set(SESSION_PFAD, { fields: alsFelder({ code: "LS-0110-ABCDE", phone: "044111222", phoneConsent: true, createdAt: jetztIso(300000), updatedAt: jetztIso(), step: "numri", device: { zustimmung: "ja" } }), updateTime: "x" });
     await aufruf(w, { id: SITZUNG_ID, art: "lead" });
     await aufruf(w, { id: SITZUNG_ID, art: "lead" });
     assert.equal(w.anMeta.length, 1);
@@ -364,7 +369,7 @@ test("Diagnose: Token gilt, auch wenn er den Pixel nicht lesen darf - und zeigt 
 test("Warteseite: Vercel liest den gespeicherten Schritt, gleiche ID, eigene Sperre und nur einmal", async () => {
   await mitUmgebung({ MNYRA_FIREBASE_ADMIN_KEY: SCHLUESSEL, META_CAPI_TOKEN: "tok", META_CAPI_TEST_CODE: null }, async () => {
     const w = welt();
-    const sitzung = { ...sitzungKauf(), step: "result", device: { ua: "WarteBrowser" } };
+    const sitzung = { ...sitzungKauf(), step: "result", device: { ua: "WarteBrowser", zustimmung: "ja" } };
     w.docs.set(SESSION_PFAD, { fields: alsFelder(sitzung), updateTime: "x" });
     assert.deepEqual(ereignisseFuer(sitzung, "warten"), ["warten"]);
     assert.deepEqual(ereignisseFuer({ ...sitzung, step: "captured" }, "warten"), []);

@@ -471,3 +471,63 @@ beiden Seiten dieselben Ereignisse wie vorher (Pruefstand).
 auf /lifeskinshop mit "20 Min" und auf /lifeskin mit "Morgen früh" bis zur
 Warteseite), Heart-Kopf als Bild (zu und mit offener Uhr-Reihe). Kein
 echtes Handy, Heart nicht angemeldet geoeffnet.
+
+## Kasse: jede Eingabe geht durch, keine Bestellung geht verloren (07.10.)
+
+Wunsch Inhaber: "egal was man schreibt, alles akzeptieren" und "die
+Bestellung muss ankommen".
+
+- `kasseFehler()` haelt keine Bestellung mehr wegen eines leeren Feldes auf.
+  Nur wenn alle vier Felder leer sind, kommt der Hinweis
+  "Ju lutemi shkruani emrin dhe numrin e telefonit."
+- Die Kasse wartet bis 15 s (vorher 3 s) auf die Sitzung des Trichters -
+  auf einer langsamen Leitung lud der Trichter laenger, und ohne Sitzung
+  ging die Bestellung nicht hinaus.
+- Scheitert das Speichern trotzdem, traegt der WhatsApp-Knopf der Kasse die
+  ganze Bestellung (Set, Betrag, Name, Telefon, Adresse, Ort) als fertige
+  Nachricht (`bestellNachricht()`), und der Fehlertext verweist darauf.
+- Pixel und Conversions API unveraendert: `schritt("ordered")` wird mit
+  denselben Daten zum selben Zeitpunkt gerufen
+  (`tests/lifeskin-pixel-sperre.test.mjs` gruen).
+
+## Wer verkauft, Rechtsseiten, kein Vergleichspreis (07.10.)
+
+Anlass: Meta hat am 07.10. das Konto lifeskin.ks eingeschraenkt (keine
+Links bis 06.11.) wegen "irrefuehrender Geschaeftspraktiken" - nachdem
+/lifeskinshop als Link geteilt wurde.
+
+- Fusszeile nennt den Verkaeufer (Name, Anschrift, E-Mail) und verlinkt
+  drei neue statische Seiten ohne Pixel und ohne Skript:
+  `apps/lifeskin-shop/shitesi.html`, `kushtet.html`, `privatesia.html`.
+  Verkaeufer vorerst nur "LifeSkin" mit WhatsApp und Instagram (Inhaber,
+  07.10.: "erstmal ohne Platzhalter"). Firmenname, Adresse, E-Mail kommen
+  nach - Stellen mit `data-anbieter` in allen vier Dateien.
+- Kasse: Hinweis auf Kushtet und Privatesia unter dem Bestellknopf.
+- `VERGLEICHSPREIS_ZEIGEN = false` (shop.js): kein "58 €", kein "−67 %",
+  kein "Kurseni". Die Leiste oben sagt "19 € për dy produktet".
+- "4.8/5 vlerësim" (ohne Quelle) ersetzt durch "45 ditë garanci".
+- Unveraendert und vom Inhaber zu entscheiden: "Vetëm edhe pak sete"
+  (PAK_SETE), Ueberschrift "Largo aknet.", "dermatologëve 24/7 online".
+
+
+## Cookie-Fenster: Meta nur nach "Pranoj" (07.10.)
+
+Pixel-Aenderung erlaubt von Albert am 07.10.2026 (Auftrag: "Cookies richtig,
+Datenschutz akzeptieren").
+
+- `shared/lifeskin-zustimmung.js`: Fenster unten mit "Refuzo" und "Pranoj"
+  (gleich gross), Wahl in `localStorage` (`lifeskin:zustimmung`), Ereignis
+  `lifeskin:zustimmung`. Erscheint auf jeder LifeSkin-Seite, die den Pixel
+  startet, solange nichts gewaehlt ist; nie im stillen Modus. Solange es
+  steht, bekommt die Seite unten Platz (Bestellknopf bleibt erreichbar).
+- `LIFESKIN_PIXEL_EINWILLIGUNG_NOETIG = true`. Der Pixel laedt erst nach
+  "Pranoj" und meldet dann die Seite (PageView) nach. Was vorher geschah,
+  bleibt ungemeldet.
+- Die Sitzung schreibt die Wahl nach `device.zustimmung` (Unterfeld von
+  `device`, keine neue Firestore-Regel noetig). Die Conversions API meldet
+  nur bei `"ja"`: `metaErlaubt()` in `functions/lifeskin-capi-payload.js`,
+  genutzt von Firebase-Trigger, Wiederholung und `api/lifeskin-capi.js`.
+- Wahl aendern: Link "Cookie" in der Fusszeile und auf den Rechtsseiten
+  (`window.lifeskinZustimmungZeigen()`).
+- Folge fuer die Anzeigen: Meta bekommt nur noch Ereignisse von Besuchern,
+  die zustimmen - erwartbar 20-40 % weniger gemeldete Ereignisse.

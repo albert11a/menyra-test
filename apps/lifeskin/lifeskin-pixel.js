@@ -23,6 +23,9 @@ import {
   LIFESKIN_PIXEL_ID,
   LIFESKIN_PIXEL_EINWILLIGUNG_NOETIG
 } from "./lifeskin-config.js";
+// Pixel-Aenderung erlaubt von Albert am 07.10.2026: Pixel erst nach
+// "Pranoj" im Cookie-Fenster (shared/lifeskin-zustimmung.js).
+import { zustimmungJetzt, zustimmungAbfragen, ZUSTIMMUNG_EREIGNIS } from "../../shared/lifeskin-zustimmung.js";
 
 // Welcher Schritt des Trichters welches Meta-Ereignis ausloest.
 //
@@ -243,7 +246,7 @@ export class Pixel {
     // Die Einwilligung gilt als gegeben, solange keine Abfrage verlangt
     // ist. Welcher der zwei Zustaende gilt, steht an einer Stelle in
     // lifeskin-config.js - nicht an jedem Aufrufer.
-    einwilligung = !LIFESKIN_PIXEL_EINWILLIGUNG_NOETIG,
+    einwilligung = !LIFESKIN_PIXEL_EINWILLIGUNG_NOETIG || zustimmungJetzt() === "ja",
     // Von welcher Seite aus gemeldet wird. Sie entscheidet nur, welchen
     // eigenen Namen "opened" bekommt; PageView geht von jeder hinaus.
     seite = "trichter"
@@ -291,12 +294,32 @@ export class Pixel {
     return this.eigenesFbq || globalThis.fbq || null;
   }
 
+  // NOCH NICHT GEFRAGT: Das Cookie-Fenster zeigen und warten. Sagt der
+  // Besucher "Pranoj", startet der Pixel und meldet die Seite (PageView)
+  // nach - nur sie; was davor geschah, bleibt ungemeldet. Bei "Refuzo"
+  // bleibt er aus. Einmal je Pixel.
+  #aufZustimmungWarten() {
+    if (this.wartet || !this.kennung || !LIFESKIN_PIXEL_EINWILLIGUNG_NOETIG) return;
+    if (globalThis.__mnyraStill === true || typeof globalThis.addEventListener !== "function") return;
+    this.wartet = true;
+    globalThis.addEventListener(ZUSTIMMUNG_EREIGNIS, (ereignis) => {
+      const ja = ereignis?.detail === "ja";
+      this.erlaube(ja);
+      if (ja && this.starte()) this.melde("opened");
+      if (!ja && this.laeuft) {
+        try { this.#fbq()?.("consent", "revoke"); } catch { /* egal */ }
+      }
+    });
+    if (!zustimmungJetzt()) zustimmungAbfragen(this.dokument || undefined);
+  }
+
   // Metas Ladeschnipsel, von Hand gesetzt statt kopiert.
   //
   // Der offizielle Schnipsel ist ein einzeiliger Klumpen, den niemand liest.
   // Was er tut, ist simpel: eine Warteschlange anlegen, damit Aufrufe vor dem
   // Laden nicht verloren gehen, und dann das Skript nachladen.
   starte() {
+    if (!this.aktiv) this.#aufZustimmungWarten();
     if (!this.aktiv || this.laeuft) return false;
     this.laeuft = true;
     try {
