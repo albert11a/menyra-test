@@ -455,6 +455,11 @@ export function bindHeartEvents({
     // Lifeskin. Diese vier Zeilen fehlten: Die Knoepfe standen von Anfang an
     // im Markup, aber es hat sie nie jemand aufgefangen - ein Druck darauf
     // tat schlicht nichts.
+    // Der Chat (heart-chat.js) - eigener Bereich ausserhalb von #root.
+    if (action === "chat-oeffnen") {
+      operations.openChat?.();
+      return;
+    }
     if (action === "lifeskin-sitzung") {
       await operations.openLifeskinSitzung?.(target.getAttribute("data-id"));
       return;

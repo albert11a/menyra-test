@@ -1816,7 +1816,7 @@ const PFAD_WORTE = Object.freeze({
   geoeffnet: "Seite geöffnet", bildschirm: "Bildschirm", klick: "Tippt", aufgeklappt: "Klappt auf",
   zugeklappt: "Klappt zu", feld: "Feld angetippt", gesehen: "Liest", scroll: "Scrollt",
   verlassen: "Verlässt die Seite", zurueck: "Kommt zurück", korb: "Warenkorb", kasse: "Kasse", bestellt: "BESTELLT",
-  fehler: "Fehler", technik: "Technik", eingabe: "Schreibt"
+  fehler: "Fehler", technik: "Technik", eingabe: "Schreibt", chat: "Chat"
 });
 
 // Die Zusammenfassung ueber dem Verlauf: wo er am laengsten war, was er
@@ -2240,7 +2240,7 @@ const PFAD_ZEICHEN = Object.freeze({
 });
 const pfadIcon = (e) => renderHeartIcon(PFAD_ZEICHEN[e.e] || "info", "heart-pfad__icon");
 
-function pfadSatz(e) {
+export function pfadSatz(e) {
   const d = String(e.d || "");
   if (e.e === "gesehen") {
     const m = /^(.*) · (\d+) s$/.exec(d);

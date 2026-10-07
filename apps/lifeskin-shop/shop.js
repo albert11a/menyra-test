@@ -73,6 +73,10 @@ export function korbSchreiben(speicher, korb) {
   catch { /* ohne Speicher geht es auch - der Korb lebt dann nur bis zum Neuladen */ }
 }
 
+// Ein Angebot aus dem Chat (chat.js -> Dyqan.chatBestellen): set beginnt
+// mit "chat-", der Preis steht in der Karte (korb.cmimi).
+export const istChatKorb = (korb) => String(korb?.set || "").startsWith("chat-");
+
 // Nach der Staffel (shared/lifeskin-preise.js): 1 = 29, 2 = 39, 3 = 49 ...
 // Mit Set: sein Preis aus Heart (korb.cmimi, siehe acneDuoCart).
 export function summe(korb) {
@@ -707,8 +711,9 @@ export class Dyqan {
     this.setet = acneDuoSets(aktiveSetet(setetOderStandard(setDok)))
       .map((s) => ({ ...s, produkte: s.produkte.filter((id) => da.has(id)) }))
       .filter((s) => s.produkte.length === 2);
-    // Der Korb darf nur Mittel tragen, die es noch gibt.
-    this.korb = acneDuoCart(this.korb, this.setet);
+    // Der Korb darf nur Mittel tragen, die es noch gibt. Ein Angebot aus
+    // dem Chat (chatBestellen) bleibt, wie es ist.
+    if (!istChatKorb(this.korb)) this.korb = acneDuoCart(this.korb, this.setet);
     korbSchreiben(this.speicher, this.korb);
     this.#zeichneSetet();
     this.#zeichneMittel();
@@ -855,7 +860,8 @@ export class Dyqan {
     if (!mittel.length) return "";
     const s = this.setVon(this.korb.set);
     const bilder = mittel.slice(0, 2).map((m) => `<img src="${e(m.fotot[0])}" alt="" width="40" height="50">`).join("");
-    return `<div class="kasa-set"><span class="kasa-set__bilder">${bilder}</span><span class="kasa-set__text"><b>${e(s?.titulli || "Acne Duo")}</b><small>${e(mittel.map((m) => m.name).join(" + "))} · ${e(mittel[0].inhalt || "30 ml")} secili</small></span></div>`;
+    const titel = istChatKorb(this.korb) ? "Oferta juaj nga chat-i" : (s?.titulli || "Acne Duo");
+    return `<div class="kasa-set"><span class="kasa-set__bilder">${bilder}</span><span class="kasa-set__text"><b>${e(titel)}</b><small>${e(mittel.map((m) => m.name).join(" + "))} · ${e(mittel[0].inhalt || "30 ml")} secili</small></span></div>`;
   }
 
   // In der Kasse ohne Muelleimer (01.10., Inhaber): Entfernen geht im
@@ -1077,6 +1083,8 @@ export class Dyqan {
           orderId: sitzung.code || "",
           items: bestellZeilen(this.korb, this.mittel),
           ...(s ? { set: { id: s.id, titulli: s.titulli } } : {}),
+          // Aus einem Angebot im Chat (docs/lifeskin-chat.md).
+          ...(istChatKorb(this.korb) ? { chat: { nachricht: this.korb.set.slice(5) } } : {}),
           ...pixelKennungen(),
           // User-Agent und Seite fuer die Conversions API - siehe browserAngaben().
           ...browserAngaben()
@@ -1134,6 +1142,37 @@ export class Dyqan {
       video.pause();
       setze(false);
     }
+  }
+
+  // ── Aus dem Chat (chat.js) ─────────────────────────────────────────
+  // "Porosite" auf einer Produktkarte: genau diese Produkte, zum Preis der
+  // Karte, direkt in die Kasse. Nur Produkte, die der Laden kennt.
+  chatBestellen({ nachrichtId = "", produkte = [], summe: preis = 0 } = {}) {
+    if (!this.angebotBereit) return false;
+    const ids = [...new Set((produkte || []).map((p) => String(p?.id || "")).filter((id) => /^[\w-]{1,40}$/.test(id) && this.mittelVon(id)))].slice(0, 5);
+    if (!ids.length || !/^[a-z0-9]{8,40}$/.test(String(nachrichtId))) return false;
+    this.korb = { ids, set: `chat-${nachrichtId}`.slice(0, 40), cmimi: Math.max(0, Number(preis) || 0) };
+    korbSchreiben(this.speicher, this.korb);
+    this.#korbZahl();
+    this.#merke({ imKorb: true }, "imKorb");
+    this.#merke({ korbWert: summe(this.korb), korbStueck: ids.length });
+    this.kasseOeffnen();
+    return true;
+  }
+
+  // Antworten aus einem Formular im Chat fuellen die leeren Kassenfelder.
+  kasseVorbelegen(werte = {}) {
+    const paare = [["#kasa-emri", werte.emri], ["#kasa-telefoni", werte.telefoni], ["#kasa-adresa", werte.adresa], ["#kasa-qyteti", werte.qyteti]];
+    for (const [id, wert] of paare) {
+      const feld = $(id, this.dok);
+      if (feld && !feld.value.trim() && wert) feld.value = String(wert).slice(0, 150);
+    }
+  }
+
+  // Was in der Kasse schon steht - ein Formular im Chat beginnt damit.
+  kasseWerteFuerChat() {
+    const w = this.#kasseWerte();
+    return { emri: w.name, telefoni: w.telefon, adresa: w.strasse, qyteti: w.ort };
   }
 
   // ── Ereignisse ────────────────────────────────────────────────────
@@ -1311,7 +1350,7 @@ export class Dyqan {
 }
 
 if (typeof document !== "undefined" && !globalThis.__LIFESKIN_TEST__ && document.getElementById("kasa")) {
-  const start = () => new Dyqan().starte();
+  const start = () => { globalThis.__lifeskinShop = new Dyqan(); globalThis.__lifeskinShop.starte(); };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();
 }

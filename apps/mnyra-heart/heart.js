@@ -8,6 +8,8 @@ import { shitjaLesen } from "../../shared/lifeskin-shitja.js";
 // Fragen samt Antworten, wortgleich wie im Trichter.
 import { promptV8Fuellen } from "./heart-lifeskin-prompt.js";
 import { meldeGeraetAn, meldeGeraetAb, istPushAngemeldet } from "./heart-push.js";
+import { starteHeartChat } from "./heart-chat.js";
+import { pfadSatz as chatPfadSatz } from "./heart-lifeskin-render.js";
 import { kannPush } from "./heart-push-utils.js";
 import { createHeartGoAdapter } from "./heart-go-adapter.js";
 import {
@@ -3914,6 +3916,9 @@ async function ensureViewData(viewKey = "", { force = false } = {}) {
   }
 }
 
+// Der Chat (heart-chat.js) - gestartet nach der Anmeldung.
+let heartChat = null;
+
 const operations = {
   // Der Knopf in der Analysen-Ansicht. Er ist die EINZIGE Stelle, die nach
   // der Erlaubnis fragt - und er tut es auf eine Beruehrung hin, nie von
@@ -4146,6 +4151,8 @@ const operations = {
     operations.openView(viewKey);
   },
   openLifeskinSitzung(sitzungId) { return oeffneLifeskinSitzung(sitzungId); },
+  // Der Chat mit den Kunden (heart-chat.js, Knopf oben).
+  openChat() { heartChat?.oeffnen(); },
   closeLifeskinSitzung() { schliesseLifeskinSitzung(); },
   lifeskinZuruecksetzen() { return setzeLifeskinZurueck(); },
   lifeskinResetAbbrechen() { actions.patchLifeskin({ resetGefragt: false }); },
@@ -5249,6 +5256,22 @@ store.subscribe((state) => {
     // Der Rueckgabewert interessiert hier niemanden, und ein Fehlschlag
     // bleibt folgenlos: Heart ist ein Arbeitsplatz, keine Meldeanlage.
     meldeGeraetAn(state.auth.user?.uid).then(() => pushSchalterAuffrischen(root)).catch(() => {});
+    // Der Chat mit den Kunden von /lifeskinshop (heart-chat.js): Liste,
+    // Zahl und Ton laufen ab der Anmeldung - auch bei geschlossenem Chat.
+    try {
+      heartChat = starteHeartChat({
+        autor: state.auth.profile?.displayName || state.auth.profile?.name || state.auth.user?.displayName || "",
+        meldeZahl: (zahl) => {
+          if ((Number(store.getState().shell.chatZahl) || 0) === zahl) return;
+          store.patch((draft) => { draft.shell.chatZahl = zahl; });
+        },
+        oeffneFall: (id) => { operations.openView("lifeskin"); return operations.openLifeskinSitzung(id); },
+        sitzungVon: (id) => findeSitzung(store.getState().lifeskin || {}, id) || null,
+        pfadSatz: chatPfadSatz
+      });
+    } catch (fehler) {
+      console.warn("[heart-chat]", fehler?.message || fehler);
+    }
     // Start braucht die Landing-Sitzungen und die Leads fuer "Was gibt es
     // Neues". Die offene Ansicht kommt zusaetzlich dran, damit ein Neuladen auf
     // "#analytics" oder "#orte" dort ankommt, wo es hingehoert - und nicht in
