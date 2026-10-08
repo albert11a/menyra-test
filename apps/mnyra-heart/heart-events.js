@@ -538,6 +538,8 @@ export function bindHeartEvents({
     }
     if (action === "lifeskin-shophero-entfernen") { await operations.shopHeroEntfernen?.(target.getAttribute("data-index")); return; }
     // Die zwei Produktbilder "Dy produktet". Ohne await: Dateiwahl im Griff des Fingers.
+    // Die Zbritje im Laden (09.10.).
+    if (action === "lifeskin-aktion-speichern") { await operations.shopAktionSpeichern?.(); return; }
     if (action === "lifeskin-produktfoto-waehlen") { operations.produktFotoWaehlen?.(target.getAttribute("data-id")); return; }
     if (action === "lifeskin-produktfoto-zu") { operations.produktFotoZu?.(); return; }
     if (action === "lifeskin-produktfoto-speichern") { await operations.produktFotoSpeichern?.(); return; }
@@ -879,6 +881,11 @@ export function bindHeartEvents({
   }
 
   async function handleChange(event) {
+    // Zbritje im Laden: Eingaben als Entwurf merken, bis gespeichert wird.
+    if (event.target?.matches?.("[data-aktionfeld], [data-aktionfeld-an]")) {
+      operations.shopAktionEntwurf?.();
+      return;
+    }
     if (event.target?.matches?.("[data-ausschnitt-zoom]")) {
       operations.lifeskinAusschnittMerken?.();
       return;

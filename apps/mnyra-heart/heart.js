@@ -66,7 +66,7 @@ import { ladeLifeskin, ladeLifeskinSeit, ladeLifeskinSitzung, horcheLive, ladeFo
   ladeBericht, setzeVersand, speichereAnbieter,
   ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX,
   speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder,
-  speichereShopSetet, ladeShopSetFoto, speichereShopSetFoto, loescheShopSetFoto, speichereShopHero, loescheShopHero, speichereShopHeroListe, speichereShopProduktFoto,
+  speichereShopSetet, ladeShopSetFoto, speichereShopSetFoto, loescheShopSetFoto, speichereShopHero, loescheShopHero, speichereShopHeroListe, speichereShopProduktFoto, speichereShopAktion,
   speichereAntwortzeit, speicherePerputhjaModus,
   ladeMedien, speichereMedien, speichereMedium, loescheMedium, ladeKommentare, setzeKommentarVerborgen, loescheKommentar, schreibeKommentare,
   ladeProduktkosten, speichereProduktkosten } from "./heart-lifeskin-adapter.js";
@@ -77,6 +77,7 @@ import { shopSetetListe } from "./heart-lifeskin-shopsets.js";
 import { schnittHoeren, schnittErgebnis, schnittZurueck } from "./heart-lifeskin-schnitt.js";
 import { setetNormalisieren, setNormalisieren, neueSetId, SET_PRODUKTE_MAX, SHOP_HERO_MAX } from "../../shared/lifeskin-shop-sets.js";
 import { ANTWORTZEITEN, antwortzeitSatz } from "../../shared/lifeskin-antwortzeit.js";
+import { aktionNormalisieren, aktionLaeuft, kosovoFeld, kosovoZuIso } from "../../shared/lifeskin-aktion.js";
 import { entwurfSchreiben, entwurfLoeschen, entwurfAusBogen, promptMerken } from "./heart-lifeskin-entwurf.js";
 import { befundStandAuffrischen, befundFelderAnpassen } from "./heart-lifeskin-befundstand.js";
 import { bogenMerken, bogenVergessen, bogenWiederherstellen } from "./heart-lifeskin-bogenspeicher.js";
@@ -2812,6 +2813,56 @@ async function produktFotoWeg(id) {
   await produktFotoSchreiben(id, "", "Wieder das Standardbild.");
 }
 
+// ══ DIE ZBRITJE IM LADEN (09.10.) - an/aus, Preis, Ende, Lager ══
+function shopAktionFelder() {
+  const stand = store.getState().lifeskin || {};
+  const e = { ...(stand.shopAktionEntwurf || {}) };
+  for (const feld of document.querySelectorAll("[data-aktionfeld]")) e[feld.dataset.aktionfeld] = String(feld.value ?? "");
+  for (const feld of document.querySelectorAll("[data-aktionfeld-an]")) e[feld.dataset.aktionfeldAn] = feld.checked;
+  return e;
+}
+
+function shopAktionEntwurf() {
+  actions.patchLifeskin({ shopAktionEntwurf: shopAktionFelder() });
+}
+
+async function shopAktionSpeichern() {
+  const stand = store.getState().lifeskin || {};
+  if (stand.shopAktionStatus) return;
+  const alt = stand.shopAktion || aktionNormalisieren(null);
+  const e = shopAktionFelder();
+  const neu = {
+    aktiv: e.aktiv ?? alt.aktiv,
+    cmimi: e.cmimi ?? alt.cmimi,
+    bis: e.bisFeld !== undefined ? kosovoZuIso(e.bisFeld) : alt.bis,
+    sete: e.sete !== undefined ? (String(e.sete).trim() === "" ? null : e.sete) : alt.sete,
+    ab: alt.ab
+  };
+  const sauber = aktionNormalisieren(neu);
+  if (sauber.aktiv) {
+    if (!sauber.cmimi) { setToast("Zbritje", "Bitte einen Preis eintragen (1–999 €).", "danger"); return; }
+    if (!sauber.bis || Date.parse(sauber.bis) <= Date.now()) { setToast("Zbritje", "Bitte ein Ende in der Zukunft wählen.", "danger"); return; }
+    if (String(neu.sete ?? "").trim() !== "" && sauber.sete == null) { setToast("Zbritje", "Lager: bitte eine ganze Zahl (oder leer).", "danger"); return; }
+  }
+  // Das Lager zaehlt ab jetzt, wenn eine neue Zahl eingetragen oder die
+  // Zbritje neu eingeschaltet wird - sonst laeuft die Zaehlung weiter.
+  const neuGezaehlt = sauber.sete !== alt.sete || (sauber.aktiv && !aktionLaeuft(alt)) || !alt.ab;
+  sauber.ab = neuGezaehlt ? new Date().toISOString() : alt.ab;
+  actions.patchLifeskin({ shopAktionStatus: "laeuft" });
+  try {
+    const gespeichert = await speichereShopAktion(sauber);
+    klappSetzen("mehr", true);
+    klappSetzen("shopaktion", true);
+    actions.patchLifeskin({ shopAktion: { ...gespeichert, standard: false }, shopAktionEntwurf: null, shopAktionStatus: "" });
+    setToast("Zbritje", aktionLaeuft(gespeichert)
+      ? `Aktiv: ${gespeichert.cmimi} € bis ${kosovoFeld(gespeichert.bis).replace(/^(\d{4})-(\d{2})-(\d{2})T/, "$3.$2. ")}${gespeichert.sete == null ? "" : ` · ${gespeichert.sete} Sets`}.`
+      : "Aus – im Shop gilt der Set-Preis.", "success");
+  } catch (fehler) {
+    actions.patchLifeskin({ shopAktionStatus: "" });
+    setToast("Zbritje", fehler?.message || "Speichern fehlgeschlagen.", "danger");
+  }
+}
+
 async function lifeskinRastiSchieben(id, richtung) {
   const stand = store.getState().lifeskin || {};
   if (stand.rasteStatus) return;
@@ -4388,6 +4439,8 @@ const operations = {
   shopHeroZu() { shopHeroZu(); },
   shopHeroSpeichern() { return shopHeroSpeichern(); },
   shopHeroWeg() { return shopHeroWeg(); },
+  shopAktionEntwurf() { return shopAktionEntwurf(); },
+  shopAktionSpeichern() { return shopAktionSpeichern(); },
   shopHeroSchieben(index, richtung) { return shopHeroSchieben(index, richtung); },
   shopHeroEntfernen(index) { return shopHeroEntfernen(index); },
   produktFotoWaehlen(id) { produktFotoWaehlen(id); },

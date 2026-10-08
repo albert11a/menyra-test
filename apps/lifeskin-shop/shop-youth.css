@@ -446,8 +446,8 @@
 #ls-einstieg .ls-rein{opacity:0;transform:translateY(28px);transition:opacity .6s ease,transform .7s cubic-bezier(.2,.7,.2,1);transition-delay:var(--rein-verz,0ms)}
 #ls-einstieg .ls-rein.ls-rein--da{opacity:1;transform:none}
 @media(prefers-reduced-motion:reduce){#ls-einstieg .ls-rein{opacity:1;transform:none;transition:none}}
-/* AKTION HEUTE (08.10., Inhaber): echter Normalpreis 2 x 29 = 58 EUR, heute
-   bis 24:00 fuer 25 EUR, echtes Lager (2 Sets, aktion.js + api/lifeskin-lager.js).
+/* ZBRITJE (08.10., seit 09.10. aus Heart): echter Normalpreis 2 x 29 = 58 EUR,
+   Preis, Ende und Lager aus config/shopAktion (aktion.js + api/lifeskin-lager.js).
    Nach Ablauf verschwindet der Block. Ueber dem Kaufknopf. */
 #ls-einstieg .page .aktion{display:grid;gap:8px;margin:0 0 14px;padding:14px 14px 12px;border-radius:14px;background:#fff;box-shadow:0 1px 0 #0000000a,0 6px 16px #123b3e0f}
 #ls-einstieg .page .aktion[hidden]{display:none}
@@ -468,6 +468,7 @@
 #ls-einstieg .page .aktion__stok[data-leer] .aktion__pika{background:#9aa5a0;box-shadow:none}
 @media(max-width:800px){#ls-einstieg .page .aktion{order:2;margin:0 0 14px}}
 #ls-einstieg .page .aktion__stok[hidden]{display:none}
+#ls-einstieg .page .aktion__cmimi [hidden]{display:none}
 #ls-einstieg [data-ausverkauft]{opacity:.45;cursor:not-allowed}
 /* PFEILE UND PUNKTE IM SET-BILD IN SCHWARZ (08.10., Inhaber; vorher Mint):
    dunkler Kreis mit weissem Pfeil, Punkte dunkel. */

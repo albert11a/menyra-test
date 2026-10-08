@@ -57,6 +57,7 @@ import { mediumNormalisieren } from "../../shared/lifeskin-medien.js";
 import { SETET_DOK, SET_FOTO_PRAEFIX, SHOP_HERO_DOK, SHOP_HERO_MAX, shopHeroDokId, SHOP_PRODUKT_FOTO_PRAEFIX, SHOP_PRODUKT_FOTOS } from "../../shared/lifeskin-shop-sets.js";
 import { ANTWORTZEIT_DOK, antwortzeitGueltig } from "../../shared/lifeskin-antwortzeit.js";
 import { PERPUTHJA_DOK, perputhjaModusGueltig } from "../../shared/lifeskin-perputhja.js";
+import { AKTION_DOK, AKTION_STANDARD, aktionNormalisieren } from "../../shared/lifeskin-aktion.js";
 
 const TENANT = "lifeskin";
 const SITZUNG_GRENZE = 3000;
@@ -215,6 +216,8 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
   // in die Konfiguration einruehren.
   const antwortzeitDok = konfigDocs.find((d) => d.id === ANTWORTZEIT_DOK)?.data() || null;
   const perputhjaDok = konfigDocs.find((d) => d.id === PERPUTHJA_DOK)?.data() || null;
+  // Die Zbritje im Laden (09.10.) - eigenes Dokument, nicht einruehren.
+  const aktionDok = konfigDocs.find((d) => d.id === AKTION_DOK)?.data() || null;
   const konfig = konfigDocs
     .filter((d) => !String(d.id).startsWith(LANDING_FOTOT_PRAEFIX) && !String(d.id).startsWith(ANALYSE_FOTOT_PRAEFIX))
     .filter((d) => d.id !== RASTE_DOK_ID && !String(d.id).startsWith(RASTI_BILD_ID))
@@ -223,6 +226,7 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     .filter((d) => !String(d.id).startsWith(SHOP_PRODUKT_FOTO_PRAEFIX))
     .filter((d) => d.id !== ANTWORTZEIT_DOK)
     .filter((d) => d.id !== PERPUTHJA_DOK)
+    .filter((d) => d.id !== AKTION_DOK)
     .reduce((zusammen, d) => ({ ...zusammen, ...(d.data() || {}) }), {});
   const setPreis = Number.isFinite(Number(konfig.setPreis)) && Number(konfig.setPreis) > 0
     ? Number(konfig.setPreis)
@@ -274,6 +278,8 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     raste: Array.isArray(rasteDok?.lista) ? rasteDok.lista : null,
     // null: noch nie gespeichert - es gelten die drei Sets der Seite.
     shopSetet: Array.isArray(setetDok?.lista) ? setetDok.lista : null,
+    // Ohne Dokument zeigt der Laden die Voreinstellung - Heart auch.
+    shopAktion: { ...aktionNormalisieren(aktionDok || AKTION_STANDARD), standard: !aktionDok },
     // Das Titelbild des Ladens: "" = das Bild der Seite.
     shopHero: typeof heroDok?.foto === "string" && heroDok.foto.startsWith("data:image/") ? heroDok.foto : "",
     // Die zwei Produktbilder "Dy produktet" (08.10.): { "lf-acne": "data:..." }.
@@ -617,6 +623,13 @@ export async function speichereShopHeroListe(fotos) {
   } else {
     await deleteDoc(doc(db, "lifeskin", TENANT, "config", SHOP_HERO_DOK));
   }
+}
+
+// Die Zbritje im Laden (09.10.): aktiv, Preis, Ende, Lager, Zaehlbeginn.
+export async function speichereShopAktion(aktion) {
+  const sauber = aktionNormalisieren(aktion);
+  await setDoc(doc(db, "lifeskin", TENANT, "config", AKTION_DOK), { ...sauber, updatedAt: new Date().toISOString() });
+  return sauber;
 }
 
 // Ein Produktbild "Dy produktet" (08.10.): leer = wieder das Standardbild.

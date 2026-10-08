@@ -39,7 +39,7 @@ import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 import { renderRaste, renderRastiEditor, renderBefundRasteAuswahl, rasteListe } from "./heart-lifeskin-raste.js";
 import { klappAttr, alsKlapp } from "./heart-lifeskin-klapp.js";
 import { nachWeg, baueLs2Weg, baueShopWeg, baueLandingKarten, dauerText as ls2Dauer } from "./heart-lifeskin-weg.js";
-import { renderShopSetet, renderShopSetEditor, renderShopHero, renderShopHeroEditor, shopSetetListe, renderShopProduktFotos, renderShopProduktFotoEditor } from "./heart-lifeskin-shopsets.js";
+import { renderShopSetet, renderShopSetEditor, renderShopHero, renderShopHeroEditor, shopSetetListe, renderShopProduktFotos, renderShopProduktFotoEditor, renderShopAktion } from "./heart-lifeskin-shopsets.js";
 import { wegGueltig } from "../../shared/lifeskin-weg.js";
 import { perputhjaGueltig, perputhjaAuto, perputhjaModusGueltig, PERPUTHJA_AUTO_VON, PERPUTHJA_AUTO_BIS } from "../../shared/lifeskin-perputhja.js";
 import { ANTWORTZEITEN, antwortzeitWahl } from "../../shared/lifeskin-antwortzeit.js";
@@ -3923,6 +3923,7 @@ function renderWegUebersicht(zustand, weg, offenerWeg = weg) {
           ${renderStillLinks(zustandWeg)}
           ${alsKlapp(renderHerkunft(baueHerkunft(imBlick)), "herkunft", { standard: false })}
           ${alsKlapp(renderProdukte(produkte), "produkte", { standard: false })}
+          ${weg === "lifeskinshop" ? renderShopAktion(zustand) : ""}
           ${weg === "lifeskinshop" ? renderShopHero(zustand) : ""}
           ${weg === "lifeskinshop" ? renderShopProduktFotos(zustand) : ""}
           ${weg === "lifeskinshop" ? renderShopSetet(zustand, produkte || []) : ""}

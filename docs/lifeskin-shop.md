@@ -31,6 +31,26 @@ Messung in Heart mitgezogen (`shared/lifeskin-shopsicht.js`, Version 3):
 `shopTiefe()` auf die neue Reihenfolge um (bis SkinReact = 4, bis
 Garancioni = 5, bis F.A.Q = 7). Keine Pixel-/CAPI-Aenderung.
 
+## Zbritje aus Heart: an/aus, Preis, Ende, Lager (09.10.)
+
+Auftrag Inhaber (09.10.): wieder 25 EUR, heute bis 19:00, noch 6 Sets; in
+Heart kuenftig selbst einschalten, Preis und Ende festlegen.
+
+- Dokument `lifeskin/lifeskin/config/shopAktion` (`shared/lifeskin-aktion.js`):
+  `aktiv`, `cmimi`, `bis`, `sete` (leer = keine Lagerzeile), `ab`.
+  Fehlt es, gilt `AKTION_STANDARD` (25 EUR bis 09.10. 19:00, 6 Sets).
+- Heart -> Lifeskinshop -> „Zbritje im Shop“: Haken „Aktiv“, Preis, Ende
+  (Kosovo-Zeit), Sets auf Lager, Speichern. Das Lager zaehlt ab dem Speichern,
+  wenn eine neue Zahl eingetragen oder die Zbritje neu eingeschaltet wird.
+- Laden (`shop.js`): Solange die Zbritje laeuft, kostet das Duo den
+  Aktionspreis (Kopf, Karte, Kaufleiste, Kasse, Bestellung). Danach von
+  selbst wieder der Set-Preis aus Heart („Shop-Sets“).
+- Block ueber dem Kaufknopf (`aktion.js`): „VETËM SOT“ / „OFERTË“, „Mbaron
+  sot/nesër/më TT.MM. në ora HH:MM“, Restzeit, „Nga 58 € vetëm X €“, Lager.
+  Ein abgelaufener Block aus dem HTML verschwindet sofort (kleines Skript).
+- `api/lifeskin-lager.js` liest Lager und Zaehlbeginn aus dem Dokument.
+- Pixel/CAPI unveraendert. Test: `tests/lifeskinshop-aktion.test.mjs`.
+
 ## Aktion heute: 58 -> 25 EUR, 2 Sets (08.10.)
 
 Auftrag Inhaber (08.10., bestaetigt): echter Normalpreis 58 EUR (2 x 29 EUR),
