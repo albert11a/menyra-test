@@ -77,7 +77,7 @@ body {
 
 /* Alle fuenf Chips auf jeder Breite in EINER Reihe (06.10.) - bis 320 px:
    Schrift und Abstand schrumpfen mit der Breite. */
-.dg-chips { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(3px, 1.2vw, 6px); }
+.dg-chips { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: clamp(3px, 1vw, 6px); }
 .dg-chip {
   display: grid; justify-items: center; gap: 2px; min-width: 0; min-height: 52px; padding: 6px 1px; border-radius: 12px;
   border: 1px solid var(--dg-border); background: var(--dg-bg); color: var(--dg-text); font: inherit; cursor: pointer;
@@ -260,3 +260,68 @@ html.dg-pa-levizje, html.dg-pa-levizje body { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .dg-flete__sfond, .dg-flete__panel { animation: none; }
 }
+
+/* FINANCA (08.10., Inhaber): mehr Luft in den Geld-Karten, Plus gruen,
+   Minus rot; in den Listen Haekchen, eine Leiste mit dem Knopf und die
+   zwei Formulare (eigener Eintrag, Ueberweisung nach Oesterreich). */
+.dg-karte--financa { padding: 18px 16px; }
+.dg-karte--financa .dg-karte__shuma { margin-top: 10px; font-size: 30px; line-height: 1.1; }
+.dg-karte--financa .dg-karte__pak { margin-top: 4px; }
+.dg-karte--financa .dg-ndarja { margin-top: 16px; gap: 0; }
+.dg-karte--financa .dg-ndarja li { padding: 10px 0; font-size: 14px; }
+.dg-karte--financa .dg-historia { margin-top: 14px; }
+.dg-minus { color: var(--dg-bad); }
+.dg-plus { color: var(--dg-good); }
+
+.dg-detaj--me-zgjedhje .dg-detaj__kreu { grid-template-columns: auto minmax(0, 1fr) auto; }
+.dg-detaj--me-zgjedhje[data-zgjedhur="po"] { border-color: var(--dg-good); background: #f3fbf5; }
+.dg-zgjidh { display: grid; place-items: center; width: 32px; height: 32px; margin: -4px 0 0 -4px; cursor: pointer; }
+.dg-zgjidh input { width: 22px; height: 22px; margin: 0; accent-color: var(--dg-good); cursor: pointer; }
+
+.dg-veprim {
+  position: sticky; bottom: 0; z-index: 1; display: flex; gap: 8px; align-items: center; justify-content: space-between;
+  margin-top: 4px; padding: 10px 0 calc(4px + env(safe-area-inset-bottom)); background: linear-gradient(#f6f5f100, var(--dg-bg) 30%);
+}
+.dg-veprim .dg-buton--kryesor { flex: 1 1 auto; }
+
+.dg-forma-financa { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.dg-forma-financa input {
+  width: 100%; min-height: 48px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--dg-border);
+  background: #fff; color: var(--dg-text); font: inherit; font-size: 16px;
+}
+.dg-forma-financa .dg-buton { grid-column: 1 / -1; }
+.dg-forma-financa label { display: grid; gap: 4px; font-size: 12px; font-weight: 600; color: var(--dg-muted); }
+.dg-forma-financa small { grid-column: 1 / -1; font-size: 12px; color: var(--dg-muted); }
+.dg-forma-financa--austri { margin-top: 6px; padding: 12px; border-radius: 14px; background: var(--dg-bg); }
+
+.dg-levizjet { list-style: none; margin: 0; padding: 0; display: grid; }
+.dg-levizje { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--dg-border); }
+.dg-levizje span { display: grid; gap: 2px; min-width: 0; }
+.dg-levizje span b { font-size: 14px; }
+.dg-levizje span small { font-size: 12px; color: var(--dg-muted); }
+.dg-levizje > b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dg-levizje__fshi { width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--dg-bg); color: var(--dg-muted); font-size: 18px; line-height: 1; cursor: pointer; }
+
+.dg-transfer__llogari { list-style: none; margin: 4px 0 8px; padding: 10px 12px; display: grid; gap: 4px; border-radius: 12px; background: var(--dg-bg); font-size: 14px; }
+.dg-transfer__llogari li { display: flex; justify-content: space-between; gap: 10px; }
+.dg-transfer__llogari b { font-variant-numeric: tabular-nums; }
+.dg-transfer__neto { padding-top: 6px; border-top: 1px solid var(--dg-border); font-weight: 700; }
+
+/* SECHS CHIPS IN EINER ZEILE (08.10.): Porosit · Gati · Dërgim · Pranuar ·
+   Barazuar · Anuluar - kleinere Schrift, damit "Barazuar" auch auf einem
+   kleinen Telefon ganz dasteht. */
+.dg-chip { padding: 6px 0; min-height: 50px; border-radius: 11px; }
+.dg-chip span { font-size: clamp(8.5px, 2.55vw, 12px); letter-spacing: -.03em; text-overflow: clip; }
+.dg-chip b { font-size: 15px; }
+
+/* Der Kalender oben (08.10.). */
+.dg-periudha {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 10px; border-radius: 10px;
+  border: 1px solid var(--dg-border); background: var(--dg-surface); color: inherit; font: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; flex: none; cursor: pointer;
+}
+.dg-periudha svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.dg-kreu__djathtas { gap: 8px; }
+@media (max-width: 380px) { .dg-kush { display: none; } }
+.dg-levizje--periudha { cursor: pointer; }
+.dg-shigjeta { width: 32px; text-align: center; font-size: 20px; color: var(--dg-muted); }
+.dg-forma-financa input:disabled { background: var(--dg-bg); color: var(--dg-muted); }

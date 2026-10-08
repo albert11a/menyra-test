@@ -1610,6 +1610,39 @@ service cloud.firestore {
         allow update: if isCeoActor() || (dergesaRiba() && dergesaRibaNdryshon());
       }
 
+      // FINANCAT (/dergesat, 08.10.): Ueberweisungen nach Oesterreich
+      // ("austri": Bestellungen, brutto, WU-Gebuehr), eigene Eintraege
+      // ("levizje": Betrag ±, Grund) und abgeschlossene Perioden
+      // ("mbyllje": prej, deri). Riba liest mit (Wunsch Inhaber),
+      // schreiben und loeschen nur Heart. Aendern gibt es nicht - ein
+      // falscher Eintrag wird geloescht und neu angelegt.
+      function dergesaFinancaOk() {
+        let d = request.resource.data;
+        return d.nga == "heart" && dergesaZeitOk(d.at)
+          && ((d.lloji == "austri"
+                && d.keys().hasOnly(["lloji", "at", "kennungen", "bruto", "wu", "shenim", "nga"])
+                && d.kennungen is list && d.kennungen.size() >= 1 && d.kennungen.size() <= 400
+                && d.bruto is number && d.bruto > 0 && d.bruto <= 100000
+                && d.wu is number && d.wu >= 0 && d.wu <= d.bruto
+                && d.shenim is string && d.shenim.size() <= 160)
+            || (d.lloji == "levizje"
+                && d.keys().hasOnly(["lloji", "at", "shuma", "arsyeja", "nga"])
+                && d.shuma is number && d.shuma != 0 && d.shuma >= -100000 && d.shuma <= 100000
+                && d.arsyeja is string && d.arsyeja.size() >= 1 && d.arsyeja.size() <= 160)
+            // Abschluss einer Periode (Kalender oben): bis "deri".
+            || (d.lloji == "mbyllje"
+                && d.keys().hasOnly(["lloji", "at", "prej", "deri", "nga"])
+                && d.prej is string && d.prej.size() <= 40
+                && dergesaZeitOk(d.deri) && d.deri > d.prej));
+      }
+
+      match /dergesatFinanca/{id} {
+        allow read: if isCeoActor() || dergesaRiba();
+        allow create: if isCeoActor() && dergesaFinancaOk();
+        allow update: if false;
+        allow delete: if isCeoActor();
+      }
+
       // Wer Riba ist (uid). Lesen darf Riba nur den eigenen Eintrag.
       match /dergesatZugang/{zugangId} {
         allow read: if isCeoActor() || (signedIn() && resource.data.uid == request.auth.uid);

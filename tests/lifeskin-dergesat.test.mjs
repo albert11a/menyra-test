@@ -226,20 +226,36 @@ test("/dergesat: Riba sieht Gati, Te Beki und Pranuar/Anuluar, nie Barazuar oder
   const derguar = renderListe(liste, "derguar", "riba");
   assert.match(derguar, /data-veprim="pranuar"/);
   assert.match(derguar, /data-veprim="anuluar"/);
-  assert.doesNotMatch(derguar + renderListe(liste, "pranuar", "riba") + renderKartat(liste, "riba"), /data-veprim="(kthe|barazo|barazo-te-gjitha|paguaj-riben)"/);
+  const ribaListen = renderDetajet("financa", liste, "riba") + renderDetajet("kosova", liste, "riba");
+  assert.doesNotMatch(derguar + renderListe(liste, "pranuar", "riba") + renderKartat(liste, "riba") + ribaListen,
+    /data-veprim="(kthe|barazo|barazo-zgjedhur|zgjidh|paguaj-riben|fshi-levizje|hap-periudhen)"|data-forma=/);
   const heart = renderListe(liste, "pranuar", "heart") + renderKartat(liste, "heart");
   assert.match(heart, /data-veprim="barazo" data-kennung="c"/);
   assert.match(heart, /data-veprim="kthe" data-kennung="c"/);
-  assert.match(heart, /data-veprim="barazo-te-gjitha"/);
-  assert.match(heart, /data-veprim="paguaj-riben"/);
+  // Riba einfach (08.10.): kein "Paguar"-Knopf mehr - Riba bekommt 2 € je Barazim.
+  assert.doesNotMatch(heart, /data-veprim="paguaj-riben"/);
+  // Barazieren in der Liste "Financa" (08.10.): Haekchen und ein Knopf.
+  const financaHeart = renderDetajet("financa", liste, "heart", "", null, { zgjedhur: new Set(["c"]) });
+  assert.match(financaHeart, /data-veprim="zgjidh" data-kennung="c" checked/);
+  assert.match(financaHeart, /data-veprim="barazo-zgjedhur"[^>]*>Barazo · 1 porosi · 36,50 €/);
   assert.match(renderChips(liste, "derguar"), /dg-chip dg-chip--aktiv" data-veprim="chip" data-chip="derguar"/);
+  // Sechs Chips (08.10.): Porosit · Gati · Dërgim · Pranuar · Barazuar · Anuluar.
+  assert.deepEqual([...renderChips(liste, "porosi").matchAll(/<span>([^<]+)<\/span>/g)].map((m) => m[1]),
+    ["Porosit", "Gati", "Dërgim", "Pranuar", "Barazuar", "Anuluar"]);
   // Die sechs Karten mit ihren Betraegen - jede laesst sich antippen.
   const kartat = renderKartat(liste, "riba");
   for (const id of KARTAT_ID) assert.match(kartat, new RegExp(`data-veprim="hap-karten" data-karta="${id}"`), id);
-  for (const titel of ["Ndepo", "Pritje barazim", "Barazuar", "Pritje për Riben", "€ për Riben", "Paguar Ribës"]) assert.ok(kartat.includes(titel), titel);
+  for (const titel of ["Ndepo", "Financat", "Posta e minusuar", "Pare n'Kosovë", "T'kryme n'Austri", "Për Riben", "Riba n'gjep"]) assert.ok(kartat.includes(titel), titel);
+  assert.doesNotMatch(kartat, /Pritje për Riben|€ për Riben|Paguar Ribës/);
+  assert.doesNotMatch(kartat, /Pritje barazim|−2,50 € posta për porosi|data-veprim="barazo-te-gjitha"/);
   // Porosi a + Gati g + Dërguar b + Pranuar c.
   assert.ok(kartat.includes(euroSq(146)), "4 × (39 − 2,50)");
+  assert.match(kartat, /Total 4 porosi/);
   assert.match(kartat, /Porosi të reja<\/span><span>2<\/span><b>73 €/);
+  assert.match(kartat, /Në shpërndarje<\/span><span>1<\/span><b>36,50 €/);
+  assert.match(kartat, /Pranuar pa barazuar<\/span><span>1<\/span><b>36,50 €/);
+  // Për Riben: dieselben drei Zeilen, je 2 €.
+  assert.match(kartat, /Për Riben <small>2 € për porosi<\/small>[\s\S]*?8 €[\s\S]*?Total 4 porosi/);
 });
 
 test("/dergesat wird ausgeliefert - im Betrieb, lokal, ohne Social-Shell, ohne Pixel, ohne Kommentare", () => {
@@ -342,17 +358,17 @@ test("Antippen einer Karte: Liste mit Datum und Uhrzeit, Ndepo zuletzt und auf A
   ];
   assert.equal(KARTAT_ID.at(-1), "ndepo", "Ndepo an letzter Stelle");
   const kartat = renderKartat(liste, "heart", "", lenda);
-  assert.ok(kartat.lastIndexOf('data-karta="ndepo"') > kartat.lastIndexOf('data-karta="paguar-riba"'));
+  assert.ok(kartat.lastIndexOf('data-karta="ndepo"') > kartat.lastIndexOf('data-karta="riba-ngjep"'));
   assert.match(kartat, /<b>8<\/b><span>Shishe<\/span>/);
   assert.match(kartat, /<b>240 ml<\/b><span>Krem BPO<\/span>/);
   assert.doesNotMatch(kartat + renderDetajet("ndepo", liste, "heart", "", lenda), /Lagerbestand|Produktkosten|prej tyre/);
-  const pritje = renderDetajet("pritje-riba", liste, "riba");
+  const pritje = renderDetajet("per-riba", liste, "riba");
   assert.match(pritje, /role="dialog"/);
   assert.match(pritje, /<b>PB-a<\/b>/);
   assert.match(pritje, /#LS-1/);
   assert.match(pritje, /<span>Dërguar<\/span><time datetime="2026-10-05T14:22:00.000Z">\d\d\.10\.2026 · \d\d:22<\/time>/);
   assert.match(pritje, /<span>Gati<\/span><time/);
-  assert.match(renderDetajet("barazuar", liste, "riba"), /class="dg-grup"[\s\S]*PB-b/);
+  assert.match(renderDetajet("kosova", liste, "riba"), /Pa dërguar në Austri[\s\S]*PB-b/);
   const depoRiba = renderDetajet("ndepo", liste, "riba", "", lenda);
   assert.doesNotMatch(depoRiba, /Shishe|Stikera/, "Riba sieht keine Einkaufszahlen");
   assert.match(depoRiba, /data-veprim="kthe-depo" data-kennung="x"/);
@@ -368,4 +384,103 @@ test("Regeln: Riba geht Porosi -> Gati -> Dërguar und bringt eine Anuluar zurue
   assert.match(rules, /alt\.statusi == "gati" && neu\.statusi == "derguar"/);
   assert.doesNotMatch(rules, /alt\.statusi == "porosi" && neu\.statusi == "derguar"/);
   assert.match(rules, /keys\.hasOnly\(\["kthyerAt", "updatedAt", "nga"\]\)/);
+});
+
+// FINANCA (Auftrag Inhaber 08.10.): bei Beki, in Kosovo, in Oesterreich.
+test("Financa: Kosovo = Barazuar - Riba ± Eintraege - Oesterreich; Oesterreich = brutto - WU", async () => {
+  const { llogaritFinancen, levizjeLesen, austriDok, levizjeDok, shumaLexo, netoPasRibes } = await import("../shared/lifeskin-dergesat.js");
+  const B = "2026-10-06T18:00:00.000Z";
+  const liste = [
+    d("a", { statusi: "pranuar", pranuarAt: T, barazuarAt: B, ribaPaguarAt: B }),
+    d("b", { statusi: "pranuar", pranuarAt: T, barazuarAt: B }),
+    d("c", { statusi: "pranuar", pranuarAt: T }),
+    d("e", { statusi: "derguar", derguarAt: T }),
+    d("f"),
+    d("x", { statusi: "anuluar", anuluarAt: T })
+  ];
+  const levizjet = [
+    levizjeLesen(austriDok({ kennungen: ["a"], bruto: 34.5, wu: 5, jetzt: "2026-10-07T09:00:00.000Z" }), "t1"),
+    levizjeLesen(levizjeDok({ shuma: -10, arsyeja: "Benzinë", jetzt: "2026-10-07T10:00:00.000Z" }), "l1")
+  ];
+  const fin = llogaritFinancen(liste, levizjet);
+  assert.deepEqual([fin.financa.numri, fin.financa.shuma], [3, 109.5]);
+  assert.deepEqual([fin.financa.reja.numri, fin.financa.neShperndarje.numri, fin.financa.paBarazuar.numri], [1, 1, 1]);
+  // 2 × 36,5 barazuar − 2 × 2 € Riba − 10 € Benzinë − 34,50 € nach Oesterreich.
+  assert.equal(fin.kosova.shuma, 24.5);
+  assert.deepEqual([fin.ribaNgjep.numri, fin.ribaNgjep.shuma], [2, 4]);
+  assert.deepEqual([fin.perRiba.numri, fin.perRiba.shuma], [3, 6]);
+  assert.deepEqual(fin.kosova.paDerguar.lista.map((x) => x.kennung), ["b"]);
+  assert.deepEqual([fin.austri.numri, fin.austri.bruto, fin.austri.wu, fin.austri.neto], [1, 34.5, 5, 29.5]);
+  assert.equal(netoPasRibes(d("z")), 34.5, "39 − 2,50 Post − 2 € Riba");
+  // Tippen: Komma, Minus nur bei Eintraegen, Unsinn wird abgewiesen.
+  assert.equal(shumaLexo("8,50"), 8.5);
+  assert.equal(shumaLexo("-20"), null);
+  assert.equal(shumaLexo("-20", { negativ: true }), -20);
+  assert.equal(shumaLexo("abc"), null);
+  assert.equal(austriDok({ kennungen: ["a"], bruto: 10, wu: 20 }), null, "WU groesser als der Betrag");
+  assert.equal(levizjeDok({ shuma: 5, arsyeja: "" }), null, "ohne Grund");
+  // Die Karten und Listen zeigen genau diese Zahlen.
+  const kartat = renderKartat(liste, "heart", "", null, { levizjet });
+  assert.match(kartat, /Pare n'Kosovë <small>në shpi<\/small>[\s\S]*?24,50 €/);
+  assert.match(kartat, /T'kryme n'Austri[\s\S]*?29,50 €[\s\S]*?1 dërgesa · − 5 € WU/);
+  const austri = renderDetajet("austri", liste, "heart", "", null, { levizjet });
+  assert.match(austri, /Dërguar<\/span><b>34,50 €[\s\S]*WU tarifa<\/span><b class="dg-minus">− 5 €[\s\S]*Ardhur në Austri<\/span><b>29,50 €/);
+  assert.match(austri, /PB-a/);
+  const kosova = renderDetajet("kosova", liste, "heart", "", null, { levizjet, zgjedhur: new Set(["b"]) });
+  assert.match(kosova, /data-forma="levizje"/);
+  assert.match(kosova, /data-forma="austri"[\s\S]*Dërgo në Austri · 1 porosi/);
+  assert.match(kosova, /Propozim: 34,50 €/);
+  assert.match(kosova, /Benzinë[\s\S]*− 10 €/);
+});
+
+// PERIODEN (08.10.): Abschliessen bis zu einem Tag - danach beginnt alles
+// bei 0, Geld in Kosovo geht als "Bartur" mit, Laufendes bleibt stehen.
+test("Perioden: abschliessen, neu bei 0, Bartur, abgeschlossene ansehen", async () => {
+  const { llogaritFinancen, levizjeLesen, austriDok, levizjeDok, mbylljeDok, fillimiPeriudhes, numeroPerChipDergesat, fundiDites } =
+    await import("../shared/lifeskin-dergesat.js");
+  const liste = [
+    d("a", { statusi: "pranuar", pranuarAt: T, barazuarAt: "2026-10-03T10:00:00.000Z" }),
+    d("b", { statusi: "pranuar", pranuarAt: T, barazuarAt: "2026-10-04T10:00:00.000Z" }),
+    d("c", { statusi: "pranuar", pranuarAt: T, barazuarAt: "2026-10-08T10:00:00.000Z" }),
+    d("e", { statusi: "derguar", derguarAt: T })
+  ];
+  const levizjet = [
+    levizjeLesen(austriDok({ kennungen: ["a"], bruto: 34.5, wu: 5, jetzt: "2026-10-05T09:00:00.000Z" }), "t1"),
+    levizjeLesen(levizjeDok({ shuma: -10, arsyeja: "Benzinë", jetzt: "2026-10-05T10:00:00.000Z" }), "l1"),
+    levizjeLesen(mbylljeDok({ deri: "2026-10-06T21:59:59.999Z", jetzt: "2026-10-07T08:00:00.000Z" }), "m1")
+  ];
+  assert.equal(fillimiPeriudhes(levizjet), "2026-10-06T21:59:59.999Z");
+  const tani = llogaritFinancen(liste, levizjet);
+  // Vorher: a + b barazuar (2 × 36,5) − 2 × 2 Riba − 10 − 34,5 = 24,5 -> Bartur.
+  assert.equal(tani.kosova.bartur, 24.5);
+  // Neu: nur c (36,5 − 2 Riba) + Bartur.
+  assert.deepEqual([tani.kosova.barazuar.numri, tani.ribaNgjep.shuma, tani.austri.numri, tani.kosova.shtesa.numri], [1, 2, 0, 0]);
+  assert.equal(tani.kosova.shuma, 59);
+  // Was noch laeuft und was noch nicht nach Oesterreich ging, bleibt.
+  assert.equal(tani.financa.neShperndarje.numri, 1);
+  assert.deepEqual(tani.kosova.paDerguar.lista.map((x) => x.kennung).sort(), ["b", "c"]);
+  // Chip Barazuar: nur die laufende Periode.
+  assert.equal(numeroPerChipDergesat(liste, fillimiPeriudhes(levizjet)).barazuar, 1);
+  assert.equal(numeroPerChipDergesat(liste, "").barazuar, 3);
+  // Die abgeschlossene Periode fuer sich.
+  const vjeter = llogaritFinancen(liste, levizjet, { periudha: levizjet[2] });
+  assert.deepEqual([vjeter.kosova.barazuar.numri, vjeter.austri.neto, vjeter.kosova.shtesa.shuma, vjeter.kosova.shuma], [2, 29.5, -10, 24.5]);
+  // Abschluss nur nach der letzten Periode und nicht in der Zukunft.
+  assert.equal(mbylljeDok({ prej: "2026-10-06T21:59:59.999Z", deri: "2026-10-05T10:00:00.000Z" }), null);
+  assert.equal(mbylljeDok({ deri: "2999-01-01T00:00:00.000Z" }), null);
+  assert.match(fundiDites("2026-10-07"), /^2026-10-0[78]T/);
+  assert.equal(fundiDites("kaputt"), "");
+  // Blatt "Periudhat" und eine abgeschlossene Periode.
+  const blatt = renderDetajet("periudhat", liste, "heart", "", null, { levizjet });
+  assert.match(blatt, /data-forma="mbyllje"/);
+  assert.match(blatt, /data-karta="periudha-m1"/);
+  assert.match(blatt, /data-veprim="hap-periudhen" data-id="m1"/);
+  assert.doesNotMatch(renderDetajet("periudhat", liste, "riba", "", null, { levizjet }), /data-forma=|hap-periudhen/);
+  const periudha = renderDetajet("periudha-m1", liste, "heart", "", null, { levizjet });
+  assert.match(periudha, /Periudhë e mbyllur/);
+  assert.match(periudha, /Ardhur në Austri<\/span><b>29,50 €/);
+  assert.match(periudha, /Mbetur në Kosovë<\/span><b>24,50 €/);
+  assert.equal(renderDetajet("periudha-gibts-nicht", liste, "heart", "", null, { levizjet }), "");
+  const kartat = renderKartat(liste, "heart", "", null, { levizjet });
+  assert.match(kartat, /Bartur<\/span><span><\/span><b>\+ 24,50 €/);
 });

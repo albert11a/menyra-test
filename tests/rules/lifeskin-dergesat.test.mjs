@@ -18,11 +18,12 @@ import {
   doc,
   getDoc,
   getDocs,
+  deleteDoc,
   setDoc,
   updateDoc,
 } from "firebase/firestore";
 
-import { dergesaLesen, kthimNeDepo, ndryshimi } from "../../shared/lifeskin-dergesat.js";
+import { austriDok, dergesaLesen, kthimNeDepo, levizjeDok, mbylljeDok, ndryshimi } from "../../shared/lifeskin-dergesat.js";
 
 const repoRoot = dirname(
   fileURLToPath(new URL("../../package.json", import.meta.url)),
@@ -312,4 +313,32 @@ test("Heart legt an, aendert Posta Beki, rechnet ab und nimmt zurueck", async ()
     ),
   );
   assert.equal((await stand()).statusi, "porosi");
+});
+
+// FINANCA (08.10.): Heart schreibt Ueberweisungen und eigene Eintraege,
+// Riba liest mit, niemand sonst. Aendern gibt es nicht.
+test("Financa: Heart schreibt, Riba liest, fremd und Gast nichts", async () => {
+  const austri = austriDok({ kennungen: ["fall1"], bruto: 120, wu: 8.5, jetzt: T });
+  const levizje = levizjeDok({ shuma: -20, arsyeja: "Benzinë", jetzt: T });
+  await assertSucceeds(setDoc(doc(heart(), "lifeskin/lifeskin/dergesatFinanca/t1"), austri));
+  await assertSucceeds(setDoc(doc(heart(), "lifeskin/lifeskin/dergesatFinanca/l1"), levizje));
+  await assertSucceeds(getDocs(collection(riba(), "lifeskin/lifeskin/dergesatFinanca")));
+  await assertFails(getDocs(collection(fremd(), "lifeskin/lifeskin/dergesatFinanca")));
+  await assertFails(getDocs(collection(gast(), "lifeskin/lifeskin/dergesatFinanca")));
+  // Riba schreibt nichts, auch nicht im Namen von Heart.
+  await assertFails(setDoc(doc(riba(), "lifeskin/lifeskin/dergesatFinanca/r1"), levizje));
+  await assertFails(deleteDoc(doc(riba(), "lifeskin/lifeskin/dergesatFinanca/l1")));
+  // Aendern gibt es nicht, Loeschen nur Heart.
+  await assertFails(updateDoc(doc(heart(), "lifeskin/lifeskin/dergesatFinanca/l1"), { shuma: -5 }));
+  await assertSucceeds(deleteDoc(doc(heart(), "lifeskin/lifeskin/dergesatFinanca/l1")));
+  // Kaputte Eintraege: WU groesser als der Betrag, fremde Felder, Null-Betrag, ohne Grund.
+  await assertFails(setDoc(doc(heart(), "lifeskin/lifeskin/dergesatFinanca/x1"), { ...austri, wu: 200 }));
+  await assertFails(setDoc(doc(heart(), "lifeskin/lifeskin/dergesatFinanca/x2"), { ...austri, extra: 1 }));
+  await assertFails(setDoc(doc(heart(), "lifeskin/lifeskin/dergesatFinanca/x3"), { ...levizje, shuma: 0 }));
+  await assertFails(setDoc(doc(heart(), "lifeskin/lifeskin/dergesatFinanca/x4"), { ...levizje, arsyeja: "" }));
+  // Periode abschliessen: nur Heart, "deri" nach "prej".
+  const mbyllje = mbylljeDok({ prej: "", deri: T, jetzt: "2026-10-06T10:00:00.000Z" });
+  await assertSucceeds(setDoc(doc(heart(), "lifeskin/lifeskin/dergesatFinanca/m1"), mbyllje));
+  await assertFails(setDoc(doc(riba(), "lifeskin/lifeskin/dergesatFinanca/m2"), mbyllje));
+  await assertFails(setDoc(doc(heart(), "lifeskin/lifeskin/dergesatFinanca/m3"), { ...mbyllje, prej: "2026-10-09T10:00:00.000Z" }));
 });

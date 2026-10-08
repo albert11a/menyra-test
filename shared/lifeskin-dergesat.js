@@ -272,6 +272,212 @@ export function llogarit(liste) {
   };
 }
 
+// ── FINANCAT (Auftrag Inhaber 08.10.) ─────────────────────────────────
+//
+// Das Geld laeuft in Stufen, jede Zahl steht nur einmal:
+//   Financat          - bei Posta Beki: Porosi të reja, Në shpërndarje,
+//                       Pranuar pa barazuar - je Preis - 2,50 € Post.
+//   Pare n'Kosovë     - in Kosovo: Bartur (aus abgeschlossenen Perioden)
+//                       + Barazuar (Preis - 2,50) - Riba (2 € je Barazim)
+//                       ± eigene Eintraege - nach Oesterreich (brutto).
+//   T'kryme n'Austri  - je Ueberweisung: brutto - WU-Gebuehr = netto.
+//   Për Riben         - 2 € je Bestellung, die noch nicht barazuar ist
+//                       (dieselben drei Zeilen wie Financat).
+//   Riba n'gjep       - 2 € je Barazim: Riba wird aus dem Geld in Kosovo
+//                       bezahlt, sobald Beki die Bestellung abgerechnet hat.
+//
+// PERIODEN (Kalender oben): "Mbyll periudhën" schliesst alles bis zu einem
+// Tag ab. Danach zeigen Kosovo (ohne den Uebertrag), Oesterreich, Riba
+// n'gjep und der Chip Barazuar nur, was danach kam; was noch laeuft
+// (Financat, Për Riben, Pa dërguar në Austri) bleibt immer stehen. Was in
+// Kosovo uebrig war, steht als "Bartur" in der neuen Periode - Geld, das
+// da ist, verschwindet nicht beim Abschliessen.
+//
+// Ablage: lifeskin/{tenant}/dergesatFinanca (firestore.rules)
+//   {lloji: "austri", at, kennungen[], bruto, wu, shenim}
+//   {lloji: "levizje", at, shuma (±), arsyeja}
+//   {lloji: "mbyllje", at, prej, deri}
+// Schreiben nur Heart.
+
+export const FINANCA_MAX = Object.freeze({ kennungen: 400, arsyeja: 160, shenim: 160, shuma: 100000 });
+
+// Die Chips auf /dergesat (08.10.): Barazuar ist ein eigener Chip - eine
+// Pranuar, die Beki schon abgerechnet hat. Heart behaelt STATUS_CHIPS.
+export const CHIPS_DERGESAT = Object.freeze([
+  Object.freeze({ id: "porosi", label: "Porosit" }),
+  Object.freeze({ id: "gati", label: "Gati" }),
+  Object.freeze({ id: "derguar", label: "Dërgim" }),
+  Object.freeze({ id: "pranuar", label: "Pranuar" }),
+  Object.freeze({ id: "barazuar", label: "Barazuar" }),
+  Object.freeze({ id: "anuluar", label: "Anuluar" })
+]);
+
+export function chipPer(d) {
+  return d?.statusi === "pranuar" && d.barazuarAt ? "barazuar" : d?.statusi;
+}
+
+const brenda = (at, prej = "", deri = "") => Boolean(at) && (!prej || String(at) > String(prej)) && (!deri || String(at) <= String(deri));
+
+// Barazuar zeigt nur die laufende Periode (ab prej); alles andere wie immer.
+function neChip(liste, chip, prej) {
+  return (liste || []).filter((d) => chipPer(d) === chip && (chip !== "barazuar" || brenda(d.barazuarAt, prej)));
+}
+
+export function renditPerChipDergesat(liste, chip, prej = "") {
+  const koha = (d) => String(chip === "barazuar" ? d.barazuarAt : kohaStatusit(d));
+  return neChip(liste, chip, prej).sort((a, b) => (chip === "porosi" ? koha(a).localeCompare(koha(b)) : koha(b).localeCompare(koha(a))));
+}
+
+export function numeroPerChipDergesat(liste, prej = "") {
+  return Object.fromEntries(CHIPS_DERGESAT.map((c) => [c.id, neChip(liste, c.id, prej).length]));
+}
+
+export function levizjeLesen(roh = {}, id = "") {
+  const lloji = ["austri", "levizje", "mbyllje"].includes(roh?.lloji) ? roh.lloji : "";
+  if (!lloji) return null;
+  const at = zeit(roh?.at);
+  if (lloji === "austri") {
+    const bruto = cent(Math.max(0, Number(roh?.bruto) || 0));
+    const wu = cent(Math.max(0, Number(roh?.wu) || 0));
+    return {
+      id: tekst(id, 80), lloji, at, bruto, wu, neto: cent(Math.max(0, bruto - wu)),
+      kennungen: (Array.isArray(roh?.kennungen) ? roh.kennungen : []).map((k) => tekst(k, 80)).filter(Boolean).slice(0, FINANCA_MAX.kennungen),
+      shenim: tekst(roh?.shenim, FINANCA_MAX.shenim)
+    };
+  }
+  if (lloji === "mbyllje") {
+    const deri = zeit(roh?.deri);
+    return deri ? { id: tekst(id, 80), lloji, at, prej: zeit(roh?.prej), deri } : null;
+  }
+  return { id: tekst(id, 80), lloji, at, shuma: cent(Number(roh?.shuma) || 0), arsyeja: tekst(roh?.arsyeja, FINANCA_MAX.arsyeja) };
+}
+
+// Die abgeschlossenen Perioden, die aelteste zuerst.
+export function periudhat(levizjet) {
+  return (levizjet || []).filter((l) => l?.lloji === "mbyllje").sort((a, b) => String(a.deri).localeCompare(String(b.deri)));
+}
+
+// Wo die laufende Periode beginnt: am Ende der letzten abgeschlossenen.
+export function fillimiPeriudhes(levizjet) {
+  return periudhat(levizjet).at(-1)?.deri || "";
+}
+
+// Was eine Bestellung nach Post UND Riba uebrig laesst - der Vorschlag
+// fuer den Betrag einer Ueberweisung.
+export function netoPasRibes(d) {
+  return cent(Math.max(0, netoPosta(d) - DERGESA.ribaPerPorosi));
+}
+
+// Betraege, wie man sie tippt: "8,50", "-20", " 12 € ".
+export function shumaLexo(wert, { negativ = false } = {}) {
+  const t = String(wert ?? "").replace(/[€\s]/g, "").replace(",", ".");
+  if (!t || !/^-?\d+(\.\d{1,2})?$/.test(t)) return null;
+  const n = cent(Number(t));
+  if (!Number.isFinite(n) || Math.abs(n) > FINANCA_MAX.shuma || (!negativ && n < 0)) return null;
+  return n;
+}
+
+export function austriDok({ kennungen = [], bruto, wu = 0, shenim = "", jetzt = new Date().toISOString() } = {}) {
+  const k = [...new Set(kennungen.map((x) => tekst(x, 80)).filter(Boolean))].slice(0, FINANCA_MAX.kennungen);
+  const b = cent(Number(bruto));
+  const w = cent(Number(wu) || 0);
+  if (!k.length || !Number.isFinite(b) || b <= 0 || w < 0 || w > b) return null;
+  return { lloji: "austri", at: jetzt, kennungen: k, bruto: b, wu: w, shenim: tekst(shenim, FINANCA_MAX.shenim), nga: "heart" };
+}
+
+export function levizjeDok({ shuma, arsyeja = "", jetzt = new Date().toISOString() } = {}) {
+  const n = cent(Number(shuma));
+  const a = tekst(arsyeja, FINANCA_MAX.arsyeja);
+  if (!Number.isFinite(n) || n === 0 || !a) return null;
+  return { lloji: "levizje", at: jetzt, shuma: n, arsyeja: a, nga: "heart" };
+}
+
+// Abschluss bis einschliesslich "deri" (ISO). Nur nach der letzten
+// Periode und nicht in der Zukunft.
+export function mbylljeDok({ prej = "", deri, jetzt = new Date().toISOString() } = {}) {
+  const d = zeit(deri);
+  if (!d || (prej && d <= prej) || d > jetzt) return null;
+  return { lloji: "mbyllje", at: jetzt, prej: zeit(prej), deri: d, nga: "heart" };
+}
+
+// Ein Tag aus <input type="date"> ("2026-10-07") -> sein Ende in der
+// Ortszeit des Telefons, als ISO.
+export function fundiDites(dita) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dita || ""));
+  if (!m) return "";
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 23, 59, 59, 999);
+  return Number.isFinite(d.getTime()) ? d.toISOString() : "";
+}
+
+// Die ganze Rechnung - fuer die laufende Periode (ohne periudha) oder eine
+// abgeschlossene ({ prej, deri }).
+export function llogaritFinancen(liste, levizjet = [], { periudha = null } = {}) {
+  const prej = periudha ? periudha.prej || "" : fillimiPeriudhes(levizjet);
+  const deri = periudha ? periudha.deri || "" : "";
+  const riba = DERGESA.ribaPerPorosi;
+  const te = (liste || []).filter((d) => d && d.statusi !== "anuluar");
+  const shuma = (l, vlera) => cent(l.reduce((s, d) => s + vlera(d), 0));
+  const austriTe = (levizjet || []).filter((l) => l?.lloji === "austri");
+  const shtesaTe = (levizjet || []).filter((l) => l?.lloji === "levizje");
+  const rendit = (l, fusha) => [...l].sort((a, b) => String(b[fusha]).localeCompare(String(a[fusha])));
+  const dergur = new Set(austriTe.flatMap((t) => t.kennungen));
+
+  // Was laeuft (immer, unabhaengig von der Periode).
+  const reja = te.filter((d) => d.statusi === "porosi" || d.statusi === "gati");
+  const neShperndarje = te.filter((d) => d.statusi === "derguar");
+  const paBarazuar = te.filter((d) => d.statusi === "pranuar" && !d.barazuarAt);
+  const tri = (vlera) => ({
+    numri: reja.length + neShperndarje.length + paBarazuar.length,
+    shuma: cent(shuma(reja, vlera) + shuma(neShperndarje, vlera) + shuma(paBarazuar, vlera)),
+    reja: { numri: reja.length, shuma: shuma(reja, vlera), lista: reja },
+    neShperndarje: { numri: neShperndarje.length, shuma: shuma(neShperndarje, vlera), lista: neShperndarje },
+    paBarazuar: { numri: paBarazuar.length, shuma: shuma(paBarazuar, vlera), lista: paBarazuar, kennungen: paBarazuar.map((d) => d.kennung) }
+  });
+
+  const teGjitheBarazuar = te.filter((d) => d.statusi === "pranuar" && d.barazuarAt);
+  // Kosovo-Stand bis zu einem Zeitpunkt (alles <= bis).
+  const saldoDeri = (bis) => {
+    if (!bis) return 0;
+    const b = teGjitheBarazuar.filter((d) => d.barazuarAt <= bis);
+    return cent(shuma(b, netoPosta) - b.length * riba
+      + shtesaTe.filter((l) => l.at <= bis).reduce((s, l) => s + l.shuma, 0)
+      - austriTe.filter((t) => t.at <= bis).reduce((s, t) => s + t.bruto, 0));
+  };
+
+  const barazuar = rendit(teGjitheBarazuar.filter((d) => brenda(d.barazuarAt, prej, deri)), "barazuarAt");
+  const shtesa = rendit(shtesaTe.filter((l) => brenda(l.at, prej, deri)), "at");
+  const austri = rendit(austriTe.filter((t) => brenda(t.at, prej, deri)), "at");
+  const paDerguar = rendit(teGjitheBarazuar.filter((d) => !dergur.has(d.kennung)), "barazuarAt");
+  const hyrje = shuma(barazuar, netoPosta);
+  const ribaShuma = cent(barazuar.length * riba);
+  const shtesaShuma = cent(shtesa.reduce((s, l) => s + l.shuma, 0));
+  const austriBruto = cent(austri.reduce((s, t) => s + t.bruto, 0));
+  const bartur = saldoDeri(prej);
+
+  return {
+    periudha: { prej, deri },
+    financa: tri(netoPosta),
+    perRiba: tri(() => riba),
+    ribaNgjep: { numri: barazuar.length, shuma: ribaShuma, lista: barazuar, grupet: grupoSipasKohes(barazuar, "barazuarAt", () => riba) },
+    kosova: {
+      shuma: cent(bartur + hyrje - ribaShuma + shtesaShuma - austriBruto),
+      bartur,
+      barazuar: { numri: barazuar.length, shuma: hyrje, lista: barazuar, grupet: grupoSipasKohes(barazuar, "barazuarAt", netoPosta) },
+      riba: { numri: barazuar.length, shuma: ribaShuma },
+      shtesa: { numri: shtesa.length, shuma: shtesaShuma, lista: shtesa },
+      austri: { numri: austri.length, shuma: austriBruto },
+      paDerguar: { numri: paDerguar.length, shuma: shuma(paDerguar, netoPosta), lista: paDerguar }
+    },
+    austri: {
+      numri: austri.length,
+      bruto: austriBruto,
+      wu: cent(austri.reduce((s, t) => s + t.wu, 0)),
+      neto: cent(austri.reduce((s, t) => s + t.neto, 0)),
+      lista: austri
+    }
+  };
+}
+
 // NDEPO - DER LAGERBESTAND (Auftrag Inhaber 06.10., korrigiert 06.10.).
 //
 // Gezeigt wird das MATERIAL im Lager, keine Produktzahl ("92 BPO" war

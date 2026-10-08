@@ -27,15 +27,20 @@ import {
   signOut
 } from "/shared/vendor/firebase/11.0.0/firebase-auth.js";
 import {
+  addDoc,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   onSnapshot,
   runTransaction,
   setDoc
 } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
-import { DERGESA, STATUS_CHIPS, dergesaLesen, euroSq, hyrja, kthimNeDepo, llogarit, ndryshimi, KTHIMI } from "/shared/lifeskin-dergesat.js";
-import { KARTAT_ID, renderChips, renderDetajet, renderKartat, renderListe } from "./dergesat-pamja.js";
+import {
+  CHIPS_DERGESAT, DERGESA, STATUS_CHIPS, austriDok, dergesaLesen, euroSq, fillimiPeriudhes, fundiDites, hyrja, kthimNeDepo, levizjeDok,
+  levizjeLesen, llogaritFinancen, mbylljeDok, ndryshimi, netoPasRibes, periudhat, shumaLexo, KTHIMI
+} from "/shared/lifeskin-dergesat.js";
+import { eFleteValide, kohaSq, renderChips, renderDetajet, renderKartat, renderListe } from "./dergesat-pamja.js";
 
 const TENANT = "lifeskin";
 const dergesaRef = (kennung) => doc(db, "lifeskin", TENANT, "dergesat", kennung);
@@ -43,6 +48,8 @@ const zugangRef = () => doc(db, "lifeskin", TENANT, "dergesatZugang", "riba");
 // Shishet, Stikerat, Kremet - dieselbe Ablage wie Heart, Produktkosten
 // (apps/mnyra-heart/heart-lifeskin-kosten.js, KOSTEN_DOK). Nur CEO.
 const lendaRef = () => doc(db, "landingArchive", "lifeskin__produktkosten");
+// Ueberweisungen nach Oesterreich und eigene Eintraege (08.10.).
+const financaRef = () => collection(db, "lifeskin", TENANT, "dergesatFinanca");
 const CHIP_KYC = "dergesat.chip";
 
 const $ = (id) => document.getElementById(id);
@@ -57,12 +64,16 @@ const gjendja = {
   ribaGati: null,
   // Die offene Liste einer Karte oben ("" = keine).
   karta: "",
-  lenda: null
+  lenda: null,
+  levizjet: [],
+  // Haekchen in den Listen Financa / Pare n'Kosovë.
+  zgjedhur: new Set()
 };
-if (!STATUS_CHIPS.some((c) => c.id === gjendja.chip)) gjendja.chip = "porosi";
+if (!CHIPS_DERGESAT.some((c) => c.id === gjendja.chip)) gjendja.chip = "porosi";
 
 let ndalLive = null;
 let ndalLenda = null;
+let ndalFinanca = null;
 
 // Die Punkte unter den Karten: welche gerade im Bild ist.
 function punktet() {
@@ -99,6 +110,7 @@ function vizato() {
   shfaq("dg-pa-qasje", Boolean(gjendja.perdoruesi) && gjendja.roli === "asnje");
   shfaq("dg-faqja", brenda);
   shfaq("dg-dil", Boolean(gjendja.perdoruesi));
+  shfaq("dg-periudha", Boolean(gjendja.perdoruesi) && (gjendja.roli === "riba" || gjendja.roli === "heart") && gjendja.lidhja === "ok");
   shfaq("dg-ngarkim", Boolean(gjendja.perdoruesi) && !gjendja.roli);
   if (!brenda) {
     $("dg-kush").textContent = "";
@@ -108,20 +120,24 @@ function vizato() {
   }
 
   $("dg-kush").textContent = gjendja.roli === "riba" ? "Riba" : "Pronari";
-  $("dg-chips").innerHTML = renderChips(gjendja.liste, gjendja.chip);
+  // Der Kalender oben: seit wann die laufende Periode laeuft.
+  const prej = fillimiPeriudhes(gjendja.levizjet);
+  const periudha = $("dg-periudha-tekst");
+  if (periudha) periudha.textContent = prej ? `Nga ${kohaSq(prej).split(" ")[0]}` : "Periudha";
+  $("dg-chips").innerHTML = renderChips(gjendja.liste, gjendja.chip, prej);
   const lista = $("dg-lista");
   if (gjendja.lidhja === "gabim") {
     lista.innerHTML = `<p class="dg-bosh">Nuk ka lidhje. Kontrolloni internetin dhe rifreskoni faqen.</p>`;
   } else if (gjendja.lidhja === "pritje") {
     lista.innerHTML = `<p class="dg-bosh">Po ngarkohen porositë…</p>`;
   } else {
-    lista.innerHTML = renderListe(gjendja.liste, gjendja.chip, gjendja.roli, gjendja.laeuft);
+    lista.innerHTML = renderListe(gjendja.liste, gjendja.chip, gjendja.roli, gjendja.laeuft, prej);
   }
   // Die Karten wischt man seitlich - beim Neuzeichnen (jede Live-Aenderung)
   // bleibt die Stelle, an der man gerade ist.
   const kartat = $("dg-kartat");
   const stelle = kartat.scrollLeft;
-  kartat.innerHTML = gjendja.lidhja === "ok" ? renderKartat(gjendja.liste, gjendja.roli, gjendja.laeuft, gjendja.lenda) : "";
+  kartat.innerHTML = gjendja.lidhja === "ok" ? renderKartat(gjendja.liste, gjendja.roli, gjendja.laeuft, gjendja.lenda, { levizjet: gjendja.levizjet }) : "";
   kartat.scrollLeft = stelle;
   punktet();
   vizatoFleten();
@@ -154,7 +170,13 @@ function vizatoFleten() {
   const trupi = fleta.querySelector(".dg-flete__trupi");
   const stelle = trupi ? trupi.scrollTop : 0;
   const ishte = !fleta.hidden;
-  fleta.innerHTML = renderDetajet(gjendja.karta, gjendja.liste, gjendja.roli, gjendja.laeuft, gjendja.lenda);
+  // Was in den Feldern getippt ist, bleibt beim Neuzeichnen stehen.
+  const ruajtur = Object.fromEntries([...fleta.querySelectorAll("[data-ruaj]")].map((el) => [el.dataset.ruaj, el.value]));
+  const fokus = document.activeElement?.dataset?.ruaj || "";
+  fleta.innerHTML = renderDetajet(gjendja.karta, gjendja.liste, gjendja.roli, gjendja.laeuft, gjendja.lenda,
+    { levizjet: gjendja.levizjet, zgjedhur: gjendja.zgjedhur });
+  for (const el of fleta.querySelectorAll("[data-ruaj]")) if (ruajtur[el.dataset.ruaj]) el.value = ruajtur[el.dataset.ruaj];
+  if (fokus) fleta.querySelector(`[data-ruaj="${fokus}"]`)?.focus({ preventScroll: true });
   fleta.hidden = false;
   document.documentElement.classList.add("dg-pa-levizje");
   const iRi = fleta.querySelector(".dg-flete__trupi");
@@ -166,6 +188,7 @@ function mbyllFleten() {
   if (!gjendja.karta) return;
   const nga = gjendja.karta;
   gjendja.karta = "";
+  gjendja.zgjedhur = new Set();
   vizatoFleten();
   document.querySelector(`[data-karta="${nga}"]`)?.focus?.({ preventScroll: true });
 }
@@ -198,9 +221,25 @@ function nisLive() {
   });
 }
 
+// Financa: Riba liest mit (Wunsch Inhaber 08.10.), schreiben nur Heart.
+function nisFinancen() {
+  ndalFinanca?.();
+  ndalFinanca = onSnapshot(financaRef(), (snap) => {
+    gjendja.levizjet = snap.docs.map((d) => levizjeLesen(d.data() || {}, d.id)).filter(Boolean);
+    vizato();
+  }, () => {
+    gjendja.levizjet = [];
+    vizato();
+  });
+}
+
 function ndalo() {
   ndalLive?.();
   ndalLive = null;
+  ndalFinanca?.();
+  ndalFinanca = null;
+  gjendja.levizjet = [];
+  gjendja.zgjedhur = new Set();
   ndalLenda?.();
   ndalLenda = null;
   gjendja.liste = [];
@@ -235,7 +274,7 @@ onAuthStateChanged(auth, async (perdoruesi) => {
   if (gjendja.perdoruesi !== perdoruesi) return;
   gjendja.roli = roli;
   gjendja.ribaGati = ribaGati;
-  if (roli === "riba" || roli === "heart") nisLive();
+  if (roli === "riba" || roli === "heart") { nisLive(); nisFinancen(); }
   if (roli === "heart") nisLenden();
   vizato();
 });
@@ -341,7 +380,8 @@ document.addEventListener("click", (ngjarja) => {
   const celes = `${veprimi}:${kennung}`;
 
   if (veprimi === "hap-karten") {
-    gjendja.karta = KARTAT_ID.includes(el.dataset.karta) ? el.dataset.karta : "";
+    gjendja.karta = eFleteValide(el.dataset.karta) ? el.dataset.karta : "";
+    gjendja.zgjedhur = new Set();
     vizatoFleten();
     return;
   }
@@ -390,16 +430,40 @@ document.addEventListener("click", (ngjarja) => {
     bej(celes, () => shenoTeGjitha([kennung], "barazuarAt", (x) => x.statusi === "pranuar" && !x.barazuarAt), "Barazuar ✓");
     return;
   }
-  if (veprimi === "barazo-te-gjitha") {
-    const gati = llogarit(gjendja.liste).pritjeBarazim.gati;
-    if (!gati.numri || !globalThis.confirm?.(`Barazuar: ${gati.numri} porosi · ${euroSq(gati.shuma)}?`)) return;
-    bej(celes, () => shenoTeGjitha(gati.kennungen, "barazuarAt", (x) => x.statusi === "pranuar" && !x.barazuarAt), "Barazuar ✓");
+  if (veprimi === "zgjidh") {
+    if (gjendja.zgjedhur.has(kennung)) gjendja.zgjedhur.delete(kennung); else gjendja.zgjedhur.add(kennung);
+    vizatoFleten();
     return;
   }
-  if (veprimi === "paguaj-riben") {
-    const per = llogarit(gjendja.liste).perRiba;
-    if (!per.numri || !globalThis.confirm?.(`Riba paguar: ${per.numri} porosi · ${euroSq(per.shuma)}?`)) return;
-    bej(celes, () => shenoTeGjitha(per.kennungen, "ribaPaguarAt", (x) => x.statusi === "pranuar" && !x.ribaPaguarAt), "Riba paguar ✓");
+  if (veprimi === "zgjidh-te-gjitha") {
+    const fin = llogaritFinancen(gjendja.liste, gjendja.levizjet);
+    const lista = el.dataset.grupi === "kosova" ? fin.kosova.paDerguar.lista : fin.financa.paBarazuar.lista;
+    const tegjitha = lista.every((x) => gjendja.zgjedhur.has(x.kennung));
+    for (const x of lista) { if (tegjitha) gjendja.zgjedhur.delete(x.kennung); else gjendja.zgjedhur.add(x.kennung); }
+    vizatoFleten();
+    return;
+  }
+  if (veprimi === "barazo-zgjedhur") {
+    const lista = llogaritFinancen(gjendja.liste, gjendja.levizjet).financa.paBarazuar.lista.filter((x) => gjendja.zgjedhur.has(x.kennung));
+    const shuma = lista.reduce((s, x) => s + Math.max(0, x.cmimi - DERGESA.postaTarifa), 0);
+    if (!lista.length || !globalThis.confirm?.(`Barazo: ${lista.length} porosi · ${euroSq(shuma)}?`)) return;
+    bej("barazo-zgjedhur:", async () => {
+      await shenoTeGjitha(lista.map((x) => x.kennung), "barazuarAt", (x) => x.statusi === "pranuar" && !x.barazuarAt);
+      gjendja.zgjedhur = new Set();
+    }, "Barazuar ✓ – tani te Pare n'Kosovë");
+    return;
+  }
+  if (veprimi === "fshi-levizje") {
+    const id = el.dataset.id || "";
+    const l = gjendja.levizjet.find((x) => x.id === id);
+    if (!l || !globalThis.confirm?.(`Ta fshij „${l.arsyeja || "lëvizjen"}“?`)) return;
+    bej(`fshi:${id}`, () => deleteDoc(doc(financaRef(), id)), "U fshi.");
+    return;
+  }
+  if (veprimi === "hap-periudhen") {
+    const m = periudhat(gjendja.levizjet).at(-1);
+    if (!m || m.id !== el.dataset.id || !globalThis.confirm?.(`Ta hap përsëri periudhën ${m.prej ? kohaSq(m.prej) : "Fillimi"} – ${kohaSq(m.deri)}?`)) return;
+    bej(`hap-periudhen:${m.id}`, () => deleteDoc(doc(financaRef(), m.id)), "Periudha u hap përsëri.");
   }
 });
 
@@ -447,6 +511,53 @@ $("dg-riba-forma")?.addEventListener("submit", async (ngjarja) => {
   } finally {
     butoni.disabled = false;
     vizato();
+  }
+});
+
+// Die Liste wird waehrend des Speicherns neu gezeichnet - geleert werden
+// darum die Felder, die jetzt dastehen, nicht die von vorher.
+function pastroFushat(parashtese) {
+  for (const el of document.querySelectorAll(`#dg-flete [data-ruaj^="${parashtese}"]`)) el.value = "";
+}
+
+// Die zwei Formulare in den Listen (nur Inhaber): eigener Eintrag und
+// Ueberweisung nach Oesterreich.
+document.addEventListener("submit", (ngjarja) => {
+  const forma = ngjarja.target?.closest?.("[data-forma]");
+  if (!forma) return;
+  ngjarja.preventDefault();
+  if (gjendja.roli !== "heart" || gjendja.laeuft) return;
+  if (forma.dataset.forma === "levizje") {
+    const shuma = shumaLexo(forma.elements.shuma.value, { negativ: true });
+    const dok = levizjeDok({ shuma, arsyeja: forma.elements.arsyeja.value });
+    if (!dok) { mesazh("Shkruani shumën (p.sh. −20 ose 50) dhe arsyen.", "gabim"); return; }
+    bej("levizje:", async () => { await addDoc(financaRef(), dok); pastroFushat("levizje-"); }, `${dok.shuma < 0 ? "Hequr" : "Shtuar"}: ${euroSq(Math.abs(dok.shuma))}`);
+    return;
+  }
+  if (forma.dataset.forma === "mbyllje") {
+    const prej = fillimiPeriudhes(gjendja.levizjet);
+    const dita = forma.elements.deri.value;
+    const jetzt = new Date().toISOString();
+    const deri = dita === new Date().toLocaleDateString("sv-SE") ? jetzt : fundiDites(dita);
+    const dok = mbylljeDok({ prej, deri, jetzt });
+    if (!dok) { mesazh("Zgjidhni një datë pas fillimit të periudhës dhe jo në të ardhmen.", "gabim"); return; }
+    if (!globalThis.confirm?.(`Mbyll periudhën ${prej ? kohaSq(prej) : "nga fillimi"} – ${kohaSq(dok.deri)}? Kartat nisin pastaj nga 0.`)) return;
+    bej("mbyllje:", () => addDoc(financaRef(), dok), "Periudha u mbyll ✓");
+    return;
+  }
+  if (forma.dataset.forma === "austri") {
+    const lista = llogaritFinancen(gjendja.liste, gjendja.levizjet).kosova.paDerguar.lista.filter((x) => gjendja.zgjedhur.has(x.kennung));
+    const propozim = lista.reduce((s, x) => s + netoPasRibes(x), 0);
+    const bruto = forma.elements.bruto.value.trim() ? shumaLexo(forma.elements.bruto.value) : propozim;
+    const wu = forma.elements.wu.value.trim() ? shumaLexo(forma.elements.wu.value) : 0;
+    const dok = austriDok({ kennungen: lista.map((x) => x.kennung), bruto, wu });
+    if (!dok) { mesazh("Zgjidhni barazimet dhe shkruani shumën dhe tarifën e WU.", "gabim"); return; }
+    if (!globalThis.confirm?.(`Dërgo në Austri: ${euroSq(dok.bruto)} − ${euroSq(dok.wu)} WU = ${euroSq(dok.bruto - dok.wu)}?`)) return;
+    bej("austri:", async () => {
+      await addDoc(financaRef(), dok);
+      gjendja.zgjedhur = new Set();
+      pastroFushat("austri-");
+    }, "Dërguar në Austri ✓");
   }
 });
 
