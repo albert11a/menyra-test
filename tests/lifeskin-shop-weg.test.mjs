@@ -573,9 +573,12 @@ test("der Kopf der Seite fragt den Stempel unter derselben Adresse ab wie shop.j
   assert.match(html, /if \(!localStorage\.getItem\("lifeskin:shopHero"\) \|\| !localStorage\.getItem\("lifeskin:shopHeroStand"\)\) return;/);
   assert.equal(html.match(/var url = "([^"]+)";/)?.[1], HERO_ADRESSE + HERO_NUR_STAND,
     "shop.js wuerde die Antwort aus dem Kopf nicht benutzen und ein zweites Mal fragen");
-  // Das Titelbild (.hero-photo im Abschnitt Instagram) ist seit dem 07.10.
-  // nicht mehr auf der Seite (Inhaber) - shop.js laeuft ohne Rahmen weiter.
+  // Das Titelbild aus Heart steht seit dem 08.10. wieder auf der Seite -
+  // ganz oben im Kopf als Set-Bild (Inhaber), nicht mehr bei Instagram.
   assert.doesNotMatch(html, /<div class="hero-photo">/);
+  const kopf = html.slice(html.indexOf('<section class="hero"'), html.indexOf("</section>", html.indexOf('<section class="hero"')));
+  assert.match(kopf, /<div class="hero-photo hero-set"><img src="\/apps\/lifeskin-shop\/assets\/set-hero\.jpg"/);
+  assert.match(kopf, /localStorage\.getItem\("lifeskin:shopHero"\)/);
 });
 
 test("nach einem Kauf im Laden fuehrt Neuladen nicht auf eine Warteseite ohne Fall", async () => {
