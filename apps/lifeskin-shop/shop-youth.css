@@ -421,7 +421,8 @@
 /* SET-BILD AUS HEART OBEN (08.10., Inhaber): auf dem Telefon steht das
    Titelbild aus Heart (config/shopHero, 7:5, bis 5 Bilder zum Wischen) ganz
    oben, "Largo aknet." klein links im Bild. Darunter unveraendert: Text,
-   Kaufknopf, Lieferzeile, die zwei Produktfotos, 94 % / Made in Germany. */
+   Kaufknopf, Lieferzeile, 94 % / Made in Germany. Die zwei Produktfotos im
+   Kopf sind entfernt (Inhaber 08.10.). */
 #ls-einstieg .page .hero .hero-set{margin:0 0 16px;border-radius:14px;overflow:hidden}
 @media(max-width:800px){
  #ls-einstieg .page .hero{padding:14px 0 28px}
@@ -436,7 +437,6 @@
  #ls-einstieg .page .buy{order:2}
  #ls-einstieg .page #shop-preisstatus{order:3}
  #ls-einstieg .page .micro{order:4}
- #ls-einstieg .page .product-pair{order:5;margin:24px 0 0}
- #ls-einstieg .page .vorteile2{order:6}
+ #ls-einstieg .page .vorteile2{order:6;margin-top:24px}
  #ls-einstieg .page .visual-caption{order:7}
 }
