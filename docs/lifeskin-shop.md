@@ -9,6 +9,18 @@ Wegen (getrennt gezaehlt, gleiche Funktionen), Pixel fuer alles Relevante,
 Sets/Einzelmittel/Vorher-Nachher aus Heart pflegbar, eigenes Dashboard in
 Heart.
 
+## Produktbilder "Dy produktet" aus Heart, Pfeile schwarz (08.10.)
+
+- Zwei neue Standardbilder (`assets/produkt-lf-acne.jpg`,
+  `assets/produkt-lf-moistur.jpg`, 600 x 800, 3:4).
+- Heart -> Mehr anzeigen -> "Shop-Produktbilder": je Produkt waehlen und
+  zuschneiden (3:4), gespeichert unter `config/shopProduktFoto-<id>`
+  { foto, updatedAt }; "Standardbild" loescht das Dokument. Der Shop laedt
+  die Bilder, wenn der Abschnitt naht, und tauscht erst nach dem Dekodieren.
+  Unabhaengig von den Produktfotos der Landingpage (`landingFotot-…`).
+- Pfeile und Punkte im Set-Bild schwarz (var(--ink)) statt Mint.
+- Keine Pixel-/CAPI-Aenderung. Test: `tests/lifeskinshop-produktfotos.test.mjs`.
+
 ## Garantie und F.A.Q unter die zwei Produkte (08.10.)
 
 Auftrag Inhaber: Garantie ("Merr Duo. Merr garancion." / 45 ditë) und die
