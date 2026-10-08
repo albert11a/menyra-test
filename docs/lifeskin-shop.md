@@ -9,6 +9,22 @@ Wegen (getrennt gezaehlt, gleiche Funktionen), Pixel fuer alles Relevante,
 Sets/Einzelmittel/Vorher-Nachher aus Heart pflegbar, eigenes Dashboard in
 Heart.
 
+## Set-Bild aus Heart oben (08.10.)
+
+Auftrag Inhaber: oben das Set-Bild aus Heart, "Largo aknet. Shijoje
+lekuren." klein links im Bild, darunter Text, Kaufknopf und Reihenfolge wie
+bisher; die zwei Produktfotos im Kopf entfernt.
+- Titelbild aus Heart (`config/shopHero`, bis 5 Bilder, heute 3) wieder als
+  `.hero-photo.hero-set` im Kopf. Wischen, Pfeile und Punkte wie zuvor aus
+  shop.js. Auf dem Telefon ganz oben, die Ueberschrift liegt klein darauf.
+- Standardbild `assets/set-hero.jpg` = erstes Heart-Bild (1050 x 750,
+  79 KB), damit beim ersten Besuch kein anderes Bild aufblitzt. Wird das
+  Bild in Heart getauscht, sollte diese Datei mit ersetzt werden.
+- `#ersterBildschirm` wartet jetzt auf das Set-Bild statt auf die
+  Produktfotos.
+- Keine Pixel-/CAPI-Aenderung. Erster Kaufknopf bei 521 px (390 x 844,
+  emuliert).
+
 ## Vertrauen auf dem Telefon (08.10.)
 
 Auftrag Inhaber nach dem Vergleich mit 11 grossen Skincare-Shops (mobil):

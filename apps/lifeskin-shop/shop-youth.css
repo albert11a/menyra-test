@@ -418,3 +418,25 @@
  #ls-einstieg .vorteil2__text{font-size:12px}
  #ls-einstieg .vorteil2__text b{font-size:13.5px}
 }
+/* SET-BILD AUS HEART OBEN (08.10., Inhaber): auf dem Telefon steht das
+   Titelbild aus Heart (config/shopHero, 7:5, bis 5 Bilder zum Wischen) ganz
+   oben, "Largo aknet." klein links im Bild. Darunter unveraendert: Text,
+   Kaufknopf, Lieferzeile, 94 % / Made in Germany. Die zwei Produktfotos im
+   Kopf sind entfernt (Inhaber 08.10.). */
+#ls-einstieg .page .hero .hero-set{margin:0 0 16px;border-radius:14px;overflow:hidden}
+@media(max-width:800px){
+ #ls-einstieg .page .hero{padding:14px 0 28px}
+ #ls-einstieg .page .hero .wrap{padding:0 14px}
+ #ls-einstieg .page .hero-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:0}
+ #ls-einstieg .page .visual{display:contents}
+ #ls-einstieg .page .hero .hero-set{grid-row:1;grid-column:1;margin:0;border-radius:12px}
+ #ls-einstieg .page .hero .hero-set:after{display:none}
+ #ls-einstieg .page .hero h1.hero-klar{grid-row:1;grid-column:1;z-index:3;align-self:start;justify-self:start;margin:10px 0 0 10px;padding:7px 9px 8px;border-radius:9px;background:#ffffffeb;font-size:16px;line-height:1.12;letter-spacing:-.4px;box-shadow:0 4px 14px #123b3e1f;pointer-events:none}
+ #ls-einstieg .page .hero h1.hero-klar em{padding:2px 5px 3px;margin-top:4px;transform:rotate(-1deg)}
+ #ls-einstieg .page .intro{order:1;margin:22px 0 24px}
+ #ls-einstieg .page .buy{order:2}
+ #ls-einstieg .page #shop-preisstatus{order:3}
+ #ls-einstieg .page .micro{order:4}
+ #ls-einstieg .page .vorteile2{order:6;margin-top:24px}
+ #ls-einstieg .page .visual-caption{order:7}
+}

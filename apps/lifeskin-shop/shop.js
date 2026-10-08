@@ -578,10 +578,10 @@ export class Dyqan {
     } finally { this.angebotLaedt = false; }
   }
 
-  // Wartet, bis die Produktfotos oben geladen sind (hoechstens 2,5 s).
+  // Wartet, bis das Set-Bild oben geladen ist (hoechstens 2,5 s).
   #ersterBildschirm() {
     if (!this.ersterBildschirmFertig) {
-      const bilder = [...(this.dok.querySelectorAll?.(".product-pair img") || [])];
+      const bilder = [...(this.dok.querySelectorAll?.(".hero-set > img") || [])];
       const geladen = Promise.all(bilder.map((bild) => bild.complete ? null : new Promise((fertig) => {
         bild.addEventListener?.("load", fertig, { once: true });
         bild.addEventListener?.("error", fertig, { once: true });
