@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-10-06
+Last updated: 2026-10-08
 
 # Dërgesat (/dergesat) – Versand über Posta Beki
 
@@ -29,6 +29,18 @@ Last updated: 2026-10-06
   dahin „Pritje për kthim“). Keine Produktzahlen wie „92 BPO“. Riba sieht nur Produkte të gatshme und Pritje
   për kthim (die Produktkosten liest nur das CEO-Konto). Abgezogen wird nur, was auf /dergesat steht.
 - Pritje barazim, Barazuar, Pritje për Riben, € për Riben, Paguar Ribës: je Bestellung alle Zeitpunkte und der Betrag.
+
+## Fertige Produkte wieder verwenden (08.10.)
+- Nur Inhaber: An einer Bestellung (nicht Anuluar) steht **„Të gatshme“**, wenn ein passendes fertiges Produkt
+  im Lager ist. Antippen → bestätigen (bei mehreren: Nummer wählen). Danach:
+  - das fertige Produkt steht nicht mehr unter „Produkte të gatshme“ (Anuluar bekommt `perdorurAt`, `perdorurPer`),
+  - die Bestellung trägt `ngaGatshme` und das Etikett „Me produkte të gatshme ✓“,
+  - für diese Produkte gehen **keine** neuen Shishe, Stiker und keine Creme ab (das Material steckt schon in der
+    Flasche der Anuluar). Braucht die Bestellung mehr, geht nur der Rest ab.
+- Nur passend: Alles im fertigen Produkt muss die Bestellung auch brauchen (sonst ginge eines verloren).
+- **„Hiq gatshme“** nimmt es zurück. Riba sieht die Knöpfe nicht (Regeln unverändert, nur das CEO-Konto schreibt).
+- Rechnung: `arsyejaPaGatshme`, `lidhGatshme`, `hiqGatshme`, `llogaritDepon` in `shared/lifeskin-dergesat.js`.
+  Test: `tests/lifeskin-dergesat-gatshme.test.mjs`.
 
 ## Zugang
 - Inhaber: mit dem Heart-Zugang (E-Mail + Passwort).
