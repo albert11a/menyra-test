@@ -9,6 +9,29 @@ Wegen (getrennt gezaehlt, gleiche Funktionen), Pixel fuer alles Relevante,
 Sets/Einzelmittel/Vorher-Nachher aus Heart pflegbar, eigenes Dashboard in
 Heart.
 
+## Aktion heute: 58 -> 25 EUR, 2 Sets (08.10.)
+
+Auftrag Inhaber (08.10., bestaetigt): echter Normalpreis 58 EUR (2 x 29 EUR),
+Aktion nur heute bis 24:00 fuer 25 EUR, wirklich nur 2 Sets auf Lager.
+Vorher geklaert, weil Meta lifeskin.ks am 07.10. wegen irrefuehrender
+Praktiken eingeschraenkt hat: Alle Angaben sind echt, nichts wird erfunden.
+
+- Block `#aktion` ueber dem Kaufknopf: "VETËM SOT", Restzeit bis
+  `data-aktion-bis` (2026-10-08T23:59:59+02:00), "Nga 58 € vetëm 25 €",
+  "Çmimi normal: 2 produkte × 29 € = 58 €", Lagerzeile.
+- `apps/lifeskin-shop/aktion.js`: Restzeit, Lager, Sperre. Nach Ablauf
+  verschwindet der Block, alles ist wie vorher. Der Preis bleibt 25 EUR,
+  bis er in Heart geaendert wird.
+- `api/lifeskin-lager.js` (Vercel, Admin-Schluessel wie die Meldung): zaehlt
+  echte Laden-Bestellungen seit `LAGER_START.ab` (ohne still/Test) und gibt
+  nur die Restzahl zurueck (20 s Cache). Fuer alle Besucher gleich. Ohne
+  Antwort keine Lagerzeile.
+- Bei 0: "Shitur – setet e radhës vijnë së shpejti", Kaufknoepfe (Kopf,
+  Sets, Scan, Abschluss, Kaufleiste, Kasse) gesperrt bis 24:00.
+- Bestellungen per WhatsApp/Instagram zaehlen nicht automatisch - dann
+  `LAGER_START.sete` anpassen.
+- Pixel/CAPI unveraendert. Test: `tests/lifeskinshop-aktion.test.mjs`.
+
 ## Einblenden beim Scrollen (08.10.)
 
 Auftrag Inhaber: Abschnitte kommen beim Scrollen von unten herein.
