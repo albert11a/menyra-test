@@ -459,19 +459,20 @@ document.addEventListener("click", (ngjarja) => {
   }
   if (veprimi === "nga-gatshme") {
     const kandidatet = d ? gatshmePer(d, gjendja.liste) : [];
-    if (!kandidatet.length) { mesazh("Nuk ka produkte të gatshme që i përshtaten kësaj porosie.", "gabim"); return; }
+    if (d?.statusi !== "gati") return;
+    if (!kandidatet.length) { mesazh("Nuk ka anulime në depo që i përshtaten kësaj porosie.", "gabim"); return; }
     let g = kandidatet[0];
     if (kandidatet.length > 1) {
-      const zgjedhja = globalThis.prompt?.(`Cilat produkte të gatshme u përdorën?\n${kandidatet.map((x, i) => `${i + 1}) ${pershkrimGatshme(x)}`).join("\n")}\n\nShkruani numrin:`, "1");
+      const zgjedhja = globalThis.prompt?.(`Cila anulim u përdor?\n${kandidatet.map((x, i) => `${i + 1}) ${pershkrimGatshme(x)}`).join("\n")}\n\nShkruani numrin:`, "1");
       const n = Number(zgjedhja);
       if (!Number.isInteger(n) || n < 1 || n > kandidatet.length) return;
       g = kandidatet[n - 1];
-    } else if (!globalThis.confirm?.(`Posta Beki ${d.postaBeki || ""} u paketua me produkte të gatshme?\n${pershkrimGatshme(g)}\n\nKëto dalin nga „Produkte të gatshme“ dhe për to nuk del shishe, stiker apo krem i ri.`)) return;
-    bej(celes, () => gatshmeLidh(kennung, g.kennung), "Me produkte të gatshme ✓");
+    } else if (!globalThis.confirm?.(`Posta Beki ${d.postaBeki || ""} u paketua me anulime?\n${pershkrimGatshme(g)}\n\nKëto dalin nga „Produkte të gatshme“ dhe për to nuk del shishe, stiker apo krem i ri.`)) return;
+    bej(celes, () => gatshmeLidh(kennung, g.kennung), "Me anulime ✓");
     return;
   }
   if (veprimi === "hiq-gatshme") {
-    if (!globalThis.confirm?.("Ta heq lidhjen me produktet e gatshme? Ato kthehen te „Produkte të gatshme“.")) return;
+    if (!globalThis.confirm?.("Ta heq lidhjen me anulimet? Ato kthehen te „Produkte të gatshme“.")) return;
     bej(celes, () => gatshmeHiq(kennung), "U hoq.");
     return;
   }

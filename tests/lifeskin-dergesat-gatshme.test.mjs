@@ -45,28 +45,32 @@ test("Bestellung mit fertigem Produkt: weg aus 'të gatshme', kein neues Materia
 
 test("nur passende fertige Produkte, nie doppelt", () => {
   const g = d("g", { statusi: "anuluar", gatiAt: T, anuluarAt: T, produkte: ["LF ACNE", "LF MOISTUR"] });
-  assert.match(arsyejaPaGatshme(d("a", { produkte: ["LF ACNE"] }), g), /nuk i ka të gjitha: 1× DAILY/, "sonst ginge ein Produkt verloren");
-  assert.equal(arsyejaPaGatshme(d("b", { produkte: ["2× LF ACNE", "LF MOISTUR"] }), g), null, "Rest wird neu gepackt");
+  assert.match(arsyejaPaGatshme(d("a", { statusi: "gati", produkte: ["LF ACNE"] }), g), /nuk i ka të gjitha: 1× DAILY/, "sonst ginge ein Produkt verloren");
+  assert.equal(arsyejaPaGatshme(d("b", { statusi: "gati", produkte: ["2× LF ACNE", "LF MOISTUR"] }), g), null, "Rest wird neu gepackt");
+  assert.match(arsyejaPaGatshme(d("p", { produkte: ["Acne Duo"] }), g), /Vetëm te porositë Gati/, "nicht bei Porosi");
+  assert.ok(arsyejaPaGatshme(d("q", { statusi: "derguar", derguarAt: J, produkte: ["Acne Duo"] }), g), "nicht bei Dërguar");
   const teil = llogaritDepon([g, d("b", { statusi: "gati", gatiAt: J, produkte: ["2× LF ACNE", "LF MOISTUR"], ngaGatshme: "g" })], lenda);
   assert.equal(teil.lenda.shishe.dalur, 3, "2 vom Anuluar + 1 neues BPO");
   assert.ok(arsyejaPaGatshme(d("c", { statusi: "anuluar", produkte: ["Acne Duo"] }), g));
-  assert.ok(arsyejaPaGatshme(d("e", { produkte: ["Acne Duo"], ngaGatshme: "x" }), g));
-  assert.ok(arsyejaPaGatshme(d("f", { produkte: ["Acne Duo"] }), { ...g, perdorurAt: J }), "schon verwendet");
-  assert.ok(arsyejaPaGatshme(d("f", { produkte: ["Acne Duo"] }), d("u", { statusi: "anuluar", derguarAt: T, anuluarAt: T, produkte: ["Acne Duo"] })),
+  assert.ok(arsyejaPaGatshme(d("e", { statusi: "gati", produkte: ["Acne Duo"], ngaGatshme: "x" }), g));
+  assert.ok(arsyejaPaGatshme(d("f", { statusi: "gati", produkte: ["Acne Duo"] }), { ...g, perdorurAt: J }), "schon verwendet");
+  assert.ok(arsyejaPaGatshme(d("f", { statusi: "gati", produkte: ["Acne Duo"] }), d("u", { statusi: "anuluar", derguarAt: T, anuluarAt: T, produkte: ["Acne Duo"] })),
     "unterwegs und noch nicht zurueck: nicht im Lager");
   assert.equal(hiqGatshme(d("x")), null);
 });
 
-test("Knoepfe nur fuer den Inhaber", () => {
+test("Knopf 'Me anulime' nur fuer den Inhaber und nur bei Gati", () => {
   const g = d("g", { statusi: "anuluar", gatiAt: T, anuluarAt: T, produkte: ["Acne Duo"] });
-  const n = d("n", { produkte: ["Acne Duo"] });
+  const n = d("n", { statusi: "gati", gatiAt: J, produkte: ["Acne Duo"] });
   assert.deepEqual(gatshmePer(n, [g, n]).map((x) => x.kennung), ["g"]);
-  assert.match(renderListe([g, n], "porosi", "heart"), /data-veprim="nga-gatshme" data-kennung="n"[^>]*>Të gatshme</);
-  assert.doesNotMatch(renderListe([g, n], "porosi", "riba"), /nga-gatshme/);
-  assert.doesNotMatch(renderListe([n], "porosi", "heart"), /nga-gatshme/, "ohne fertige Produkte kein Knopf");
-  const verbunden = d("n", { produkte: ["Acne Duo"], ngaGatshme: "g" });
-  const html = renderListe([verbunden], "porosi", "heart");
-  assert.match(html, /Me produkte të gatshme ✓/);
+  assert.match(renderListe([g, n], "gati", "heart"), /data-veprim="nga-gatshme" data-kennung="n"[^>]*>Me anulime</);
+  assert.doesNotMatch(renderListe([g, n], "gati", "riba"), /nga-gatshme/);
+  assert.doesNotMatch(renderListe([n], "gati", "heart"), /nga-gatshme/, "ohne Anulime im Lager kein Knopf");
+  const porosi = d("p", { produkte: ["Acne Duo"] });
+  assert.doesNotMatch(renderListe([g, porosi], "porosi", "heart"), /nga-gatshme/, "nicht bei Porosi");
+  const verbunden = d("n", { statusi: "gati", gatiAt: J, produkte: ["Acne Duo"], ngaGatshme: "g" });
+  const html = renderListe([verbunden], "gati", "heart");
+  assert.match(html, /Me anulime ✓/);
   assert.match(html, /data-veprim="hiq-gatshme"/);
   assert.doesNotMatch(html, /data-veprim="nga-gatshme"/);
 });
