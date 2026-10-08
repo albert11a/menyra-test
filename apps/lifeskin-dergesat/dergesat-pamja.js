@@ -59,11 +59,12 @@ function butonatPer(d, roli, laeuft, liste = []) {
   if (prituriKthim(d)) b.push(buton("kthe-depo", "E kthyem në depo", { kennung: d.kennung, klasa: "dg-buton--kryesor", laeuft }));
   if (heart && d.statusi === "pranuar" && !d.barazuarAt) b.push(buton("barazo", "Barazuar", { kennung: d.kennung, laeuft }));
   if (heart && mundTeKthehet(d)) b.push(buton("kthe", "↺ Kthe", { kennung: d.kennung, klasa: "dg-buton--lehte", laeuft, titull: "Hapin e fundit prapa" }));
-  // Mit fertigen Produkten gepackt (08.10., nur Inhaber).
-  if (heart && d.statusi !== "anuluar" && !d.ngaGatshme && gatshmePer(d, liste).length) {
-    b.push(buton("nga-gatshme", "Të gatshme", { kennung: d.kennung, klasa: "dg-buton--lehte", laeuft, titull: "U paketua me produkte të gatshme nga depo" }));
+  // Mit fertigen Produkten aus Anulime gepackt (08.10., nur Inhaber) -
+  // nur bei Gati: dort ist die Bestellung gerade gepackt worden.
+  if (heart && d.statusi === "gati" && !d.ngaGatshme && gatshmePer(d, liste).length) {
+    b.push(buton("nga-gatshme", "Me anulime", { kennung: d.kennung, klasa: "dg-buton--lehte", laeuft, titull: "U paketua me produkte nga anulimet në depo" }));
   }
-  if (heart && d.ngaGatshme) b.push(buton("hiq-gatshme", "Hiq gatshme", { kennung: d.kennung, klasa: "dg-buton--lehte", laeuft }));
+  if (heart && d.statusi === "gati" && d.ngaGatshme) b.push(buton("hiq-gatshme", "Hiq anulimet", { kennung: d.kennung, klasa: "dg-buton--lehte", laeuft }));
   return b.join("");
 }
 
@@ -77,7 +78,7 @@ function shenjat(d) {
   if (d.barazuarAt) etiketat.push(`<span class="dg-etikete dg-etikete--mire">Barazuar ✓</span>`);
   if (d.ribaPaguarAt) etiketat.push(`<span class="dg-etikete dg-etikete--mire">Riba paguar ✓</span>`);
   if (d.kthyerAt) etiketat.push(`<span class="dg-etikete dg-etikete--mire">Në depo ✓</span>`);
-  if (d.ngaGatshme) etiketat.push(`<span class="dg-etikete dg-etikete--mire">Me produkte të gatshme ✓</span>`);
+  if (d.ngaGatshme) etiketat.push(`<span class="dg-etikete dg-etikete--mire">Me anulime ✓</span>`);
   if (d.perdorurAt) etiketat.push(`<span class="dg-etikete">Përdorur për porosi tjetër</span>`);
   if (prituriKthim(d)) etiketat.push(`<span class="dg-etikete dg-etikete--keq">Pritje për kthim</span>`);
   if (!s.length && !etiketat.length) return "";

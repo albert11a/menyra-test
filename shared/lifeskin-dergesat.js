@@ -547,8 +547,8 @@ function produkteMinus(produkte, minus) {
 // ein fertiges Produkt verloren. Ergebnis: null = ja, sonst der Grund.
 export function arsyejaPaGatshme(d, g) {
   if (!d || !g) return "Porosia nuk u gjet.";
-  if (d.statusi === "anuluar") return "Kjo porosi është e anuluar.";
-  if (d.ngaGatshme) return "Kjo porosi është tashmë me produkte të gatshme.";
+  if (d.statusi !== "gati") return "Vetëm te porositë Gati.";
+  if (d.ngaGatshme) return "Kjo porosi është tashmë me anulime.";
   if (!eGatshmeNeDepo(g)) return "Ky produkt nuk është më i gatshëm në depo.";
   if (d.kennung === g.kennung) return "E njëjta porosi.";
   const nevojitet = new Map(produkteNeDergesa(d.produkte).map((p) => [p.emri, p.sasia]));
