@@ -8,7 +8,7 @@
 // wuerde es ohnehin abweisen).
 
 import {
-  CHIPS_DERGESAT, DERGESA, STATUS_CHIPS, KALIMET_RIBA, euroSq, fillimiPeriudhes, llogaritDepon, llogaritFinancen, mundTeKthehet,
+  CHIPS_DERGESAT, DERGESA, STATUS_CHIPS, KALIMET_RIBA, arsyejaPaGatshme, eGatshmeNeDepo, euroSq, fillimiPeriudhes, llogaritDepon, llogaritFinancen, mundTeKthehet,
   netoPasRibes, netoPosta, numeroPerChipDergesat, periudhat, prituriKthim, produkteNeDergesa, renditPerChipDergesat
 } from "../../shared/lifeskin-dergesat.js";
 
@@ -40,7 +40,12 @@ export function renderChips(liste, aktiv, prej = "") {
       </button>`).join("");
 }
 
-function butonatPer(d, roli, laeuft) {
+// Welche fertigen Produkte (Anuluar im Lager) fuer diese Bestellung passen.
+export function gatshmePer(d, liste) {
+  return (liste || []).filter((g) => eGatshmeNeDepo(g) && !arsyejaPaGatshme(d, g));
+}
+
+function butonatPer(d, roli, laeuft, liste = []) {
   const heart = roli === "heart";
   const b = [];
   const mund = (ne) => (KALIMET_RIBA[d.statusi] || []).includes(ne);
@@ -54,6 +59,11 @@ function butonatPer(d, roli, laeuft) {
   if (prituriKthim(d)) b.push(buton("kthe-depo", "E kthyem në depo", { kennung: d.kennung, klasa: "dg-buton--kryesor", laeuft }));
   if (heart && d.statusi === "pranuar" && !d.barazuarAt) b.push(buton("barazo", "Barazuar", { kennung: d.kennung, laeuft }));
   if (heart && mundTeKthehet(d)) b.push(buton("kthe", "↺ Kthe", { kennung: d.kennung, klasa: "dg-buton--lehte", laeuft, titull: "Hapin e fundit prapa" }));
+  // Mit fertigen Produkten gepackt (08.10., nur Inhaber).
+  if (heart && d.statusi !== "anuluar" && !d.ngaGatshme && gatshmePer(d, liste).length) {
+    b.push(buton("nga-gatshme", "Të gatshme", { kennung: d.kennung, klasa: "dg-buton--lehte", laeuft, titull: "U paketua me produkte të gatshme nga depo" }));
+  }
+  if (heart && d.ngaGatshme) b.push(buton("hiq-gatshme", "Hiq gatshme", { kennung: d.kennung, klasa: "dg-buton--lehte", laeuft }));
   return b.join("");
 }
 
@@ -67,6 +77,8 @@ function shenjat(d) {
   if (d.barazuarAt) etiketat.push(`<span class="dg-etikete dg-etikete--mire">Barazuar ✓</span>`);
   if (d.ribaPaguarAt) etiketat.push(`<span class="dg-etikete dg-etikete--mire">Riba paguar ✓</span>`);
   if (d.kthyerAt) etiketat.push(`<span class="dg-etikete dg-etikete--mire">Në depo ✓</span>`);
+  if (d.ngaGatshme) etiketat.push(`<span class="dg-etikete dg-etikete--mire">Me produkte të gatshme ✓</span>`);
+  if (d.perdorurAt) etiketat.push(`<span class="dg-etikete">Përdorur për porosi tjetër</span>`);
   if (prituriKthim(d)) etiketat.push(`<span class="dg-etikete dg-etikete--keq">Pritje për kthim</span>`);
   if (!s.length && !etiketat.length) return "";
   return `<div class="dg-shenjat">${s.length ? `<small class="dg-koha">${esc(s.join(" · "))}</small>` : ""}${etiketat.join("")}</div>`;
@@ -86,7 +98,7 @@ export function renderListe(liste, chip, roli, laeuft = "", prej = "") {
   //   unten         die Knoepfe als buendige Leiste ueber die ganze Breite
   return rreshtat.map((d) => {
     const produkte = produkteNeDergesa(d.produkte);
-    const butonat = butonatPer(d, roli, laeuft);
+    const butonat = butonatPer(d, roli, laeuft, liste);
     return `
       <article class="dg-rresht dg-rresht--${esc(d.statusi)}" data-kennung="${esc(d.kennung)}">
         <div class="dg-rresht__brenda">
@@ -351,7 +363,7 @@ const CHIP_EMRI = Object.fromEntries(STATUS_CHIPS.map((c) => [c.id, c.njejes]));
 function kohet(d) {
   return [
     ["Porosi", d.createdAt], ["Gati", d.gatiAt], ["Dërguar", d.derguarAt], ["Pranuar", d.pranuarAt],
-    ["Anuluar", d.anuluarAt], ["Kthyer në depo", d.kthyerAt], ["Barazuar", d.barazuarAt], ["Riba paguar", d.ribaPaguarAt]
+    ["Anuluar", d.anuluarAt], ["Kthyer në depo", d.kthyerAt], ["Përdorur për porosi tjetër", d.perdorurAt], ["Barazuar", d.barazuarAt], ["Riba paguar", d.ribaPaguarAt]
   ].filter(([, at]) => at).map(([emri, at]) => `<li><span>${esc(emri)}</span><time datetime="${esc(at)}">${esc(kohaSqPlote(at))}</time></li>`).join("");
 }
 
@@ -419,7 +431,7 @@ function detajetNdepo(liste, roli, laeuft, lenda) {
               ${l.kremet.map((k) => tabelaRresht([`Krem ${k.emri}`, "ml"], sasiSq(k.blere), `− ${sasiSq(k.dalur)}`, sasiSq(k.mbetur))).join("")}
             </tbody>
           </table></div>
-          <p class="dg-pjese__shenim">Për çdo produkt të paketuar dalin nga depo 1 shishe, 1 stiker dhe ${esc(String(l.mbushja).replace(".", ","))} ml krem – te Gati, Dërguar, Pranuar dhe te anulimet e paketuara.</p>
+          <p class="dg-pjese__shenim">Për çdo produkt të paketuar dalin nga depo 1 shishe, 1 stiker dhe ${esc(String(l.mbushja).replace(".", ","))} ml krem – te Gati, Dërguar, Pranuar dhe te anulimet e paketuara. Kur porosia paketohet me produkte të gatshme, për to nuk del material i ri.</p>
         </section>`);
   } else if (heart) {
     pjeset.push(`<p class="dg-bosh">Shishet, stikerat dhe kremet nuk u lexuan nga Heart.</p>`);

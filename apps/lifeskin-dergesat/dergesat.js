@@ -38,9 +38,10 @@ import {
 } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import {
   CHIPS_DERGESAT, DERGESA, STATUS_CHIPS, austriDok, dergesaLesen, euroSq, fillimiPeriudhes, fundiDites, hyrja, kthimNeDepo, levizjeDok,
-  levizjeLesen, llogaritFinancen, mbylljeDok, ndryshimi, netoPasRibes, periudhat, shumaLexo, KTHIMI
+  levizjeLesen, llogaritFinancen, mbylljeDok, ndryshimi, netoPasRibes, periudhat, shumaLexo, KTHIMI,
+  arsyejaPaGatshme, lidhGatshme, hiqGatshme, produkteNeDergesa
 } from "/shared/lifeskin-dergesat.js";
-import { eFleteValide, kohaSq, renderChips, renderDetajet, renderKartat, renderListe } from "./dergesat-pamja.js";
+import { eFleteValide, gatshmePer, kohaSq, renderChips, renderDetajet, renderKartat, renderListe } from "./dergesat-pamja.js";
 
 const TENANT = "lifeskin";
 const dergesaRef = (kennung) => doc(db, "lifeskin", TENANT, "dergesat", kennung);
@@ -338,6 +339,37 @@ async function hapi(kennung, ne) {
   });
 }
 
+// FERTIGE PRODUKTE VERWENDEN (08.10., nur Inhaber): beide Dokumente in
+// einem Vorgang - die Bestellung bekommt ngaGatshme, die Anuluar perdorurAt.
+async function gatshmeLidh(kennung, gKennung) {
+  return runTransaction(db, async (tx) => {
+    const [s1, s2] = await Promise.all([tx.get(dergesaRef(kennung)), tx.get(dergesaRef(gKennung))]);
+    if (!s1.exists() || !s2.exists()) throw new Error("Porosia nuk ekziston më.");
+    const d = dergesaLesen(s1.data() || {}, kennung);
+    const g = dergesaLesen(s2.data() || {}, gKennung);
+    const arsye = arsyejaPaGatshme(d, g);
+    if (arsye) throw new Error(arsye);
+    const f = lidhGatshme(d, g);
+    tx.update(dergesaRef(kennung), f.porosia);
+    tx.update(dergesaRef(gKennung), f.gatshme);
+  });
+}
+
+async function gatshmeHiq(kennung) {
+  return runTransaction(db, async (tx) => {
+    const s1 = await tx.get(dergesaRef(kennung));
+    if (!s1.exists()) throw new Error("Porosia nuk ekziston më.");
+    const d = dergesaLesen(s1.data() || {}, kennung);
+    const f = hiqGatshme(d);
+    if (!f) throw new Error("Kjo porosi nuk është me produkte të gatshme.");
+    const s2 = await tx.get(dergesaRef(d.ngaGatshme));
+    tx.update(dergesaRef(kennung), f.porosia);
+    if (s2.exists()) tx.update(dergesaRef(d.ngaGatshme), f.gatshme);
+  });
+}
+
+const pershkrimGatshme = (g) => `${produkteNeDergesa(g.produkte).map((p) => `${p.sasia}× ${p.emri}`).join(" + ")}${g.postaBeki ? ` · anuluar (Posta Beki ${g.postaBeki})` : ""}`;
+
 // Barazuar / Riba ausbezahlt: alle gewaehlten auf einmal, mit DEMSELBEN
 // Zeitpunkt - daran erkennt die Karte darunter eine Abrechnung.
 async function shenoTeGjitha(kennungen, fusha, kontrollo) {
@@ -423,6 +455,24 @@ document.addEventListener("click", (ngjarja) => {
     const prapa = KTHIMI[d?.statusi];
     if (!prapa || !globalThis.confirm?.(`Ta kthej mbrapa te „${(STATUS_CHIPS.find((c) => c.id === prapa) || {}).label}“?`)) return;
     bej(celes, () => hapi(kennung, prapa), "U kthye.");
+    return;
+  }
+  if (veprimi === "nga-gatshme") {
+    const kandidatet = d ? gatshmePer(d, gjendja.liste) : [];
+    if (!kandidatet.length) { mesazh("Nuk ka produkte të gatshme që i përshtaten kësaj porosie.", "gabim"); return; }
+    let g = kandidatet[0];
+    if (kandidatet.length > 1) {
+      const zgjedhja = globalThis.prompt?.(`Cilat produkte të gatshme u përdorën?\n${kandidatet.map((x, i) => `${i + 1}) ${pershkrimGatshme(x)}`).join("\n")}\n\nShkruani numrin:`, "1");
+      const n = Number(zgjedhja);
+      if (!Number.isInteger(n) || n < 1 || n > kandidatet.length) return;
+      g = kandidatet[n - 1];
+    } else if (!globalThis.confirm?.(`Posta Beki ${d.postaBeki || ""} u paketua me produkte të gatshme?\n${pershkrimGatshme(g)}\n\nKëto dalin nga „Produkte të gatshme“ dhe për to nuk del shishe, stiker apo krem i ri.`)) return;
+    bej(celes, () => gatshmeLidh(kennung, g.kennung), "Me produkte të gatshme ✓");
+    return;
+  }
+  if (veprimi === "hiq-gatshme") {
+    if (!globalThis.confirm?.("Ta heq lidhjen me produktet e gatshme? Ato kthehen te „Produkte të gatshme“.")) return;
+    bej(celes, () => gatshmeHiq(kennung), "U hoq.");
     return;
   }
   if (veprimi === "barazo") {

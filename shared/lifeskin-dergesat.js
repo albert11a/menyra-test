@@ -143,7 +143,13 @@ export function dergesaLesen(roh = {}, kennung = "") {
     barazuarAt: zeit(roh?.barazuarAt),
     ribaPaguarAt: zeit(roh?.ribaPaguarAt),
     // Anuluar und wieder im Lager (Knopf "E kthyem në depo").
-    kthyerAt: zeit(roh?.kthyerAt)
+    kthyerAt: zeit(roh?.kthyerAt),
+    // FERTIGE PRODUKTE WIEDER VERWENDET (08.10., Inhaber): diese Bestellung
+    // wurde mit dem fertigen Produkt einer Anuluar gepackt (ihre Kennung) -
+    // dafuer geht kein neues Material ab. Auf der Anuluar: wann und fuer wen.
+    ngaGatshme: tekst(roh?.ngaGatshme, 80),
+    perdorurAt: zeit(roh?.perdorurAt),
+    perdorurPer: tekst(roh?.perdorurPer, 80)
   };
 }
 
@@ -522,9 +528,51 @@ export function ePaketuar(d) {
   return d.statusi === "anuluar" && Boolean(d.gatiAt || d.derguarAt);
 }
 
-// Eine Anuluar, die als fertiges Produkt im Lager steht.
+// Eine Anuluar, die als fertiges Produkt im Lager steht - und noch nicht
+// fuer eine andere Bestellung verwendet wurde (perdorurAt).
 export function eGatshmeNeDepo(d) {
-  return d?.statusi === "anuluar" && ePaketuar(d) && (Boolean(d.kthyerAt) || !d.derguarAt);
+  return d?.statusi === "anuluar" && ePaketuar(d) && (Boolean(d.kthyerAt) || !d.derguarAt) && !d.perdorurAt;
+}
+
+// Produkte einer Liste minus Produkte einer anderen (je Name, nie unter 0).
+function produkteMinus(produkte, minus) {
+  const m = new Map(produkteNeDergesa(minus).map((p) => [p.emri, p.sasia]));
+  return produkteNeDergesa(produkte)
+    .map((p) => ({ emri: p.emri, sasia: Math.max(0, p.sasia - (m.get(p.emri) || 0)) }))
+    .filter((p) => p.sasia > 0);
+}
+
+// Darf die Bestellung `d` mit dem fertigen Produkt `g` gepackt werden?
+// Alles, was in `g` steckt, muss die Bestellung auch brauchen - sonst ginge
+// ein fertiges Produkt verloren. Ergebnis: null = ja, sonst der Grund.
+export function arsyejaPaGatshme(d, g) {
+  if (!d || !g) return "Porosia nuk u gjet.";
+  if (d.statusi === "anuluar") return "Kjo porosi është e anuluar.";
+  if (d.ngaGatshme) return "Kjo porosi është tashmë me produkte të gatshme.";
+  if (!eGatshmeNeDepo(g)) return "Ky produkt nuk është më i gatshëm në depo.";
+  if (d.kennung === g.kennung) return "E njëjta porosi.";
+  const nevojitet = new Map(produkteNeDergesa(d.produkte).map((p) => [p.emri, p.sasia]));
+  const teprica = produkteNeDergesa(g.produkte).filter((p) => (nevojitet.get(p.emri) || 0) < p.sasia);
+  if (teprica.length) return `Porosia nuk i ka të gjitha: ${teprica.map((p) => `${p.sasia}× ${p.emri}`).join(", ")}.`;
+  return null;
+}
+
+// Was beim Verwenden (lidh) bzw. Zuruecknehmen (hiq) in beide Dokumente
+// geschrieben wird. Nur Heart (CEO-Konto) - Riba darf diese Felder nicht.
+export function lidhGatshme(d, g, { jetzt = new Date().toISOString() } = {}) {
+  if (arsyejaPaGatshme(d, g)) return null;
+  return {
+    porosia: { ngaGatshme: g.kennung, updatedAt: jetzt, nga: "heart" },
+    gatshme: { perdorurAt: jetzt, perdorurPer: d.kennung, updatedAt: jetzt, nga: "heart" }
+  };
+}
+
+export function hiqGatshme(d, { jetzt = new Date().toISOString() } = {}) {
+  if (!d?.ngaGatshme) return null;
+  return {
+    porosia: { ngaGatshme: "", updatedAt: jetzt, nga: "heart" },
+    gatshme: { perdorurAt: "", perdorurPer: "", updatedAt: jetzt, nga: "heart" }
+  };
 }
 
 export function llogaritDepon(liste, lenda = null) {
@@ -533,8 +581,15 @@ export function llogaritDepon(liste, lenda = null) {
   const kthim = te.filter(prituriKthim);
   const gatshmeL = te.filter(eGatshmeNeDepo);
 
+  // Mit einem fertigen Produkt gepackt: dessen Produkte gehen nicht noch
+  // einmal als Material ab - sie stecken schon in der Flasche der Anuluar.
+  const sipasKennung = new Map(te.map((d) => [d.kennung, d]));
   const dalur = new Map();
-  for (const d of paketuar) shtoProdukte(dalur, d);
+  for (const d of paketuar) {
+    const g = d.ngaGatshme ? sipasKennung.get(d.ngaGatshme) : null;
+    const mbetet = g ? produkteMinus(d.produkte, g.produkte) : produkteNeDergesa(d.produkte);
+    for (const p of mbetet) dalur.set(p.emri, (dalur.get(p.emri) || 0) + p.sasia);
+  }
   const pritje = new Map();
   for (const d of kthim) shtoProdukte(pritje, d);
   const gatshme = new Map();
