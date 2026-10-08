@@ -9,6 +9,16 @@ Wegen (getrennt gezaehlt, gleiche Funktionen), Pixel fuer alles Relevante,
 Sets/Einzelmittel/Vorher-Nachher aus Heart pflegbar, eigenes Dashboard in
 Heart.
 
+## Garantie und F.A.Q unter die zwei Produkte (08.10.)
+
+Auftrag Inhaber: Garantie ("Merr Duo. Merr garancion." / 45 ditë) und die
+Fragen direkt unter "Të dyja bashkë: 25 €", vor dem Scan. Neue Reihenfolge:
+Dy produkte -> Garancioni -> F.A.Q -> SkinReact -> Abschluss.
+Messung in Heart mitgezogen (`shared/lifeskin-shopsicht.js`, Version 3):
+5 Garancioni, 6 F.A.Q, 7 SkinReact. Besuche der Version 2 rechnet
+`shopTiefe()` auf die neue Reihenfolge um (bis SkinReact = 4, bis
+Garancioni = 5, bis F.A.Q = 7). Keine Pixel-/CAPI-Aenderung.
+
 ## Aktion heute: 58 -> 25 EUR, 2 Sets (08.10.)
 
 Auftrag Inhaber (08.10., bestaetigt): echter Normalpreis 58 EUR (2 x 29 EUR),

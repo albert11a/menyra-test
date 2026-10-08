@@ -605,38 +605,44 @@ test("nach einem Kauf im Laden fuehrt Neuladen nicht auf eine Warteseite ohne Fa
 
 // ---------- Die Karte "Shop" in Heart (29.09., Wunsch Inhaber) ----------
 
-test("die Seite Abschnitt fuer Abschnitt: 8 Namen (04.10.), gemessen im Bild, gezaehlt 'bis hierher'", async () => {
+test("die Seite Abschnitt fuer Abschnitt: Garantie und F.A.Q vor SkinReact (08.10.), gezaehlt 'bis hierher'", async () => {
   const { SHOP_ABSCHNITTE, shopSichtPatch, shopTiefe, skanimGedrueckt } = await import("../shared/lifeskin-shopsicht.js");
   assert.deepEqual(SHOP_ABSCHNITTE.map((a) => a.name),
-    ["Puçrrat", "Para - Pas", "Mesazhe", "Dy produkte", "SkinReact", "Garancioni", "F.A.Q"]);
+    ["Puçrrat", "Para - Pas", "Mesazhe", "Dy produkte", "Garancioni", "F.A.Q", "SkinReact"]);
   // Jeder Abschnitt steht so auf der Seite, wie er gesucht wird - und in dieser Reihenfolge.
   const html = lies("apps/lifeskin-shop/index.html");
   const main = html.slice(html.indexOf('<main id="main">'), html.indexOf("</main>"));
   const stellen = [];
   for (const [wahl, muster] of [["main > .hero", /\n<section class="hero"/], ["#rezultate", /<section[^>]*id="rezultate"/],
-    ["#klientet", /<section[^>]*id="klientet"/], ["#setet", /<section[^>]*id="setet"/], ["#zgjedhja", /<section[^>]*id="zgjedhja"/],
+    ["#klientet", /<section[^>]*id="klientet"/], ["#setet", /<section[^>]*id="setet"/],
     ["#garancia", /<div[^>]*id="garancia"/],
-    ["main > .faq", /\n<section class="faq"/]]) {
+    ["main > .faq", /\n<section class="faq"/], ["#zgjedhja", /<section[^>]*id="zgjedhja"/]]) {
     assert.ok(SHOP_ABSCHNITTE.some((a) => a.wahl === wahl), wahl);
     assert.match(main, muster, `${wahl} steht nicht (mehr) auf der Seite`);
     stellen.push(main.search(muster));
   }
   assert.deepEqual(stellen, [...stellen].sort((a, b) => a - b), "die Nummern folgen der Seite");
-  // Version 2 schreibt Kennungen, keine Nummern.
-  assert.deepEqual(shopSichtPatch(4), { v: 2, produkte: true });
-  assert.deepEqual(shopSichtPatch(5), { v: 2, skinreact: true });
+  // Version 3 schreibt Kennungen, keine Nummern.
+  assert.deepEqual(shopSichtPatch(4), { v: 3, produkte: true });
+  assert.deepEqual(shopSichtPatch(5), { v: 3, garancia: true });
+  assert.deepEqual(shopSichtPatch(7), { v: 3, skinreact: true });
+  assert.equal(shopTiefe({ timings: { shop: { v: 3, skinreact: true } } }), 7);
+  assert.equal(shopTiefe({ timings: { shop: { v: 3, pucrrat: true, garancia: true } } }), 5);
+  // Version 2 (SkinReact vor Garantie) in die Reihenfolge von heute: bis SkinReact = ohne Garantie (4).
+  assert.equal(shopTiefe({ timings: { shop: { v: 2, skinreact: true } } }), 4);
+  assert.equal(shopTiefe({ timings: { shop: { v: 2, garancia: true } } }), 5);
   assert.equal(shopSichtPatch(0), null);
   assert.equal(shopSichtPatch(9), null);
   // Die Tiefe kommt aus den Feldern - ein spaeterer, kuerzerer Aufruf nimmt nichts weg.
-  // "Instagram" gibt es seit dem 07.10. nicht mehr: wer dort war, war an der Garantie vorbei (6).
-  assert.equal(shopTiefe({ timings: { shop: { v: 2, pucrrat: true, paraPas: true, instagram: true } } }), 6);
+  // "Instagram" gibt es seit dem 07.10. nicht mehr: wer dort war, war an der Garantie vorbei (alt 6 = heute 5).
+  assert.equal(shopTiefe({ timings: { shop: { v: 2, pucrrat: true, paraPas: true, instagram: true } } }), 5);
   assert.equal(shopTiefe({ timings: { shop: { v: 2, faq: true } } }), 7);
   assert.equal(shopTiefe({ timings: { shop: { v: 2 } } }), 1);
   // Version 1 (s1 ... s9) in die Nummern von heute: alt 3 "Informata" = 4, alt 5 "Postimet" = 3, alt 9 "Fundi" = 7.
   assert.equal(shopTiefe({ timings: { shop: { v: 1, s1: true, s2: true, s3: true } } }), 4);
   assert.equal(shopTiefe({ timings: { shop: { v: 1, s1: true, s5: true } } }), 3);
   assert.equal(shopTiefe({ timings: { shop: { v: 1, s9: true } } }), 7);
-  assert.equal(shopTiefe({ timings: { shop: { v: 2, s4: true, mesazhe: true } } }), 5, "alte und neue Felder in einer Karte");
+  assert.equal(shopTiefe({ timings: { shop: { v: 2, s4: true, mesazhe: true } } }), 4, "alte und neue Felder in einer Karte (alt 5 = heute 4)");
   // Besuche von vor der Messung: produkteGesehen heisst bis "Dy produkte".
   assert.equal(shopTiefe({ produkteGesehen: true }), 4);
   assert.equal(shopTiefe({}), 1);
@@ -648,7 +654,7 @@ test("die Seite Abschnitt fuer Abschnitt: 8 Namen (04.10.), gemessen im Bild, ge
 test("Seite und Kauf zaehlen getrennt: Wer oben kauft, war nicht bei F.A.Q", async () => {
   const { baueShopWeg } = await import("../apps/mnyra-heart/heart-lifeskin-weg.js");
   const { SHOP_ABSCHNITTE } = await import("../shared/lifeskin-shopsicht.js");
-  const sicht = (...nr) => ({ timings: { shop: Object.fromEntries([["v", 2], ...nr.map((n) => [SHOP_ABSCHNITTE[n - 1].id, true])]) } });
+  const sicht = (...nr) => ({ timings: { shop: Object.fromEntries([["v", 3], ...nr.map((n) => [SHOP_ABSCHNITTE[n - 1].id, true])]) } });
   const w = baueShopWeg([
     { ...sicht(1, 2, 3, 4, 5, 6, 7), source: { scanWorkflow: "skinreact" } },
     { ...sicht(1, 2, 3) },
@@ -660,11 +666,11 @@ test("Seite und Kauf zaehlen getrennt: Wer oben kauft, war nicht bei F.A.Q", asy
     { gesehen: false }
   ]);
   assert.deepEqual(w.seite.map((s) => [s.nr, s.label, s.anzahl]), [
-    [1, "Puçrrat", 4], [2, "Para - Pas", 3], [3, "Mesazhe", 3], [4, "Dy produkte", 2], [5, "SkinReact", 2],
-    [6, "Garancioni", 1], [7, "F.A.Q", 1]
+    [1, "Puçrrat", 4], [2, "Para - Pas", 3], [3, "Mesazhe", 3], [4, "Dy produkte", 2], [5, "Garancioni", 2],
+    [6, "F.A.Q", 2], [7, "SkinReact", 2]
   ]);
   // Unter SkinReact: wie viele "Fillo skanimin" gedrueckt haben - keine eigene Stufe.
-  assert.deepEqual(w.seite[4].unter, { label: "Fillo skanim", anzahl: 2 });
+  assert.deepEqual(w.seite[6].unter, { label: "Fillo skanim", anzahl: 2 });
   assert.equal(w.seite.filter((s) => s.unter).length, 1);
   assert.deepEqual(w.kauf.map((s) => [s.nr, s.label, s.anzahl]), [[8, "Shport", 1], [9, "Arka", 1], [10, "Adresa", 1], [11, "Gotat Nalt", 1]]);
   assert.equal(w.besucher, 4);
@@ -685,8 +691,8 @@ test("die Karte: Kreis mit Nummer, Name, Balken, Zahl - 1 bis 13, der Kauf abges
   const zeilen = [...sichtbareAnsicht(html).matchAll(/<div class="heart-shopschritt">\s*<span class="heart-shopschritt__nr">(\d+)<\/span>\s*<span class="heart-shopschritt__name">([^<]+)<\/span>\s*<span class="heart-shopschritt__spur"><span class="heart-shopschritt__balken" style="width:([\d.]+)%"><\/span><\/span>\s*<b class="heart-shopschritt__zahl">(\d+)<\/b>/g)]
     .map((m) => [Number(m[1]), m[2], Number(m[3]), Number(m[4])]);
   assert.deepEqual(zeilen.map((z) => z[0]), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
-  assert.deepEqual(zeilen.map((z) => z[1]), ["Puçrrat", "Para - Pas", "Mesazhe", "Dy produkte", "SkinReact", "Garancioni",
-    "F.A.Q", "Shport", "Arka", "Adresa", "Gotat Nalt"]);
+  assert.deepEqual(zeilen.map((z) => z[1]), ["Puçrrat", "Para - Pas", "Mesazhe", "Dy produkte", "Garancioni", "F.A.Q",
+    "SkinReact", "Shport", "Arka", "Adresa", "Gotat Nalt"]);
   // Unter SkinReact die Zeile "Fillo skanim" - ohne Nummer, abgesetzt.
   assert.match(sichtbareAnsicht(html), /<b class="heart-shopschritt__zahl">0<\/b>\s*<\/div>\s*<div class="heart-shopschritt heart-shopschritt--unter">\s*<span class="heart-shopschritt__nr" aria-hidden="true">↳<\/span>\s*<span class="heart-shopschritt__name">Fillo skanim<\/span>/);
   // Alle Balken am selben Massstab: den Shop-Besuchern.
