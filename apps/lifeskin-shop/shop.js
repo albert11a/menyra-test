@@ -32,7 +32,7 @@ import { ansichtOeffnen, ansichtSchliessen } from "../../shared/lifeskin-ansicht
 import { mittelBauen, holeSammlung, FOTO_PRAEFIX } from "../lifeskin-landing/shop.js";
 import { RASTE_STANDARD, rasteLaden, rasteFuer, rasteMitBildern } from "../../shared/lifeskin-raste.js";
 import {
-  SETET_DOK, SHOP_HERO_DOK, SHOP_HERO_MAX, shopHeroDokId, SETET_STANDARD, MITTEL_FOTOS_STANDARD, MITTEL_NENTITUJ,
+  SETET_DOK, SHOP_HERO_DOK, SHOP_HERO_MAX, shopHeroDokId, SHOP_PRODUKT_FOTO_PRAEFIX, SHOP_PRODUKT_FOTOS, SETET_STANDARD, MITTEL_FOTOS_STANDARD, MITTEL_NENTITUJ,
   setetOderStandard, setetNormalisieren, aktiveSetet, nevojaKennung, setPreis
 } from "../../shared/lifeskin-shop-sets.js";
 
@@ -555,7 +555,7 @@ export class Dyqan {
     // :empty wird per CSS ausgeblendet und kann deshalb nie intersecten.
     // Medien sofort separat laden; weder Preis noch erster Fall wartet darauf.
     void this.#kundenLaden();
-    shopBeiSicht($("#setet", this.dok), () => this.#produktDatenLaden());
+    shopBeiSicht($("#setet", this.dok), () => { void this.#produktDatenLaden(); void this.#produktFotosLaden(); });
     await Promise.all([angebot, faelle]);
   }
 
@@ -631,6 +631,24 @@ export class Dyqan {
     rail.addEventListener("play", event => {
       rail.querySelectorAll("video").forEach(video => { if (video !== event.target) video.pause(); });
     }, true);
+  }
+
+  // Die zwei Produktbilder im Abschnitt "Dy produktet" aus Heart (08.10.).
+  // Ohne eigenes Bild, ohne Netz oder bei Fehler bleibt das Standardbild.
+  // Das neue Bild wird erst dekodiert, dann getauscht - kein leerer Rahmen.
+  async #produktFotosLaden() {
+    await Promise.all(SHOP_PRODUKT_FOTOS.map(async ({ id }) => {
+      const img = this.dok.querySelector?.(`[data-produkt-foto="${id}"]`);
+      if (!img) return;
+      try {
+        const d = await holeDok(`${SHOP_PRODUKT_FOTO_PRAEFIX}${id}`, this.holen);
+        const foto = typeof d?.foto === "string" && d.foto.startsWith("data:image/") ? d.foto : "";
+        if (!foto) return;
+        const Bild = this.dok.defaultView?.Image || globalThis.Image;
+        if (Bild) { const probe = new Bild(); probe.src = foto; await probe.decode?.().catch(() => {}); }
+        img.src = foto;
+      } catch { /* dann bleibt das Standardbild */ }
+    }));
   }
 
   async #produktDatenLaden() {

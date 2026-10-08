@@ -469,8 +469,10 @@
 @media(max-width:800px){#ls-einstieg .page .aktion{order:2;margin:0 0 14px}}
 #ls-einstieg .page .aktion__stok[hidden]{display:none}
 #ls-einstieg [data-ausverkauft]{opacity:.45;cursor:not-allowed}
-/* PFEILE UND PUNKTE IM SET-BILD IN MINT (08.10., Inhaber): dieselbe gruene
-   Farbe wie der Kopf (--mint), Pfeil dunkel darin. */
-#ls-einstieg .page .hero-pfeil{background:var(--mint);color:var(--ink);box-shadow:0 2px 10px #10292133}
-#ls-einstieg .page .hero-pikat i{background:#c3f6cfa6;box-shadow:0 0 0 1px #1029211f}
-#ls-einstieg .page .hero-pikat i[data-an="ja"]{background:var(--mint)}
+/* PFEILE UND PUNKTE IM SET-BILD IN SCHWARZ (08.10., Inhaber; vorher Mint):
+   dunkler Kreis mit weissem Pfeil, Punkte dunkel. */
+#ls-einstieg .page .hero-pfeil{background:var(--ink);color:#fff;box-shadow:0 2px 10px #10292140}
+#ls-einstieg .page .hero-pikat i{background:#10292166;box-shadow:0 0 0 1px #ffffff59}
+#ls-einstieg .page .hero-pikat i[data-an="ja"]{background:var(--ink)}
+/* Produktbilder "Dy produktet" (08.10.): 3:4, aus Heart austauschbar. */
+#ls-einstieg .page .routine-photo img[data-produkt-foto]{aspect-ratio:3/4;height:auto;object-fit:cover}

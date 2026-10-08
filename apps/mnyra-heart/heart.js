@@ -66,7 +66,7 @@ import { ladeLifeskin, ladeLifeskinSeit, ladeLifeskinSitzung, horcheLive, ladeFo
   ladeBericht, setzeVersand, speichereAnbieter,
   ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX,
   speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder,
-  speichereShopSetet, ladeShopSetFoto, speichereShopSetFoto, loescheShopSetFoto, speichereShopHero, loescheShopHero, speichereShopHeroListe,
+  speichereShopSetet, ladeShopSetFoto, speichereShopSetFoto, loescheShopSetFoto, speichereShopHero, loescheShopHero, speichereShopHeroListe, speichereShopProduktFoto,
   speichereAntwortzeit, speicherePerputhjaModus,
   ladeMedien, speichereMedien, speichereMedium, loescheMedium, ladeKommentare, setzeKommentarVerborgen, loescheKommentar, schreibeKommentare,
   ladeProduktkosten, speichereProduktkosten } from "./heart-lifeskin-adapter.js";
@@ -2757,6 +2757,61 @@ async function shopHeroWeg() {
   }
 }
 
+// ══ DIE ZWEI PRODUKTBILDER "DY PRODUKTET" (08.10.) - waehlen, zuschneiden ══
+function produktFotoWaehlen(id) {
+  schnittHoeren();
+  oeffneDateiwahl(false, async (dateien) => {
+    try {
+      const roh = await produktfotoLesen(dateien[0], 2400, 6000000);
+      schnittZurueck();
+      actions.patchLifeskin({ produktFotoId: id, produktFotoRoh: roh, produktFotoStatus: "" });
+    } catch (fehler) {
+      setToast("Produktbild", fehler?.message || "Das Bild liess sich nicht lesen.", "danger");
+    }
+  });
+}
+
+function produktFotoZu() {
+  schnittZurueck();
+  klappSetzen("mehr", true);
+  klappSetzen("produktfotos", true);
+  actions.patchLifeskin({ produktFotoId: "", produktFotoRoh: "", produktFotoStatus: "" });
+}
+
+async function produktFotoSchreiben(id, foto, meldung) {
+  const stand = store.getState().lifeskin || {};
+  actions.patchLifeskin({ produktFotoStatus: "laeuft" });
+  try {
+    await speichereShopProduktFoto(id, foto);
+    schnittZurueck();
+    klappSetzen("mehr", true);
+    klappSetzen("produktfotos", true);
+    actions.patchLifeskin({
+      shopProduktFotos: { ...(stand.shopProduktFotos || {}), [id]: foto || "" },
+      produktFotoId: "", produktFotoRoh: "", produktFotoStatus: ""
+    });
+    setToast("Produktbild", meldung, "success");
+  } catch (fehler) {
+    actions.patchLifeskin({ produktFotoStatus: "" });
+    setToast("Produktbild", fehler?.message || "Speichern fehlgeschlagen.", "danger");
+  }
+}
+
+async function produktFotoSpeichern() {
+  const stand = store.getState().lifeskin || {};
+  if (!stand.produktFotoRoh || !stand.produktFotoId || stand.produktFotoStatus) return;
+  let foto;
+  try { foto = schnittErgebnis(900, 450000); }
+  catch (fehler) { setToast("Produktbild", fehler?.message || "Zuschneiden fehlgeschlagen.", "danger"); return; }
+  await produktFotoSchreiben(stand.produktFotoId, foto, "Gespeichert – steht jetzt im Shop.");
+}
+
+async function produktFotoWeg(id) {
+  const stand = store.getState().lifeskin || {};
+  if (stand.produktFotoStatus) return;
+  await produktFotoSchreiben(id, "", "Wieder das Standardbild.");
+}
+
 async function lifeskinRastiSchieben(id, richtung) {
   const stand = store.getState().lifeskin || {};
   if (stand.rasteStatus) return;
@@ -4335,6 +4390,10 @@ const operations = {
   shopHeroWeg() { return shopHeroWeg(); },
   shopHeroSchieben(index, richtung) { return shopHeroSchieben(index, richtung); },
   shopHeroEntfernen(index) { return shopHeroEntfernen(index); },
+  produktFotoWaehlen(id) { produktFotoWaehlen(id); },
+  produktFotoZu() { produktFotoZu(); },
+  produktFotoSpeichern() { return produktFotoSpeichern(); },
+  produktFotoWeg(id) { return produktFotoWeg(id); },
   neuesShopSet() {
     actions.patchLifeskin({ shopSetOffen: "__neu", shopSetEntwurf: null, shopSetLoeschen: false, shopSetStatus: "", shopSetBildStatus: "" });
   },

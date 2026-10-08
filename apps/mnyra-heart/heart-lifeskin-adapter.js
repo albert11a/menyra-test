@@ -54,7 +54,7 @@ import {
 } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import { LIVE_FENSTER_MS, ohnePfad } from "./heart-lifeskin-live.js";
 import { mediumNormalisieren } from "../../shared/lifeskin-medien.js";
-import { SETET_DOK, SET_FOTO_PRAEFIX, SHOP_HERO_DOK, SHOP_HERO_MAX, shopHeroDokId } from "../../shared/lifeskin-shop-sets.js";
+import { SETET_DOK, SET_FOTO_PRAEFIX, SHOP_HERO_DOK, SHOP_HERO_MAX, shopHeroDokId, SHOP_PRODUKT_FOTO_PRAEFIX, SHOP_PRODUKT_FOTOS } from "../../shared/lifeskin-shop-sets.js";
 import { ANTWORTZEIT_DOK, antwortzeitGueltig } from "../../shared/lifeskin-antwortzeit.js";
 import { PERPUTHJA_DOK, perputhjaModusGueltig } from "../../shared/lifeskin-perputhja.js";
 
@@ -220,6 +220,7 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     .filter((d) => d.id !== RASTE_DOK_ID && !String(d.id).startsWith(RASTI_BILD_ID))
     .filter((d) => d.id !== SETET_DOK && d.id !== SHOP_HERO_DOK && !String(d.id).startsWith(SET_FOTO_PRAEFIX))
     .filter((d) => !String(d.id).startsWith(`${SHOP_HERO_DOK}-`))
+    .filter((d) => !String(d.id).startsWith(SHOP_PRODUKT_FOTO_PRAEFIX))
     .filter((d) => d.id !== ANTWORTZEIT_DOK)
     .filter((d) => d.id !== PERPUTHJA_DOK)
     .reduce((zusammen, d) => ({ ...zusammen, ...(d.data() || {}) }), {});
@@ -275,6 +276,11 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     shopSetet: Array.isArray(setetDok?.lista) ? setetDok.lista : null,
     // Das Titelbild des Ladens: "" = das Bild der Seite.
     shopHero: typeof heroDok?.foto === "string" && heroDok.foto.startsWith("data:image/") ? heroDok.foto : "",
+    // Die zwei Produktbilder "Dy produktet" (08.10.): { "lf-acne": "data:..." }.
+    shopProduktFotos: Object.fromEntries(SHOP_PRODUKT_FOTOS.map(({ id }) => {
+      const foto = konfigDocs.find((d) => d.id === `${SHOP_PRODUKT_FOTO_PRAEFIX}${id}`)?.data()?.foto;
+      return [id, typeof foto === "string" && foto.startsWith("data:image/") ? foto : ""];
+    })),
     // Titelbild 2-5 in ihrer Reihenfolge (shopHero-2 ...).
     shopHeroMehr: Array.from({ length: SHOP_HERO_MAX - 1 }, (_, i) => konfigDocs.find((d) => d.id === shopHeroDokId(i + 1))?.data()?.foto)
       .slice(0, Math.max(0, (Number(heroDok?.anzahl) || 1) - 1))
@@ -610,6 +616,17 @@ export async function speichereShopHeroListe(fotos) {
       { foto: liste[0], anzahl: liste.length, updatedAt: new Date().toISOString() });
   } else {
     await deleteDoc(doc(db, "lifeskin", TENANT, "config", SHOP_HERO_DOK));
+  }
+}
+
+// Ein Produktbild "Dy produktet" (08.10.): leer = wieder das Standardbild.
+export async function speichereShopProduktFoto(id, foto) {
+  if (!SHOP_PRODUKT_FOTOS.some((p) => p.id === id)) throw new Error("Unbekanntes Produkt.");
+  const ref = doc(db, "lifeskin", TENANT, "config", `${SHOP_PRODUKT_FOTO_PRAEFIX}${id}`);
+  if (typeof foto === "string" && foto.startsWith("data:image/")) {
+    await setDoc(ref, { foto, updatedAt: new Date().toISOString() });
+  } else {
+    await deleteDoc(ref);
   }
 }
 

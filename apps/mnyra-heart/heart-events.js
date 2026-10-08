@@ -537,6 +537,11 @@ export function bindHeartEvents({
       return;
     }
     if (action === "lifeskin-shophero-entfernen") { await operations.shopHeroEntfernen?.(target.getAttribute("data-index")); return; }
+    // Die zwei Produktbilder "Dy produktet". Ohne await: Dateiwahl im Griff des Fingers.
+    if (action === "lifeskin-produktfoto-waehlen") { operations.produktFotoWaehlen?.(target.getAttribute("data-id")); return; }
+    if (action === "lifeskin-produktfoto-zu") { operations.produktFotoZu?.(); return; }
+    if (action === "lifeskin-produktfoto-speichern") { await operations.produktFotoSpeichern?.(); return; }
+    if (action === "lifeskin-produktfoto-weg") { await operations.produktFotoWeg?.(target.getAttribute("data-id")); return; }
     // Die Sets des Ladens (heart-lifeskin-shopsets.js).
     if (action === "lifeskin-shopset") { operations.openShopSet?.(target.getAttribute("data-id")); return; }
     if (action === "lifeskin-shopset-neu") { operations.neuesShopSet?.(); return; }

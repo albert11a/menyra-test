@@ -37,6 +37,16 @@ export function shopHeroDokId(index) {
   return index === 0 ? SHOP_HERO_DOK : `${SHOP_HERO_DOK}-${index + 1}`;
 }
 export const SHOP_HERO_VERHAELTNIS = 7 / 5;
+// DIE ZWEI PRODUKTBILDER IM ABSCHNITT "DY PRODUKTET" (08.10., Inhaber) - in
+// Heart je Produkt gewaehlt und zugeschnitten (3:4):
+// lifeskin/{tenant}/config/shopProduktFoto-<id> { foto, updatedAt }. Ohne
+// eigenes Bild gilt das Standardbild der Seite.
+export const SHOP_PRODUKT_FOTO_PRAEFIX = "shopProduktFoto-";
+export const SHOP_PRODUKT_FOTO_VERHAELTNIS = 3 / 4;
+export const SHOP_PRODUKT_FOTOS = Object.freeze([
+  Object.freeze({ id: "lf-acne", name: "LF ACNE", standard: "/apps/lifeskin-shop/assets/produkt-lf-acne.jpg" }),
+  Object.freeze({ id: "lf-moistur", name: "LF MOISTUR", standard: "/apps/lifeskin-shop/assets/produkt-lf-moistur.jpg" })
+]);
 export const SET_PRODUKTE_MAX = 4;
 
 const ASSETS = "/apps/lifeskin-shop/assets/";
