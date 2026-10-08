@@ -446,3 +446,24 @@
 #ls-einstieg .ls-rein{opacity:0;transform:translateY(28px);transition:opacity .6s ease,transform .7s cubic-bezier(.2,.7,.2,1);transition-delay:var(--rein-verz,0ms)}
 #ls-einstieg .ls-rein.ls-rein--da{opacity:1;transform:none}
 @media(prefers-reduced-motion:reduce){#ls-einstieg .ls-rein{opacity:1;transform:none;transition:none}}
+/* AKTION HEUTE (08.10., Inhaber - Vorschau): echter Normalpreis 2 x 29 = 58 EUR,
+   heute bis 24:00 fuer 25 EUR, echtes Lager (2 Sets). Nach Ablauf verschwindet
+   der Block. Ueber dem Kaufknopf, gleiche Reihenfolge darunter. */
+#ls-einstieg .page .aktion{display:grid;gap:8px;margin:0 0 14px;padding:14px 14px 12px;border-radius:14px;background:#fff;box-shadow:0 1px 0 #0000000a,0 6px 16px #123b3e0f}
+#ls-einstieg .page .aktion[hidden]{display:none}
+#ls-einstieg .page .aktion__kopf{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+#ls-einstieg .page .aktion__plakete{background:#d62d20;color:#fff;font-size:12px;font-weight:800;letter-spacing:.6px;padding:5px 9px;border-radius:6px}
+#ls-einstieg .page .aktion__ora{font-size:12.5px;color:var(--muted)}
+#ls-einstieg .page .aktion__ora b{color:var(--ink);font-variant-numeric:tabular-nums}
+#ls-einstieg .page .aktion__cmimi{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+#ls-einstieg .page .aktion__nga,#ls-einstieg .page .aktion__vetem{font-size:14px;color:var(--muted)}
+#ls-einstieg .page .aktion__cmimi del{font-size:20px;color:var(--muted);text-decoration-thickness:2px;text-decoration-color:#d62d20}
+#ls-einstieg .page .aktion__cmimi strong{font-size:32px;line-height:1;font-weight:900;letter-spacing:-1px;color:var(--ink)}
+#ls-einstieg .page .aktion__kursen{font-size:13px;font-weight:800;color:#b3261e;background:#fdecea;padding:3px 8px;border-radius:999px}
+#ls-einstieg .page .aktion__normal{margin:0;font-size:11.5px;line-height:1.4;color:var(--muted)}
+#ls-einstieg .page .aktion__stok{display:flex;align-items:center;gap:8px;padding-top:9px;border-top:1px solid var(--line);font-size:14px;color:var(--ink)}
+#ls-einstieg .page .aktion__stok b{color:#b3261e}
+#ls-einstieg .page .aktion__pika{width:9px;height:9px;flex:none;border-radius:50%;background:#e8590c;box-shadow:0 0 0 4px #e8590c26}
+#ls-einstieg .page .aktion__stok[data-leer]{color:var(--muted)}
+#ls-einstieg .page .aktion__stok[data-leer] .aktion__pika{background:#9aa5a0;box-shadow:none}
+@media(max-width:800px){#ls-einstieg .page .aktion{order:2;margin:0 0 14px}}
