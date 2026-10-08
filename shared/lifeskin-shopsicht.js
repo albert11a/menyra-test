@@ -31,7 +31,7 @@ export const SHOP_SICHT_VERSION = 1;
 // 3 "Mesazhe"). Ein Besuch, der eine alte und eine neue Fassung der Seite
 // sah, schreibt in dieselbe Karte - mit Nummern waere nicht mehr zu
 // sagen, was gemeint war. Die alten Felder liest shopTiefe() um (V1_NACH_V2).
-export const SHOP_LADEN_VERSION = 2;
+export const SHOP_LADEN_VERSION = 3;
 
 // wahl: wo der Abschnitt auf der Seite steht (apps/lifeskin-shop/index.html).
 export const SHOP_ABSCHNITTE = Object.freeze([
@@ -39,13 +39,19 @@ export const SHOP_ABSCHNITTE = Object.freeze([
   { nr: 2, id: "paraPas", wahl: "#rezultate", name: "Para - Pas" },
   { nr: 3, id: "mesazhe", wahl: "#klientet", name: "Mesazhe" },
   { nr: 4, id: "produkte", wahl: "#setet", name: "Dy produkte" },
-  { nr: 5, id: "skinreact", wahl: "#zgjedhja", name: "SkinReact" },
-  { nr: 6, id: "garancia", wahl: "#garancia", name: "Garancioni" },
-  // "Instagram" (main > .social-presence) ist seit dem 07.10. nicht mehr
-  // auf der Seite (Inhaber) - F.A.Q ist jetzt 7. Alte Besuche mit
-  // instagram: true waren an der Garantie vorbei (shopTiefe).
-  { nr: 7, id: "faq", wahl: "main > .faq", name: "F.A.Q" }
+  // VERSION 3 (08.10., Inhaber): Garantie und F.A.Q stehen direkt unter
+  // den zwei Produkten, SkinReact danach. Besuche der Version 2 rechnet
+  // shopTiefe() auf diese Reihenfolge um (V2_NACH_V3).
+  { nr: 5, id: "garancia", wahl: "#garancia", name: "Garancioni" },
+  { nr: 6, id: "faq", wahl: "main > .faq", name: "F.A.Q" },
+  { nr: 7, id: "skinreact", wahl: "#zgjedhja", name: "SkinReact" }
 ].map((a) => Object.freeze(a)));
+// Version 2 stand: ... 4 Dy produkte, 5 SkinReact, 6 Garancioni, 7 F.A.Q.
+// "Bis hierher" in der neuen Reihenfolge: Wer frueher bis SkinReact kam,
+// hatte Garantie und F.A.Q noch nicht gesehen (4); bis Garancioni = ohne
+// F.A.Q (5); bis F.A.Q = alles (7).
+const V2_TIEFE = Object.freeze({ pucrrat: 1, paraPas: 2, mesazhe: 3, produkte: 4, skinreact: 5, garancia: 6, faq: 7 });
+const V2_NACH_V3 = Object.freeze({ 1: 1, 2: 2, 3: 3, 4: 4, 5: 4, 6: 5, 7: 7 });
 
 // Version 1 (s1 ... s9) in die Nummern von heute. Alt 6 ("Dërgesa",
 // #rutina) traegt die Garantie in sich, alt 9 ("Fundi") liegt unter der
@@ -74,10 +80,16 @@ export function skanimGedrueckt(sitzung) {
 export function shopTiefe(sitzung) {
   const sicht = sitzung?.timings?.shop;
   if (!sicht || typeof sicht !== "object") return sitzung?.produkteGesehen === true ? 4 : 1;
+  // Version 1 und 2: erst in der alten Reihenfolge (2), dann umgerechnet.
+  if (sicht.v !== SHOP_LADEN_VERSION) {
+    let alt = 1;
+    for (const [id, nr] of Object.entries(V2_TIEFE)) if (sicht[id] === true) alt = Math.max(alt, nr);
+    if (sicht.instagram === true) alt = Math.max(alt, 6);
+    for (const [v1, v2] of Object.entries(V1_NACH_V2)) if (sicht[`s${v1}`] === true) alt = Math.max(alt, v2);
+    return V2_NACH_V3[alt];
+  }
   let tiefe = 1;
   for (const a of SHOP_ABSCHNITTE) if (sicht[a.id] === true) tiefe = Math.max(tiefe, a.nr);
-  if (sicht.instagram === true) tiefe = Math.max(tiefe, 6);
-  for (const [alt, neu] of Object.entries(V1_NACH_V2)) if (sicht[`s${alt}`] === true) tiefe = Math.max(tiefe, neu);
   return tiefe;
 }
 
