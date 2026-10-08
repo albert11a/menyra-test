@@ -38,8 +38,12 @@ const ONLINE_MS = 3 * 60 * 1000;
 const CACHE_SCHLUESSEL = "lifeskin:chatCache";
 const GRUSS_SCHLUESSEL = "lifeskin:chatGruss";
 // Die Sprechblase neben dem Knopf (wie bei den grossen Shops): einmal pro
-// Besuch, nach ein paar Sekunden - nie ueber Cookie-Fenster oder Kasse.
-const GRUSS_NACH_MS = 4000;
+// Besuch - nie ueber Cookie-Fenster oder Kasse. Auf dem Telefon liegt sie
+// ueber Bildern und Produktkarten (Analyse 08.10.): deshalb erst nach 20 s,
+// wenn der erste Bildschirm gelesen ist, und nach 8 s wieder weg. Der runde
+// Knopf bleibt immer da.
+const GRUSS_NACH_MS = 20000;
+const GRUSS_DAUER_MS = 8000;
 
 const $ = (w, i = document) => i.querySelector(w);
 export function esc(w) {
@@ -250,6 +254,7 @@ export class Chat {
     this.#grussStand();
     this.gruss.hidden = false;
     this.#pfad("Begrüßung gezeigt");
+    setTimeout(() => this.#grussWeg(), GRUSS_DAUER_MS);
     try { this.fenster.sessionStorage?.setItem(GRUSS_SCHLUESSEL, "1"); } catch { /* egal */ }
   }
 

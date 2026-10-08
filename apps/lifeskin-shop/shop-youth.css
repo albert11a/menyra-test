@@ -351,26 +351,6 @@
 #ls-einstieg .page .footer-ligjore a{min-height:32px;display:inline-flex;align-items:center}
 #ls-einstieg .kasa__ligjore{font-size:11px;line-height:1.5;color:var(--muted);text-align:center;margin:10px 0 0}
 #ls-einstieg .kasa__ligjore a{text-decoration:underline;text-underline-offset:2px}
-/* POROSIT NE INSTAGRAM (07.10., Inhaber): Card wie im ersten Entwurf, aber ohne Absatz - zwischen "Porosit setin" und "A i pershtatet". Bild = oberer Teil des Profils @lifeskin.ks, unten weich ausgeblendet; Knopf oeffnet die Nachricht an @lifeskin.ks in der App (ig.me). */
-#ls-einstieg .page .ig-porosi{display:flex;flex-direction:column;align-items:center;gap:14px;margin-top:16px;padding:20px 20px 22px;border:1px solid var(--line);border-radius:14px;background:white;text-align:center}
-#ls-einstieg .page .ig-porosi__bild{position:relative;display:block;width:min(210px,58vw);height:min(232px,64vw);overflow:hidden;flex:none}
-#ls-einstieg .page .ig-porosi__bild::after{content:"";position:absolute;left:0;right:0;bottom:0;height:70px;background:linear-gradient(to bottom,#fff0,#fff)}
-#ls-einstieg .page .ig-porosi__bild img{display:block;width:100%;height:auto}
-#ls-einstieg .page .ig-porosi__text{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;max-width:420px}
-#ls-einstieg .page .ig-porosi__text .eyebrow{margin:0}
-#ls-einstieg .page .ig-porosi__text h3{margin:0;font-size:22px;line-height:1.15;letter-spacing:-.4px;color:var(--ink)}
-#ls-einstieg .page .ig-porosi__knopf{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:56px;margin-top:8px;padding:0 20px;border-radius:12px;color:white;font-size:17px;font-weight:700;text-decoration:none;background:linear-gradient(45deg,#f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%);box-shadow:0 8px 22px #cc236633;-webkit-tap-highlight-color:transparent}
-#ls-einstieg .page .ig-porosi__knopf span{white-space:nowrap}
-#ls-einstieg .page .ig-porosi__knopf:active{transform:scale(.98)}
-#ls-einstieg .page .ig-porosi__knopf .icon{width:22px;height:22px;color:white}
-#ls-einstieg .page .ig-porosi__text small{font-size:12.5px;color:var(--muted)}
-@media (max-width:360px){#ls-einstieg .page .ig-porosi{padding:18px 12px}#ls-einstieg .page .ig-porosi__knopf{gap:8px;padding:0 12px;font-size:15.5px}#ls-einstieg .page .ig-porosi__text h3{font-size:20px}}
-@media (min-width:700px){
- #ls-einstieg .page .ig-porosi{flex-direction:row;align-items:center;gap:32px;padding:24px 32px;text-align:left}
- #ls-einstieg .page .ig-porosi__bild{width:220px;height:250px}
- #ls-einstieg .page .ig-porosi__text{align-items:flex-start}
- #ls-einstieg .page .ig-porosi__knopf{width:auto;min-width:280px}
-}
 /* MESAZHE ORIGJINALE (07.10., Inhaber): der Zitat-Titel nimmt nicht mehr die Aufmerksamkeit - klein und ruhig; ein Trenner zwischen den Nachrichten und den Fotos. */
 #ls-einstieg .page .proof-heading h3,#ls-einstieg .page #customers-title{font-size:17px!important;line-height:1.4;font-weight:600;color:var(--muted);letter-spacing:0}
 #ls-einstieg .page .proof-trenner{border:0;border-top:1px solid var(--line);margin:28px 0 0;height:0}
@@ -381,7 +361,6 @@
 #ls-einstieg .page .mesazhe-kopf{margin-bottom:16px}
 #ls-einstieg .page .mesazhe-kopf #customers-title{font-size:23px!important;line-height:1.2;font-weight:700;color:var(--ink);letter-spacing:-.4px;margin:2px 0 0}
 #ls-einstieg .page .mesazhe-meta{margin:8px 0 0;font-size:13px;line-height:1.4;color:var(--muted)}
-#ls-einstieg .page .mesazhe-yje{color:#f5a623;letter-spacing:1px;margin-right:4px}
 #ls-einstieg .page .message-rail{display:flex;grid-template-columns:none;gap:12px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;padding:2px 0 6px;-webkit-overflow-scrolling:touch}
 #ls-einstieg .page .message-card{position:static;display:flex;flex-direction:column;align-items:stretch;gap:12px;flex:0 0 80%;max-width:340px;min-height:0;aspect-ratio:auto;padding:16px 16px 14px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:none;overflow:visible;scroll-snap-align:start;scroll-snap-stop:always;text-align:left;color:var(--ink);cursor:pointer;-webkit-tap-highlight-color:transparent;grid-template-columns:none}
 #ls-einstieg .page .message-card:active{background:#f6f9f8}
@@ -439,3 +418,7 @@
  #ls-einstieg .vorteil2__text{font-size:12px}
  #ls-einstieg .vorteil2__text b{font-size:13.5px}
 }
+/* KUNDENSTIMMEN UNTER DEM TITEL (08.10., Inhaber): ehrlich gezaehlt statt Sterne -
+   es gibt noch keine Bewertungen mit Sternen. Fuehrt zu den Nachrichten (#klientet). */
+#ls-einstieg .page .hero-stimmen{display:inline-flex;align-items:center;gap:6px;min-height:32px;margin:0 0 14px;font-size:14px;line-height:1.3;color:var(--ink);text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:4px}
+#ls-einstieg .page .hero-stimmen b{font-weight:700}
