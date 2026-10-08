@@ -9,7 +9,7 @@
 import { escapeHtml } from "./heart-ui-utils.js";
 import { renderHeartIcon } from "./heart-icons.js";
 import { klappAttr } from "./heart-lifeskin-klapp.js";
-import { SETET_STANDARD, SET_PRODUKTE_MAX, setetNormalisieren, SHOP_HERO_VERHAELTNIS, SHOP_HERO_MAX, setPreis } from "../../shared/lifeskin-shop-sets.js";
+import { SETET_STANDARD, SET_PRODUKTE_MAX, setetNormalisieren, SHOP_HERO_VERHAELTNIS, SHOP_HERO_MAX, setPreis, SHOP_PRODUKT_FOTOS, SHOP_PRODUKT_FOTO_VERHAELTNIS } from "../../shared/lifeskin-shop-sets.js";
 import { preisFuer } from "../../shared/lifeskin-preise.js";
 
 // Die Liste, mit der Heart arbeitet: gespeichert, sonst die drei Sets, die
@@ -205,6 +205,60 @@ export function renderShopHeroEditor(zustand) {
         <button type="button" class="heart-lifeskin-resetknopf heart-lifeskin-resetknopf--speichern" data-action="lifeskin-shophero-speichern" ${status ? "disabled" : ""}>
           ${status === "laeuft" ? "Wird gespeichert …" : "Speichern"}</button>
         <button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-shophero-zu">Abbrechen</button>
+      </div>
+    </section>`;
+}
+
+// ── Die zwei Produktbilder "Dy produktet" (08.10., Inhaber) ─────────────
+export function renderShopProduktFotos(zustand) {
+  const fotos = zustand?.shopProduktFotos || {};
+  const status = zustand?.produktFotoStatus || "";
+  const aus = status ? " disabled" : "";
+  const eigene = SHOP_PRODUKT_FOTOS.filter((p) => fotos[p.id]).length;
+  const zeilen = SHOP_PRODUKT_FOTOS.map((p) => {
+    const foto = fotos[p.id] || p.standard;
+    return `
+      <div class="heart-rasti-zeile">
+        <div class="heart-rasti-bilder"><span class="heart-rasti-bild" style="aspect-ratio:${SHOP_PRODUKT_FOTO_VERHAELTNIS};width:72px"><img src="${escapeHtml(foto)}" alt="${escapeHtml(p.name)}" loading="lazy" style="width:100%;height:100%;object-fit:cover" /></span></div>
+        <div class="heart-rasti-leib"><b>${escapeHtml(p.name)}</b><small>${fotos[p.id] ? "eigenes Bild" : "Standardbild"}</small></div>
+        <div class="heart-rasti-aktionen">
+          <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-produktfoto-waehlen" data-id="${escapeHtml(p.id)}"${aus}>Bild wählen</button>
+          ${fotos[p.id] ? `<button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-produktfoto-weg" data-id="${escapeHtml(p.id)}"${aus}>Standardbild</button>` : ""}
+        </div>
+      </div>`;
+  }).join("");
+  return `
+    <details class="heart-lifeskin-block heart-klapp" ${klappAttr("produktfotos")}>
+      <summary class="heart-klapp__kopf">
+        <h3 class="heart-lifeskin-block__titel">Shop-Produktbilder</h3>
+        <span class="heart-klapp__zahl">${eigene ? `${eigene} eigene` : "Standard"}</span>
+      </summary>
+      <p class="heart-lifeskin-block__fuss">Die zwei Bilder im Abschnitt „Dy produktet“ (LF ACNE und LF MOISTUR). Jedes Bild wird beim Wählen im Format 3:4 zugeschnitten.</p>
+      ${status ? `<p class="heart-rasti-hinweis">Wird gespeichert …</p>` : ""}
+      <div class="heart-rasti-liste">${zeilen}</div>
+    </details>`;
+}
+
+export function renderShopProduktFotoEditor(zustand) {
+  const status = zustand?.produktFotoStatus || "";
+  const p = SHOP_PRODUKT_FOTOS.find((x) => x.id === zustand?.produktFotoId);
+  return `
+    <section class="heart-lifeskin-editor">
+      <button type="button" class="heart-lifeskin-zurueck" data-action="lifeskin-produktfoto-zu">← Zurück</button>
+      <h3 class="heart-lifeskin-block__titel">${escapeHtml(p?.name || "Produktbild")} zuschneiden</h3>
+      <p class="heart-lifeskin-block__fuss">Mit dem Finger verschieben, mit dem Regler zoomen. Was im Rahmen steht, steht so im Shop.</p>
+      <div data-schnitt-rahmen style="position:relative;aspect-ratio:${SHOP_PRODUKT_FOTO_VERHAELTNIS};max-width:320px;overflow:hidden;border-radius:6px;background:#111;touch-action:none;cursor:grab">
+        <img data-schnitt-bild src="${escapeHtml(zustand?.produktFotoRoh || "")}" alt="" draggable="false"
+             style="position:absolute;left:0;top:0;max-width:none;transform-origin:0 0;user-select:none;-webkit-user-drag:none" />
+      </div>
+      <label class="heart-lifeskin-feld" style="max-width:320px">
+        <span>Zoom</span>
+        <input type="range" data-schnitt-zoom min="1" max="4" step="0.01" value="1" />
+      </label>
+      <div class="heart-lifeskin-editor__fuss">
+        <button type="button" class="heart-lifeskin-resetknopf heart-lifeskin-resetknopf--speichern" data-action="lifeskin-produktfoto-speichern" ${status ? "disabled" : ""}>
+          ${status === "laeuft" ? "Wird gespeichert …" : "Speichern"}</button>
+        <button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-produktfoto-zu">Abbrechen</button>
       </div>
     </section>`;
 }
