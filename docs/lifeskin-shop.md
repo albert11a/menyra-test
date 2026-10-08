@@ -12,16 +12,14 @@ Heart.
 ## Vertrauen auf dem Telefon (08.10.)
 
 Auftrag Inhaber nach dem Vergleich mit 11 grossen Skincare-Shops (mobil):
-- Unter dem Titel steht jetzt "17 mesazhe origjinale nga klientët · Shikoji"
-  mit Link auf `#klientet`. Die Zahl entspricht den Nachrichtenkarten
-  (Test prueft das). Die fuenf Sterne neben "17 mesazhe" sind entfernt: Es
-  gibt noch keine Bewertungen mit Sternen.
+- Die fuenf Sterne neben "17 mesazhe" sind entfernt: Es gibt noch keine
+  Bewertungen mit Sternen. Die Zeile "17 mesazhe origjinale nga klientët"
+  unter dem Titel wurde am selben Tag auf Wunsch des Inhabers wieder entfernt.
 - Der Instagram-Bestellblock zwischen "Porosit setin" und dem Scan ist
   entfernt. "Porosit në Instagram" (ig.me) steht als Link im Fussbereich.
 - Chat-Begruessung erst nach 20 s statt 4 s, nach 8 s wieder ausgeblendet. Der
   runde Knopf bleibt.
 - Keine Pixel-/CAPI-Zeile geaendert. Test: `tests/lifeskinshop-vertrauen.test.mjs`.
-- Erster Kaufknopf jetzt bei 459 px statt 413 px (390 x 844, emuliert).
 
 ## Feinschliff und Kundenmedien (28.09.)
 

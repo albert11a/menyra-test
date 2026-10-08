@@ -1,6 +1,6 @@
 // LIFESKIN SHOP - VERTRAUEN AUF DEM TELEFON (Analyse 08.10., Inhaber):
-// keine Sterne ohne Bewertungen, die Zahl der Kundennachrichten unter dem
-// Titel stimmt mit den Karten ueberein, kein Instagram-Ausgang in der
+// keine Sterne ohne Bewertungen, keine Zeile mit Kundennachrichten beim
+// Hauptbild, kein Instagram-Ausgang in der
 // Seitenmitte, die Chat-Begruessung kommt spaet und geht von selbst.
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -9,15 +9,10 @@ import { readFileSync } from "node:fs";
 const lies = (p) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const HTML = lies("apps/lifeskin-shop/index.html");
 
-test("Unter dem Titel: echte Zahl der Kundennachrichten, verlinkt auf #klientet", () => {
-  const zeile = /<a class="hero-stimmen" href="#klientet"><b>(\d+)<\/b> mesazhe origjinale nga klientët/.exec(HTML);
-  assert.ok(zeile, "Zeile unter dem Titel fehlt");
+test("Keine Zeile mit Kundennachrichten beim Hauptbild (Inhaber 08.10.)", () => {
+  assert.doesNotMatch(HTML, /hero-stimmen/);
   const karten = (HTML.match(/<button type="button" class="message-card" data-zitat-bild=/g) || []).length;
-  assert.equal(Number(zeile[1]), karten, "Zahl unter dem Titel = Zahl der Nachrichtenkarten");
   assert.match(HTML, new RegExp(`<p class="mesazhe-meta">${karten} mesazhe origjinale`));
-  assert.ok(HTML.indexOf('id="hero-title"') < HTML.indexOf('class="hero-stimmen"'));
-  assert.ok(HTML.indexOf('class="hero-stimmen"') < HTML.indexOf('data-set="acne"'), "vor dem ersten Kaufknopf");
-  assert.match(HTML, /id="klientet"/);
 });
 
 test("Keine Sterne ohne Sternebewertungen", () => {
