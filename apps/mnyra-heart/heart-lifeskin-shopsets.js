@@ -11,6 +11,7 @@ import { renderHeartIcon } from "./heart-icons.js";
 import { klappAttr } from "./heart-lifeskin-klapp.js";
 import { SETET_STANDARD, SET_PRODUKTE_MAX, setetNormalisieren, SHOP_HERO_VERHAELTNIS, SHOP_HERO_MAX, setPreis, SHOP_PRODUKT_FOTOS, SHOP_PRODUKT_FOTO_VERHAELTNIS } from "../../shared/lifeskin-shop-sets.js";
 import { preisFuer } from "../../shared/lifeskin-preise.js";
+import { aktionNormalisieren, aktionLaeuft, aktionNormalpreis, kosovoFeld } from "../../shared/lifeskin-aktion.js";
 
 // Die Liste, mit der Heart arbeitet: gespeichert, sonst die drei Sets, die
 // heute auf der Seite stehen.
@@ -261,4 +262,49 @@ export function renderShopProduktFotoEditor(zustand) {
         <button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-produktfoto-zu">Abbrechen</button>
       </div>
     </section>`;
+}
+
+// ── Die Zbritje im Laden (09.10., Inhaber): an/aus, Preis, Ende, Lager ──
+// Ein Dokument config/shopAktion (shared/lifeskin-aktion.js). Waehrend sie
+// laeuft, kostet das Duo im Laden den Aktionspreis; nach dem Ende von
+// selbst wieder den Set-Preis oben.
+export function renderShopAktion(zustand, jetzt = Date.now()) {
+  const a = zustand?.shopAktion || aktionNormalisieren(null);
+  const e = { ...a, bisFeld: kosovoFeld(a.bis), ...(zustand?.shopAktionEntwurf || {}) };
+  const status = zustand?.shopAktionStatus || "";
+  const setPreisJetzt = setPreis(shopSetetListe(zustand).find((s) => s.id === "acne") || { produkte: ["lf-acne", "lf-moistur"] });
+  const laeuft = aktionLaeuft(a, jetzt);
+  const ende = a.bis ? kosovoFeld(a.bis).replace(/^(\d{4})-(\d{2})-(\d{2})T/, "$3.$2. ") : "";
+  const zahl = laeuft ? "läuft" : a.aktiv && a.bis && Date.parse(a.bis) <= jetzt ? "abgelaufen" : "aus";
+  const zeile = laeuft
+    ? `Läuft bis ${ende} (Kosovo): ${a.cmimi} € statt ${aktionNormalpreis()} €${a.sete == null ? "" : ` · Lager ${a.sete} Sets (gezählt ab ${kosovoFeld(a.ab).replace(/^(\d{4})-(\d{2})-(\d{2})T/, "$3.$2. ")})`}.`
+    : zahl === "abgelaufen" ? `Abgelaufen am ${ende}. Im Shop gilt der Set-Preis: ${setPreisJetzt} €.` : `Aus. Im Shop gilt der Set-Preis: ${setPreisJetzt} €.`;
+  return `
+    <details class="heart-lifeskin-block heart-klapp" ${klappAttr("shopaktion")}>
+      <summary class="heart-klapp__kopf">
+        <h3 class="heart-lifeskin-block__titel">Zbritje im Shop</h3>
+        <span class="heart-klapp__zahl">${zahl}</span>
+      </summary>
+      <p class="heart-lifeskin-block__fuss">${escapeHtml(zeile)}${a.standard ? " (Voreinstellung – noch nicht in Heart gespeichert)" : ""}</p>
+      <div class="heart-lifeskin-feld">
+        <span>Zbritje</span>
+        <label class="heart-rasti-haken"><input type="checkbox" data-aktionfeld-an="aktiv"${e.aktiv ? " checked" : ""} /> Aktiv – Block „Nga ${aktionNormalpreis()} € vetëm …“ über dem Kaufknopf</label>
+      </div>
+      <label class="heart-lifeskin-feld">
+        <span>Preis in der Zbritje (€) – Normalpreis ${aktionNormalpreis()} € (2 × ${preisFuer(1)} €)</span>
+        <input class="heart-lifeskin-eingabe" data-aktionfeld="cmimi" type="number" inputmode="numeric" min="1" max="999" step="1" placeholder="25" value="${e.cmimi ? escapeHtml(String(e.cmimi)) : ""}" />
+      </label>
+      <label class="heart-lifeskin-feld">
+        <span>Ende (Datum und Uhrzeit, Kosovo)</span>
+        <input class="heart-lifeskin-eingabe" data-aktionfeld="bisFeld" type="datetime-local" value="${escapeHtml(e.bisFeld || "")}" />
+      </label>
+      <label class="heart-lifeskin-feld">
+        <span>Sets auf Lager – leer = keine Lageranzeige</span>
+        <input class="heart-lifeskin-eingabe" data-aktionfeld="sete" type="number" inputmode="numeric" min="0" max="9999" step="1" placeholder="leer" value="${e.sete == null || e.sete === "" ? "" : escapeHtml(String(e.sete))}" />
+      </label>
+      <p class="heart-lifeskin-block__fuss">Bestellungen im Shop werden ab dem Speichern vom Lager abgezogen. Bestellungen per WhatsApp oder Instagram nicht – dann die neue Zahl eintragen und speichern. Bei 0 Sets steht „Shitur“, und niemand kann mehr bestellen. Nach dem Ende gilt wieder der Set-Preis (zurzeit ${setPreisJetzt} €).</p>
+      <div class="heart-lifeskin-editor__fuss">
+        <button type="button" class="heart-lifeskin-resetknopf heart-lifeskin-resetknopf--speichern" data-action="lifeskin-aktion-speichern"${status ? " disabled" : ""}>${status === "laeuft" ? "Wird gespeichert …" : "Speichern"}</button>
+      </div>
+    </details>`;
 }

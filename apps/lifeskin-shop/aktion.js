@@ -1,13 +1,18 @@
-// DIE AKTION HEUTE (08.10., Inhaber): echter Normalpreis 2 x 29 = 58 EUR,
-// heute bis 24:00 (Kosovo) fuer 25 EUR, echtes Lager von 2 Sets.
+// DIE ZBRITJE IM LADEN - Anzeige ueber dem Kaufknopf (08.10., seit 09.10.
+// aus Heart: Preis, Ende, Lager; shared/lifeskin-aktion.js).
 //
-// - Restzeit bis zum Ende aus data-aktion-bis; danach verschwindet der
-//   Block, und alles ist wie vor der Aktion.
+// - shop.js laedt config/shopAktion und startet aktionStarten(); der Preis
+//   selbst gilt dort (Set-Preis waehrend der Aktion). Ein abgelaufener
+//   Block aus dem HTML geht schon vorher weg (kleines Skript im Block).
+// - Restzeit bis zum Ende; danach verschwindet der Block, und beiEnde()
+//   laesst den Laden wieder den Set-Preis aus Heart zeigen.
 // - Lager aus /api/lifeskin-lager (echte Bestellungen im Laden, fuer alle
 //   Besucher gleich). Ohne Antwort keine Lagerzeile - nie eine erfundene Zahl.
 // - Bei 0 Sets: "Shitur", und die Kaufknoepfe sind gesperrt, damit niemand
 //   ein Set bestellt, das es nicht gibt.
 // Nur Darstellung und Sperre - keine Zaehlung, kein Pixel.
+
+import { aktionLaeuft, aktionTexte } from "../../shared/lifeskin-aktion.js";
 
 export const LAGER_ADRESSE = "/api/lifeskin-lager";
 export const KAUFKNOEPFE = ".hero [data-set], #setet [data-set], #zgjedhja [data-set], .closing [data-set], #sticky-buy, #kasa-dergo";
@@ -23,18 +28,34 @@ export function lagerText(sete) {
   return { leer: false, html: `Vetëm edhe <b>${sete === 1 ? "1 set" : `${sete} sete`}</b> në stok` };
 }
 
-export function aktionStarten({ dok = globalThis.document, jetzt = () => Date.now(), holen = globalThis.fetch?.bind(globalThis) } = {}) {
+export function aktionStarten({ dok = globalThis.document, aktion, jetzt = () => Date.now(), holen = globalThis.fetch?.bind(globalThis), beiEnde } = {}) {
   const block = dok?.getElementById?.("aktion");
   if (!block) return null;
-  const bis = Date.parse(block.dataset.aktionBis || "");
-  if (!Number.isFinite(bis) || jetzt() >= bis) {
+  if (!aktionLaeuft(aktion, jetzt())) {
     block.hidden = true;
     return null;
   }
+  const bis = Date.parse(aktion.bis);
+  const setze = (id, wert) => { const el = dok.getElementById(id); if (el) el.textContent = wert; };
+  const t = aktionTexte(aktion, jetzt());
+  block.dataset.aktionBis = aktion.bis;
+  setze("aktion-plakete", t.plakete);
+  setze("aktion-ende", t.ende);
+  setze("aktion-cmimi", `${t.cmimi} €`);
+  setze("aktion-vecmas", `${t.vecmas} €`);
+  setze("aktion-kursen", `−${t.kursen} €`);
+  setze("aktion-normal", t.normal);
+  for (const id of ["aktion-nga", "aktion-vecmas", "aktion-kursen"]) {
+    const el = dok.getElementById(id);
+    if (el) el.hidden = !t.kursen;
+  }
+  block.hidden = false;
+
   const uhr = dok.getElementById("aktion-mbetur");
   const stok = dok.getElementById("aktion-stok");
   const stokText = dok.getElementById("aktion-stok-tekst");
   let ausverkauft = false;
+  if (aktion.sete == null && stok) stok.hidden = true;
 
   const knoepfe = (gesperrt) => {
     for (const k of dok.querySelectorAll(KAUFKNOEPFE)) {
@@ -43,11 +64,15 @@ export function aktionStarten({ dok = globalThis.document, jetzt = () => Date.no
     }
   };
 
+  let zeitgeber = null, lagerZeit = null;
+  const stopp = () => { clearInterval(zeitgeber); clearInterval(lagerZeit); };
+
   const ticken = () => {
     if (jetzt() >= bis) {
       block.hidden = true;
       knoepfe(false);
-      clearInterval(zeitgeber);
+      stopp();
+      beiEnde?.();
       return;
     }
     if (uhr) uhr.textContent = restzeit(bis, jetzt());
@@ -56,7 +81,7 @@ export function aktionStarten({ dok = globalThis.document, jetzt = () => Date.no
   };
 
   const lager = async () => {
-    if (!holen || !stok || !stokText) return;
+    if (aktion.sete == null || !holen || !stok || !stokText) return;
     try {
       const antwort = await holen(LAGER_ADRESSE, { cache: "no-store" });
       const daten = antwort.ok ? await antwort.json() : null;
@@ -70,12 +95,15 @@ export function aktionStarten({ dok = globalThis.document, jetzt = () => Date.no
     } catch { /* ohne Antwort keine Lagerzeile */ }
   };
 
-  const zeitgeber = setInterval(ticken, 1000);
+  zeitgeber = setInterval(ticken, 1000);
+  zeitgeber?.unref?.();
   ticken();
-  lager();
-  const lagerZeit = setInterval(lager, 60000);
-  dok.addEventListener?.("visibilitychange", () => { if (dok.visibilityState === "visible") lager(); });
-  return { ticken, lager, stopp: () => { clearInterval(zeitgeber); clearInterval(lagerZeit); } };
+  if (jetzt() < bis) {
+    lager();
+    lagerZeit = setInterval(lager, 60000);
+    lagerZeit?.unref?.();
+    dok.addEventListener?.("visibilitychange", () => { if (dok.visibilityState === "visible") lager(); });
+  }
+  return { ticken, lager, stopp };
 }
 
-if (globalThis.document?.getElementById?.("aktion")) aktionStarten();

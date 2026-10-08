@@ -38,6 +38,8 @@ import {
 
 import { medienListe, ausschnittStil } from "../../shared/lifeskin-medien.js";
 import { PAK_SETE } from "../../shared/lifeskin-oferta.js";
+import { AKTION_DOK, AKTION_STANDARD, aktionNormalisieren, aktionLaeuft } from "../../shared/lifeskin-aktion.js";
+import { aktionStarten } from "./aktion.js";
 import { SHOP_ABSCHNITTE, shopSichtPatch } from "../../shared/lifeskin-shopsicht.js";
 import { schirmGesehen } from "../../shared/lifeskin-landingtiefe.js";
 
@@ -164,6 +166,11 @@ export function einzelAusSets(mittel, setet) {
 // Current campaign sells only this complete duo; Heart still owns its title and images.
 export function acneDuoSets(sets) {
   return (sets || []).filter(s => s.produkte?.length === 2 && s.produkte.includes('lf-acne') && s.produkte.includes('lf-moistur')).slice(0, 1);
+}
+// DIE ZBRITJE AUS HEART (09.10., shared/lifeskin-aktion.js): Solange sie
+// laeuft, kostet das Duo den Aktionspreis; danach wieder den Set-Preis.
+export function mitAktion(sets, aktion, jetzt = Date.now()) {
+  return aktionLaeuft(aktion, jetzt) ? (sets || []).map((s) => ({ ...s, cmimi: aktion.cmimi })) : (sets || []);
 }
 export function acneDuoCart(cart, sets) {
   const duo=sets[0];
@@ -372,7 +379,8 @@ export class Dyqan {
     this.korb = korbLesen(this.speicher);
     this.mittel = mittelBauen([], this.#standardFotos(new Map()));
     this.angebotSetDok = SHOP_START_SETET;
-    this.setet = acneDuoSets(aktiveSetet(setetOderStandard(this.angebotSetDok)));
+    this.aktion = aktionNormalisieren(AKTION_STANDARD);
+    this.setet = mitAktion(acneDuoSets(aktiveSetet(setetOderStandard(this.angebotSetDok))), this.aktion);
     this.korb = acneDuoCart(this.korb, this.setet);
     korbSchreiben(this.speicher, this.korb);
     this.setFotos = new Map();
@@ -564,9 +572,13 @@ export class Dyqan {
     this.angebotLaedt = true;
     const status = $("#shop-preisstatus", this.dok);
     if (status) status.hidden = true;
+    // Die Zbritje parallel: fehlt das Dokument (oder das Netz), gilt die
+    // Voreinstellung AKTION_STANDARD.
+    const aktionLauf = holeDok(AKTION_DOK, this.holen).catch(() => null);
     try {
       const setDok = await holeDok(SETET_DOK, this.holen);
       if (setDok && !Array.isArray(setDok.lista)) throw new Error("invalid offer");
+      this.aktion = aktionNormalisieren((await aktionLauf) || AKTION_STANDARD);
       this.angebotSetDok = setDok || SHOP_START_SETET;
       this.angebotBereit = true;
       await this.#setetUebernehmen(this.angebotSetDok);
@@ -576,6 +588,19 @@ export class Dyqan {
       // Bei Netzfehler bleibt das veroeffentlichte 25-EUR-Angebot nutzbar.
       if (status) status.hidden = true;
     } finally { this.angebotLaedt = false; }
+    this.#aktionZeigen();
+  }
+
+  // Block ueber dem Kaufknopf (aktion.js). Am Ende zeigt der Laden von
+  // selbst wieder den Set-Preis aus Heart.
+  #aktionZeigen() {
+    this.aktionUhr?.stopp();
+    this.aktionUhr = aktionStarten({
+      dok: this.dok,
+      aktion: this.aktion,
+      holen: (...a) => this.holen(...a),
+      beiEnde: () => { void this.#setetUebernehmen(this.angebotSetDok); }
+    });
   }
 
   // Wartet, bis das Set-Bild oben geladen ist (hoechstens 2,5 s).
@@ -731,9 +756,9 @@ export class Dyqan {
   // Die Sets aus Heart, nur mit Mitteln, die es zu kaufen gibt.
   async #setetUebernehmen(setDok) {
     const da = new Set(this.mittel.map((m) => m.id));
-    this.setet = acneDuoSets(aktiveSetet(setetOderStandard(setDok)))
+    this.setet = mitAktion(acneDuoSets(aktiveSetet(setetOderStandard(setDok)))
       .map((s) => ({ ...s, produkte: s.produkte.filter((id) => da.has(id)) }))
-      .filter((s) => s.produkte.length === 2);
+      .filter((s) => s.produkte.length === 2), this.aktion);
     // Der Korb darf nur Mittel tragen, die es noch gibt. Ein Angebot aus
     // dem Chat (chatBestellen) bleibt, wie es ist.
     if (!istChatKorb(this.korb)) this.korb = acneDuoCart(this.korb, this.setet);

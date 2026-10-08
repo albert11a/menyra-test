@@ -1,22 +1,22 @@
 // DAS LAGER DER AKTION - wie viele Sets noch da sind (08.10., Inhaber).
 //
-// Der Laden zeigt "Vetëm edhe 2 sete në stok". Damit die Zahl fuer jeden
+// Der Laden zeigt "Vetëm edhe 6 sete në stok". Damit die Zahl fuer jeden
 // Besucher dieselbe und echt ist, zaehlt diese Funktion die echten
-// Bestellungen aus dem Laden seit Beginn der Aktion (order.burimi =
+// Bestellungen aus dem Laden seit dem Speichern in Heart (order.burimi =
 // "lifeskinshop", ohne stille und Test-Bestellungen) und zieht sie vom
-// Anfangsbestand ab. Zurueck geht NUR die Zahl - keine Namen, keine
-// Nummern, keine Bestellungen.
+// Bestand ab. Zurueck geht NUR die Zahl - keine Namen, keine Nummern,
+// keine Bestellungen.
 //
+// Bestand und Beginn stehen seit 09.10. in Heart (config/shopAktion, siehe
+// shared/lifeskin-aktion.js); ohne Dokument gilt AKTION_STANDARD.
 // Bestellungen per WhatsApp oder Instagram sieht die Funktion nicht. Geht
-// dort ein Set weg, muss LAGER_START unten angepasst werden.
+// dort ein Set weg: in Heart die neue Zahl eintragen und speichern.
 //
 // Schluessel wie api/lifeskin-meldung.js: MNYRA_FIREBASE_ADMIN_KEY in Vercel.
 // Ohne ihn antwortet die Funktion 503, und der Laden zeigt keine Lagerzeile.
 
 import crypto from "node:crypto";
-
-// Anfangsbestand und Beginn der Aktion (Inhaber, 08.10.2026, 19:28 Kosovo).
-export const LAGER_START = { sete: 2, ab: "2026-10-08T17:28:00.000Z" };
+import { AKTION_DOK, AKTION_STANDARD, aktionNormalisieren, aktionLaeuft } from "../shared/lifeskin-aktion.js";
 
 const PROJEKT = "menyra-c0e68";
 const DOKUMENTE = `https://firestore.googleapis.com/v1/projects/${PROJEKT}/databases/(default)/documents`;
@@ -54,7 +54,7 @@ const text = (f) => (f && typeof f === "object" && "stringValue" in f ? f.string
 const wahr = (f) => Boolean(f && typeof f === "object" && f.booleanValue === true);
 
 // Zaehlt eine Sitzung als echte Bestellung aus dem Laden seit Beginn?
-export function istLagerBestellung(felder, ab = LAGER_START.ab) {
+export function istLagerBestellung(felder, ab) {
   const order = felder?.order?.mapValue?.fields || {};
   if (text(order.burimi) !== "lifeskinshop") return false;
   if (wahr(order.still)) return false;
@@ -63,8 +63,23 @@ export function istLagerBestellung(felder, ab = LAGER_START.ab) {
   return text(order.createdAt) >= ab;
 }
 
-export function restSete(anzahl, start = LAGER_START.sete) {
+export function restSete(anzahl, start) {
   return Math.max(0, start - anzahl);
+}
+
+// Firestore-REST-Felder -> einfache Werte (nur was die Aktion braucht).
+export function aktionAusFeldern(felder) {
+  const roh = {};
+  for (const [k, f] of Object.entries(felder || {})) {
+    if (f && typeof f === "object") {
+      if ("stringValue" in f) roh[k] = f.stringValue;
+      else if ("integerValue" in f) roh[k] = Number(f.integerValue);
+      else if ("doubleValue" in f) roh[k] = Number(f.doubleValue);
+      else if ("booleanValue" in f) roh[k] = f.booleanValue;
+      else if ("nullValue" in f) roh[k] = null;
+    }
+  }
+  return aktionNormalisieren(roh);
 }
 
 export default async function lifeskinLager(req, res) {
@@ -80,12 +95,24 @@ export default async function lifeskinLager(req, res) {
   }
   try {
     const token = await zugangHolen(k);
+    const dokAntwort = await fetch(`${DOKUMENTE}/lifeskin/lifeskin/config/${AKTION_DOK}`, {
+      headers: { authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!dokAntwort.ok && dokAntwort.status !== 404) throw new Error(`Aktion ${dokAntwort.status}`);
+    const aktion = dokAntwort.status === 404 ? aktionNormalisieren(AKTION_STANDARD) : aktionAusFeldern((await dokAntwort.json()).fields);
+    // Keine laufende Aktion oder kein Bestand eingetragen: keine Lagerzeile.
+    if (!aktionLaeuft(aktion) || aktion.sete == null || !aktion.ab) {
+      res.statusCode = 200;
+      res.end(JSON.stringify({ ok: true, sete: null }));
+      return;
+    }
     const antwort = await fetch(`${DOKUMENTE}/lifeskin/lifeskin:runQuery`, {
       method: "POST",
       headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
       body: JSON.stringify({ structuredQuery: {
         from: [{ collectionId: "sessions" }],
-        where: { fieldFilter: { field: { fieldPath: "order.createdAt" }, op: "GREATER_THAN_OR_EQUAL", value: { stringValue: LAGER_START.ab } } },
+        where: { fieldFilter: { field: { fieldPath: "order.createdAt" }, op: "GREATER_THAN_OR_EQUAL", value: { stringValue: aktion.ab } } },
         select: { fields: [{ fieldPath: "order.burimi" }, { fieldPath: "order.still" }, { fieldPath: "order.createdAt" }, { fieldPath: "source.utmCampaign" }] },
         limit: 300
       } }),
@@ -93,9 +120,9 @@ export default async function lifeskinLager(req, res) {
     });
     if (!antwort.ok) throw new Error(`Lesen ${antwort.status}`);
     const zeilen = await antwort.json();
-    const bestellt = zeilen.filter((z) => z.document && istLagerBestellung(z.document.fields)).length;
+    const bestellt = zeilen.filter((z) => z.document && istLagerBestellung(z.document.fields, aktion.ab)).length;
     res.statusCode = 200;
-    res.end(JSON.stringify({ ok: true, sete: restSete(bestellt) }));
+    res.end(JSON.stringify({ ok: true, sete: restSete(bestellt, aktion.sete) }));
   } catch {
     res.statusCode = 502;
     res.end(JSON.stringify({ ok: false }));

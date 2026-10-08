@@ -113,11 +113,11 @@ test('slow case index and large media cannot block the authoritative price', asy
   globalThis.IntersectionObserver = class { constructor(fn) { onVisible = fn; } observe() {} disconnect() {} };
   const index = deferred(), requests = [];
   try {
-    const f = fixture(async url => { requests.push(url); if (url.endsWith('/shopSetet')) return offer(19); if (url.endsWith('/raste')) return index.promise; throw Error('unexpected optional request'); });
+    const f = fixture(async url => { requests.push(url); if (url.endsWith('/shopSetet')) return offer(19); if (url.endsWith('/shopAktion')) return response({ aktiv: false }); if (url.endsWith('/raste')) return index.promise; throw Error('unexpected optional request'); });
     const loading = f.shop.laden(); await tick();
     assert.equal(f.shop.angebotBereit, true);
     assert.equal(f.price.textContent, '19 €');
-    assert.equal(requests.length, 3, 'customer media starts independently; optional product images still wait');
+    assert.equal(requests.length, 4, 'price, zbritje and customer media start independently; optional product images still wait');
     assert.equal(typeof onVisible, 'function');
     index.resolve({ status: 404, ok: false }); await loading;
     assert.equal(f.node('#proof-bahn').children.length, 3);
@@ -132,6 +132,7 @@ test('photo and video rail loads even when empty rail never intersects', async (
     const f = fixture(async url => {
       requests.push(url);
       if (url.endsWith('/shopSetet')) return offer(19);
+      if (url.endsWith('/shopAktion')) return response({ aktiv: false });
       if (url.endsWith('/raste')) return { ok: false, status: 404 };
       if (url.includes('/medien?')) return pendingMedia.promise;
       throw Error('unexpected product request');
