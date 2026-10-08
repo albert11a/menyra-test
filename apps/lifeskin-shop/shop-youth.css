@@ -440,3 +440,9 @@
  #ls-einstieg .page .vorteile2{order:6;margin-top:24px}
  #ls-einstieg .page .visual-caption{order:7}
 }
+/* EINBLENDEN BEIM SCROLLEN (08.10., Inhaber): einblenden.js setzt .ls-rein nur
+   auf Abschnitte unter dem ersten Bildschirm; im Bild gleiten sie von unten
+   herein. Ohne Skript oder mit "weniger Bewegung" bleibt alles sichtbar. */
+#ls-einstieg .ls-rein{opacity:0;transform:translateY(28px);transition:opacity .6s ease,transform .7s cubic-bezier(.2,.7,.2,1);transition-delay:var(--rein-verz,0ms)}
+#ls-einstieg .ls-rein.ls-rein--da{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){#ls-einstieg .ls-rein{opacity:1;transform:none;transition:none}}

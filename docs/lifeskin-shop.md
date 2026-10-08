@@ -9,6 +9,16 @@ Wegen (getrennt gezaehlt, gleiche Funktionen), Pixel fuer alles Relevante,
 Sets/Einzelmittel/Vorher-Nachher aus Heart pflegbar, eigenes Dashboard in
 Heart.
 
+## Einblenden beim Scrollen (08.10.)
+
+Auftrag Inhaber: Abschnitte kommen beim Scrollen von unten herein.
+`apps/lifeskin-shop/einblenden.js` markiert nur Ziele unter dem ersten
+Bildschirm (Kopf nie) und blendet sie im Bild ein (0,6 s, leicht versetzt).
+Ohne Skript, ohne IntersectionObserver oder bei "weniger Bewegung" bleibt
+alles sichtbar. Keine Ziele mit festen Elementen (Kaufleiste, Chat, Kasse).
+Nur Darstellung - keine Zaehlung, kein Pixel. Test:
+`tests/lifeskinshop-einblenden.test.mjs`.
+
 ## Set-Bild aus Heart oben (08.10.)
 
 Auftrag Inhaber: oben das Set-Bild aus Heart, "Largo aknet. Shijoje
