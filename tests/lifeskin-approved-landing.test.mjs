@@ -77,8 +77,10 @@ test("the approved landing explains therapy and has two swipeable galleries", ()
     assert.ok(html.includes(`id="${id}"`), id);
   }
   assert.match(html, /Analiza e lekures/);
-  assert.match(html, /Dr\. Gashi e shikon dhe e analizon/);
-  assert.ok(html.indexOf('class="care') < html.indexOf('class="customers'));
+  assert.match(html, /Dr\. Gashi<br>e analizon/);
+  assert.ok(html.indexOf('class="content process"') < html.indexOf('id="rezultatet"'));
+  assert.ok(html.indexOf('class="plan-pills"') < html.indexOf('class="content community"'));
+  assert.match(html, /Analiza • Terapia/);
   assert.doesNotMatch(html, /class="product-section"|data-clinical-start|↗️/);
 });
 
