@@ -265,7 +265,8 @@ test("Acne-Duo-Kampagne laesst keine weiteren Sets oder halben Koerbe zu", async
   assert.doesNotMatch(duoCard({...duo,cmimi:60},[]),/ZBRITJE/, "kein Rabatt ueber den Einzelpreisen");
   assert.deepEqual(acneDuoCart({ids:duo.produkte},[]),{ids:[],set:""});
   const card=duoCard(duo,[]);
-  assert.equal((card.match(/<details/g)||[]).length,3, "ein Aufklapper fuer Anwendung, je ein 'Lexo më shumë'");
+  // Seit 09.10. (Inhaber): "Përdorimi dhe përbërja" steht in den Tabs im Kopf.
+  assert.equal((card.match(/<details/g)||[]).length,0, "kein Aufklapper mehr in der Duo-Karte");
   // Seit 30.09. (Inhaber) kurz: "BPO 5 %".
   assert.match(card,/BPO 5 %/);
   // Seit 07.10. (Inhaber, Einschraenkung durch Meta): kein Vergleichspreis,

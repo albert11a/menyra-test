@@ -172,6 +172,16 @@ export function acneDuoSets(sets) {
 export function mitAktion(sets, aktion, jetzt = Date.now()) {
   return aktionLaeuft(aktion, jetzt) ? (sets || []).map((s) => ({ ...s, cmimi: aktion.cmimi })) : (sets || []);
 }
+// Die Sets im Menu oben links, "Trajtimet" (09.10., Inhaber): wie im Laden,
+// Bild, Name, Preis, Porosit. Das Duo heisst im Laden "Acne Duo"; der Name
+// aus Heart steht klein darunter.
+export function menuKarte(s, bild, { zbritje = false } = {}) {
+  const duo = s.produkte?.length === 2 && s.produkte.includes('lf-acne') && s.produkte.includes('lf-moistur');
+  const emri = duo ? 'Acne Duo' : s.titulli;
+  const lloji = duo ? s.titulli : (s.nevoja || '');
+  const vecmas = (s.produkte?.length || 2) * preisFuer(1);
+  return `<article class="menu-set"><div class="menu-set__foto">${bild ? `<img src="${e(bild)}" alt="${e(emri)}" loading="lazy" decoding="async"${duo ? ' data-hero-bild' : ''}>` : ''}</div><div class="menu-set__trup"><p class="menu-set__emri">${e(emri)}</p>${lloji ? `<p class="menu-set__lloji">${e(lloji)}</p>` : ''}<p class="menu-set__tekst">${e(s.teksti || '')}</p><div class="menu-set__fund"><span class="menu-set__cmimi">${zbritje && vecmas > setPreis(s) ? `<del>${vecmas} €</del>` : ''}<strong>${setPreis(s)} €</strong></span><button type="button" class="cta menu-set__knopf" data-set="${e(s.id)}">Porosit</button></div></div></article>`;
+}
 export function acneDuoCart(cart, sets) {
   const duo=sets[0];
   const complete=duo && cart.ids?.length===2 && duo.produkte.every(id=>cart.ids.includes(id));
@@ -219,8 +229,8 @@ export function duoCard(s, mittel, { fotos = true } = {}) {
     // Standardfoto beim Neuladen auf das Foto aus Heart.
     return `<div class="duo-hap">${foto ? `<img class="duo-hap-foto" src="${e(foto)}" width="72" height="90" alt="${emri(h)}" loading="lazy" decoding="async">` : '<span class="duo-hap-foto duo-hap-foto--leer" aria-hidden="true"></span>'}<div><small>${h.hapi}</small><h3>${emri(h)} <span>${e(m?.inhalt || '30 ml')}</span></h3><p class="duo-aktiv">${h.aktiv}</p><p class="duo-dobi">${h.dobi}</p></div></div>`;
   }).join('');
-  const detaje=DUO_HAPAT.map(h=>`<h4>${emri(h)}</h4><p><b>Si përdoret:</b> ${h.si}</p><p class="duo-inci"><b>Përbërja kryesore:</b> ${h.kryesore}</p><details class="duo-inci-mehr"><summary>Lexo më shumë</summary><p class="duo-inci">${h.perberja}</p></details>`).join('');
-  return `<article class="duo-card"><div class="duo-hapat">${hapat}</div><details class="duo-product"><summary><span class="duo-product-ikona">${ikone('FlaskConical')}</span><span class="duo-product-teksti">Përdorimi dhe përbërja<small>Si përdoret · përbërësit</small></span>${ikone('Plus')}</summary><div class="duo-product-body">${detaje}<p class="duo-shenim">Pa parfum · Kujdes dermatologjik nga Gjermania</p></div></details><div class="duo-ndjekje"><p class="duo-ndjekje-titull">${ikone('Stethoscope')}<b>Përfshirë në çmim</b></p><ul><li>${ikone('Check')}Mbështetje personale nga Dr. Violeta Gashi</li><li>${ikone('Check')}Plan ushqimor kundër akneve</li><li>${ikone('Check')}Këshilla për gjumin, stresin dhe kujdesin ditor</li><li>${ikone('Check')}Ndihmë e personalizuar gjatë gjithë kurës</li></ul></div><div class="duo-cmimi"><span class="duo-cmimi-etiketa">Çmimi:</span><span class="duo-cmimi-vlera">${zbritje ? `<s data-preis="vecmas" data-preis-zbritje>${vecmas} €</s>` : ""}<strong data-preis="cmimi">${price} €</strong></span>${zbritje ? `<em class="zbritje" data-preis="zbritje-fjale" data-preis-zbritje>ZBRITJE −${zbritje} %</em>` : "<span></span>"}${PAK_SETE ? PAK_SETE_ZEILE : "<span></span>"}</div><button type="button" class="primary" data-set="${e(s.id)}"><span>Porosit setin · <span data-preis="cmimi">${price} €</span></span> ${ikone('ArrowUpRight')}</button><ul class="besim"><li>${ikone('Truck')}1–3 ditë</li><li>${ikone('Banknote')}Paguani te dera</li><li>${ikone('ShieldCheck')}45 ditë garanci</li></ul></article>`;
+  // "Përdorimi dhe përbërja" steht seit 09.10. in den Tabs im Kopf (Inhaber).
+  return `<article class="duo-card"><div class="duo-hapat">${hapat}</div><div class="duo-ndjekje"><p class="duo-ndjekje-titull">${ikone('Stethoscope')}<b>Përfshirë në çmim</b></p><ul><li>${ikone('Check')}Mbështetje personale nga Dr. Violeta Gashi</li><li>${ikone('Check')}Plan ushqimor kundër akneve</li><li>${ikone('Check')}Këshilla për gjumin, stresin dhe kujdesin ditor</li><li>${ikone('Check')}Ndihmë e personalizuar gjatë gjithë kurës</li></ul></div><div class="duo-cmimi"><span class="duo-cmimi-etiketa">Çmimi:</span><span class="duo-cmimi-vlera">${zbritje ? `<s data-preis="vecmas" data-preis-zbritje>${vecmas} €</s>` : ""}<strong data-preis="cmimi">${price} €</strong></span>${zbritje ? `<em class="zbritje" data-preis="zbritje-fjale" data-preis-zbritje>ZBRITJE −${zbritje} %</em>` : "<span></span>"}${PAK_SETE ? PAK_SETE_ZEILE : "<span></span>"}</div><button type="button" class="primary" data-set="${e(s.id)}"><span>Porosit setin · <span data-preis="cmimi">${price} €</span></span> ${ikone('ArrowUpRight')}</button><ul class="besim"><li>${ikone('Truck')}1–3 ditë</li><li>${ikone('Banknote')}Paguani te dera</li><li>${ikone('ShieldCheck')}45 ditë garanci</li></ul></article>`;
 }
 
 // KLEINE KACHELN WIE AUF DER THERAPIESEITE (Wunsch Inhaber 29.09.): eine
@@ -781,8 +791,10 @@ export class Dyqan {
     const raster = $("#set-grid", this.dok);
     if (!raster) return;
     const available = this.angebotBereit && this.setet.length > 0;
-    for (const button of this.dok.querySelectorAll('.hero [data-set], #setet [data-set], #zgjedhja [data-set], .closing [data-set], #sticky-buy')) button.disabled = !available;
+    for (const button of this.dok.querySelectorAll('.hero [data-set], #setet [data-set], #zgjedhja [data-set], .closing [data-set], #sticky-buy, #menu [data-set]')) button.disabled = !available;
     if (!this.angebotBereit) return;
+    const menuSetet = $("#menu-setet", this.dok);
+    if (menuSetet && available) menuSetet.innerHTML = this.setet.map((s) => menuKarte(s, this.setFotos.get(s.id) || s.foto || $(".hero-set > img", this.dok)?.getAttribute?.("src") || "/apps/lifeskin-shop/assets/set-hero.jpg", { zbritje: aktionLaeuft(this.aktion) })).join("");
     if (!available) { raster.innerHTML = '<p class="section-intro">Seti nuk është aktualisht i disponueshëm.</p>'; return; }
     raster.innerHTML = this.setet.map(s => duoCard(s, this.mittel, { fotos: this.fotosBereit })).join('');
     const numri = $("#set-numri", this.dok);
