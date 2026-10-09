@@ -126,8 +126,12 @@ test("/lifeskin: fallback pairs use compact frames without vertical letterboxes"
     assert.ok(comparison.includes(r.para.replace(/\.jpg$/, '.webp')));
     assert.ok(comparison.includes(r.pas.replace(/\.jpg$/, '.webp')));
   }
+  // Feste Rahmen, das Bild fuellt sie (object-fit: cover) - kein Balken
+  // oben oder unten. Seit der freigegebenen Mobil-Fassung vom 09.10.
+  // 263 px hoch, auf sehr kleinen Telefonen 238 px (vorher 168 px).
   const css = lies("apps/lifeskin-landing/redesign.css");
-  assert.match(css, /height:168px/);
-  assert.match(css, /object-fit:cover/);
+  assert.match(css, /#lf-preview \.pair\{display:flex;height:263px\}/);
+  assert.match(css, /@media\(max-width:360px\)\{#lf-preview \.pair\{height:238px\}/);
+  assert.match(css, /#lf-preview \.photo img\{display:block;width:100%;height:100%;object-fit:cover/);
   assert.match(css, /scroll-snap-type:x mandatory/);
 });

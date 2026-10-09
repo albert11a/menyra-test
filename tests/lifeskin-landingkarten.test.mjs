@@ -17,12 +17,29 @@ test("the redesign retains measurement selectors only for matching content", () 
   // Historical session fields and names remain unchanged. Removed benefit
   // cards are not falsely mapped to new content, and customer media does
   // not masquerade as the existing Instagram proof event.
+  //
+  // FREIGEGEBENE MOBIL-FASSUNG VOM 09.10.: Sie liess .lf-entry-card weg -
+  // und ohne sie startet die Messung gar nicht (starteLandingkarten). Seit
+  // 09.10. abends tragen die passenden Karten die Kennungen wieder, ohne
+  // sichtbare Aenderung (keine dieser Klassen hat CSS in den geladenen
+  // Dateien): Analiza = Smartphone-Karte oben, F.A.Q = #garancia.
+  // Die Instagram-Zeile gibt es nicht mehr. "Tash e din" (Karte 7) passt
+  // inhaltlich zu "03 Analiza - Terapia", steht aber VOR den Faellen (5) -
+  // Heart zaehlt nach Tiefe, jede Sicht dort zaehlte als "Para - Pas
+  // gesehen". Darum ohne Kennung.
   const html = lies("apps/lifeskin-landing/index.html");
-  for (const selector of ['lf-entry-card', 'id="rezultatet"', 'lf-warm-result', 'lf-faq', 'lf-community'])
+  assert.ok(html.includes(LANDING_KARTEN[0].wahl.slice(1)), "ohne die erste Karte startet die Messung nicht");
+  for (const selector of ['lf-entry-card', 'id="rezultatet"', 'lf-faq'])
     assert.ok(html.includes(selector), selector);
-  for (const selector of ['lf-benefit--therapy', 'lf-benefit--analysis', 'lf-benefit--scan'])
+  for (const selector of ['lf-benefit--therapy', 'lf-benefit--analysis', 'lf-benefit--scan', 'lf-warm-result', 'lf-community'])
     assert.ok(!html.includes(selector), selector);
-  assert.match(html, /class="lf-community" id="komuniteti"><a href="https:\/\/www\.instagram\.com/);
+  // Die gemessenen Karten stehen auf der Seite in der Reihenfolge ihrer
+  // Nummern - sonst stimmt die Tiefe in Heart nicht.
+  const stellen = LANDING_KARTEN
+    .map((k) => html.indexOf(k.wahl.startsWith("#") ? `id="${k.wahl.slice(1)}"` : k.wahl.slice(1)))
+    .filter((stelle) => stelle >= 0);
+  assert.equal(stellen.length, 3);
+  assert.deepEqual(stellen, [...stellen].sort((a, b) => a - b));
   assert.deepEqual(LANDING_KARTEN.map(k => k.id),
     ['analiza', 'terapi', 'analizaDetaj', 'skanim', 'paraPas', 'instagram', 'tashEDin', 'faq']);
 });
