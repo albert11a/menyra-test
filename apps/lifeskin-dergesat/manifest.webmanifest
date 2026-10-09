@@ -1,0 +1,17 @@
+{
+  "name": "Dërgesat · LifeSkin",
+  "short_name": "Dërgesat",
+  "description": "Dërgesat me Posta Beki.",
+  "id": "/dergesat",
+  "lang": "sq",
+  "start_url": "/dergesat",
+  "scope": "/dergesat",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f5f1",
+  "theme_color": "#f6f5f1",
+  "icons": [
+    { "src": "/apps/lifeskin-dergesat/assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/apps/lifeskin-dergesat/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
