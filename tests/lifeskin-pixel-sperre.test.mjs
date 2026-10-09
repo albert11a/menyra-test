@@ -49,12 +49,16 @@ const HINWEIS = "Meta-Pixel/Conversions API geaendert. Das ist gesperrt: nur mit
 // Nutzerdaten - der Firestore-Ausloeser wartet 45 s und laesst Vercel (mit
 // IP und _fbp) zuerst senden; die Marke speichert die Browserangaben als
 // Karte, damit Wiederholungen sie behalten. Keine neuen Ereignisse/Namen.
+// Pixel-Aenderung erlaubt von Albert am 09.10.2026 (zweiter Auftrag): eventID
+// an jedem Browser-Ereignis (eigene Namen einmalig, Kauf/Lead/Warteseite
+// fest wie bisher); ph nimmt "044/123/456" und streicht "(0)" nach der
+// Laendervorwahl.
 const DATEIEN = Object.freeze({
-  "apps/lifeskin/lifeskin-pixel.js": "c9fa98c2ff90c9a0",
+  "apps/lifeskin/lifeskin-pixel.js": "2bca5c7c29e4f675",
   "shared/lifeskin-zustimmung.js": "adec1f5739b5ebbc",
   // Pixel-Aenderung erlaubt von Albert (albert11a, Inhaber) am 28.09.2026:
   // Bestellungen aus dem stillen Modus (order.still) gehen nicht an die CAPI.
-  "functions/lifeskin-capi-payload.js": "cff0afe201cadbec",
+  "functions/lifeskin-capi-payload.js": "ce97b95ec688982a",
   "functions/lifeskin-capi-versand.js": "a9e20d0c8088c119",
   "functions/lifeskin-capi.js": "c95d60baa537353c",
   "api/lifeskin-capi.js": "6452dc7f0274ab16",
@@ -99,7 +103,9 @@ export function pixelZeilen(pfad) {
 // mehr fuer den blossen Preis.
 // Pixel-Aenderung erlaubt von Albert am 01.10.2026: Lead mit Fallnummer als
 // eventID (meldeLead(code)) im Trichter und auf der Warteseite.
-const SEITEN_HASH = "aaa5aed39cb9ac04";
+// Pixel-Aenderung erlaubt von Albert am 09.10.2026: die Abschnitte der
+// Landingpage (landing.js) melden mit einmaliger eventID.
+const SEITEN_HASH = "260bd7ed3efb8054";
 
 test("Meta-Pixel-Sperre: die Pixel-Dateien sind unveraendert", () => {
   for (const [pfad, erwartet] of Object.entries(DATEIEN)) {
