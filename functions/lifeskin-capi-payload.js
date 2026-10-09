@@ -79,16 +79,22 @@ function besucherDaten(order, herkunft = null, browser = null) {
 
 // Kosovo/Albanien/Oesterreich: internationale Nummern erhalten ihren
 // Laendercode, lokale Kosovo-Nummern bekommen 383. Keine geratenen Fremdnummern.
+//
+// WIE GETIPPT WIRD (Pixel-Aenderung erlaubt von Albert am 09.10.2026):
+// "044/123/456" fiel wegen der Schraegstriche ganz weg, und "+383 (0)44 ..."
+// wurde zu "383044..." - einer Nummer, die es nicht gibt. Die Null nach der
+// Laendervorwahl ist die Inlandsvorwahl und gehoert nie zur Nummer.
 function telefonNormalisieren(wert) {
   const roh = text(wert);
-  if (!roh || !/^[+\d\s().-]+$/.test(roh)) return "";
-  let nummer = roh.replace(/[^\d]/g, "");
+  if (!roh || !/^[+\d\s()./-]+$/.test(roh)) return "";
+  let nummer = roh.replace(/\(0\)/g, "").replace(/[^\d]/g, "");
   if (roh.startsWith("+")) {
     if (!/^\s*\+[^+]*$/.test(roh)) return "";
   } else if (nummer.startsWith("00")) nummer = nummer.slice(2);
   else if (/^0[34]\d{7}$/.test(nummer)) nummer = `383${nummer.slice(1)}`;
   else if (/^[34]\d{7}$/.test(nummer)) nummer = `383${nummer}`;
   else if (!/^(383|355|43)/.test(nummer)) return "";
+  nummer = nummer.replace(/^(383|355|43|49|41)0/, "$1");
   return /^[1-9]\d{7,14}$/.test(nummer) ? nummer : "";
 }
 

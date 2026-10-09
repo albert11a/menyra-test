@@ -1156,8 +1156,27 @@ Karte. Keine neuen Ereignisse, keine anderen Namen, kein anderer Inhalt.
 hier - beide Sender bauen nur Purchase, Lead und
 lifeskin_waiting_reached. Am wahrscheinlichsten ist die 1-Klick-
 Verbindung "Mit Meta konfigurieren" (siehe unten), die jedes
-Pixel-Ereignis in den Server-Kanal kopiert. Pruefen und ausschalten im
-Ereignismanager (LF WEB -> Einstellungen -> Conversions API).
+Pixel-Ereignis in den Server-Kanal kopiert. Pruefen im Ereignismanager
+(LF WEB -> Einstellungen -> Conversions API). ACHTUNG: Die Verknuepfung
+"Conversions API - Nur Web - Unternehmen verknuepft" vom 21.09.2026 ist
+unsere eigene (der Zugriffstoken dieser zwei Sender) - nicht trennen.
+
+Seit dem 09.10. (Pixel-Aenderung erlaubt von Albert am 09.10.2026) traegt
+JEDES Browser-Ereignis eine eventID - eigene Namen und die Abschnitte der
+Landingpage eine einmalige (`ereignisKennung` in lifeskin-pixel.js,
+`kennung` in landing.js), Kauf/Lead/Warteseite weiter ihre feste. Eine
+Kopie im Server-Kanal, die die Kennung des Browsers mitnimmt, legt Meta
+damit zusammen.
+
+Die Telefonnummer fuer `ph` (`telefonNormalisieren`) nimmt seitdem auch
+Schraegstriche ("044/123/456") und streicht die Inlandsnull nach der
+Laendervorwahl ("+383 (0)44 ..."). Auslaendische Nummern ohne Vorwahl
+bleiben draussen.
+
+**Manueller erweiterter Abgleich im Browser** (Metas Empfehlung
+`fbq('init', id, { ph })`): Meta nimmt ihn nur beim ersten `init`. Im
+Trichter und im Laden startet der Pixel, bevor jemand eine Nummer tippt;
+die Nummer geht deshalb nur ueber die Conversions API (`ph`, gehasht).
 
 #### Was Meta im Assistenten anbietet, und was davon taugt
 

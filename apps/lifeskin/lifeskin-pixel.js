@@ -236,6 +236,15 @@ export function browserAngaben({ nav = globalThis.navigator, ort = globalThis.lo
   return raus;
 }
 
+// Eine Kennung fuer ein Ereignis ohne eigene (Bestellung, Lead, Warteseite
+// haben ihre). Einmalig je Meldung; sie sagt nichts ueber den Besucher.
+export function ereignisKennung(ereignis, zufall = globalThis.crypto) {
+  let teil = "";
+  try { teil = zufall?.randomUUID?.() || ""; } catch { /* unten */ }
+  if (!teil) teil = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+  return `${ereignis}.${teil}`;
+}
+
 export class Pixel {
   // fbq wird durchgereicht, damit der Test nicht das halbe Fenster nachbauen
   // muss. Im Betrieb steht dort nichts und es gilt globalThis.fbq.
@@ -409,7 +418,11 @@ export class Pixel {
     try {
       // Die Kennung der Bestellung ist Metas Schutz gegen Doppelzaehlung,
       // falls spaeter noch eine serverseitige Meldung dazukommt.
-      const anhang = kennung ? { eventID: kennung } : undefined;
+      // JEDES EREIGNIS MIT KENNUNG (Pixel-Aenderung erlaubt von Albert am
+      // 09.10.2026): Meta meldete eigene Namen "vom Server, nicht
+      // dedupliziert, da kein event_id". Ohne Kennung kann Meta eine Kopie
+      // im Server-Kanal nie mit dem Browser zusammenlegen.
+      const anhang = { eventID: kennung || ereignisKennung(ereignis) };
       // EIGENE NAMEN GEHEN ANDERS HINAUS ALS METAS EIGENE.
       //
       // "track" mit einem Namen, den Meta nicht kennt, wird verworfen -
