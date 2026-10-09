@@ -227,6 +227,11 @@ test("Lead: einmal, mit eigener Marke neben der des Kaufs", async () => {
     assert.equal(w.anMeta[0].koerper.data[0].event_name, "Lead");
     assert.equal(w.anMeta[0].koerper.data[0].event_id, "LS-0110-ABCDE-lead");
     assert.equal(w.docs.get(`${MARKE}_lead`).fields.status.stringValue, "gesendet");
+    // Die Angaben des Browsers liegen als Karte in der Marke, nicht als
+    // "[object Object]" - lifeskinCapiRetry sendet nur mit ihnen IP und UA.
+    const browser = w.docs.get(`${MARKE}_lead`).fields.browser;
+    assert.equal(browser.mapValue?.fields?.ip?.stringValue, "203.0.113.9");
+    assert.equal(browser.mapValue?.fields?.ua?.stringValue, "Mozilla/5.0 (Test)");
     // Ein Kauf-Anstoss bringt kein Lead mit, ein Lead-Anstoss keinen Kauf.
     assert.equal((await aufruf(w, { id: SITZUNG_ID, art: "kauf" })).daten.ergebnisse.length, 0);
   });

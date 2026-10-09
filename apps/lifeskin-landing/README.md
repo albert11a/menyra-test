@@ -1130,6 +1130,35 @@ melden, wenn der erste ankam und nur die Antwort verloren ging - und ein
 doppelter Kauf in der Messung ist schlimmer als ein fehlender. Was
 ausfaellt, steht im Protokoll.
 
+#### Zwei Sender, eine Marke - Vercel zuerst (09.10.2026)
+
+Pixel-Aenderung erlaubt von Albert am 09.10.2026. Metas Diagnose meldete
+"IP-Adressparameter fehlt" (Purchase, lifeskin_waiting_reached) und
+"User-Data-Parameter fehlt" (dazu Lead). Ursache: Zwei Server melden
+dieselben Ereignisse und laufen um dieselbe Marke in `capiEvents` -
+`api/lifeskin-capi.js` (Vercel, vom Browser angestossen, kennt IP,
+User-Agent, `_fbp`, `_fbc`) und der Firestore-Ausloeser in
+`functions/lifeskin-capi.js` (sieht den Browser nie: keine IP, kein
+`_fbp`). Gewann der Ausloeser, ging das Ereignis nur mit User-Agent
+hinaus. Und Vercel schrieb die Browserangaben als Text
+`"[object Object]"` in die Marke - jede Wiederholung durch
+`lifeskinCapiRetry` ging ohne sie an Meta.
+
+Seitdem: Der Ausloeser wartet 45 s (Browser-Versuche nach 0, 3 und
+20 s), bevor er die Marke anlegen will; hat Vercel gemeldet, sendet er
+nicht. Er bleibt der Ersatz, wenn der Browser Vercel nie erreicht -
+dann weiterhin ohne IP. Die Marke speichert die Browserangaben als
+Karte. Keine neuen Ereignisse, keine anderen Namen, kein anderer Inhalt.
+
+**Nicht aus dem Code:** Meldet Meta eigene Namen (etwa
+`lifeskin_body_problem_completed`, `lifeskin_instagram_proof_view`) als
+"vom Server, nicht dedupliziert", kommen die Server-Kopien nicht von
+hier - beide Sender bauen nur Purchase, Lead und
+lifeskin_waiting_reached. Am wahrscheinlichsten ist die 1-Klick-
+Verbindung "Mit Meta konfigurieren" (siehe unten), die jedes
+Pixel-Ereignis in den Server-Kanal kopiert. Pruefen und ausschalten im
+Ereignismanager (LF WEB -> Einstellungen -> Conversions API).
+
 #### Was Meta im Assistenten anbietet, und was davon taugt
 
 * **„Conversions API Gateway mit Birch"** (als „empfohlen" markiert) -

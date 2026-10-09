@@ -92,13 +92,16 @@ test("ohne Token und bei Firestore-Ausfall wird nie an Meta gesendet", async () 
   assert.equal(sends, 0);
 });
 
-function hintergrund(db) {
+// Statt 45 s zu warten, geht es sofort weiter; "gewartet" schreibt mit, wie
+// lange die Function wartet, "beimWarten" spielt, was in der Zeit geschieht.
+function hintergrund(db, { gewartet = [], beimWarten = () => {} } = {}) {
   const exports = {};
   const functions = { region: () => functions, runWith: () => functions,
     firestore: { document: () => ({ onWrite: (fn) => fn }) },
     pubsub: { schedule: () => ({ onRun: (fn) => fn }) } };
   vm.runInNewContext(readFileSync(new URL("../functions/lifeskin-capi.js", import.meta.url), "utf8"), {
     exports, process: { env: { META_CAPI_TOKEN: "test" } },
+    setTimeout: (fertig, ms) => { gewartet.push(ms); Promise.resolve(beimWarten()).then(fertig); },
     require: (name) => name === "firebase-functions" ? functions : name === "firebase-admin"
       ? { apps: [true], firestore: () => db } : name === "./logging"
       ? { buildEventLogContext: () => ({}), logFunctionInfo() {}, logFunctionError() {} }
@@ -135,5 +138,65 @@ test("Warteseite wird durch Firestore gemeldet, auch ohne Browser-Anstoss", asyn
     await fn.lifeskinCapiWaiting(change, { params: { tenantId: "lifeskin", sessionId: "abc123456" } });
     assert.equal(gesendet.length, 1); assert.equal(gesendet[0].event_id, warteKennung(sitzung.code));
     assert.equal(daten.get("lifeskin/lifeskin/capiEvents/abc123456_waiting").status, "gesendet");
+  } finally { globalThis.fetch = original; }
+});
+
+// ══ VERCEL ZUERST (Pixel-Aenderung erlaubt von Albert am 09.10.2026) ═══
+//
+// Meta meldete "IP-Adressparameter fehlt" und "User-Data-Parameter fehlt":
+// Der Firestore-Ausloeser sieht den Browser nie und gewann oft das Rennen
+// um die Marke gegen api/lifeskin-capi.js, das IP und _fbp kennt.
+test("Firestore-Ausloeser laesst Vercel den Vortritt: liegt die Marke nach dem Warten, sendet er nicht", async () => {
+  const { db, daten } = datenbank(); const sessionId = "vortritt123456";
+  const kauf = { ...sitzung, step: "ordered", order: { orderId: "ORDER-V", total: 54, createdAt: new Date(jetzt).toISOString(), ua: "KaufBrowser" } };
+  const gewartet = [];
+  // Waehrend die Function wartet, meldet der Browser ueber Vercel - mit IP.
+  const fn = hintergrund(db, { gewartet, beimWarten: () => daten.set(`lifeskin/lifeskin/capiEvents/${sessionId}`,
+    { status: "gesendet", versuche: 1, sender: "vercel", eventId: "ORDER-V" }) });
+  const original = globalThis.fetch; let sends = 0;
+  globalThis.fetch = async () => { sends++; return antwort(200, { events_received: 1 }); };
+  try {
+    await fn.lifeskinCapiPurchase({ before: { exists: false }, after: { exists: true, data: () => kauf } }, { params: { tenantId: "lifeskin", sessionId } });
+    assert.deepEqual(gewartet, [45000], "die Function wartet, bevor sie die Marke anlegt");
+    assert.equal(sends, 0, "Vercel hat schon gemeldet - kein zweites, IP-loses Purchase");
+    assert.equal(daten.get(`lifeskin/lifeskin/capiEvents/${sessionId}`).sender, "vercel");
+  } finally { globalThis.fetch = original; }
+});
+
+test("Firestore-Ausloeser bleibt Ersatz: ohne Vercel-Marke sendet er nach dem Warten", async () => {
+  const { db, daten } = datenbank(); const gewartet = []; const fn = hintergrund(db, { gewartet });
+  const original = globalThis.fetch; const gesendet = [];
+  globalThis.fetch = async (url, options) => { gesendet.push(JSON.parse(options.body).data[0]); return antwort(200, { events_received: 1 }); };
+  try {
+    const change = { before: { exists: true, data: () => ({ step: "aufbereitung" }) }, after: { exists: true, data: () => sitzung } };
+    await fn.lifeskinCapiWaiting(change, { params: { tenantId: "lifeskin", sessionId: "ersatz123456" } });
+    assert.deepEqual(gewartet, [45000]);
+    assert.equal(gesendet.length, 1);
+    assert.equal(daten.get("lifeskin/lifeskin/capiEvents/ersatz123456_waiting").status, "gesendet");
+  } finally { globalThis.fetch = original; }
+});
+
+test("Wiederholung im Hintergrund behaelt IP, User-Agent und Kennungen aus der Vercel-Marke", async () => {
+  const { db, daten } = datenbank(); const fn = hintergrund(db);
+  const sessionId = "wiederholung1234";
+  const kauf = { ...sitzung, step: "ordered", order: { orderId: "ORDER-W", total: 54, createdAt: new Date(jetzt).toISOString() } };
+  daten.set(`lifeskin/lifeskin/sessions/${sessionId}`, kauf);
+  const marke = { status: "fehler", versuche: 1, sender: "vercel", sessionId, eventId: "ORDER-W", eventName: "Purchase",
+    eventTime: Math.floor(jetzt / 1000), value: 54 };
+  daten.set(`lifeskin/lifeskin/capiEvents/${sessionId}`, { ...marke,
+    browser: { ip: "203.0.113.7", ua: "Mozilla/5.0 (Kauf)", fbp: "fb.1.1790000000000.42", seite: "https://www.mnyra.com/lifeskinshop" } });
+  // Eine Marke von vor dem 09.10.: Browser als Text. Sie geht weiter hinaus, nur ohne Browserangaben.
+  daten.set("lifeskin/lifeskin/capiEvents/alt123456789", { ...marke, sessionId: "alt123456789", browser: "[object Object]" });
+  daten.set("lifeskin/lifeskin/sessions/alt123456789", kauf);
+  const original = globalThis.fetch; const gesendet = [];
+  globalThis.fetch = async (url, options) => { gesendet.push(JSON.parse(options.body).data[0]); return antwort(200, { events_received: 1 }); };
+  try {
+    await fn.lifeskinCapiRetry();
+    assert.equal(gesendet.length, 2);
+    const neu = gesendet.find((e) => e.user_data.client_ip_address);
+    assert.equal(neu.user_data.client_ip_address, "203.0.113.7");
+    assert.equal(neu.user_data.client_user_agent, "Mozilla/5.0 (Kauf)");
+    assert.equal(neu.user_data.fbp, "fb.1.1790000000000.42");
+    assert.equal(daten.get(`lifeskin/lifeskin/capiEvents/${sessionId}`).mitIp, true);
   } finally { globalThis.fetch = original; }
 });

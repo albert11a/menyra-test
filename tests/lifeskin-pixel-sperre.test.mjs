@@ -45,6 +45,10 @@ const HINWEIS = "Meta-Pixel/Conversions API geaendert. Das ist gesperrt: nur mit
 // unter der Sperre.
 // Pixel-Aenderung erlaubt von Albert am 07.10.2026 (zweiter Auftrag): Fenster
 // "wie alle anderen Shops" - vorne "Pranoj" + "Cilësimet", Abwaehlen dort.
+// Pixel-Aenderung erlaubt von Albert am 09.10.2026: Server mit IP und
+// Nutzerdaten - der Firestore-Ausloeser wartet 45 s und laesst Vercel (mit
+// IP und _fbp) zuerst senden; die Marke speichert die Browserangaben als
+// Karte, damit Wiederholungen sie behalten. Keine neuen Ereignisse/Namen.
 const DATEIEN = Object.freeze({
   "apps/lifeskin/lifeskin-pixel.js": "c9fa98c2ff90c9a0",
   "shared/lifeskin-zustimmung.js": "adec1f5739b5ebbc",
@@ -52,8 +56,8 @@ const DATEIEN = Object.freeze({
   // Bestellungen aus dem stillen Modus (order.still) gehen nicht an die CAPI.
   "functions/lifeskin-capi-payload.js": "cff0afe201cadbec",
   "functions/lifeskin-capi-versand.js": "a9e20d0c8088c119",
-  "functions/lifeskin-capi.js": "191c7b6306a11b24",
-  "api/lifeskin-capi.js": "42ebf7a9c167bb5b",
+  "functions/lifeskin-capi.js": "c95d60baa537353c",
+  "api/lifeskin-capi.js": "6452dc7f0274ab16",
   "shared/lifeskin-capi-anstossen.js": "ebd17d59c01e266c"
 });
 
