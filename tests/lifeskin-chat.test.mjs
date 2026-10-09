@@ -184,3 +184,26 @@ test("Chat-Angebot in der Kasse: Preis der Karte, nur bekannte Produkte, Korb bl
   assert.equal(chatAnlegen({ sessionId: "s", code: "c" }).status, "offen");
   assert.equal(teamText(""), null);
 });
+
+// HANDY: FENSTER STABIL, NICHTS SCHEINT DURCH (09.10., Inhaber).
+test("Chat-Rahmen: offsetTop nur bei offener Tastatur, haengender Wert wird erkannt", async () => {
+  const { chatRahmen } = await import("../apps/lifeskin-shop/chat.js");
+  // Tastatur offen (sichtbar 400 von 844), iOS hat 120 px verschoben.
+  assert.deepEqual(chatRahmen({ vv: { height: 400, offsetTop: 120, scale: 1 }, innen: 844, tippt: true }), { h: 400, oben: 120, haengt: false });
+  // Tastatur zu, iOS 26 meldet noch 120: oben bleibt 0, Wert gilt als haengend.
+  assert.deepEqual(chatRahmen({ vv: { height: 844, offsetTop: 120, scale: 1 }, innen: 844, tippt: false }), { h: 844, oben: 0, haengt: true });
+  // Mit Zoom ist der Versatz echt - nicht zuruecksetzen.
+  assert.equal(chatRahmen({ vv: { height: 600, offsetTop: 80, scale: 1.5 }, innen: 844, tippt: false }).haengt, false);
+  // Nie ueber den Bildschirm hinaus.
+  assert.equal(chatRahmen({ vv: { height: 400, offsetTop: 900, scale: 1 }, innen: 844, tippt: true }).oben, 444);
+  // Ohne visualViewport: ganze Hoehe.
+  assert.deepEqual(chatRahmen({ vv: null, innen: 700, tippt: true }), { h: 700, oben: 0, haengt: false });
+});
+
+test("Chat auf dem Telefon deckt die Seite ganz ab, am Rechner bleibt er ein Fenster", () => {
+  const css = readFileSync(new URL("../apps/lifeskin-shop/chat.css", import.meta.url), "utf8");
+  assert.match(css, /@media \(max-width: 599px\) \{\s*#ls-einstieg \.chat::before \{\s*content: "";\s*position: fixed;\s*left: 0;\s*right: 0;\s*top: -100vh;\s*bottom: -100vh;\s*z-index: -1;\s*background: #f4f7f6;/);
+  const js = readFileSync(new URL("../apps/lifeskin-shop/chat.js", import.meta.url), "utf8");
+  assert.doesNotMatch(js, /addEventListener\("touchmove"/, "keine Wisch-Sperre (PR #45 war auf dem iPhone kaputt)");
+  assert.match(js, /this\.ansicht\.addEventListener\("focusin", nachmessen\)/);
+});
