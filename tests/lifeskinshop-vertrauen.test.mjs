@@ -15,8 +15,11 @@ test("Keine Zeile mit Kundennachrichten beim Hauptbild (Inhaber 08.10.)", () => 
   assert.match(HTML, new RegExp(`<p class="mesazhe-meta">${karten} mesazhe origjinale`));
 });
 
-test("Keine Sterne ohne Sternebewertungen", () => {
-  assert.doesNotMatch(HTML, /★/);
+// Seit 09.10. (Inhaber, ausdruecklich): genau eine Sternzeile unter dem
+// Namen, mit Wert und Quelle "4.8/5 Instagram" - sonst keine Sterne.
+test("Sterne nur einmal, mit Wert und Quelle (Inhaber 09.10.)", () => {
+  assert.equal((HTML.match(/★/g) || []).length, 5);
+  assert.match(HTML, /<a class="hero-yjet" href="#klientet" aria-label="4\.8 nga 5 yje në Instagram"><span class="hero-yjet__yje" aria-hidden="true">★★★★★<\/span><b>4\.8\/5<\/b><span class="hero-yjet__burimi">Instagram<\/span><\/a>/);
   assert.doesNotMatch(HTML, /mesazhe-yje/);
 });
 

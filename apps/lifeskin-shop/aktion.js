@@ -15,7 +15,7 @@
 import { aktionLaeuft, aktionTexte } from "../../shared/lifeskin-aktion.js";
 
 export const LAGER_ADRESSE = "/api/lifeskin-lager";
-export const KAUFKNOEPFE = ".hero [data-set], #setet [data-set], #zgjedhja [data-set], .closing [data-set], #sticky-buy, #kasa-dergo";
+export const KAUFKNOEPFE = ".hero [data-set], #setet [data-set], #zgjedhja [data-set], .closing [data-set], #sticky-buy, #kasa-dergo, #menu [data-set]";
 
 export function restzeit(bisMs, jetztMs) {
   const s = Math.max(0, Math.floor((bisMs - jetztMs) / 1000));

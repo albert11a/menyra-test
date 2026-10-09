@@ -31,6 +31,26 @@ Messung in Heart mitgezogen (`shared/lifeskin-shopsicht.js`, Version 3):
 `shopTiefe()` auf die neue Reihenfolge um (bis SkinReact = 4, bis
 Garancioni = 5, bis F.A.Q = 7). Keine Pixel-/CAPI-Aenderung.
 
+## Menu oben links und neuer Kopf (09.10.)
+
+Auftrag Inhaber (09.10., nach zwei Vorschauen freigegeben):
+
+- Kopf: drei Striche links (`#menu-hap`), LIFESKIN, Shporta.
+- Menu `<dialog id="menu">` als Vollbild (`menu.js`): Trajtimet (aktive Sets
+  aus Heart als kleine Shop-Karte, `menuKarte` in `shop.js`; das Duo zeigt
+  das Set-Bild von oben), Rreth nesh, Përdorimi. „Porosit“ schliesst das Menu
+  und oeffnet die Kasse; bei 0 Sets gesperrt wie alle Kaufknoepfe.
+- Unter dem Titelbild: „Acne Duo“, „Trajtim kundër akneve · 2 × 30 ml“,
+  fuenf schwarze Sterne „4.8/5 Instagram“ (Wert und Quelle vom Inhaber),
+  Text, Zbritje, Kaufknopf, Lieferzeile, drei Chips mit Lucide-Icon (Made in
+  Germany, Testuar nga dermatologët, Shumë efektiv), zwei Fakten (94 %,
+  Dermatologët e krijuan formulën), Tabs Përfitimet · Garancioni ·
+  Përdorimi · Përbërësit - immer nur einer offen.
+- „Përdorimi dhe përbërja“ ist aus der Duo-Karte in „Dy produktet“ in die
+  Tabs gewandert.
+- Geprueft auf 320, 360, 375, 390, 414, 430, 768 und 1280 px ohne Ueberlauf.
+- Pixel/CAPI unveraendert. Test: `tests/lifeskinshop-menu-kopf.test.mjs`.
+
 ## Zbritje aus Heart: an/aus, Preis, Ende, Lager (09.10.)
 
 Auftrag Inhaber (09.10.): wieder 25 EUR, heute bis 19:00, noch 6 Sets; in
