@@ -124,3 +124,25 @@ if (typeof document !== 'undefined' && !globalThis.__LIFESKIN_TEST__) {
   const root = document.querySelector('#lf-preview[data-redesign="approved"]');
   if (root) startGallery(root);
 }
+
+// Presentation only: reveal cards once without moving the fixed analysis CTA.
+if (typeof document !== 'undefined' && !globalThis.__LIFESKIN_TEST__) {
+  const root = document.getElementById('lf-preview');
+  if (root && 'IntersectionObserver' in globalThis &&
+      !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const observer = new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in-view');
+          observer.unobserve(entry.target);
+        }
+      }
+    }, { threshold: 0.08, rootMargin: '0px 0px -16px 0px' });
+    root.querySelectorAll('.process-grid > .process-card, .quick-cards, .results > .section-top, .community, .faq details, .closing').forEach(element => {
+      if (element.getBoundingClientRect().top > window.innerHeight) {
+        element.classList.add('reveal');
+        observer.observe(element);
+      }
+    });
+  }
+}
