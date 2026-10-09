@@ -209,13 +209,13 @@
 <div id="kasa-trup">
 <div id="kasa-lista"></div>
 <p class="kasa__bosh" id="kasa-bosh" hidden>Shporta juaj është bosh.</p>
-<div class="total" id="kasa-totali"><span>Gjithsej · dërgesa falas <em class="kasa__kurseni" id="kasa-kurseni" hidden></em></span><span class="kasa__cmimi"><s id="kasa-vecmas" hidden></s><strong id="kasa-shuma"></strong></span></div>
+<div class="total" id="kasa-totali"><span>Gjithsej · dërgesa falas <em class="kasa__kurseni" id="kasa-kurseni" hidden></em></span><span class="kasa__cmimi"><s id="kasa-vecmas" hidden></s><strong id="kasa-shuma"></strong></span></div><p class="kasa__oferta" id="kasa-oferta" hidden></p>
 <p class="cart-saving" id="kasa-kursim" hidden></p>
 <p class="kasa__siguri"><svg class="icon" aria-hidden="true"><use href="/apps/lifeskin-shop/icons.svg#Phone"></use></svg><span>Ju lajmërojmë 1–2 ditë para dërgesës.</span></p>
 <form class="kasa__forma" id="kasa-forma" novalidate>
 <p class="eyebrow">KU TA DËRGOJMË?</p>
 <label class="kasa__fushe"><span>Emri dhe mbiemri</span><input id="kasa-emri" placeholder="Emri dhe mbiemri" name="name" autocomplete="name" enterkeyhint="next" required maxlength="100" /></label>
-<label class="kasa__fushe"><span>Numri i telefonit</span><input id="kasa-telefoni" placeholder="Numri i telefonit" name="tel" type="tel" inputmode="tel" autocomplete="tel" enterkeyhint="next" required maxlength="30" /></label>
+<label class="kasa__fushe"><span>Numri i telefonit</span><input id="kasa-telefoni" placeholder="Numri i telefonit, p.sh. 044 123 456" name="tel" type="tel" inputmode="tel" autocomplete="tel" enterkeyhint="next" required maxlength="30" aria-describedby="kasa-telefoni-ndihme" /><small class="kasa__ndihme" id="kasa-telefoni-ndihme">Ju telefonojmë vetëm për dërgesën.</small></label>
 <label class="kasa__fushe"><span>Adresa</span><input id="kasa-adresa" placeholder="Rruga dhe numri" name="street-address" autocomplete="street-address" enterkeyhint="next" required maxlength="150" /></label>
 <label class="kasa__fushe"><span>Qyteti</span><input id="kasa-qyteti" placeholder="Qyteti" name="city" autocomplete="address-level2" enterkeyhint="done" required maxlength="100" /></label>
 </form>

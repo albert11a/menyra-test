@@ -171,3 +171,11 @@ test("HTML: Voreinstellung bis 19:00, abgelaufen sofort weg, kein Pixel im Aktio
     assert.doesNotMatch(lies(datei), /fbq\(|lifeskin-pixel|capi/i);
   }
 });
+
+test("Kasse: Zbritje mit Normalpreis und Ende, Acne Duo mit Set-Bild (Inhaber 09.10.)", () => {
+  const js = lies("apps/lifeskin-shop/shop.js");
+  assert.match(js, /const zbritje = n === 2 && !istChatKorb\(this\.korb\) && aktionLaeuft\(this\.aktion\) && aktionNormalpreis\(\) > summe\(this\.korb\);/);
+  assert.match(js, /oferta\.textContent = zbritje \? `Oferta: \$\{aktionTexte\(this\.aktion\)\.ende\.replace\(\/\^M\/, "m"\)\}` : "";/);
+  assert.match(js, /const titel = istChatKorb\(this\.korb\) \? "Oferta juaj nga chat-i" : duo \? "Acne Duo" :/);
+  assert.match(js, /<img class="kasa-set__set" src="\$\{e\(setBild\)\}"/);
+});

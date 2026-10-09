@@ -320,7 +320,10 @@ test("Kasse (01.10., Inhaber): Beruhigung, Ersparnis, Liefertag, WhatsApp, ohne 
   // Kompakt: Ersparnis als Pille neben dem Preis, Felder mit Platzhalter.
   assert.match(kasa, /id="kasa-kurseni" hidden/);
   assert.match(kasa, /id="kasa-vecmas" hidden/);
-  assert.match(kasa, /placeholder="Numri i telefonit"/);
+  // Seit 09.10. (Inhaber): Beispiel im Feld und "nur fuer die Lieferung".
+  assert.match(kasa, /placeholder="Numri i telefonit, p\.sh\. 044 123 456"/);
+  assert.match(kasa, /<small class="kasa__ndihme" id="kasa-telefoni-ndihme">Ju telefonojmë vetëm për dërgesën\.<\/small>/);
+  assert.match(kasa, /<p class="kasa__oferta" id="kasa-oferta" hidden><\/p>/);
   assert.match(kasa, /id="kasa-arrin"/);
   assert.match(kasa, /id="kasa-wa"[^>]*hidden>Preferoni WhatsApp\?/);
   const js = lies("apps/lifeskin-shop/shop.js");

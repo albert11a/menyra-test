@@ -38,7 +38,7 @@ import {
 
 import { medienListe, ausschnittStil } from "../../shared/lifeskin-medien.js";
 import { PAK_SETE } from "../../shared/lifeskin-oferta.js";
-import { AKTION_DOK, AKTION_STANDARD, aktionNormalisieren, aktionLaeuft } from "../../shared/lifeskin-aktion.js";
+import { AKTION_DOK, AKTION_STANDARD, aktionNormalisieren, aktionLaeuft, aktionNormalpreis, aktionTexte } from "../../shared/lifeskin-aktion.js";
 import { aktionStarten } from "./aktion.js";
 import { SHOP_ABSCHNITTE, shopSichtPatch } from "../../shared/lifeskin-shopsicht.js";
 import { schirmGesehen } from "../../shared/lifeskin-landingtiefe.js";
@@ -919,8 +919,15 @@ export class Dyqan {
     const mittel = this.korb.ids.map((id) => this.mittelVon(id)).filter(Boolean);
     if (!mittel.length) return "";
     const s = this.setVon(this.korb.set);
-    const bilder = mittel.slice(0, 2).map((m) => `<img src="${e(m.fotot[0])}" alt="" width="40" height="50">`).join("");
-    const titel = istChatKorb(this.korb) ? "Oferta juaj nga chat-i" : (s?.titulli || "Acne Duo");
+    // KASSE WIE OBEN (09.10., Inhaber): Das Duo heisst auch hier "Acne Duo"
+    // und zeigt dasselbe Set-Bild wie der Kopf - kein Zweifel, ob man das
+    // Richtige gewaehlt hat. Chat-Angebote bleiben, wie sie sind.
+    const duo = !istChatKorb(this.korb) && acneDuoSets(s ? [s] : []).length === 1;
+    const setBild = duo ? $(".hero-set > img", this.dok)?.getAttribute?.("src") : "";
+    const bilder = setBild
+      ? `<img class="kasa-set__set" src="${e(setBild)}" alt="" width="64" height="48">`
+      : mittel.slice(0, 2).map((m) => `<img src="${e(m.fotot[0])}" alt="" width="40" height="50">`).join("");
+    const titel = istChatKorb(this.korb) ? "Oferta juaj nga chat-i" : duo ? "Acne Duo" : (s?.titulli || "Acne Duo");
     return `<div class="kasa-set"><span class="kasa-set__bilder">${bilder}</span><span class="kasa-set__text"><b>${e(titel)}</b><small>${e(mittel.map((m) => m.name).join(" + "))} · ${e(mittel[0].inhalt || "30 ml")} secili</small></span></div>`;
   }
 
@@ -1047,9 +1054,15 @@ export class Dyqan {
     // Ersparnis als Pille neben dem Preis (statt eigener Zeile).
     const s = this.setVon(this.korb.set);
     const einzeln = n * preisFuer(1);
-    const spart = n > 1 && VERGLEICHSPREIS_ZEIGEN ? einzeln - summe(this.korb) : 0;
+    // ZBRITJE AUCH IN DER KASSE (09.10., Inhaber): Solange sie laeuft, steht
+    // der echte Normalpreis (2 x 29 = 58 EUR) durchgestrichen neben dem
+    // Preis, mit "Kurseni" und dem echten Ende. Sonst wie bisher.
+    const zbritje = n === 2 && !istChatKorb(this.korb) && aktionLaeuft(this.aktion) && aktionNormalpreis() > summe(this.korb);
+    const spart = zbritje ? aktionNormalpreis() - summe(this.korb) : n > 1 && VERGLEICHSPREIS_ZEIGEN ? einzeln - summe(this.korb) : 0;
+    const oferta = $("#kasa-oferta", this.dok);
+    if (oferta) { oferta.textContent = zbritje ? `Oferta: ${aktionTexte(this.aktion).ende.replace(/^M/, "m")}` : ""; oferta.hidden = !zbritje; }
     const vorher = $("#kasa-vecmas", this.dok);
-    if (vorher) { vorher.textContent = spart > 0 ? `${einzeln} €` : ""; vorher.hidden = !(spart > 0); }
+    if (vorher) { vorher.textContent = spart > 0 ? `${zbritje ? aktionNormalpreis() : einzeln} €` : ""; vorher.hidden = !(spart > 0); }
     const pille = $("#kasa-kurseni", this.dok);
     if (pille) { pille.textContent = spart > 0 ? `Kurseni ${spart} €` : ""; pille.hidden = !(spart > 0); }
     void s;

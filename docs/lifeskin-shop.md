@@ -31,6 +31,15 @@ Messung in Heart mitgezogen (`shared/lifeskin-shopsicht.js`, Version 3):
 `shopTiefe()` auf die neue Reihenfolge um (bis SkinReact = 4, bis
 Garancioni = 5, bis F.A.Q = 7). Keine Pixel-/CAPI-Aenderung.
 
+## Kasse: Zbritje, gleicher Name, Telefon-Hilfe (09.10.)
+
+Inhaber (09.10., nach Render freigegeben), weil viele an der Kasse abspringen:
+- Solange die Zbritje laeuft: ~~58 €~~ (echter Normalpreis) neben dem Preis,
+  „Kurseni 33 €“ und „Oferta: mbaron sot në ora 19:00“ (Ende aus Heart).
+- Das Duo heisst auch in der Kasse „Acne Duo“, mit dem Set-Bild von oben.
+- Telefonfeld: „p.sh. 044 123 456“ und „Ju telefonojmë vetëm për dërgesën.“
+- Pixel/CAPI unveraendert.
+
 ## Menu oben links und neuer Kopf (09.10.)
 
 Auftrag Inhaber (09.10., nach zwei Vorschauen freigegeben):
