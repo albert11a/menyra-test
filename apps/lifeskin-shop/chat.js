@@ -103,6 +103,20 @@ const uhr = (iso) => {
   return Number.isNaN(d.getTime()) ? "" : `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 };
 
+// DER RAHMEN DES CHATS AUF DEM TELEFON (09.10., Inhaber: "beim Chatten soll
+// das Fenster stabil bleiben"). Hoehe = sichtbarer Bereich ueber der
+// Tastatur. offsetTop (wie weit iOS den sichtbaren Ausschnitt verschoben hat)
+// gilt nur, solange wirklich getippt wird und die Tastatur offen ist - iOS 26
+// meldet sonst einen haengenden Wert, und der Chat rutschte nach unten, das
+// Eingabefeld aus dem Bild (WebKit 300523).
+export function chatRahmen({ vv, innen, tippt }) {
+  const h = vv ? vv.height : innen;
+  const tastatur = Boolean(vv) && tippt && innen - h > 120;
+  const oben = tastatur ? Math.max(0, Math.min(vv.offsetTop, innen - h)) : 0;
+  // Mit Zwei-Finger-Zoom ist ein Versatz echt - dann nichts zuruecksetzen.
+  return { h, oben, haengt: Boolean(vv) && !tastatur && vv.offsetTop > 1 && (vv.scale ?? 1) < 1.01 };
+}
+
 const SCHNELL = ["A është Acne Duo për lëkurën time?", "Si përdoret?", "Dua të porosis"];
 
 export class Chat {
@@ -359,8 +373,11 @@ export class Chat {
     let geplant = 0;
     const jetzt = () => {
       geplant = 0;
-      const h = vv ? vv.height : this.fenster.innerHeight;
-      const oben = vv ? vv.offsetTop : 0;
+      const { h, oben, haengt } = chatRahmen({ vv, innen: this.fenster.innerHeight, tippt: this.#tippt() });
+      // iOS 26 meldet offsetTop nach dem Zugehen der Tastatur weiter > 0
+      // (WebKit 300523). Bei gesperrter Seite setzt scrollTo(0, 0) das
+      // zurueck, ohne dass sich dahinter etwas bewegt.
+      if (haengt && this.gesperrt) { try { this.fenster.scrollTo(0, 0); } catch { /* egal */ } }
       this.ansicht.style.setProperty("--chat-h", `${Math.round(h)}px`);
       this.ansicht.style.setProperty("--chat-oben", `${Math.round(oben)}px`);
       if (this.unten) this.#nachUnten(false);
@@ -374,6 +391,20 @@ export class Chat {
     vv?.addEventListener("resize", setzen);
     vv?.addEventListener("scroll", setzen);
     this.fenster.addEventListener("resize", setzen);
+    // Nachmessen, wenn die Tastatur fertig auf- oder zugegangen ist (~300 ms):
+    // iOS schickt danach nicht immer noch ein Ereignis.
+    if (!this.feldHorcht) {
+      this.feldHorcht = true;
+      const nachmessen = () => { for (const ms of [60, 320, 700]) setTimeout(() => this.hoeheSetzen?.(), ms); };
+      this.ansicht.addEventListener("focusin", nachmessen);
+      this.ansicht.addEventListener("focusout", nachmessen);
+    }
+  }
+
+  // Tippt jemand gerade in ein Feld des Chats (dann ist die Tastatur offen)?
+  #tippt() {
+    const feld = this.dok.activeElement;
+    return Boolean(feld && this.ansicht.contains(feld) && /^(TEXTAREA|INPUT)$/.test(feld.tagName));
   }
 
   #hoeheLoesen() {
