@@ -103,25 +103,6 @@
   max-width: 100vw;
 }
 #ls-einstieg .chat[hidden] { display: none; }
-/* KEIN DURCHSCHEINEN DER SEITE (09.10., Inhaber): Beim Tippen schiebt iOS den
-   sichtbaren Ausschnitt, und waehrend die Tastatur auf- oder zugeht hinkt das
-   Fenster ein Bild hinterher - dann blitzte die Seite oben oder unten hervor.
-   Eine Flaeche in Chat-Farbe deckt auf dem Telefon alles weit ueber den
-   Bildschirm hinaus ab; der Chat selbst liegt darueber. Am Rechner ist der
-   Chat ein Fenster, dort bleibt die Seite sichtbar. */
-@media (max-width: 599px) {
-  #ls-einstieg .chat::before {
-    content: "";
-    position: fixed;
-    left: 0;
-    right: 0;
-    top: -100vh;
-    bottom: -100vh;
-    z-index: -1;
-    background: #f4f7f6;
-  }
-  :root[data-chat], :root[data-chat] body { background: #f4f7f6; }
-}
 @media (min-width: 600px) {
   /* Am Rechner wie die grossen Shops: ein Fenster rechts unten. */
   #ls-einstieg .chat {
