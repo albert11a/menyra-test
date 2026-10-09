@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { Pixel, PIXEL_EREIGNISSE, PIXEL_SCHRITTE, PIXEL_LEAD, pixelDaten } from "../apps/lifeskin/lifeskin-pixel.js";
+import { Pixel, PIXEL_EREIGNISSE, PIXEL_SCHRITTE, PIXEL_LEAD, pixelDaten, ereignisKennung, leadKennung, warteKennung } from "../apps/lifeskin/lifeskin-pixel.js";
 import { Sitzung } from "../apps/lifeskin/lifeskin-session.js";
 
 // Ein Ersatz fuer fbq, der aufschreibt statt zu senden.
@@ -370,4 +370,52 @@ test("Cookie-Fenster: Pranoj startet den Pixel und meldet die Seite nach, Refuzo
   } finally {
     globalThis.addEventListener = altAdd;
   }
+});
+
+// ══ JEDES EREIGNIS MIT eventID (Pixel-Aenderung erlaubt von Albert am 09.10.2026)
+//
+// Meta meldete "lifeskin_body_problem_completed" und
+// "lifeskin_instagram_proof_view" als "vom Server, nicht dedupliziert, da
+// kein event_id". Ohne Kennung kann Meta eine Kopie im Server-Kanal nie mit
+// der Meldung aus dem Browser zusammenlegen.
+test("jede Meldung traegt eine eventID; Kauf, Lead und Warteseite behalten ihre feste", () => {
+  const { fbq, rufe } = schreiber();
+  const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null, einwilligung: true });
+  pixel.starte();
+  pixel.melde("opened");
+  for (const schritt of Object.keys(PIXEL_SCHRITTE)) pixel.melde(schritt, { code: "LS-0910-ABCDE" });
+  pixel.meldeWeg("trup");
+  pixel.meldeAbgabe("problemi");
+  pixel.meldeKorb(25);
+  pixel.meldeKasse(25);
+  pixel.meldeLead("LS-0910-ABCDE");
+  pixel.melde("ordered", { order: { total: 25, orderId: "LS-0910-ABCDE" } });
+  const meldungen = rufe.filter((r) => r[0] === "track" || r[0] === "trackCustom");
+  assert.ok(meldungen.length > 10);
+  for (const [, name, , anhang] of meldungen) {
+    assert.ok(typeof anhang?.eventID === "string" && anhang.eventID.length > 0, `${name} ohne eventID`);
+  }
+  const id = (name) => meldungen.find((r) => r[1] === name)[3].eventID;
+  assert.equal(id("Purchase"), "LS-0910-ABCDE", "der Kauf behaelt die Bestellnummer (Server-Purchase)");
+  assert.equal(id("Lead"), leadKennung("LS-0910-ABCDE"), "der Lead behaelt die Kennung des Server-Leads");
+  assert.equal(id("lifeskin_waiting_reached"), warteKennung("LS-0910-ABCDE"));
+  assert.ok(id("lifeskin_body_problem_completed").startsWith("lifeskin_body_problem_completed."));
+  // Einmalig: zwei Meldungen teilen nie eine Kennung - sonst legte Meta sie zusammen.
+  const alle = meldungen.map((r) => r[3].eventID);
+  assert.equal(new Set(alle).size, alle.length);
+});
+
+test("ereignisKennung ist einmalig und kommt auch ohne crypto aus", () => {
+  assert.notEqual(ereignisKennung("x"), ereignisKennung("x"));
+  const ohne = ereignisKennung("lifeskin_method_view", null);
+  assert.match(ohne, /^lifeskin_method_view\.[a-z0-9]{8,}$/);
+  assert.match(ereignisKennung("y", { randomUUID: () => { throw new Error("nein"); } }), /^y\.[a-z0-9]{8,}$/);
+});
+
+test("die Abschnitte der Landingpage melden mit eventID", () => {
+  const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
+  const js = readFileSync(join(wurzel, "apps/lifeskin-landing/landing.js"), "utf8");
+  const aufrufe = js.match(/window\.fbq\([^;]*\);/g) || [];
+  assert.equal(aufrufe.length, 1, "genau eine Stelle meldet auf der Landingpage");
+  assert.match(aufrufe[0], /window\.fbq\("trackCustom", name, \{\}, \{ eventID: kennung\(name\) \}\)/);
 });

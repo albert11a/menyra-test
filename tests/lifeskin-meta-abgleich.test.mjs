@@ -9,6 +9,15 @@ test("Telefon normalisiert internationale und lokale Kosovo-Formate, raet keine 
   for (const phone of ["044111222", "44 111 222", "+383 (44) 111-222", "00383 44 111222", "38344111222"])
     assert.equal(capi.telefonNormalisieren(phone), "38344111222");
   assert.equal(capi.telefonNormalisieren("+43 660 1234567"), "436601234567");
+  // 09.10.: Schraegstriche, wie im Kosovo ueblich, und die Inlandsnull nach
+  // der Laendervorwahl - vorher weg bzw. als "383044..." falsch gehasht.
+  for (const phone of ["044/111/222", "044/111-222", "+383 (0)44 111 222", "383 044 111 222", "00383 044 111 222"])
+    assert.equal(capi.telefonNormalisieren(phone), "38344111222", phone);
+  assert.equal(capi.telefonNormalisieren("+49 (0)176 12345678"), "4917612345678");
+  assert.equal(capi.telefonNormalisieren("+41 0 79 123 45 67"), "41791234567");
+  // Auslaendische Nummern ohne Vorwahl bleiben draussen: das Land ist nicht zu erkennen.
+  for (const phone of ["0176 12345678", "079 123 45 67", "069 123 4567", "044 111 222 / 049 111 222"])
+    assert.equal(capi.telefonNormalisieren(phone), "", phone);
   for (const phone of ["", "044", "invalid", "+383+44111222", "111222333", "00044111222", "044111222 ext 1"])
     assert.equal(capi.telefonNormalisieren(phone), "", phone);
 });

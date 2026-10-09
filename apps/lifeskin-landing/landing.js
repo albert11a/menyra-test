@@ -61,11 +61,27 @@
    * gemessen wird, ist die Seite, nicht der Besucher. */
   var gemeldet = Object.create(null);
 
+  /* MIT eventID (Pixel-Aenderung erlaubt von Albert am 09.10.2026): Meta
+   * meldete "lifeskin_instagram_proof_view vom Server, nicht dedupliziert,
+   * da kein event_id". Ohne Kennung laesst sich eine Kopie im Server-Kanal
+   * nie mit dem Browser zusammenlegen. Einmalig je Meldung, ohne Bezug
+   * zum Besucher - dieselbe Form wie ereignisKennung in lifeskin-pixel.js. */
+  function kennung(name) {
+    var teil = "";
+    try {
+      teil = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : "";
+    } catch {
+      teil = "";
+    }
+    if (!teil) teil = Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    return name + "." + teil;
+  }
+
   function melde(name) {
     if (!name || gemeldet[name]) return;
     gemeldet[name] = true;
     try {
-      if (typeof window.fbq === "function") window.fbq("trackCustom", name);
+      if (typeof window.fbq === "function") window.fbq("trackCustom", name, {}, { eventID: kennung(name) });
     } catch {
       /* Messtechnik darf den Weg nie anhalten. */
     }

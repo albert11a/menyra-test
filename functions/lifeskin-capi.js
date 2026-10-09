@@ -18,10 +18,21 @@ async function melden(tenantId, sessionId, nutzlast, logContext) {
   logFunctionInfo("lifeskin.capi", { ...logContext, ...ergebnis, eventName: nutzlast.event_name });
 }
 
+// VERCEL ZUERST (Pixel-Aenderung erlaubt von Albert am 09.10.2026: Server
+// mit IP und Nutzerdaten). Dieser Ausloeser sieht den Browser nie - ohne
+// IP und ohne _fbp. Er und api/lifeskin-capi.js liefen um dieselbe Marke;
+// gewann er, meldete Meta "IP-Adressparameter fehlt" und "User-Data-
+// Parameter fehlt". Jetzt wartet er, bis der Browser Vercel erreicht hat
+// (Versuche nach 0, 3 und 20 s); liegt die Marke dann, sendet er nicht.
+// Er bleibt der Ersatz, wenn der Browser Vercel nie erreicht.
+const VORRANG_VERCEL_MS = 45000;
+const warten = (ms) => new Promise((fertig) => setTimeout(fertig, ms));
+
 // Die erste failurePolicy-Aktivierung erfolgt im Workflow gezielt nur fuer
 // diese beiden vorhandenen LifeSkin-Exporte; kein globales --force.
 function ausloeser(pruefen, bauen) {
-  return functions.region("us-central1").runWith({ secrets: ["META_CAPI_TOKEN"], failurePolicy: true })
+  return functions.region("us-central1")
+    .runWith({ secrets: ["META_CAPI_TOKEN"], failurePolicy: true, timeoutSeconds: 120 })
     .firestore.document("lifeskin/{tenantId}/sessions/{sessionId}")
     .onWrite(async (change, context) => {
       const tenantId = text(context.params?.tenantId);
@@ -31,6 +42,7 @@ function ausloeser(pruefen, bauen) {
       const davor = change.before?.exists ? change.before.data() || {} : {};
       const danach = change.after.data() || {};
       if (!pruefen(davor, danach)) return;
+      await warten(VORRANG_VERCEL_MS);
       try { await melden(tenantId, sessionId, bauen(danach), logContext); }
       catch (fehler) {
         // Firestore-Ausfall: Event-Auslieferung erneut versuchen.
@@ -74,7 +86,9 @@ exports.lifeskinCapiRetry = functions.region("us-central1")
           const bau = { Purchase: baueKauf, Lead: baueLead, lifeskin_waiting_reached: baueWarten }[stand.eventName];
           // Pixel-Aenderung erlaubt von Albert am 07.10.2026: ohne "Pranoj" nichts.
           if (!bau || daten.order?.still === true || !metaErlaubt(daten)) return;
-          const nutzlast = bau(daten, { browser: stand.browser || null });
+          // Vor dem 09.10. stand hier Text ("[object Object]") statt Karte.
+          const browser = stand.browser && typeof stand.browser === "object" ? stand.browser : null;
+          const nutzlast = bau(daten, { browser });
           if (nutzlast.event_id !== stand.eventId) return;
           if (stand.eventName === "Purchase" && Number.isFinite(stand.value)) nutzlast.custom_data.value = stand.value;
           nutzlast.event_time = stand.eventTime; // Originalzeit bleibt bei jeder Wiederholung erhalten.

@@ -111,6 +111,11 @@ function wert(f) {
 function feld(v) {
   if (typeof v === "boolean") return { booleanValue: v };
   if (typeof v === "number") return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  // Die Angaben des Browsers in der Marke (fbp, fbc, ua, ip, seite) als
+  // Karte. Bis zum 09.10. wurden sie zu Text ("[object Object]"), und jede
+  // Wiederholung (lifeskinCapiRetry) ging ohne IP und Kennungen an Meta.
+  // Pixel-Aenderung erlaubt von Albert am 09.10.2026.
+  if (v && typeof v === "object" && !Array.isArray(v)) return { mapValue: { fields: felder(v) } };
   return { stringValue: String(v ?? "") };
 }
 

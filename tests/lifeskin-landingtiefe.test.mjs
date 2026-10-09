@@ -17,7 +17,12 @@ test("die freigegebenen Abschnitte behalten ihre bestehenden Messkennungen", () 
   // Abschnitte. Ohne id="held" startete die Messung gar nicht mehr
   // (starteLandingtiefe) - seit 07.10. tragen die neuen Abschnitte wieder die
   // bestehenden Kennungen. Mjekja, Produktet und Menyrat gibt es dort nicht.
-  const ids = ["held", "pse", "rezultatet", "komuniteti", "garancia", "fund"];
+  // Seit der freigegebenen Mobil-Fassung vom 09.10. auch keine Instagram-
+  // Zeile (#komuniteti) mehr. Die Kundenfotos bekommen die Kennung nicht:
+  // Sie loeste lifeskin_instagram_proof_view aus (landing.js) - Kundenfotos
+  // sind kein Instagram-Beleg (tests/lifeskin-landingkarten.test.mjs).
+  const ids = ["held", "pse", "rezultatet", "garancia", "fund"];
+  assert.ok(!html.includes('id="komuniteti"'));
   let previous = -1;
   for (const id of ids) {
     assert.ok(LANDING_SCHIRME.some((section) => section.id === id));
