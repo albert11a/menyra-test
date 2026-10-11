@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-10-08
+Last updated: 2026-10-11
 
 # LifeSkin Shop - /lifeskinshop
 
@@ -663,3 +663,12 @@ Datenschutz akzeptieren").
   (`window.lifeskinZustimmungZeigen()`).
 - Folge fuer die Anzeigen: Meta bekommt nur noch Ereignisse von Besuchern,
   die zustimmen - erwartbar 20-40 % weniger gemeldete Ereignisse.
+
+
+## Freigegebene Produktseite — 11.10.2026
+
+Scope vor Umsetzung: Nur `/lifeskinshop`: den vom Inhaber freigegebenen HTML-Entwurf in die bestehende Shop-Seite uebertragen; Produktgalerie, Para/Pas direkt nach dem Kaufbereich, Eignung, Kundenfotos/Videos, Originalnachrichten, Produktrollen und Anleitung/Support. Einheitliche Seitenraender fuer alle Galerien. Preise, Heart-Medien, Checkout, Analyse, Chat, Pixel-Aufrufe und Server bleiben an der bestehenden Logik. Keine Kundendaten oder eingebetteten Vorschau-Medien ins Repository. Der Inhaber hat Commit und Push auf `main` ausdruecklich beauftragt.
+
+Umsetzung: `product-page.css` ist ausschliesslich auf den bestehenden Shop-Einstieg begrenzt. `product-page.js` ergaenzt reine Wischgalerie-Knoepfe fuer dynamische Kundenmedien und Originalnachrichten. Alle 17 Originalnachrichten bleiben abrufbar; die Instagram-Profilkarte ist in der Reihe ausgeblendet. Die bestehende Heart-Titelgalerie und Para/Pas-Ladung bleiben unveraendert. Keine statisch eingefrorenen Preise/Medien, keine Aenderung an Bestellung, Chat, Analyse oder Pixel.
+
+Validierung: 125 bestehende Shop-Checks bestanden; vollstaendiges `npm test`: 3148 bestanden, 1 vorhandener Skip, 0 Fehler (inklusive neuer Galerie-Pruefung). Abschliessende Vertrauens-/Pixel-Pruefung: 8 bestanden. `npm run lint`: 0 Fehler, 305 bestehende Warnungen. `npm run build` erfolgreich; erzeugte Shop-Assets in `dist` geprueft. Keine getrackten Bundle-Dateien geaendert. Checkout/Analyse/Chat-Markup sowie Bootstrap und Vorladen ausserhalb `main` unveraendert geprueft. HTML-IDs eindeutig und lokale Bilder/Icon-Referenzen vorhanden. Mobile-Abstaende auf Code-Ebene geprueft; kein mobiler Browser verfuegbar, keine visuelle Mobilpruefung und kein Playwright-/Smoke-Lauf.

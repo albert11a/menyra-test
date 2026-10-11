@@ -53,20 +53,22 @@ test("menu.js: oeffnen, schliessen, nur ein Aufklapper je Gruppe", async () => {
   assert.equal(attr["aria-expanded"], "false");
 });
 
-test("Kopf: Name, 2 x 30 ml, drei Chips mit Icon, zwei Fakten, vier kurze Tabs", () => {
-  assert.match(HTML, /<p class="hero-emri__set">Acne Duo<\/p><p class="hero-emri__lloji">Trajtim kundër akneve · 2 × 30 ml<\/p>/);
-  const chips = [...HTML.matchAll(/<li><svg class="icon" aria-hidden="true"><use href="\/apps\/lifeskin-shop\/icons\.svg#(\w+)"><\/use><\/svg><span>([^<]+)<\/span><\/li>/g)].map((m) => [m[1], m[2]]);
-  assert.deepEqual(chips, [["Flag", "Made in Germany"], ["BadgeCheck", "Testuar nga dermatologët"], ["Zap", "Shumë efektiv"]]);
-  const icons = lies("apps/lifeskin-shop/icons.svg");
-  for (const id of ["Flag", "BadgeCheck", "Zap", "Microscope", "Stethoscope"]) assert.match(icons, new RegExp(`<symbol id="${id}"`));
-  assert.match(HTML, /<b>94 %<\/b>e bakterieve të akneve largohen/);
-  assert.match(HTML, /<b>Dermatologët<\/b>e krijuan formulën/);
-  const tabs = [...HTML.matchAll(/<details name="hero-tab" data-gruppe="hero-tab"><summary>([^<]+)</g)].map((m) => m[1]);
-  assert.deepEqual(tabs, ["Përfitimet", "Garancioni", "Përdorimi", "Përbërësit"]);
-  assert.doesNotMatch(HTML, /të rregullt/, "keine Wirkungszusage 'me përdorim të rregullt'");
-  // Reihenfolge im Kopf: Zbritje, Kaufknopf, Lieferung, Chips, Fakten, Tabs.
-  const pos = ['id="aktion"', 'class="buy"', 'class="micro"', 'class="hero-chips"', 'class="hero-fakte"', 'class="hero-tabs"'].map((s) => HTML.indexOf(s));
-  assert.deepEqual([...pos].sort((a, b) => a - b), pos);
+test("Freigegebener Produktkopf: Galerie vor Name, Nutzen und echtem Kaufknopf", () => {
+  const kopf = HTML.slice(HTML.indexOf('<section class="hero"'), HTML.indexOf('<section class="section" id="rezultate"'));
+  const order = ['class="hero-photo hero-set"', 'class="product-kicker"', 'id="hero-title"', 'class="product-subtitle"', 'class="three-benefits"', 'class="selected-set"', 'class="buy"', 'class="buy-assurance"'];
+  const positions = order.map(token => kopf.indexOf(token));
+  assert.ok(positions.every(p => p >= 0));
+  assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
+  assert.match(kopf, /LF ACNE \+ LF MOISTUR/);
+  assert.match(kopf, /<h1 id="hero-title">Acne Duo<\/h1>/);
+  assert.match(kopf, /Trajton aknet aktive\.<br>Hidraton dhe mbeshtet barrieren\./);
+  for (const id of ["FlaskConical", "ShieldCheck"]) {
+    assert.ok(kopf.includes(`icons.svg#${id}`));
+    assert.ok(lies("apps/lifeskin-shop/icons.svg").includes(`<symbol id="${id}"`));
+  }
+  assert.match(kopf, /class="cta" data-set="acne">Porosit Acne Duo/);
+  assert.match(kopf, /data-preis="cmimi"/);
+  assert.doesNotMatch(kopf, /hero-tabs|hero-fakte|thumbs|breadcrumbs/);
 });
 
 test("Menu und Kopf ohne Pixel", () => {
