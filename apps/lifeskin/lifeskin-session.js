@@ -1,3 +1,4 @@
+import { rutinaEvent } from "../../shared/lifeskin-rutina.js";
 // Was der Trichter ueber sich selbst festhaelt.
 //
 // Ohne SDK, ueber die REST-Schnittstelle - aus demselben Grund wie bei der
@@ -1216,6 +1217,15 @@ export class Sitzung {
 
   // Dasselbe fuer den Laden (/lifeskinshop): welche seiner Abschnitte im
   // Bild standen (shared/lifeskin-shopsicht.js), unter timings.shop.
+  rutinaSchreiben(raw) {
+    if (globalThis.__mnyraStill === true) return Promise.resolve({ ok: false });
+    const event = rutinaEvent(raw?.kind, raw?.ids, raw?.at, raw?.id);
+    if (!event) return Promise.resolve({ ok: false });
+    const written = this.#sammeln({ timings: { rutina: { [event.id]: event } }, updatedAt: jetzt() }, [`timings.rutina.${event.id}`, 'updatedAt']);
+    if (event.kind === 'finish') written.then(answer => { if (answer?.ok) meldungAnstossen(this.id, this.fetchFn); });
+    return written;
+  }
+
   shopSichtSchreiben(daten) {
     const felderListe = Object.keys(daten || {});
     if (!felderListe.length) return this.kette;

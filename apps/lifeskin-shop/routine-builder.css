@@ -30,7 +30,7 @@
 #ls-einstieg .page .personal-back:hover{color:#086c73}
 #ls-einstieg .page [data-routine-products]{margin-top:22px;min-width:0}
 #ls-einstieg .page .personal-products{display:flex;align-items:flex-start;gap:12px;width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-padding-inline:0;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:0 0 4px;margin:0}
-#ls-einstieg .page .personal-product{display:flex;flex-direction:column;flex:0 0 calc((100% - 12px)/2);scroll-snap-align:start;min-width:0;margin:0;padding:0}
+#ls-einstieg .page .personal-product{display:flex;flex-direction:column;flex:0 0 calc((100% - 24px)/2.5);scroll-snap-align:start;min-width:0;margin:0;padding:0}
 #ls-einstieg .page .personal-product-photo{position:relative;width:100%;aspect-ratio:3/4;border:1px solid #e1e6da;background:#fff;border-radius:6px;overflow:hidden}
 #ls-einstieg .page .personal-product-photo img{position:absolute;inset:0;display:block;width:100%;height:100%;max-width:100%;max-height:none;object-fit:cover;object-position:center;margin:0;padding:0;border:0;border-radius:0}
 #ls-einstieg .page .personal-product>strong{display:block;font-size:12px;line-height:1.35;letter-spacing:.025em;margin:12px 0 4px;color:#253720;overflow-wrap:anywhere}
@@ -59,8 +59,11 @@
 #ls-einstieg.personal-active #setet .routine-grid{display:block}
 #ls-einstieg .page .personal-hero-link{display:block;text-align:center;margin:16px 0;font-size:13px;color:#086c73;text-underline-offset:4px}
 
-@media(max-width:480px){#ls-einstieg .page .personal-panel{padding:22px 16px;border-radius:8px}#ls-einstieg .page .personal-choices{gap:10px}#ls-einstieg .page .personal-choice-body{padding:14px 12px 44px}#ls-einstieg .page .personal-choice-body>strong{font-size:14px}#ls-einstieg .page .personal-choice-copy{font-size:11px}#ls-einstieg .page .personal-products{gap:10px}#ls-einstieg .page .personal-product{flex-basis:calc((100% - 10px)/2)}}
+@media(max-width:480px){#ls-einstieg .page .personal-panel{padding:22px 16px;border-radius:8px}#ls-einstieg .page .personal-choices{gap:10px}#ls-einstieg .page .personal-choice-body{padding:14px 12px 44px}#ls-einstieg .page .personal-choice-body>strong{font-size:14px}#ls-einstieg .page .personal-choice-copy{font-size:11px}#ls-einstieg .page .personal-products{gap:10px}#ls-einstieg .page .personal-product{flex-basis:calc((100% - 20px)/2.5)}}
 @media(max-width:359px){#ls-einstieg .page .personal-choices{grid-template-columns:minmax(0,1fr)}#ls-einstieg .page .personal-choice-top{min-height:0}#ls-einstieg .page .personal-actions{grid-template-columns:1fr}#ls-einstieg .page .personal-actions .personal-back{justify-self:start}#ls-einstieg .page .personal-assurances{gap:8px}}
 
 #ls-einstieg .page #personal-routine{margin:24px 0 0;padding:0;border:0;min-width:0}
 #ls-einstieg .page #personal-routine>.wrap{padding:0;max-width:100%;margin:0}
+
+#ls-einstieg .page .personal-products[data-product-count="2"]>.personal-product{flex-basis:calc((100% - 12px)/2)}
+@media(max-width:480px){#ls-einstieg .page .personal-products[data-product-count="2"]>.personal-product{flex-basis:calc((100% - 10px)/2)}}

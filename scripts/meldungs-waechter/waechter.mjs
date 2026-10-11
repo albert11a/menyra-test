@@ -199,7 +199,7 @@ async function lauf() {
         sagen(`Deckel erreicht (${HOECHSTENS_JE_LAUF} Meldungen). Der Rest wartet auf den naechsten Lauf.`);
         return;
       }
-      const kennung = meldungsKennung(vorlage.type, sitzung.id);
+      const kennung = meldungsKennung(vorlage.type, sitzung.id, vorlage.eventId);
       let etwasGetan = false;
       for (const uid of ziele) {
         const nutzlast = baueMeldung({ vorlage, sessionId: sitzung.id, sitzung, uid });

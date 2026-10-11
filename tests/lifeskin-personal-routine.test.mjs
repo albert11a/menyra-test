@@ -121,17 +121,17 @@ test('rail uses full chosen images and instructions order cleanser before active
 });
 
 function builderFixture(applyResult = true) {
-  const nodes = new Map(), listeners = {}, applied = [], ordered = [];
+  const nodes = new Map(), listeners = {}, applied = [], ordered = [], tracked = [];
   const node = selector => { if (!nodes.has(selector)) nodes.set(selector, { textContent: '', innerHTML: '', hidden: true, disabled: false, dataset: {}, setAttribute() {}, focus() {} }); return nodes.get(selector); };
   const screens = ['intro', 'choose', 'result'].map(stage => Object.assign(node(stage), { dataset: { routineScreen: stage } }));
   const root = { innerHTML: '', selected: [], ownerDocument: { querySelector: () => null },
     querySelector: node, querySelectorAll: selector => selector === 'input:checked' ? root.selected.map(value => ({ value })) : screens,
     addEventListener: (name, handler) => { listeners[name] = handler; } };
-  const builder = new RoutineBuilder({ root, catalog: () => [], apply: ids => { applied.push(ids); return applyResult; }, order: id => ordered.push(id), reset() {} });
+  const builder = new RoutineBuilder({ root, catalog: () => [], apply: ids => { applied.push(ids); return applyResult; }, order: id => ordered.push(id), reset() {}, track: (kind,ids) => tracked.push({ kind, ids }) });
   builder.start();
   const click = action => listeners.click({ target: { closest: () => ({ disabled: false, dataset: { routineAction: action } }) } });
   const select = ids => { root.selected = ids; listeners.change({ target: { matches: () => true } }); };
-  return { builder, root, node, screens, click, select, applied, ordered };
+  return { builder, root, node, screens, click, select, applied, ordered, tracked };
 }
 
 test('same-card steps, no initial price, valid selection enables continue; apply and order are distinct', () => {
@@ -200,4 +200,17 @@ test('Clean photo failure leaves fallback and ordering available', async () => {
   assert.equal(await f.shop.routineFotoLaden(), false);
   assert.equal(f.shop.routineUebernehmen(['lf-clean']), true);
   assert.match(productRail(['lf-clean'], f.shop.mittel), /lf-clean-illustration/);
+});
+
+test('routine start and completion are distinct; unchanged revisit does not duplicate finishes', () => {
+ const f = builderFixture();
+ f.click('choose'); f.select(['lf-clean']); f.click('result');
+ f.click('choose'); f.click('result');
+ f.click('apply'); f.click('order');
+ assert.deepEqual(f.tracked.map(e=>e.kind), ['start','finish','details','order']);
+ f.click('choose'); f.select(['lf-clean','lf-pore']); f.click('result');
+ assert.equal(f.tracked.filter(e=>e.kind==='finish').length,2);
+ f.click('intro'); f.click('choose'); f.click('result');
+ assert.equal(f.tracked.filter(e=>e.kind==='start').length,2);
+ assert.equal(f.tracked.filter(e=>e.kind==='finish').length,3);
 });

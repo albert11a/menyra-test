@@ -17,8 +17,8 @@ export function routineInstructions(ids) {
   }).join('');
 }
 export class RoutineBuilder {
-  constructor({ root, catalog = () => [], apply, order, reset }) {
-    this.root = root; this.catalog = catalog; this.apply = apply; this.order = order; this.reset = reset;
+  constructor({ root, catalog = () => [], apply, order, reset, track = () => {} }) {
+    this.root = root; this.catalog = catalog; this.apply = apply; this.order = order; this.reset = reset; this.track = track; this.lastFinished = null;
     this.ids = []; this.stage = 'intro';
   }
   start() {
@@ -38,6 +38,7 @@ export class RoutineBuilder {
       const button = event.target.closest('[data-routine-action]');
       if (!button || button.disabled) return;
       const action = button.dataset.routineAction;
+      if (action === 'choose' && this.stage === 'intro') { this.lastFinished = null; this.track('start', []); }
       if (['intro', 'choose', 'result'].includes(action)) { this.show(action); return; }
       if (action === 'reset') { this.reset(); this.feedback('U kthye seti Acne Duo.'); button.hidden = true; return; }
       const set = personalRoutine(this.ids);
@@ -45,6 +46,7 @@ export class RoutineBuilder {
       if (!set || applied === false) { this.feedback('Seti nuk eshte i disponueshem. Provo perseri.'); return; }
       const duo = isAcneDuoSelection(set.produkte);
       this.root.querySelector('[data-routine-action="reset"]').hidden = duo;
+      this.track(action === 'order' ? 'order' : 'details', set.produkte);
       if (action === 'order') this.order(typeof applied === 'string' ? applied : set.id);
       else { this.feedback(duo ? 'Zgjodhe Acne Duo: LF ACNE + LF MOISTURE.' : 'Seti yt u shtua ne faqen e produktit.'); this.root.ownerDocument.querySelector('#fillimi')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     });
@@ -63,6 +65,7 @@ export class RoutineBuilder {
   show(stage) {
     if (stage === 'result') {
       const set = personalRoutine(this.ids); if (!set) return;
+      if (this.lastFinished !== set.id) { this.track('finish', set.produkte); this.lastFinished = set.id; }
       this.root.querySelector('[data-routine-products]').innerHTML = productRail(this.ids, this.catalog());
       this.root.querySelector('[data-routine-total]').textContent = `${set.cmimi} €`;
     }

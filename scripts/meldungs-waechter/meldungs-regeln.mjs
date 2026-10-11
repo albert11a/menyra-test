@@ -1,3 +1,5 @@
+import { rutinaEvents } from "../../shared/lifeskin-rutina.js";
+import { ROUTINE_PRODUCTS } from "../../shared/lifeskin-personal-routine.js";
 // Wann eine Sitzung eine Meldung verdient - ohne Firestore, ohne Netz.
 //
 // WARUM DAS EINE EIGENE DATEI IST. Der Waechter selbst redet mit Firestore
@@ -141,8 +143,8 @@ export function sitzungsZeit(sitzung = {}) {
 // Daran haengt alles: Steht das Dokument schon da, wurde schon gemeldet.
 // Weicht die Kennung ab, meldet der Waechter ein zweites Mal, was die
 // Funktion gerade gemeldet hat - und der Kunde bekommt jede Analyse doppelt.
-export function meldungsKennung(type, sessionId) {
-  const roh = `${String(type || "").trim()}_${String(sessionId || "").trim()}`;
+export function meldungsKennung(type, sessionId, eventId = "") {
+  const roh = `${String(type || "").trim()}_${String(sessionId || "").trim()}${eventId ? `_${eventId}` : ""}`;
   return roh.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 180);
 }
 
@@ -153,18 +155,29 @@ export function faelligeMeldungen(sitzung = {}, { jetzt = Date.now(), fensterMs 
   // Aufsicht, und eine Ausnahme mitten im Durchgang laesst die Sitzungen
   // dahinter ungemeldet.
   const daten = sitzung && typeof sitzung === "object" ? sitzung : {};
+  const routine = rutinaMeldungen(daten, { jetzt, fensterMs });
   const stand = schrittIndex(daten.step);
   const markeGesetzt = (vorlage) => Boolean(vorlage.gesetzt?.(daten, { jetzt, fensterMs }));
   const mitMarke = MELDUNGEN.some(markeGesetzt);
-  if (stand < 0 && !mitMarke) return [];
+  if (stand < 0 && !mitMarke) return routine;
   const zeit = sitzungsZeit(daten);
   // Ohne Zeit keine Meldung. Eine Sitzung ohne Zeitstempel ist entweder
   // uralt oder kaputt, und beides ist kein Grund, ein Telefon zu wecken.
-  if (!zeit) return [];
-  if (jetzt - zeit > fensterMs) return [];
+  if (!zeit) return routine;
+  if (jetzt - zeit > fensterMs) return routine;
   return MELDUNGEN.filter((vorlage) => (vorlage.gesetzt
     ? markeGesetzt(vorlage) && !schonBestellt(daten)
-    : stand >= 0 && schrittIndex(vorlage.schritt) <= stand));
+    : stand >= 0 && schrittIndex(vorlage.schritt) <= stand)).concat(routine);
+}
+
+// Each stored completion has its own delivery key; refreshing the page never resends it.
+export function rutinaMeldungen(session, { jetzt = Date.now(), fensterMs = FENSTER_MS } = {}) {
+  if (session?.test || session?.still || session?.source?.test || session?.order?.still) return [];
+  return rutinaEvents(session).filter(e => e.kind === 'finish' && Date.parse(e.at) <= jetzt && jetzt - Date.parse(e.at) <= fensterMs)
+    .map(e => ({ type: 'lifeskin_rutina', eventId: e.id, text: name => {
+      const products = e.ids.map(id => ROUTINE_PRODUCTS.find(p => p.id === id)?.name).join(' + ');
+      return `Routine fertig${name ? `, ${name}` : ''}: ${products} · ${e.price} €`;
+    } }));
 }
 
 // Der fertige Satz und das Dokument dazu. Dieselben Felder, die

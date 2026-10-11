@@ -221,3 +221,13 @@ test("Bestellung auf Therapieseite und im Laden: die Meldung geht nach dem Speic
     delete globalThis.location;
   }
 });
+
+test('each completed routine sends one notification and replay does not resend', async () => {
+ const event = (id,ids,price) => ({ mapValue: { fields: { id:str(id),kind:str('finish'),at:str(frisch()),price:{integerValue:String(price)},ids:{arrayValue:{values:ids.map(str)}} } } });
+ const g=googleNachbau({ sitzung:{step:str('opened'),updatedAt:str(frisch()),timings:{mapValue:{fields:{rutina:{mapValue:{fields:{rfinish1:event('rfinish1',['lf-acne','lf-moistur'],25),rfinish2:event('rfinish2',['lf-clean'],15)}}}}}}} });
+ await aufrufen({id:'routine123'});
+ assert.equal(g.gesendet.length,2);
+ await aufrufen({id:'routine123'});
+ assert.equal(g.gesendet.length,2);
+ assert.ok([...g.angelegt].every(id=>id.startsWith('lifeskin_rutina_routine123_')));
+});

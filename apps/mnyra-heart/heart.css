@@ -10752,3 +10752,5 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 
 .heart-kommentar.heart-shopnachricht { grid-template-columns:1fr; }
 .heart-kommentar__sterne { margin:4px 0; font-size:12px; color:var(--heart-muted); }
+
+.heart-rutina-stats{padding:12px 16px}.heart-rutina-row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:13px}.heart-rutina-row strong{white-space:nowrap}.heart-rutina-stats h4{margin:22px 0 8px;font-size:14px}

@@ -1,3 +1,4 @@
+import { baueRutina, renderRutina } from "./heart-lifeskin-rutina.js";
 import { renderShopNachrichten } from "./heart-lifeskin-shopnachrichten.js";
 import { skinreactEntwuerfe, skinreactSendet } from "./heart-skinreact.js";
 import { SKINREACT_BEREICHE, skinreactBereich, skinreactErgebnis, istSkinreact } from "../../shared/lifeskin-skinreact.js";
@@ -698,6 +699,7 @@ function renderShopSchritte(stufen, basis) {
 // An jedem Chip steht, wie viele diesen Weg angefangen haben (Punkt 1).
 export const SHOP_CHIPS = Object.freeze([
   { id: "shop", label: "Shop", titel: "Shop · vom Besuch bis zum Kauf" },
+  { id: "rutina", label: "Rutina", titel: "Rutina · persönliche Produktauswahl" },
   { id: "scan", label: "Scan", titel: "Scan · Bildschirm für Bildschirm" },
   { id: "foto", label: "Foto", titel: "Foto · Bildschirm für Bildschirm" },
   { id: "analyse", label: "Analyse", titel: "Analyseseite · vom Öffnen bis zum Kauf" },
@@ -707,7 +709,8 @@ export const SHOP_CHIPS = Object.freeze([
 ].map((chip) => Object.freeze(chip)));
 
 // Was unter einem Chip steht (ohne die Chips).
-function renderShopAnsicht(weg, id, trichter = []) {
+function renderShopAnsicht(weg, id, trichter = [], rutina) {
+  if (id === "rutina") return renderRutina(rutina);
   if (id === "gjeni") return `<div class="heart-lifeskin-trichter">${renderStufen(weg.analyse)}</div>`;
   const zusatz = trichter.find((t) => t.id === id);
   if (zusatz) return `<div class="heart-shopschritte">${renderShopSchritte(zusatz.stufen.map((s, i) => ({ ...s, nr: i + 1 })), zusatz.stufen[0]?.anzahl || 0)}</div>${zusatz.extra || ""}${zusatz.fuss ? `<p class="heart-lifeskin-block__fuss">${escapeHtml(zusatz.fuss)}</p>` : ""}`;
@@ -733,10 +736,11 @@ function renderShopAnsicht(weg, id, trichter = []) {
   return `<div class="heart-shopschritte">${renderShopSchritte(w.stufen, w.basis)}</div>`;
 }
 
-function renderShopWeg(weg, zeitraum = "", chip = "shop", trichter = []) {
+function renderShopWeg(weg, zeitraum = "", chip = "shop", trichter = [], rutina = baueRutina([])) {
   const wort = ZEITRAEUME.find((z) => z.id === (zeitraum || "heute"))?.label || "";
   const offen = SHOP_CHIPS.find((c) => c.id === chip) || SHOP_CHIPS[0];
   const anzahl = (c) => {
+    if (c.id === "rutina") return rutina.finishes;
     if (c.id === "gjeni") return weg.analyse.at(-1)?.anzahl || 0;
     const t = trichter.find((t) => t.id === c.id);
     if (t) return (t.chipStufe === undefined ? t.stufen.at(-1) : t.stufen[t.chipStufe])?.anzahl ?? 0;
@@ -749,7 +753,7 @@ function renderShopWeg(weg, zeitraum = "", chip = "shop", trichter = []) {
   // und beim Umschalten springt nichts.
   const ansichten = SHOP_CHIPS.map((c) => `
       <div class="heart-shopansicht" data-ansicht="${c.id}" data-an="${c.id === offen.id ? "ja" : "nein"}"${c.id === offen.id ? "" : ' aria-hidden="true"'}>
-        ${renderShopAnsicht(weg, c.id, trichter)}
+        ${renderShopAnsicht(weg, c.id, trichter, rutina)}
       </div>`).join("");
   const zu = SHOP_CHIPS.map((c) => `${c.label} ${anzahl(c)}`).join(" · ");
   // DIE CHIPS SIND DER KOPF DER KARTE, einen Titel gibt es nicht (Wunsch
@@ -3896,7 +3900,7 @@ function renderWegUebersicht(zustand, weg, offenerWeg = weg) {
       ${zustand.liveFehler
         ? leererBlock("Live", "Verbindung unterbrochen — Live-Zahlen nicht verfuegbar.")
         : renderLive(live)}
-      ${weg === "lifeskinshop" ? renderShopWeg(shopWeg, zeitraum, zustand.shopChip || "shop", trichterListe) : renderTrichter(trichterListe, zustand.trichterOffen || "main")}
+      ${weg === "lifeskinshop" ? renderShopWeg(shopWeg, zeitraum, zustand.shopChip || "shop", trichterListe, baueRutina(sitzungen, zeitraum)) : renderTrichter(trichterListe, zustand.trichterOffen || "main")}
       ${renderAnalysen(alleDesWegs, zustand.berichte || {}, zustand.fach || "alle", "Fälle", "",
         zustand.vorschau || {}, { auswahl: zustand.auswahl ?? null, auswahlLoeschen: !!zustand.auswahlLoeschen, skinreact: weg === "lifeskinshop",
           perputhjaModus: zustand.perputhjaModus, skinreactAuto: zustand.skinreactAuto || {} })}

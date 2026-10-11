@@ -285,7 +285,7 @@ export default async function lifeskinMeldung(req, res) {
     if (faellig.length) {
       const ziele = await empfaenger(token);
       for (const vorlage of faellig) {
-        const kennung = meldungsKennung(vorlage.type, id);
+        const kennung = meldungsKennung(vorlage.type, id, vorlage.eventId);
         for (const uid of ziele) {
           const nutzlast = { ...baueMeldung({ vorlage, sessionId: id, sitzung, uid }), source: "sofort" };
           let zustellung;

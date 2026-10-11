@@ -1,3 +1,4 @@
+import { rutinaEvent } from "../../shared/lifeskin-rutina.js";
 /* DER LADEN UNTER /lifeskinshop (docs/lifeskin-shop.md).
  * ══════════════════════════════════════════════════════════════════════
  *
@@ -454,7 +455,7 @@ export class Dyqan {
     this.#zeichneSetet();
     this.#zeichneMittel();
     this.#korbZahl();
-    this.routineBuilder = new RoutineBuilder({ root: $("#personal-routine", this.dok), catalog: () => this.mittel, apply: ids => this.routineUebernehmen(ids), order: id => this.setLegen(id), reset: () => this.routineZurueck() });
+    this.routineBuilder = new RoutineBuilder({ root: $("#personal-routine", this.dok), catalog: () => this.mittel, apply: ids => this.routineUebernehmen(ids), order: id => this.setLegen(id), reset: () => this.routineZurueck(), track: (kind, ids) => this.rutinaTrack(kind, ids) });
     this.routineBuilder.start();
     void this.routineFotoLaden();
     this.#ereignisse();
@@ -818,6 +819,18 @@ export class Dyqan {
       if (this.personalSet?.produkte.includes("lf-clean")) this.#zeichneSetet();
       return true;
     } catch { return false; }
+  }
+
+  rutinaTrack(kind, ids) {
+    if (globalThis.__mnyraStill === true) return;
+    const event = rutinaEvent(kind, ids);
+    if (!event) return;
+    const write = (attempt = 0) => {
+      const session = this.trichterFn()?.sitzung;
+      if (session?.rutinaSchreiben) { void session.rutinaSchreiben(event); return; }
+      if (attempt < 120) globalThis.setTimeout(() => write(attempt + 1), 500);
+    };
+    write();
   }
 
   routineUebernehmen(ids) {
