@@ -1,3 +1,4 @@
+import { checkoutBegonnen, istShopCheckout } from "../../shared/lifeskin-checkout.js";
 import { istSkinreact, skinreactErgebnis } from "../../shared/lifeskin-skinreact.js";
 import { pfadLesen } from "../../shared/lifeskin-klickpfad.js";
 import { statistikTag } from "../../shared/lifeskin-statistik.js";
@@ -297,7 +298,7 @@ export function normalisiere(id, rohdaten) {
     sahSchnitt: daten.sahSchnitt === true,
     sahTherapie: daten.sahTherapie === true,
     sahPreis: daten.sahPreis === true,
-    kasseGeoeffnet: daten.kasseGeoeffnet === true,
+    kasseGeoeffnet: istShopCheckout(daten) ? checkoutBegonnen(daten) : daten.kasseGeoeffnet === true,
     waClick: daten.waClick === true,
     waSent: daten.waSent === true,
     // Ob dieser Fall OHNE Scan angelegt wurde.
@@ -782,7 +783,7 @@ export function anschriftBegonnen(sitzung) {
 // war zwangslaeufig dort (anschriftBegonnen nimmt hatBestellt mit).
 export function warAnDerKasse(sitzung) {
   if (sitzung?.manuell === true) return false;
-  return sitzung?.kasseGeoeffnet === true || anschriftBegonnen(sitzung);
+  return istShopCheckout(sitzung) ? checkoutBegonnen(sitzung) : sitzung?.kasseGeoeffnet === true || anschriftBegonnen(sitzung);
 }
 
 // Kaufaktivitaet ist keine Scan-Kohorte. Je Sitzung einmal im gewaehlten
@@ -793,12 +794,12 @@ export function kaufImZeitraum(sitzung, art, zeitraum = "heute") {
   if (zeitraum === "max") return true;
   const zeit = korb
     ? sitzung.timings?.korbAt || korbZeitpunkt(sitzung).t
-    : sitzung.kasseGeoeffnetAt || sitzung.timings?.kauf?.kasse;
+    : sitzung.timings?.kasse?.begonnen || sitzung.kasseGeoeffnetAt || sitzung.timings?.kauf?.kasse;
   let tage = statistikTag(zeit) ? [statistikTag(zeit)] : [];
   // Bereits gespeicherte Tagesmarken enthalten auch wiederkehrende Besuche.
   if (!korb || !tage.length) {
     tage.push(...Object.entries(sitzung.timings?.ereignisse || {})
-      .filter(([, e]) => e?.kasseGeoeffnet || (!korb && e?.hatAnschrift))
+      .filter(([, e]) => (istShopCheckout(sitzung) && !korb ? e?.adresseBegonnen || e?.hatAnschrift || e?.hatBestellt : e?.kasseGeoeffnet || (!korb && e?.hatAnschrift)))
       .map(([tag]) => tag));
   }
   if (!tage.length) tage = [sitzung.hatBestellt ? bestellTag(sitzung) : sitzung.tag];
@@ -1192,7 +1193,7 @@ export function istAbbrecher(sitzung, jetzt = Date.now(), frist = NACHFASS_FRIST
   // einer Liste, die angerufen wird, aber kein Grund, eine Bedingung
   // wegzulassen.
   if (sitzung.berichtGeoeffnet !== true) return false;
-  if (sitzung.kasseGeoeffnet !== true) return false;
+  if (istShopCheckout(sitzung) ? !checkoutBegonnen(sitzung) : sitzung.kasseGeoeffnet !== true) return false;
   const seit = Date.parse(sitzung.kasseGeoeffnetAt || sitzung.updatedAt || "") || 0;
   return jetzt - seit > frist;
 }
@@ -1665,7 +1666,7 @@ function inDerKasse(e) {
 }
 export function kasseInfo(sitzung) {
   const pfad = pfadLesen(sitzung).filter((e) => Number.isFinite(Date.parse(e.t)));
-  const warDort = sitzung?.kasseGeoeffnet === true || pfad.some(inDerKasse);
+  const warDort = sitzung?.kasseGeoeffnet === true || sitzung?.timings?.kasse?.geoeffnet || pfad.some(inDerKasse);
   if (!warDort) return null;
   let gesehenMs = 0;
   for (const e of pfad) {
@@ -1676,7 +1677,7 @@ export function kasseInfo(sitzung) {
   // Oeffnungen: die Ereignisse "kasse" (Therapieseite), im Laden der
   // gemerkte Zeitpunkt kasseGeoeffnetAt.
   const auf = pfad.filter((e) => e.e === "kasse").map((e) => Date.parse(e.t));
-  const ladenAuf = Date.parse(sitzung?.kasseGeoeffnetAt || "");
+  const ladenAuf = Date.parse(sitzung?.timings?.kasse?.geoeffnet || sitzung?.kasseGeoeffnetAt || "");
   if (!auf.length && Number.isFinite(ladenAuf)) auf.push(ladenAuf);
   // Das erste Ereignis ausserhalb der Kasse ist der Moment, in dem er sie
   // verliess - auch ihr eigenes "gesehen", das beim Verlassen kommt.

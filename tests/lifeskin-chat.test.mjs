@@ -184,3 +184,20 @@ test("Chat-Angebot in der Kasse: Preis der Karte, nur bekannte Produkte, Korb bl
   assert.equal(chatAnlegen({ sessionId: "s", code: "c" }).status, "offen");
   assert.equal(teamText(""), null);
 });
+
+
+test('Shop chat defaults hidden and Heart visibility is independent of team availability', async () => {
+  globalThis.__LIFESKIN_TEST__ = true;
+  const { konfigAus, konfigLaden, Chat } = await import('../apps/lifeskin-shop/chat.js');
+  assert.equal(konfigAus(null).sichtbar, false);
+  assert.equal(konfigAus({ fields: { aktiv: { booleanValue: true } } }).sichtbar, false);
+  const visible = konfigAus({ fields: { sichtbar: { booleanValue: true }, aktiv: { booleanValue: false } } });
+  assert.equal(visible.sichtbar, true);
+  assert.equal(visible.aktiv, false);
+  assert.equal((await konfigLaden(async () => { throw Error('offline'); })).sichtbar, false);
+  const chat = new Chat({ dokument: { defaultView: {} }, fenster: {}, speicher: null });
+  chat.ansicht = { hidden: true };
+  chat.oeffnen();
+  assert.equal(chat.offen, false, 'hidden chat cannot open programmatically');
+  assert.equal(chat.ansicht.hidden, true);
+});

@@ -110,7 +110,7 @@ test("Lifeskin: links Visit, Analysen, Analysenquote, Abbrüche Analysen - recht
 test("Lifeskin zaehlt beide Wege zusammen - Skinreact plus Acne duo", () => {
   const sitzungen = [
     fall("ls1", ""), fall("ls2", "", { imKorb: true }),
-    fall("lss1", "lifeskinshop"), fall("lss2", "lifeskinshop", { kasseGeoeffnet: true, imKorb: true }),
+    fall("lss1", "lifeskinshop"), fall("lss2", "lifeskinshop", { kasseGeoeffnet: true, adresseBegonnen: true, imKorb: true }),
     fall("lss3", "lifeskinshop", { step: "ordered", order: { orderId: "o-1", total: 39, status: "neu", createdAt: HEUTE } })
   ];
   const html = renderLifeskin({ ...GELADEN, sitzungen, bereich: "lifeskin" });
@@ -119,7 +119,7 @@ test("Lifeskin zaehlt beide Wege zusammen - Skinreact plus Acne duo", () => {
   const visit = Number(wert("lifeskin", "Visit"));
   assert.equal(visit, Number(wert("skinreact", "Landing")) + Number(wert("acneduo", "Landing")));
   assert.equal(Number(wert("lifeskin", "Shporta")), Number(wert("skinreact", "Warenkörbe")) + Number(wert("acneduo", "Warenkörbe")));
-  // Arka: lss2 hat die Kasse geoeffnet, lss3 hat bestellt.
+  // Arka: lss2 hat eine Eingabe begonnen, lss3 hat bestellt.
   assert.equal(wert("lifeskin", "Arka"), "2");
   assert.equal(wert("lifeskin", "Umsatz"), wert("acneduo", "Umsatz"));
   // Die Bestellung aus dem Shop steht in den Bestellungen der Mitte.

@@ -51,7 +51,7 @@ test('apply changes page and all order targets; only buying calls existing cart 
   assert.match(f.node('#per-ty .who-grid').innerHTML, /Pore, gropeza/);
   assert.equal(f.events.length, 0);
   f.shop.setLegen(f.button.dataset.set);
-  assert.deepEqual(f.events, [['cart', 45], ['checkout', 45]]);
+  assert.deepEqual(f.events, [['cart', 45]]);
   assert.deepEqual(f.shop.korb.ids, all);
   assert.equal(f.node('#kasa-shuma').textContent, '45 €');
   assert.match(f.node('#kasa-lista').innerHTML, /LF CLEAN/);

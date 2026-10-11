@@ -67,3 +67,11 @@
 
 #ls-einstieg .page .personal-products[data-product-count="2"]>.personal-product{flex-basis:calc((100% - 12px)/2)}
 @media(max-width:480px){#ls-einstieg .page .personal-products[data-product-count="2"]>.personal-product{flex-basis:calc((100% - 10px)/2)}}
+
+/* Compact mobile intro; selection and result retain their existing layout. */
+#ls-einstieg .page .personal-panel:has([data-routine-screen="intro"]:not([hidden])){padding:22px 20px;background:#f5f7f1;border-color:#e1e7da;box-shadow:none}
+#ls-einstieg .page [data-routine-screen="intro"] .eyebrow{font-size:9px;letter-spacing:.12em;color:#637558}
+#ls-einstieg .page [data-routine-screen="intro"] h2{font-size:clamp(23px,6vw,28px);line-height:1.16;margin:10px 0 9px;text-wrap:balance}
+#ls-einstieg .page [data-routine-screen="intro"]>p:not(.eyebrow){font-size:13px;line-height:1.5;max-width:32ch}
+#ls-einstieg .page [data-routine-screen="intro"] .cta{margin-top:18px;min-height:48px;padding:13px 15px;border-radius:8px;font-size:13px}
+@media(max-width:359px){#ls-einstieg .page .personal-panel:has([data-routine-screen="intro"]:not([hidden])){padding:20px 16px}}

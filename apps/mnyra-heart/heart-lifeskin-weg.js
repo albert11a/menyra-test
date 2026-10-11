@@ -1,3 +1,4 @@
+import { checkoutBegonnen } from "../../shared/lifeskin-checkout.js";
 // LIFESKIN 2 IN HEART - welcher Fall zu welchem Tab gehoert, und der
 // Trichter des neuen Wegs vom Anzeigenklick bis zur Bestellung.
 //
@@ -12,7 +13,7 @@
 // Zeit bis zur Antwort daneben.
 import { wegDerSitzung, zaehltImWeg } from "../../shared/lifeskin-weg.js";
 import { stufenIndex, istPatient, istLanding, typVon } from "./heart-lifeskin-berechnung.js";
-import { SHOP_ABSCHNITTE, shopTiefe, skanimGedrueckt, TERAPIA_ABSCHNITTE, terapiaTiefe } from "../../shared/lifeskin-shopsicht.js";
+import { SHOP_ABSCHNITTE, shopAbschnitte, shopTiefe, skanimGedrueckt, TERAPIA_ABSCHNITTE, terapiaTiefe } from "../../shared/lifeskin-shopsicht.js";
 import { LANDING_KARTEN, landingKartenGemessen, landingKartenTiefe } from "../../shared/lifeskin-landingkarten.js";
 
 // Nur die Faelle eines Wegs. "" ist der bisherige Weg (/lifeskin) - dort
@@ -166,7 +167,7 @@ function mitSkanimZeile(seite, liste) {
 // Die Nummern laufen hinter der Seite weiter (seit 04.10.: 9-12).
 export const SHOP_KAUF = Object.freeze([
   { id: "korb", label: "Shport", gilt: imKorbS },
-  { id: "kasse", label: "Arka", gilt: (s) => s?.kasseGeoeffnet === true || istShopKauf(s) },
+  { id: "kasse", label: "Kaufvorgang gestartet", gilt: checkoutBegonnen },
   { id: "anschrift", label: "Adresa", gilt: (s) => s?.adresseBegonnen === true || istShopKauf(s) },
   { id: "bestellt", label: "Gotat Nalt", gilt: istShopKauf }
 ].map((stufe, i) => Object.freeze({ ...stufe, nr: SHOP_ABSCHNITTE.length + 1 + i })));
@@ -289,6 +290,7 @@ export function baueShopWeg(sitzungen) {
   const analyseKauf = stufenZaehlen(seitenListe, SHOP_ANALYSE_KAUF);
   return {
     seite,
+    abschnitte: shopAbschnitte(liste),
     kauf,
     analyse,
     // Die Chips: je ein Weg, Balken am ersten Punkt des Chips.

@@ -95,6 +95,8 @@ class HeartChat {
       this.konfig = snap.exists() ? snap.data() : { aktiv: false };
       const schalter = document.getElementById("hchat-aktiv");
       if (schalter) schalter.checked = this.konfig.aktiv === true;
+      const sichtbar = document.getElementById("hchat-sichtbar");
+      if (sichtbar) sichtbar.checked = this.konfig.sichtbar === true;
       this.#schalterText();
     }, () => {});
     onSnapshot(query(collection(db, "lifeskin", TENANT, "chats"), orderBy("updatedAt", "desc"), limit(300)), (snap) => {
@@ -191,6 +193,7 @@ class HeartChat {
           <b class="hchat__titel">Chat</b>
           <label class="hchat-schalter"><input type="checkbox" id="hchat-aktiv" role="switch"><span class="hchat-schalter__bahn" aria-hidden="true"></span><span class="hchat-schalter__text" id="hchat-aktiv-text">Aus</span></label>
         </header>
+        <div class="hchat-sichtbarkeit"><label class="hchat-schalter"><input type="checkbox" id="hchat-sichtbar" role="switch" aria-label="Chatknopf im Shop anzeigen"><span class="hchat-schalter__bahn" aria-hidden="true"></span><span>Im Shop anzeigen</span></label><small>Aus blendet Chatknopf und Begrüßung aus. Bestehende Chats bleiben hier erhalten.</small></div>
         <p class="hchat__hinweis" id="hchat-hinweis" hidden></p>
         <div class="hchat__listeninhalt" id="hchat-listeninhalt"></div>
       </section>
@@ -530,6 +533,14 @@ class HeartChat {
 
   #aenderung(ereignis) {
     const z = ereignis.target;
+    if (z.id === "hchat-sichtbar") {
+      const sichtbar = z.checked;
+      z.disabled = true;
+      setDoc(KONFIG(), { sichtbar, sichtbarGeaendertAt: new Date().toISOString() }, { merge: true })
+        .catch((f) => { z.checked = !sichtbar; this.#hinweis(`Sichtbarkeit: ${f?.code || ""}`); })
+        .finally(() => { z.disabled = false; });
+      return;
+    }
     if (z.id === "hchat-aktiv") {
       const aktiv = z.checked;
       setDoc(KONFIG(), { aktiv, aktivGeaendertAt: new Date().toISOString() }, { merge: true })

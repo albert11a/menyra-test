@@ -70,6 +70,7 @@ export function konfigAus(dok) {
   const s = (k) => f[k]?.stringValue || "";
   return {
     aktiv: f.aktiv?.booleanValue === true,
+    sichtbar: f.sichtbar?.booleanValue === true,
     begruessung: s("begruessung") || "Përshëndetje! 👋 Si mund t’ju ndihmojmë? Na shkruani pyetjen tuaj – ju përgjigjemi këtu.",
     antwortzeit: s("antwortzeit") || "Zakonisht përgjigjemi brenda pak minutash",
     teamAktivAt: s("teamAktivAt"),
@@ -139,14 +140,14 @@ export class Chat {
       this.konfigDa = true;
       this.#knopfStand();
       this.#kopfStand();
-      setTimeout(() => this.#grussZeigen(), GRUSS_NACH_MS);
+      if (k.sichtbar) {
+        setTimeout(() => this.#grussZeigen(), GRUSS_NACH_MS);
+        if (this.zugang) {
+          const leerlauf = this.fenster.requestIdleCallback || ((f) => setTimeout(f, 2500));
+          leerlauf(() => this.#verbinden().catch(() => {}), { timeout: 4000 });
+        }
+      }
     });
-    // Gibt es schon einen Chat, im Leerlauf verbinden - fuer die Zahl der
-    // ungelesenen Antworten am Knopf.
-    if (this.zugang) {
-      const leerlauf = this.fenster.requestIdleCallback || ((f) => setTimeout(f, 2500));
-      leerlauf(() => this.#verbinden().catch(() => {}), { timeout: 4000 });
-    }
     this.fenster.addEventListener("popstate", () => { if (this.offen && !this.fenster.history.state?.lsChat) this.schliessen(true); });
     globalThis.__lifeskinChat = this;
     return this;
@@ -235,7 +236,7 @@ export class Chat {
     const online = !wa && this.#online();
     this.knopf.dataset.online = online ? "ja" : "nein";
     $(".chat-knopf__ikone", this.knopf).innerHTML = online ? "" : wa ? SVG.wa : SVG.chat;
-    this.knopf.hidden = !this.konfigDa && !this.zugang;
+    this.knopf.hidden = !this.konfig.sichtbar || this.offen || (!this.konfigDa && !this.zugang);
     this.#grussStand();
   }
 
@@ -248,7 +249,7 @@ export class Chat {
   }
 
   #grussZeigen() {
-    if (!this.gruss || this.offen || !this.konfigDa || this.#grussGesehen()) return;
+    if (!this.konfig.sichtbar || !this.gruss || this.offen || !this.konfigDa || this.#grussGesehen()) return;
     // Erst nach der Cookie-Wahl - sonst liegen zwei Fenster uebereinander.
     if (this.dok.getElementById("ls-cookie")) { setTimeout(() => this.#grussZeigen(), 1500); return; }
     this.#grussStand();
@@ -272,6 +273,7 @@ export class Chat {
   }
 
   #knopfTipp() {
+    if (!this.konfig.sichtbar) return;
     if (!this.konfig.aktiv && !this.zugang) {
       this.#pfad("Chat aus → WhatsApp");
       const text = encodeURIComponent("Përshëndetje, kam një pyetje për Acne Duo.");
@@ -287,7 +289,7 @@ export class Chat {
 
   // ── Oeffnen / Schliessen ───────────────────────────────────────────
   oeffnen() {
-    if (this.offen || !this.ansicht) return;
+    if (!this.konfig.sichtbar || this.offen || !this.ansicht) return;
     this.offen = true;
     this.#pfad("Chat geöffnet");
     this.scrollY = this.fenster.scrollY;

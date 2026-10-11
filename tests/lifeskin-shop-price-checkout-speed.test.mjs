@@ -18,9 +18,9 @@ function fixture(holen) {
   const elements = new Map();
   const node = selector => {
     if (!elements.has(selector)) elements.set(selector, {
-      dataset: {}, hidden: true, disabled: true, value: '', textContent: '', children: [], scrollLeft: 0,
+      id: selector.startsWith('#') ? selector.slice(1) : selector, listeners: {}, dataset: {}, hidden: true, disabled: true, value: '', textContent: '', children: [], scrollLeft: 0,
       setAttribute(name, value) { this[name] = value; }, removeAttribute(name) { delete this[name]; },
-      toggleAttribute(name, value) { this[name] = value; }, addEventListener() {}, after() {}, remove() {}, closest() { return null; },
+      toggleAttribute(name, value) { this[name] = value; }, addEventListener(type, fn) { this.listeners[type] = fn; }, after() {}, remove() {}, closest() { return null; },
       querySelector() { return null; }, querySelectorAll() { return []; },
       insertAdjacentHTML(_, html) { this.innerHTML += html; },
       set innerHTML(html) { this.html = html; this.children = Array.from(html.matchAll(/<article/g), () => ({})); },
@@ -34,15 +34,15 @@ function fixture(holen) {
   const documentElement = { dataset: {}, setAttribute(name, value) { this[name] = value; } };
   const dok = {
     documentElement, defaultView: {},
-    querySelector: selector => selector === '.hero-photo' ? null : node(selector),
+    querySelector: selector => ['.hero-photo', '#personal-routine'].includes(selector) ? null : node(selector),
     querySelectorAll: selector => selector === '[data-preis]' ? [price] : selector.includes('[data-set]') ? buttons : [],
     createElement: () => node('dots'), addEventListener() {}
   };
   const events = [], patches = [];
-  const sitzung = { code: 'TEST-LOCAL', ergaenze: patch => patches.push(patch), liveMerken() {}, schritt: async (_, data) => { events.push(['saved', data.order.total]); return { ok: true }; } };
+  const sitzung = { angelegt: true, stand: {}, kasseSchreiben: async patch => patches.push({ timings: { kasse: patch } }), code: 'TEST-LOCAL', ergaenze: patch => patches.push(patch), liveMerken() {}, schritt: async (_, data) => { events.push(['saved', data.order.total]); return { ok: true }; } };
   const shop = new Dyqan({ dokument: dok, speicher: null, dauerSpeicher: { getItem: () => JSON.stringify({ cmimi: 39 }) }, holen,
     trichter: () => ({ sitzung, pixel: { meldeKorb: value => events.push(['AddToCart', value]), meldeKasse: value => events.push(['InitiateCheckout', value]) } }) });
-  return { shop, dok, node, price, buttons, events, patches };
+  return { shop, dok, node, price, buttons, events, patches, sitzung };
 }
 
 test('published Shop-Sets price is usable immediately despite slow Heart and stale local cache', async () => {
@@ -53,7 +53,7 @@ test('published Shop-Sets price is usable immediately despite slow Heart and sta
   assert.equal(f.shop.setVon('acne').cmimi, 25);
   assert.equal(f.shop.angebotBereit, true);
   f.shop.setLegen('acne');
-  assert.deepEqual(f.events, [['AddToCart', 25], ['InitiateCheckout', 25]]);
+  assert.deepEqual(f.events, [['AddToCart', 25]]);
   assert.equal(f.node('#kasa-shuma').textContent, '25 €');
   pending.resolve(offer(19)); await loading;
   assert.equal(f.price.textContent, '19 €');
@@ -67,7 +67,7 @@ test('buy button preserves full cart and AddToCart, then opens the real checkout
   await f.shop.angebotLaden();
   f.shop.setLegen('acne');
   assert.deepEqual(f.shop.korb.ids, ['lf-acne', 'lf-moistur']);
-  assert.deepEqual(f.events, [['AddToCart', 19], ['InitiateCheckout', 19]]);
+  assert.deepEqual(f.events, [['AddToCart', 19]]);
   assert.ok(f.patches.some(p => p.imKorb === true));
   assert.ok(f.patches.some(p => p.korbWert === 19));
   assert.equal(f.node('#sheet').open, undefined, 'no intermediate cart dialog');
@@ -85,7 +85,7 @@ test('offline keeps published 25 EUR purchasable; later Shop-Sets update also re
   await f.shop.angebotLaden(); f.shop.setLegen('acne');
   assert.equal(f.shop.angebotBereit, true);
   assert.equal(f.node('#shop-preisstatus').hidden, true);
-  assert.deepEqual(f.events, [['AddToCart', 25], ['InitiateCheckout', 25]]);
+  assert.deepEqual(f.events, [['AddToCart', 25]]);
   failure = false; await f.shop.angebotLaden();
   assert.equal(f.price.textContent, '27 €');
   assert.equal(f.node('#kasa-shuma').textContent, '27 €');
@@ -209,4 +209,60 @@ test('initial HTML displays 25 EUR without waiting and mobile CSS puts purchase 
   const css = readFileSync(new URL('../apps/lifeskin-shop/shop-youth.css', import.meta.url), 'utf8');
   assert.match(css, /\.page \.buy\{order:1\}/);
   assert.match(css, /\.page \.visual\{order:4;/);
+});
+
+
+test('checkout starts once on real field input, not opening, focus or whitespace', async () => {
+  const f = fixture(async () => offer(19));
+  await f.shop.angebotLaden();
+  assert.equal(f.shop.kasseEingabe({ id: 'kasa-emri', value: 'Ada' }), false, 'empty cart');
+  f.shop.setLegen('acne'); await tick();
+  assert.deepEqual(f.events, [['AddToCart', 19]]);
+  assert.ok(f.patches.some(p => p.timings?.kasse?.geoeffnet));
+  assert.ok(!f.patches.some(p => p.kasseGeoeffnet));
+  assert.equal(f.shop.kasseEingabe({ id: 'kasa-emri', value: '  ' }), false);
+  assert.equal(f.shop.kasseEingabe({ id: 'other', value: 'Ada' }), false);
+  assert.equal(f.shop.kasseEingabe({ id: 'kasa-emri', value: 'A' }), true);
+  await tick();
+  assert.deepEqual(f.events, [['AddToCart', 19], ['InitiateCheckout', 19]]);
+  const started = f.patches.find(p => p.kasseGeoeffnet);
+  assert.equal(started.adresseBegonnen, true);
+  assert.ok(Date.parse(started.kasseGeoeffnetAt));
+  assert.equal(f.patches.find(p => p.timings?.kasse?.begonnen).timings.kasse.begonnen, started.kasseGeoeffnetAt);
+  assert.equal(f.shop.kasseEingabe({ id: 'kasa-emri', value: 'Ada' }), false);
+  f.shop.kasseSchliessen(); f.shop.kasseOeffnen();
+  assert.equal(f.shop.kasseEingabe({ id: 'kasa-telefoni', value: '044123456' }), false);
+  assert.equal(f.events.filter(e => e[0] === 'InitiateCheckout').length, 1);
+});
+
+test('saved orders do not start a new checkout on later input', async () => {
+  const f = fixture(async () => offer(19));
+  await f.shop.angebotLaden(); f.shop.setLegen('acne');
+  f.sitzung.stand.order = { orderId: 'saved-order' };
+  assert.equal(f.shop.kasseEingabe({ id: 'kasa-emri', value: 'Ada' }), false);
+  assert.deepEqual(f.events, [['AddToCart', 19]]);
+});
+
+
+test('form input and autofill change start checkout; field focus does not', async () => {
+  const oldObserver = globalThis.IntersectionObserver;
+  globalThis.IntersectionObserver = class { observe() {} disconnect() {} };
+  try {
+    for (const type of ['input', 'change']) {
+      const f = fixture(async () => offer(19));
+      await f.shop.angebotLaden();
+      f.shop.laden = () => Promise.resolve();
+      f.shop.routineFotoLaden = () => Promise.resolve();
+      f.shop.starte(); f.shop.setLegen('acne');
+      const form = f.node('#kasa-forma'), input = f.node('#kasa-emri');
+      form.listeners.focusin?.({ target: input });
+      assert.deepEqual(f.events, [['AddToCart', 19]]);
+      input.value = 'Ada'; form.listeners[type]({ target: input });
+      clearTimeout(f.shop.kasseTimer);
+      assert.deepEqual(f.events, [['AddToCart', 19], ['InitiateCheckout', 19]]);
+      input.value = 'Ada Lovelace'; form.listeners[type]({ target: input });
+      clearTimeout(f.shop.kasseTimer);
+      assert.equal(f.events.filter(e => e[0] === 'InitiateCheckout').length, 1);
+    }
+  } finally { globalThis.IntersectionObserver = oldObserver; }
 });

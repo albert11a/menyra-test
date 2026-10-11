@@ -316,6 +316,11 @@ test("beide Laeden schreiben den Live-Stand bei Korb, Kasse und Anschrift - ohne
     assert.match(quelle, /this\.#merke\(\{ imKorb: true \}, "imKorb"\);\s*this\.#live\("offer"\);/, `${pfad}: Korb`);
     // Kasse und Anschrift: "kasa" - ein Name, den keine andere Seite schreibt
     // (Heart trennt daran Live · Shop von Live · Analyse).
+    if (pfad.includes("lifeskin-shop")) {
+      assert.match(quelle, /void this\.#kasseSpeichern\(\{ v: 2, geoeffnet:[^\n]+\n\s*this\.#live\("kasa"\);/, `${pfad}: Kassenansicht`);
+      assert.match(quelle, /this\.kasseEingabe\(ereignis\.target\);\s*this\.#live\("kasa"\);/, `${pfad}: Eingabe`);
+      continue;
+    }
     assert.match(quelle, /"kasseGeoeffnet"\);\s*this\.#live\("kasa"\);/, `${pfad}: Kasse`);
     assert.match(quelle, /this\.#merke\(\{ adresseBegonnen: true \}, "adresseBegonnen"\);\s*this\.#live\("kasa"\);/, `${pfad}: Anschrift`);
   }

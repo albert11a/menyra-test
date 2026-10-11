@@ -1,3 +1,4 @@
+import { checkoutBegonnen, istShopCheckout } from "../../shared/lifeskin-checkout.js";
 import { rutinaEvents } from "../../shared/lifeskin-rutina.js";
 import { ROUTINE_PRODUCTS } from "../../shared/lifeskin-personal-routine.js";
 // Wann eine Sitzung eine Meldung verdient - ohne Firestore, ohne Netz.
@@ -74,7 +75,7 @@ export const MELDUNGEN = Object.freeze([
   },
   {
     feld: "kasseGeoeffnet",
-    gesetzt: (daten) => daten.kasseGeoeffnet === true,
+    gesetzt: (daten) => daten.kasseGeoeffnet === true && (!istShopCheckout(daten) || checkoutBegonnen(daten)),
     type: "lifeskin_kasse",
     text: (name) => (name ? `An der Kasse, ${name}` : "Jemand ist an der Kasse")
   }

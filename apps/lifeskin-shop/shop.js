@@ -41,7 +41,7 @@ import { medienListe, ausschnittStil } from "../../shared/lifeskin-medien.js";
 import { PAK_SETE } from "../../shared/lifeskin-oferta.js";
 import { AKTION_DOK, AKTION_STANDARD, aktionNormalisieren, aktionLaeuft, aktionNormalpreis, aktionTexte } from "../../shared/lifeskin-aktion.js";
 import { aktionStarten } from "./aktion.js";
-import { SHOP_ABSCHNITTE, shopSichtPatch } from "../../shared/lifeskin-shopsicht.js";
+import { SHOP_SICHT_ABSCHNITTE, shopSichtPatch } from "../../shared/lifeskin-shopsicht.js";
 import { schirmGesehen } from "../../shared/lifeskin-landingtiefe.js";
 
 import { ROUTINE_PRODUCTS, personalRoutine, personalCartRestore, isPersonalRoutine, personalOrderPrices, isAcneDuoSelection } from "../../shared/lifeskin-personal-routine.js";
@@ -1146,13 +1146,25 @@ export class Dyqan {
     $("#kasa-faleminderit", this.dok).hidden = true;
     ansichtOeffnen(kasa, "kasa", { dokument: this.dok });
     if (this.korb.ids.length) {
-      // InitiateCheckout, sobald die Kasse mit etwas darin aufgeht - wie
-      // auf /lifeskin (Laden#oeffnen).
-      this.trichterFn()?.pixel?.meldeKasse?.(summe(this.korb));
       this.#pfad("kasse", `Kasse geöffnet · ${summe(this.korb)} € · kasa`);
-      this.#merke({ kasseGeoeffnet: true, kasseGeoeffnetAt: new Date().toISOString() }, "kasseGeoeffnet");
+      // Screen visibility is separate from checkout intent. No Pixel or push here.
+      void this.#kasseSpeichern({ v: 2, geoeffnet: new Date().toISOString() });
       this.#live("kasa");
     }
+  }
+
+  // Pixel-Aenderung erlaubt von Albert am 11.10.2026:
+  // InitiateCheckout, Heart and push only on the first nonempty customer input.
+  kasseEingabe(ziel) {
+    if (!KASSE_FELDNAMEN[ziel?.id] || !String(ziel?.value || "").trim()
+      || !this.korb.ids.length || this.sendet || this.trichterFn()?.sitzung?.stand?.order?.orderId
+      || this.gemerkt.has("kasseGeoeffnet")) return false;
+    const begonnen = new Date().toISOString();
+    this.#merke({ kasseGeoeffnet: true, kasseGeoeffnetAt: begonnen, adresseBegonnen: true }, "kasseGeoeffnet");
+    void this.#kasseSpeichern({ v: 2, begonnen });
+    this.trichterFn()?.pixel?.meldeKasse?.(summe(this.korb));
+    this.#pfad("eingabe", `Kaufvorgang gestartet · ${summe(this.korb)} € · kasa`);
+    return true;
   }
 
   kasseSchliessen() {
@@ -1465,9 +1477,8 @@ export class Dyqan {
       ereignis.target?.setAttribute?.("aria-invalid", "false");
       const gabim = $("#kasa-gabim", this.dok);
       if (gabim && !gabim.hidden) gabim.hidden = true;
-      // Wer anfaengt, seine Anschrift zu schreiben - die Stufe zwischen
-      // Kasse und Kauf, wie auf /lifeskin.
-      this.#merke({ adresseBegonnen: true }, "adresseBegonnen");
+      if (!KASSE_FELDNAMEN[ereignis.target?.id]) return;
+      this.kasseEingabe(ereignis.target);
       this.#live("kasa");
       // Das erste Zeichen je Feld sofort in den Klickpfad, der Stand der
       // Felder kurz danach in die Sitzung.
@@ -1480,6 +1491,7 @@ export class Dyqan {
       clearTimeout(this.kasseTimer);
       this.kasseTimer = setTimeout(() => this.#kasseFelderSpeichern(), 700);
     });
+    forme?.addEventListener("change", (ereignis) => this.kasseEingabe(ereignis.target));
     // Beim Verlassen eines Feldes: was drinsteht (oder "leer"), einmal je
     // neuem Stand.
     forme?.addEventListener("focusout", (ereignis) => {
@@ -1538,7 +1550,7 @@ export class Dyqan {
         this.#sichtMerken(nrVon.get(e.target));
       }
     }, { threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] });
-    for (const a of SHOP_ABSCHNITTE) {
+    for (const a of SHOP_SICHT_ABSCHNITTE) {
       const el = this.dok.querySelector(a.wahl);
       if (!el) continue;
       nrVon.set(el, a.nr);

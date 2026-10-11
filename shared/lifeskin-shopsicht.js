@@ -46,6 +46,30 @@ export const SHOP_ABSCHNITTE = Object.freeze([
   { nr: 6, id: "faq", wahl: "main > .faq", name: "F.A.Q" },
   { nr: 7, id: "skinreact", wahl: "#zgjedhja", name: "SkinReact" }
 ].map((a) => Object.freeze(a)));
+// Additional sections added to the current mobile page. Stable IDs keep old
+// visits readable; these are actual section views, never inferred from scrolling.
+export const SHOP_SICHT_ABSCHNITTE = Object.freeze([
+  SHOP_ABSCHNITTE[0],
+  { nr: 101, id: "rutinaWahl", wahl: "#personal-routine", name: "Rutina jote" },
+  SHOP_ABSCHNITTE[1],
+  { nr: 102, id: "perTy", wahl: "#per-ty", name: "A eshte per ty?" },
+  { nr: 103, id: "kundenMedien", wahl: "#customer-section", name: "Foto + Video" },
+  SHOP_ABSCHNITTE[2],
+  { nr: 104, id: "bewertungen", wahl: "#vleresimet", name: "Vleresime" },
+  SHOP_ABSCHNITTE[3],
+  { nr: 105, id: "anwendung", wahl: "#perdorimi", name: "Perdorimi" },
+  { nr: 106, id: "betreuung", wahl: "#rutina", name: "Mbeshtetja" },
+  ...SHOP_ABSCHNITTE.slice(4),
+  { nr: 107, id: "abschluss", wahl: "main > .closing", name: "Fillo me LifeSkin" }
+].map(Object.freeze));
+
+export function shopAbschnitte(sitzungen = []) {
+  return SHOP_SICHT_ABSCHNITTE.map((a, i) => ({
+    id: a.id, nr: i + 1, label: a.name,
+    anzahl: sitzungen.filter(s => s?.timings?.shop?.[a.id] === true).length
+  }));
+}
+
 // Version 2 stand: ... 4 Dy produkte, 5 SkinReact, 6 Garancioni, 7 F.A.Q.
 // "Bis hierher" in der neuen Reihenfolge: Wer frueher bis SkinReact kam,
 // hatte Garantie und F.A.Q noch nicht gesehen (4); bis Garancioni = ohne
@@ -60,7 +84,7 @@ const V1_NACH_V2 = Object.freeze({ 1: 1, 2: 2, 3: 4, 4: 5, 5: 3, 6: 6, 7: 6, 8: 
 
 // Die Felder, die ein neu gesehener Abschnitt schreibt.
 export function shopSichtPatch(nr) {
-  const a = SHOP_ABSCHNITTE.find((x) => x.nr === Number(nr));
+  const a = SHOP_SICHT_ABSCHNITTE.find((x) => x.nr === Number(nr));
   return a ? { v: SHOP_LADEN_VERSION, [a.id]: true } : null;
 }
 
