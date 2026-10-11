@@ -52,8 +52,8 @@ test("Restzeit und Lagertext", async () => {
   const { restzeit, lagerText } = await import("../apps/lifeskin-shop/aktion.js");
   assert.equal(restzeit(10_000_000, 0), "02:46:40");
   assert.equal(restzeit(0, 5), "00:00:00");
-  assert.match(lagerText(6).html, /Vetëm edhe <b>6 sete<\/b> në stok/);
-  assert.match(lagerText(1).html, /Vetëm edhe <b>1 set<\/b> në stok/);
+  assert.match(lagerText(6).html, /Edhe <b>6 sete<\/b> kan mbet/);
+  assert.match(lagerText(1).html, /Edhe <b>1 set<\/b> kan mbet/);
   assert.deepEqual(lagerText(0), { leer: true, html: "Shitur – setet e radhës vijnë së shpejti" });
 });
 
@@ -93,11 +93,11 @@ test("Block zeigt Preis und Ende aus Heart; bei 0 Sets Shitur und gesperrt; am E
   let geendet = 0;
   const holen = async () => ({ ok: true, json: async () => ({ ok: true, sete: 0 }) });
   const a = aktionStarten({ dok, aktion: AKTION, jetzt: () => jetzt, holen, beiEnde: () => { geendet += 1; } });
-  assert.equal(dok.els["aktion-plakete"].textContent, "VETËM SOT");
+  assert.equal(dok.els["aktion-plakete"].textContent, "ZBRITJE E SOTME");
   assert.equal(dok.els["aktion-ende"].textContent, "Mbaron sot në ora 18:00");
   assert.equal(dok.els["aktion-cmimi"].textContent, "22 €");
   assert.equal(dok.els["aktion-vecmas"].textContent, "58 €");
-  assert.equal(dok.els["aktion-kursen"].textContent, "−36 €");
+  assert.equal(dok.els["aktion-kursen"].textContent, "Kursen 36 €");
   await a.lager();
   assert.equal(dok.els["aktion-mbetur"].textContent, "01:00:00");
   assert.equal(dok.els["aktion-stok"].hidden, false);

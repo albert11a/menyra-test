@@ -3,6 +3,18 @@ Last updated: 2026-10-11
 
 # LifeSkin Shop - /lifeskinshop
 
+## Freigegebene Vorschau uebernehmen (11.10.)
+
+Nur diese Produktseite: kompakte Zbritje-Karte mit echten Heart-Werten,
+Bestandswortlaut "Edhe … sete kan mbet", Textkarten fuer Originalnachrichten
+(Bild erst beim Oeffnen), ein FAQ-Plus und die freigegebenen Texte.
+Checkout, Medienquellen, Preis-/Lagerberechnung und Pixel bleiben erhalten.
+Umsetzung auf Arbeitsbranch, anschliessend ausdruecklich beauftragter Push auf main.
+
+Pruefung: 133 Shop-/Pixel-Tests bestanden; Build erfolgreich, keine getrackten
+Bundle-Aenderungen; Lint 0 Fehler (305 bestehende Warnungen). HTML, Icon-Sprite
+und 17 erhaltene Originalbild-Ziele geprueft. Kein mobiler Browserlauf.
+
 Auftrag (28.09.): Der Shop wird komplett - eigene Kasse statt Weiterleitung
 auf /lifeskin2, "Gjeni setin për lëkurën tuaj" mit Lead wie auf den anderen
 Wegen (getrennt gezaehlt, gleiche Funktionen), Pixel fuer alles Relevante,

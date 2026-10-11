@@ -25,7 +25,7 @@ export function restzeit(bisMs, jetztMs) {
 
 export function lagerText(sete) {
   if (sete <= 0) return { leer: true, html: "Shitur – setet e radhës vijnë së shpejti" };
-  return { leer: false, html: `Vetëm edhe <b>${sete === 1 ? "1 set" : `${sete} sete`}</b> në stok` };
+  return { leer: false, html: `Edhe <b>${sete === 1 ? "1 set" : `${sete} sete`}</b> kan mbet` };
 }
 
 export function aktionStarten({ dok = globalThis.document, aktion, jetzt = () => Date.now(), holen = globalThis.fetch?.bind(globalThis), beiEnde } = {}) {
@@ -39,11 +39,11 @@ export function aktionStarten({ dok = globalThis.document, aktion, jetzt = () =>
   const setze = (id, wert) => { const el = dok.getElementById(id); if (el) el.textContent = wert; };
   const t = aktionTexte(aktion, jetzt());
   block.dataset.aktionBis = aktion.bis;
-  setze("aktion-plakete", t.plakete);
+  setze("aktion-plakete", t.plakete === "VETËM SOT" ? "ZBRITJE E SOTME" : "ZBRITJE");
   setze("aktion-ende", t.ende);
   setze("aktion-cmimi", `${t.cmimi} €`);
   setze("aktion-vecmas", `${t.vecmas} €`);
-  setze("aktion-kursen", `−${t.kursen} €`);
+  setze("aktion-kursen", `Kursen ${t.kursen} €`);
   setze("aktion-normal", t.normal);
   for (const id of ["aktion-nga", "aktion-vecmas", "aktion-kursen"]) {
     const el = dok.getElementById(id);

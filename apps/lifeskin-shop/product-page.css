@@ -1497,3 +1497,229 @@
     font-size: 35px !important;
   }
 }
+
+/* Approved mobile offer and text-only original messages, 11.10. */
+#ls-einstieg .page .deal-card {
+  margin: 24px 0 16px;
+  padding: 20px;
+  border: 1px solid #dce5d4;
+  border-radius: 14px;
+  background: #f4f7ef;
+  color: #24371f;
+  overflow: hidden;
+}
+#ls-einstieg .page .deal-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+#ls-einstieg .page .deal-label {
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  font-weight: 700;
+  color: #476b3c;
+}
+#ls-einstieg .page .deal-until {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #687960;
+}
+#ls-einstieg .page .deal-price-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 24px;
+}
+#ls-einstieg .page .deal-price-label {
+  display: block;
+  font-size: 11px;
+  color: #64765a;
+  margin-bottom: 4px;
+}
+#ls-einstieg .page .deal-price {
+  display: block;
+  font-size: 48px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -1.5px;
+  white-space: nowrap;
+}
+#ls-einstieg .page .deal-price > span {
+  font-size: 30px;
+  letter-spacing: -0.8px;
+}
+#ls-einstieg .page .deal-saving {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+#ls-einstieg .page .deal-saving > span {
+  font-size: 12px;
+  color: #67755f;
+}
+#ls-einstieg .page .deal-saving del {
+  font-size: 17px;
+  color: #67755f;
+  text-decoration-thickness: 1.5px;
+  margin-left: 3px;
+}
+#ls-einstieg .page .deal-saving strong {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 10px;
+  border-radius: 5px;
+  background: #e4eddb;
+  color: #355328;
+  white-space: nowrap;
+}
+#ls-einstieg .page .deal-bundle {
+  display: grid;
+  gap: 5px;
+  margin-top: 22px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+#ls-einstieg .page .deal-bundle strong {
+  font-weight: 600;
+}
+#ls-einstieg .page .deal-bundle > span {
+  font-size: 11px;
+  color: #687960;
+}
+#ls-einstieg .page .deal-foot {
+  border-top: 1px solid #dce5d4;
+  margin-top: 18px;
+  padding-top: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+}
+#ls-einstieg .page .deal-stock {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  line-height: 1.5;
+}
+#ls-einstieg .page .deal-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #c47a31;
+  border-radius: 50%;
+  margin-right: 4px;
+  flex: none;
+}
+#ls-einstieg .page .deal-stock b {
+  font-weight: 600;
+}
+#ls-einstieg .page .deal-time {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  color: #536746;
+  flex: none;
+}
+#ls-einstieg .page .deal-time .icon {
+  width: 14px;
+  height: 14px;
+}
+#ls-einstieg .page .deal-time b {
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+}
+#ls-einstieg .page .faq summary:after,
+#ls-einstieg .page .faq summary:before {
+  content: none !important;
+  display: none !important;
+}
+#ls-einstieg .page .faq summary .icon {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+#ls-einstieg .page .faq summary {
+  justify-content: space-between;
+  align-items: center;
+}
+#ls-einstieg .page .faq details[open] summary .icon {
+  transform: rotate(45deg);
+}
+@media (max-width: 360px) {
+  #ls-einstieg .page .deal-card {
+    padding: 17px;
+  }
+  #ls-einstieg .page .deal-top {
+    gap: 8px;
+  }
+  #ls-einstieg .page .deal-label {
+    letter-spacing: 0.8px;
+  }
+  #ls-einstieg .page .deal-until {
+    font-size: 10px;
+  }
+  #ls-einstieg .page .deal-price {
+    font-size: 44px;
+  }
+  #ls-einstieg .page .deal-foot {
+    gap: 8px;
+  }
+  #ls-einstieg .page .deal-stock {
+    font-size: 10px;
+  }
+}
+
+#ls-einstieg .page .aktion.deal-card {
+  display: block;
+  margin: 24px 0 16px;
+  padding: 20px;
+  border: 1px solid #dce5d4;
+  border-radius: 14px;
+  background: #f4f7ef;
+  color: #24371f;
+}
+#ls-einstieg .page .aktion.deal-card[hidden] {
+  display: none;
+}
+#ls-einstieg .page .pdp-buy:has(#aktion:not([hidden])) .price-line,
+#ls-einstieg .page .selected-set {
+  display: none;
+}
+#ls-einstieg .page .faq summary::after,
+#ls-einstieg .page .faq summary::before {
+  content: none !important;
+  display: none !important;
+}
+#ls-einstieg .page .message-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 190px;
+  text-align: left;
+}
+#ls-einstieg .page .message-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+#ls-einstieg .page .deal-card [hidden] {
+  display: none !important;
+}
+
+#ls-einstieg .page .aktion.deal-card {
+  box-shadow: none;
+}
+#ls-einstieg .page .deal-stock[data-leer] .deal-dot {
+  background: #9aa5a0;
+}
+@media (max-width: 360px) {
+  #ls-einstieg .page .aktion.deal-card {
+    padding: 17px;
+  }
+}
