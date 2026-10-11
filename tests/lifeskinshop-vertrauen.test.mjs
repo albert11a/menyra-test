@@ -23,7 +23,9 @@ test("Originalnachrichten bleiben erhalten und stehen nach Kundenfotos und Video
 });
 
 test("Freigegebener Kopf ohne unbelegte Sternbewertung", () => {
-  assert.doesNotMatch(HTML, /★|hero-yjet|mesazhe-yje/);
+  const start = HTML.indexOf('<section class="hero"');
+  const hero = HTML.slice(start, HTML.indexOf('</section>', start));
+  assert.doesNotMatch(hero, /★|hero-yjet|mesazhe-yje/);
 });
 
 test("Instagram-Bestellung nur im Fussbereich, nicht zwischen den Produkten", () => {

@@ -1,3 +1,4 @@
+import { renderShopNachrichten } from "./heart-lifeskin-shopnachrichten.js";
 import { skinreactEntwuerfe, skinreactSendet } from "./heart-skinreact.js";
 import { SKINREACT_BEREICHE, skinreactBereich, skinreactErgebnis, istSkinreact } from "../../shared/lifeskin-skinreact.js";
 // Der Lifeskin-Bereich in Heart.
@@ -3902,7 +3903,8 @@ function renderWegUebersicht(zustand, weg, offenerWeg = weg) {
       ${renderBetreuung(zustandWeg)}
       ${renderBestellungen(alleDesWegs, zustand.bestellZeitraum || "heute", zustand)}
       ${renderNachfassen(alleDesWegs)}
-      ${renderMedienReaktionen(zustand)}
+      ${renderMedienReaktionen({ ...zustand, weg })}
+      ${weg === "lifeskinshop" ? renderShopNachrichten(zustand) : ""}
       ${renderProduktkosten(zustand, shopSetetListe(zustand))}
 
       <!-- WAS NICHT JEDEN TAG GELESEN WIRD, STEHT NICHT JEDEN TAG IM WEG.

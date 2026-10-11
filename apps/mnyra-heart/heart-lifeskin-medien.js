@@ -1,3 +1,4 @@
+import { SHOP_REVIEW_MEDIUM, bewertungLesen } from "../../shared/lifeskin-shop-bewertungen.js";
 // KUNDENFOTOS UND -VIDEOS IN HEART ("Nga klientët tanë").
 //
 //   - "Mehr anzeigen -> Fotos & Videos": hochladen, Produkt und Satz dazu,
@@ -268,8 +269,13 @@ export function ausschnittLesen(wurzel = globalThis.document) {
 }
 
 // ── Reaktionen: Views und Kommentare (unter Nachfassen) ───────────────
+export function kommentarMedien(zustand = {}) {
+  const liste = medienListe(zustand.medien).filter((m) => (zustand.weg === "lifeskinshop" || !m.standard) && m.id !== SHOP_REVIEW_MEDIUM);
+  return zustand.weg === "lifeskinshop" ? [{ id: SHOP_REVIEW_MEDIUM, art: "bewertung", produkt: "Acne Duo – Shop-Bewertungen", aktiv: true, views: 0, bild: "" }, ...liste] : liste;
+}
+
 export function renderMedienReaktionen(zustand = {}) {
-  const liste = medienListe(zustand.medien).filter((m) => !m.standard);
+  const liste = kommentarMedien(zustand);
   const kommentare = zustand.medienKommentare || null;
   const views = liste.reduce((s, m) => s + m.views, 0);
   const alle = kommentare
@@ -287,20 +293,21 @@ export function renderMedienReaktionen(zustand = {}) {
     return `
         <div class="heart-reaktion">
           ${kachelBild(m, "heart-reaktion__bild")}
-          <span class="heart-reaktion__name"><b>${escapeHtml(m.produkt || "Ohne Produkt")}</b><small>${m.art === "video" ? "Video" : "Foto"}${m.aktiv ? "" : " · aus"}</small></span>
+          <span class="heart-reaktion__name"><b>${escapeHtml(m.produkt || "Ohne Produkt")}</b><small>${m.art === "bewertung" ? "Shop-Bewertungen" : m.art === "video" ? "Video" : "Foto"}${m.aktiv ? "" : " · aus"}</small></span>
           <span class="heart-reaktion__zahl">${renderHeartIcon("eye")}${zahl(m.views)}</span>
           <span class="heart-reaktion__zahl">${renderHeartIcon("message")}${anzahl === null ? "–" : zahl(anzahl)}</span>
         </div>`;
   }).join("");
 
-  const kommentarZeilen = alle.map((k) => {
+  const kommentarZeilen = alle.map((roh) => {
+    const k = roh.medium === SHOP_REVIEW_MEDIUM ? bewertungLesen(roh) : roh;
     const schluessel = `${k.medium}/${k.id}`;
     return `
         <li class="heart-kommentar${k.verborgen ? " heart-kommentar--verborgen" : ""}">
           ${kachelBild(k.m, "heart-kommentar__bild")}
           <div class="heart-kommentar__leib">
             <p class="heart-kommentar__kopf"><b>${escapeHtml(k.name)}</b><span>${escapeHtml(zeitKurz(k.createdAt))}</span>${k.verborgen ? `<em>verborgen</em>` : ""}</p>
-            <p class="heart-kommentar__text">${escapeHtml(k.text)}</p>
+            ${k.sterne ? `<p class="heart-kommentar__sterne">${k.sterne} / 5 Sterne</p>` : ""}<p class="heart-kommentar__text">${escapeHtml(k.text)}</p>
             <div class="heart-kommentar__knoepfe">
               <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-kommentar" data-was="${k.verborgen ? "zeigen" : "verbergen"}"
                       data-medium="${escapeHtml(k.medium)}" data-id="${escapeHtml(k.id)}">${k.verborgen ? "Wieder zeigen" : "Verbergen"}</button>
@@ -314,9 +321,10 @@ export function renderMedienReaktionen(zustand = {}) {
   return `
     <details class="heart-lifeskin-block heart-klapp" ${klappAttr("reaktionen")}>
       <summary class="heart-klapp__kopf">
-        <h3 class="heart-lifeskin-block__titel">Fotos &amp; Videos – Reaktionen</h3>
+        <h3 class="heart-lifeskin-block__titel">${zustand.weg === "lifeskinshop" ? "Kundenbewertungen &amp; Kommentare" : "Fotos &amp; Videos – Reaktionen"}</h3>
         <span class="heart-klapp__zahl">${zahlText}</span>
       </summary>
+      ${zustand.weg === "lifeskinshop" ? `<button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-kommentare-laden" ${laedt ? "disabled" : ""}>Aktualisieren</button>` : ""}
       ${liste.length ? `
       <div class="heart-reaktionen">${zeilen}</div>
       <h4 class="heart-reaktionen__titel">Kommentare</h4>
@@ -337,7 +345,7 @@ export function renderMedienReaktionen(zustand = {}) {
 export function renderKommentarSchreiben(liste = []) {
   if (!liste.length) return "";
   const optionen = liste.map((m, i) => `
-        <option value="${escapeHtml(m.id)}">${escapeHtml(m.produkt || "Ohne Produkt")} · ${m.art === "video" ? "Video" : "Foto"} ${i + 1}${m.aktiv ? "" : " (aus)"}</option>`).join("");
+        <option value="${escapeHtml(m.id)}">${escapeHtml(m.produkt || "Ohne Produkt")} · ${m.art === "bewertung" ? "Shop" : m.art === "video" ? "Video" : "Foto"} ${i + 1}${m.aktiv ? "" : " (aus)"}</option>`).join("");
   return `
       <h4 class="heart-reaktionen__titel">Kommentare schreiben</h4>
       <div class="heart-kommentar-import" data-kommentar-import data-bewahren="kommentar-import:${escapeHtml(liste.map((m) => m.id).join(","))}">

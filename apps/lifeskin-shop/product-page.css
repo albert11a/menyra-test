@@ -1723,3 +1723,256 @@
     padding: 17px;
   }
 }
+
+/* Customer messages and reviews: same gutters, compact cards, no picture-only slide. */
+#ls-einstieg .page #klientet {
+  background: #f4f7ef;
+}
+#ls-einstieg .page #klientet .message-rail {
+  align-items: stretch;
+}
+#ls-einstieg .page #klientet .message-card {
+  background: #fff;
+  border: 1px solid #dce5d4;
+  border-radius: 12px;
+  padding: 20px;
+  min-height: 205px;
+  box-shadow: none;
+}
+#ls-einstieg .page #klientet .message-card::before {
+  content: "“";
+  font-size: 38px;
+  line-height: 1;
+  color: #8ca37e;
+  margin-bottom: 12px;
+}
+#ls-einstieg .page #klientet .message-quote {
+  display: none;
+}
+#ls-einstieg .page #klientet .message-copy {
+  flex: 1;
+  justify-content: space-between;
+}
+#ls-einstieg .page #klientet .message-copy > span {
+  padding-top: 15px;
+  border-top: 1px solid #edf0e9;
+  font-size: 11px;
+}
+#ls-einstieg .page #klientet .ig-erste {
+  display: none !important;
+}
+#ls-einstieg .page #setet .routine-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+#ls-einstieg .page #setet .routine-card {
+  display: flex;
+  flex-direction: column;
+  background: #f7f8f4;
+  border: 1px solid #e1e7da;
+  border-radius: 12px;
+  overflow: hidden;
+}
+#ls-einstieg .page #setet .routine-photo {
+  margin: 0;
+  border-radius: 0;
+  background: #f7f8f4;
+}
+#ls-einstieg .page #setet .routine-copy {
+  padding: 15px 12px 17px;
+}
+#ls-einstieg .page #setet .routine-copy .tag {
+  font-size: 9px;
+  letter-spacing: 0.6px;
+  margin: 0 0 8px;
+}
+#ls-einstieg .page #setet .routine-copy h3 {
+  font-size: 17px;
+  line-height: 1.25;
+  min-height: 2.5em;
+}
+#ls-einstieg .page #setet .routine-copy p:not(.tag) {
+  font-size: 12px;
+  line-height: 1.55;
+  margin: 8px 0 0;
+}
+#ls-einstieg .page .shop-reviews {
+  background: #fff;
+  padding: 48px 0;
+}
+#ls-einstieg .page .reviews-heading {
+  margin-bottom: 22px;
+}
+#ls-einstieg .page #reviews-summary {
+  font-size: 13px;
+  color: #536746;
+  margin: 10px 0 0;
+}
+#ls-einstieg .page .shop-review-rail {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 8px;
+}
+#ls-einstieg .page .shop-review-card {
+  flex: 0 0 280px;
+  max-width: calc(100% - 12px);
+  padding: 20px;
+  border: 1px solid #dce5d4;
+  border-radius: 12px;
+  background: #f7f8f4;
+  scroll-snap-align: start;
+}
+#ls-einstieg .page .shop-review-author {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+#ls-einstieg .page .review-avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #e7eddf;
+  font-size: 15px;
+  color: #49673b;
+}
+#ls-einstieg .page .shop-review-author strong {
+  font-size: 13px;
+}
+#ls-einstieg .page .shop-review-author time {
+  display: block;
+  font-size: 10px;
+  color: #708364;
+  margin-top: 3px;
+}
+#ls-einstieg .page .review-rating {
+  margin: 14px 0 10px;
+  color: #6a804d;
+  letter-spacing: 2px;
+  font-size: 16px;
+}
+#ls-einstieg .page .review-stars-empty {
+  color: #cdd5c4;
+}
+#ls-einstieg .page .shop-review-text {
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+#ls-einstieg .page #reviews-empty {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #617458;
+}
+#ls-einstieg .page .review-write {
+  border: 1px solid #dce5d4;
+  border-radius: 12px;
+  margin-top: 22px;
+}
+#ls-einstieg .page .review-write > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+  padding: 17px 18px;
+  font-size: 13px;
+  font-weight: 600;
+}
+#ls-einstieg .page .review-write > summary::-webkit-details-marker {
+  display: none;
+}
+#ls-einstieg .page .review-write[open] > summary > span {
+  transform: rotate(45deg);
+}
+#ls-einstieg .page #shop-review-form {
+  display: grid;
+  gap: 16px;
+  padding: 0 18px 18px;
+}
+#ls-einstieg .page #shop-review-form label {
+  display: grid;
+  gap: 7px;
+  font-size: 12px;
+}
+#ls-einstieg .page #shop-review-form input:not([type="radio"]),
+#ls-einstieg .page #shop-review-form textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #dce5d4;
+  border-radius: 8px;
+  background: #fff;
+  color: #24371f;
+  font: inherit;
+  font-size: 16px;
+}
+#ls-einstieg .page #shop-review-form fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+#ls-einstieg .page #shop-review-form legend {
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+#ls-einstieg .page .review-stars {
+  display: flex;
+  gap: 4px;
+}
+#ls-einstieg .page .review-stars label {
+  position: relative;
+  cursor: pointer;
+}
+#ls-einstieg .page .review-stars input {
+  position: absolute;
+  opacity: 0;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  cursor: pointer;
+}
+#ls-einstieg .page .review-stars label > span:first-of-type {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  font-size: 28px;
+  color: #cdd5c4;
+}
+#ls-einstieg .page .review-stars label:has(input:checked) > span:first-of-type,
+#ls-einstieg
+  .page
+  .review-stars
+  label:has(~ label input:checked)
+  > span:first-of-type {
+  color: #6a804d;
+  background: #f1f5eb;
+}
+#ls-einstieg .page .review-stars input:focus-visible + span {
+  outline: 2px solid #0c6b70;
+  outline-offset: 2px;
+}
+#ls-einstieg .page #shop-review-status {
+  font-size: 12px;
+  line-height: 1.6;
+}
+#ls-einstieg .page .shop-reviews [hidden] {
+  display: none !important;
+}
+@media (min-width: 760px) {
+  #ls-einstieg .page #setet .routine-copy {
+    padding: 22px;
+  }
+  #ls-einstieg .page #setet .routine-copy h3 {
+    font-size: 24px;
+    min-height: 0;
+  }
+}
+
+#ls-einstieg .page #klientet:not(:has([data-zitat-bild])) { display:none; }

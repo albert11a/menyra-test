@@ -66,12 +66,12 @@ import { ladeLifeskin, ladeLifeskinSeit, ladeLifeskinSitzung, horcheLive, ladeFo
   ladeBericht, setzeVersand, speichereAnbieter,
   ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX,
   speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder,
-  speichereShopSetet, ladeShopSetFoto, speichereShopSetFoto, loescheShopSetFoto, speichereShopHero, loescheShopHero, speichereShopHeroListe, speichereShopProduktFoto, speichereShopAktion,
+  speichereShopSetet, ladeShopSetFoto, speichereShopSetFoto, loescheShopSetFoto, speichereShopHero, loescheShopHero, speichereShopHeroListe, speichereShopProduktFoto, speichereShopAktion, loescheShopNachricht,
   speichereAntwortzeit, speicherePerputhjaModus,
   ladeMedien, speichereMedien, speichereMedium, loescheMedium, ladeKommentare, setzeKommentarVerborgen, loescheKommentar, schreibeKommentare,
   ladeProduktkosten, speichereProduktkosten } from "./heart-lifeskin-adapter.js";
 import { medienListe, mediumNormalisieren, neueMediumId } from "../../shared/lifeskin-medien.js";
-import { kommentarVorschauSetzen, ausschnittGriff, ausschnittZoom, ausschnittLesen } from "./heart-lifeskin-medien.js";
+import { kommentarMedien, kommentarVorschauSetzen, ausschnittGriff, ausschnittZoom, ausschnittLesen } from "./heart-lifeskin-medien.js";
 import { rasteListe, klappSetzen, klappOffen, rastiDom } from "./heart-lifeskin-raste.js";
 import { shopSetetListe } from "./heart-lifeskin-shopsets.js";
 import { schnittHoeren, schnittErgebnis, schnittZurueck } from "./heart-lifeskin-schnitt.js";
@@ -3085,7 +3085,7 @@ async function medienKommentareLaden() {
   actions.patchLifeskin({ medienKommentareStatus: "laedt" });
   try {
     const medien = await ladeMedien().catch(() => null);
-    const liste = medienListe(medien ?? stand.medien).filter((m) => !m.standard);
+    const liste = kommentarMedien({ ...stand, medien: medien ?? stand.medien });
     const kommentare = await ladeKommentare(liste.map((m) => m.id));
     actions.patchLifeskin({ ...(medien ? { medien } : {}), medienKommentare: kommentare, medienKommentareStatus: "" });
   } catch {
@@ -3135,6 +3135,24 @@ async function lifeskinKommentareSpeichern() {
   } finally {
     delete knopf.dataset.laeuft;
     kommentarVorschauSetzen(form);
+  }
+}
+
+async function shopNachrichtLoeschen(id) {
+  const stand = store.getState().lifeskin || {};
+  if (!id || stand.shopNachrichtenStatus) return;
+  if (stand.shopNachrichtLoeschen !== id) {
+    actions.patchLifeskin({ shopNachrichtLoeschen: id });
+    return;
+  }
+  actions.patchLifeskin({ shopNachrichtenStatus: "speichert" });
+  try {
+    const liste = await loescheShopNachricht(id);
+    actions.patchLifeskin({ shopNachrichten: liste, shopNachrichtenStatus: "", shopNachrichtLoeschen: "" });
+    setToast("Originalnachrichten", "Aus dem Shop entfernt.", "success");
+  } catch (fehler) {
+    actions.patchLifeskin({ shopNachrichtenStatus: "" });
+    setToast("Originalnachrichten", fehler?.message || "Nicht gelöscht.", "danger");
   }
 }
 
@@ -4485,6 +4503,8 @@ const operations = {
   lifeskinAusschnittMerken() { lifeskinAusschnittMerken(); },
   lifeskinAusschnittZurueck() { lifeskinAusschnittZurueck(); },
   lifeskinKommentareSpeichern() { return lifeskinKommentareSpeichern(); },
+  medienKommentareLaden() { return medienKommentareLaden(); },
+  shopNachrichtLoeschen(id) { return shopNachrichtLoeschen(id); },
   speichereLifeskinRasti() { return speichereLifeskinRasti(); },
   loescheLifeskinRasti() { return loescheLifeskinRasti(); },
   lifeskinRastiOrt(id, ort) { return lifeskinRastiOrt(id, ort); },

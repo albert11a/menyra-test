@@ -3,6 +3,31 @@ Last updated: 2026-10-11
 
 # LifeSkin Shop - /lifeskinshop
 
+## Kundenkommentare und mobile Karten (11.10.)
+
+Auftrag: Nachrichtenbereich ohne weisse Instagram-Bildkarte, zwei kompakte
+Produktkarten nebeneinander, FAQ initial geschlossen. Neue Besucherbewertungen
+mit optionaler Sterneauswahl und echten Kommentaren; keine erfundenen Sterne.
+Heart verwaltet neue Bewertungen sowie die 17 vorhandenen Originalnachrichten.
+Bestehende Kommentarrechte und Moderation verwenden, keine Regeln oder
+Pixel-Aufrufe aendern. Shop-Nachrichten als eigene CEO-pflegbare Konfiguration.
+
+- Besucher schreiben auf /lifeskinshop unter "Vleresime per Acne Duo".
+  Name, 1–5 Sterne und Text; kein vorausgewaehlter Stern. Durchschnitt nur
+  aus abgegebenen Bewertungen, Originalnachrichten erhalten keine Sterne.
+- Speicherung im bestehenden Kommentarformat unter medien/shop-acne-duo/
+  kommentare. Sterne als Textpraefix [N/5], keine neuen Firestore-Rechte.
+  Still-Links schreiben keine Bewertungen. Fehler zeigen "Provo perseri".
+- Heart -> Acne Duo: "Kundenbewertungen & Kommentare" zeigt auch verborgene
+  Kommentare, mit Aktualisieren, Verbergen/Wieder zeigen und Loeschen.
+  "Shop – Originalnachrichten" zeigt alle vorhandenen Nachrichten mit Link
+  zum Original und Loeschen (zweiter Klick). CEO-Transaktion auf
+  config/shopNachrichten erhaelt parallele Loeschungen und leere Listen.
+- Keine produktiven Testkommentare angelegt. 3154 Unit-Tests bestanden;
+  Lint 0 Fehler (305 bestehende Warnungen), Build erfolgreich ohne getrackte
+  Bundle-Aenderungen. HTML-Struktur und Kommentarformat geprueft, kein
+  mobiler Browserlauf.
+
 ## Freigegebene Vorschau uebernehmen (11.10.)
 
 Nur diese Produktseite: kompakte Zbritje-Karte mit echten Heart-Werten,

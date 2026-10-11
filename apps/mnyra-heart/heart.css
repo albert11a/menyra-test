@@ -10749,3 +10749,6 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 .heart-dergesa__feld .heart-lifeskin-eingabe { width: 100%; min-width: 0; font-size: 16px; }
 .heart-dergesa__knopf { flex: none; }
 .heart-dergesa__fuss { margin: 0; font-size: 12px; color: var(--heart-text-muted, #8f918d); }
+
+.heart-kommentar.heart-shopnachricht { grid-template-columns:1fr; }
+.heart-kommentar__sterne { margin:4px 0; font-size:12px; color:var(--heart-muted); }

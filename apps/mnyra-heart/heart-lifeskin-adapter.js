@@ -1,3 +1,4 @@
+import { SHOP_NACHRICHTEN_DOK, nachrichtenNormalisieren } from "../../shared/lifeskin-shop-bewertungen.js";
 import { skinreactFreigabe, skinreactErgebnis } from "../../shared/lifeskin-skinreact.js";
 // Liest, was im Lifeskin-Trichter passiert ist.
 //
@@ -227,6 +228,7 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     .filter((d) => d.id !== ANTWORTZEIT_DOK)
     .filter((d) => d.id !== PERPUTHJA_DOK)
     .filter((d) => d.id !== AKTION_DOK)
+    .filter((d) => d.id !== SHOP_NACHRICHTEN_DOK)
     .reduce((zusammen, d) => ({ ...zusammen, ...(d.data() || {}) }), {});
   const setPreis = Number.isFinite(Number(konfig.setPreis)) && Number(konfig.setPreis) > 0
     ? Number(konfig.setPreis)
@@ -278,6 +280,7 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     raste: Array.isArray(rasteDok?.lista) ? rasteDok.lista : null,
     // null: noch nie gespeichert - es gelten die drei Sets der Seite.
     shopSetet: Array.isArray(setetDok?.lista) ? setetDok.lista : null,
+    shopNachrichten: nachrichtenNormalisieren(konfigDocs.find((d) => d.id === SHOP_NACHRICHTEN_DOK)?.data()?.lista),
     // Ohne Dokument zeigt der Laden die Voreinstellung - Heart auch.
     shopAktion: { ...aktionNormalisieren(aktionDok || AKTION_STANDARD), standard: !aktionDok },
     // Das Titelbild des Ladens: "" = das Bild der Seite.
@@ -957,4 +960,16 @@ export async function gibSkinreactFrei(id, bereich) {
   const snapshot = await getDocFromServer(ref);
   if (!snapshot.exists()) throw new Error("Fotos werden noch gespeichert. Bitte gleich erneut senden.");
   await setDoc(ref, skinreactFreigabe(bereich), { merge: true });
+}
+
+// Transaction preserves concurrent removals; an empty list stays empty.
+export async function loescheShopNachricht(id) {
+  if (!/^[a-zA-Z0-9_-]{1,80}$/.test(String(id || ""))) throw new Error("Unbekannte Nachricht.");
+  const ref = doc(db, "lifeskin", TENANT, "config", SHOP_NACHRICHTEN_DOK);
+  return runTransaction(db, async transaction => {
+    const snapshot = await transaction.get(ref);
+    const liste = nachrichtenNormalisieren(snapshot.data()?.lista).filter(k => k.id !== id);
+    transaction.set(ref, { lista: liste, updatedAt: new Date().toISOString() });
+    return liste;
+  });
 }
