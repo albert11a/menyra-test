@@ -3,10 +3,10 @@ const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&a
 const icon = name => `<svg class="icon personal-icon" aria-hidden="true" focusable="false"><use href="/apps/lifeskin-shop/icons.svg#${name}"></use></svg>`;
 export function productRail(ids, catalog = [], descriptions = false) {
   const products = ROUTINE_PRODUCTS.filter(p => ids.includes(p.id));
-  return `<div class="personal-products" data-product-count="${products.length}" role="region" aria-label="Produktet e setit tuaj">${products.map(p => {
+  return `<div class="personal-products" tabindex="0" data-product-count="${products.length}" role="region" aria-label="Produktet e setit tuaj">${products.map(p => {
     const m = catalog.find(item => item.id === p.id);
     return `<article class="personal-product"><div class="personal-product-photo"><img src="${escape(m?.fotot?.[0] || p.photo)}" alt="${escape(p.name)}" width="300" height="400" loading="lazy" decoding="async"></div><strong>${escape(p.name)}</strong><small>${escape(m?.inhalt || (p.id === 'lf-clean' ? '150 ml' : '30 ml'))}</small>${descriptions ? `<p>${escape(p.text)}</p>` : ''}</article>`;
-  }).join('')}</div>`;
+  }).join('')}</div>${products.length > 2 ? `<div class="personal-swipe">${icon('ArrowLeft')}<span>Rreshqit per produktet e tjera</span>${icon('ArrowRight')}</div>` : ''}`;
 }
 export function routineInstructions(ids) {
   // Cleanser precedes actives; moisturizer follows. Never combine BPO/BHA same evening.
