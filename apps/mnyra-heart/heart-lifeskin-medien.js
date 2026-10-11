@@ -308,6 +308,7 @@ export function renderMedienReaktionen(zustand = {}) {
           <div class="heart-kommentar__leib">
             <p class="heart-kommentar__kopf"><b>${escapeHtml(k.name)}</b><span>${escapeHtml(zeitKurz(k.createdAt))}</span>${k.verborgen ? `<em>verborgen</em>` : ""}</p>
             ${k.sterne ? `<p class="heart-kommentar__sterne">${k.sterne} / 5 Sterne</p>` : ""}<p class="heart-kommentar__text">${escapeHtml(k.text)}</p>
+            ${k.bilder?.length ? `<button type="button" class="heart-lifeskin-knopf heart-review-fotos" data-action="lifeskin-review-fotos" data-id="${escapeHtml(k.id)}">${k.bilder.length} ${k.bilder.length === 1 ? "Foto" : "Fotos"} öffnen ↗</button>` : ""}
             <div class="heart-kommentar__knoepfe">
               <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-kommentar" data-was="${k.verborgen ? "zeigen" : "verbergen"}"
                       data-medium="${escapeHtml(k.medium)}" data-id="${escapeHtml(k.id)}">${k.verborgen ? "Wieder zeigen" : "Verbergen"}</button>

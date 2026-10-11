@@ -1,4 +1,4 @@
-import { SHOP_NACHRICHTEN_DOK, nachrichtenNormalisieren } from "../../shared/lifeskin-shop-bewertungen.js";
+import { SHOP_NACHRICHTEN_DOK, nachrichtenNormalisieren, SHOP_REVIEW_MEDIUM, reviewBilderNormalisieren, reviewFotoUrl } from "../../shared/lifeskin-shop-bewertungen.js";
 import { skinreactFreigabe, skinreactErgebnis } from "../../shared/lifeskin-skinreact.js";
 // Liest, was im Lifeskin-Trichter passiert ist.
 //
@@ -20,7 +20,7 @@ import { skinreactFreigabe, skinreactErgebnis } from "../../shared/lifeskin-skin
 import { antwortenFuerBericht } from "../../shared/lifeskin-antworten.js";
 import { wegGueltig } from "../../shared/lifeskin-weg.js";
 import { perputhjaGueltig } from "../../shared/lifeskin-perputhja.js";
-import { db } from "/shared/firebase-config.js";
+import { db, auth } from "/shared/firebase-config.js";
 import { KOSTEN_DOK, kostenNormalisieren } from "./heart-lifeskin-kosten.js";
 import {
   TRICHTER_STUFEN,
@@ -863,7 +863,8 @@ export async function ladeKommentare(ids = []) {
           name: String(k.name || "").slice(0, 40),
           text: String(k.text || "").slice(0, 500),
           createdAt: String(k.createdAt || ""),
-          verborgen: k.verborgen === true
+          verborgen: k.verborgen === true,
+          ...(k.bilder ? { bilder: reviewBilderNormalisieren(k.bilder) } : {})
         };
       }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
       return [id, liste];
@@ -899,7 +900,25 @@ export async function setzeKommentarVerborgen(medium, kommentar, verborgen) {
     { verborgen: verborgen === true }, { merge: true });
 }
 
+export async function ladeReviewFoto(bild) {
+  const token = await auth.currentUser?.getIdToken();
+  if (!token) throw new Error("Nicht angemeldet");
+  const response = await fetch(reviewFotoUrl(bild), { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+  if (!response.ok) throw new Error("Foto konnte nicht geladen werden");
+  return URL.createObjectURL(await response.blob());
+}
+
 export async function loescheKommentar(medium, kommentar) {
+  if (medium === SHOP_REVIEW_MEDIUM) {
+    const snapshot = await getDoc(doc(db, "lifeskin", TENANT, "medien", medium, "kommentare", kommentar));
+    if (reviewBilderNormalisieren(snapshot.data()?.bilder).length) {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("Nicht angemeldet");
+      const response = await fetch(`/api/lifeskin-review?review=${encodeURIComponent(kommentar)}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) throw new Error("Bewertung konnte nicht gelöscht werden");
+      return;
+    }
+  }
   await deleteDoc(doc(db, "lifeskin", TENANT, "medien", medium, "kommentare", kommentar));
 }
 

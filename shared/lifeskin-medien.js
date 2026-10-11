@@ -73,6 +73,8 @@ function wert(f) {
   if ("doubleValue" in f) return f.doubleValue;
   if ("booleanValue" in f) return f.booleanValue;
   if ("timestampValue" in f) return f.timestampValue;
+  if ("arrayValue" in f) return (f.arrayValue.values || []).map(wert);
+  if ("mapValue" in f) return Object.fromEntries(Object.entries(f.mapValue.fields || {}).map(([k, v]) => [k, wert(v)]));
   if ("nullValue" in f) return null;
   return null;
 }
@@ -153,6 +155,7 @@ export async function kommentareLaden(id, { basis, tenant = "lifeskin", fetchFn 
       .filter((z) => z?.document)
       .map((z) => ({
         id: String(z.document.name || "").split("/").pop(),
+        ...(z.document.fields?.bilder ? { bilder: wert(z.document.fields.bilder) } : {}),
         name: String(wert(z.document.fields?.name) || ""),
         text: String(wert(z.document.fields?.text) || ""),
         createdAt: String(wert(z.document.fields?.createdAt) || "")

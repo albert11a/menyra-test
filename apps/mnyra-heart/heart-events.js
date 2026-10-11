@@ -518,6 +518,7 @@ export function bindHeartEvents({
       await operations.lifeskinMediumSchieben?.(target.getAttribute("data-id"), target.getAttribute("data-richtung"));
       return;
     }
+    if (action === "lifeskin-review-fotos") { await operations.lifeskinReviewFotos?.(target.getAttribute("data-id")); return; }
     if (action === "lifeskin-kommentare-laden") { await operations.medienKommentareLaden?.(); return; }
     if (action === "lifeskin-shopnachricht-loeschen") { await operations.shopNachrichtLoeschen?.(target.getAttribute("data-id")); return; }
     if (action === "lifeskin-kommentare-speichern") {

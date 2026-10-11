@@ -3,6 +3,34 @@ Last updated: 2026-10-11
 
 # LifeSkin Shop - /lifeskinshop
 
+## Fotos in Bewertungen (11.10.)
+
+Auftrag: optionale Mehrfach-Fotos, rechts im Bewertungskopf buendig von
+Name bis Sternen, gleiche Hoehe und dynamische Bildbreite ohne Beschnitt.
+Lupe oeffnet volle Fotos mit Galerie und kleinen Vorschaubildern. Auch in
+Heart sichtbar; Moderation und Loeschen schliessen Bilder ein. Bestehende
+Kommentare ohne Fotos bleiben erhalten. Kein Pixel-/Regel- oder Functions-Deploy.
+
+- Bis zu vier optionale Fotos; vor Upload als JPEG auf maximal 1440 px und
+  300 KB je Bild verkleinert. Name/Sterne und Foto haben 76 px gemeinsame
+  Hoehe. Vollstaendige Bilder mit `object-fit: contain`, Galerie mit Lupe,
+  Pfeilen, Wischen und Vorschaubildern; keine automatisch geoeffnete Galerie.
+- Text ohne Fotos nutzt weiterhin den bestehenden Kommentar-Schreibweg.
+  Mit Fotos schreibt `/api/lifeskin-review` Bewertung und Bilddokumente
+  atomar; stabile Upload-ID verhindert doppelte Bewertungen bei Retry.
+  Kleine Bildmetadaten stehen im Kommentar, JPEGs in dessen privater
+  Unterkollektion `fotos/{0..3}`. Oeffentliche Galerie liefert nur Fotos
+  nicht verborgener Bewertungen aus; `no-store` verhindert alte Freigaben.
+- Heart oeffnet auch verborgene Fotos mit dem vorhandenen CEO-ID-Token.
+  Loeschen entfernt Kommentar und alle Bilddokumente atomar. API nutzt
+  den bestehenden Vercel-Schluessel `MNYRA_FIREBASE_ADMIN_KEY`; keine neuen
+  Firestore-Rechte, Secrets im Browser oder Storage-Konfiguration.
+- 3160 Unit-Tests bestanden; Lint 0 Fehler (305 bestehende Warnungen).
+  Build erfolgreich, getrackte Bundles unveraendert. Backend-Aufrufe gemockt,
+  keine produktiven Bewertungen/Fotos angelegt. Mobiler Browserlauf nicht
+  ausgefuehrt. Manuell noch pruefen: Hoch-/Querformat, mehrere Fotos und
+  Lupe auf iOS/Android; in Heart Foto oeffnen, verbergen und loeschen.
+
 ## Kundenkommentare und mobile Karten (11.10.)
 
 Auftrag: Nachrichtenbereich ohne weisse Instagram-Bildkarte, zwei kompakte

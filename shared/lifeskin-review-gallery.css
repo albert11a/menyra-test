@@ -1,0 +1,16 @@
+:is(#ls-einstieg,body) .review-gallery{position:fixed;inset:0;overflow:hidden;box-sizing:border-box;width:min(100%,1000px);max-width:100vw;height:min(94dvh,1000px);max-height:100dvh;margin:auto;padding:14px;border:0;border-radius:14px;background:#fff;color:#24371f;box-shadow:0 20px 80px #0005;font:14px/1.4 system-ui,sans-serif}
+:is(#ls-einstieg,body) .review-gallery::backdrop{background:#12200fd9}
+:is(#ls-einstieg,body) .review-gallery-bar{display:flex;justify-content:space-between;align-items:center;height:44px;margin-bottom:10px}
+:is(#ls-einstieg,body) .review-gallery button{appearance:none;border:1px solid #dce5d4;border-radius:50%;background:#f7f8f4;color:inherit;min-width:44px;height:44px;font:28px/1 system-ui,sans-serif;cursor:pointer;touch-action:manipulation}
+:is(#ls-einstieg,body) .review-gallery button:focus-visible{outline:2px solid #0c6b70;outline-offset:2px}
+:is(#ls-einstieg,body) .review-gallery-stage{position:relative;display:grid;place-items:center;height:calc(100% - 145px);min-height:100px;background:#f7f8f4;border-radius:10px;overflow:hidden}
+:is(#ls-einstieg,body) .review-gallery-stage img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block}
+:is(#ls-einstieg,body) .review-gallery-stage [data-prev],:is(#ls-einstieg,body) .review-gallery-stage [data-next]{position:absolute;z-index:1;top:calc(50% - 22px);background:#fffffff0}
+:is(#ls-einstieg,body) .review-gallery-stage [data-prev]{left:10px}:is(#ls-einstieg,body) .review-gallery-stage [data-next]{right:10px}
+:is(#ls-einstieg,body) .review-gallery-stage p{position:absolute;padding:20px;text-align:center;font-size:13px}:is(#ls-einstieg,body) .review-gallery-stage p:empty{display:none}
+:is(#ls-einstieg,body) .review-gallery-thumbs{display:flex;justify-content:center;gap:10px;overflow-x:auto;height:76px;padding-top:14px}
+:is(#ls-einstieg,body) .review-gallery-thumbs button{border-radius:8px;padding:3px;min-width:50px;height:62px;flex:none}
+:is(#ls-einstieg,body) .review-gallery-thumbs img{display:block;width:auto;max-width:92px;height:54px;object-fit:contain;border-radius:5px}
+:is(#ls-einstieg,body) .review-gallery-thumbs button[aria-current=true]{border:2px solid #0c6b70;padding:2px}
+:is(#ls-einstieg,body) .review-gallery [hidden]{display:none!important}
+@media(max-width:600px){:is(#ls-einstieg,body) .review-gallery{height:100dvh;width:100vw;border-radius:0;padding:12px}}

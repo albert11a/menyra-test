@@ -172,7 +172,7 @@ test("resumed scan writes only duration leaves, preserving report activity", asy
 test("adapter paginates beyond 3,000 sessions and retains order dates from reports", async () => {
   const root = new URL("../", import.meta.url);
   let code = readFileSync(new URL("apps/mnyra-heart/heart-lifeskin-adapter.js", root), "utf8");
-  code = code.replace(/import \{ db \} from "\/shared\/firebase-config.js";/, "const db = {};");
+  code = code.replace(/import \{ db, auth \} from "\/shared\/firebase-config.js";/, "const db = {}; const auth = { currentUser: null };");
   code = code.replace(/import \{([\s\S]*?)\} from "\/shared\/vendor\/firebase\/11.0.0\/firebase-firestore.js";/,
     (match, names) => {
       // Start at the vendor import, not the preceding calculation import.

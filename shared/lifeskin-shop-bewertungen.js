@@ -113,10 +113,25 @@ export function bewertungText(text, sterne) {
 
 export function bewertungLesen(k = {}) {
   const match = /^\[([1-5])\/5\]\n([\s\S]+)$/.exec(String(k.text || ""));
-  return { ...k, sterne: match ? Number(match[1]) : null, text: match ? match[2] : String(k.text || "") };
+  return { ...k, sterne: match ? Number(match[1]) : null, text: match ? match[2] : String(k.text || ""), bilder: reviewBilderNormalisieren(k.bilder) };
 }
 
 export function bewertungZusammenfassung(liste = []) {
   const bewertet = liste.map(bewertungLesen).filter(k => k.sterne !== null);
   return { anzahl: bewertet.length, durchschnitt: bewertet.length ? bewertet.reduce((sum, k) => sum + k.sterne, 0) / bewertet.length : null };
+}
+
+export const REVIEW_FOTOS_MAX = 4;
+export const REVIEW_FOTO_BYTES_MAX = 300000;
+export function reviewBilderNormalisieren(roh) {
+  if (!Array.isArray(roh)) return [];
+  return roh.slice(0, REVIEW_FOTOS_MAX).flatMap(b => {
+    const id = String(b?.id || ""), index = Number(b?.index), breite = Number(b?.breite), hoehe = Number(b?.hoehe);
+    if (!/^[0-9a-f]{32}$/.test(id) || !Number.isInteger(index) || index < 0 || index >= REVIEW_FOTOS_MAX || !Number.isInteger(breite) || !Number.isInteger(hoehe) || breite < 1 || hoehe < 1 || breite > 4096 || hoehe > 4096) return [];
+    return [{ id, index, breite, hoehe }];
+  });
+}
+export function reviewFotoUrl(b) {
+  const sauber = reviewBilderNormalisieren([b])[0];
+  return sauber ? `/api/lifeskin-review?review=${sauber.id}&foto=${sauber.index}` : "";
 }

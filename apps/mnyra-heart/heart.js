@@ -1,3 +1,5 @@
+import { reviewGalerie } from "../../shared/lifeskin-review-gallery.js";
+import { SHOP_REVIEW_MEDIUM } from "../../shared/lifeskin-shop-bewertungen.js";
 import { skinreactWahlMerken, skinreactEntwuerfe, skinreactSendet } from "./heart-skinreact.js";
 import { autoStand, autoAnzeige, AUTO_BEREICH } from "./heart-skinreact-auto.js";
 import { istSkinreact } from "../../shared/lifeskin-skinreact.js";
@@ -68,7 +70,7 @@ import { ladeLifeskin, ladeLifeskinSeit, ladeLifeskinSitzung, horcheLive, ladeFo
   speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder,
   speichereShopSetet, ladeShopSetFoto, speichereShopSetFoto, loescheShopSetFoto, speichereShopHero, loescheShopHero, speichereShopHeroListe, speichereShopProduktFoto, speichereShopAktion, loescheShopNachricht,
   speichereAntwortzeit, speicherePerputhjaModus,
-  ladeMedien, speichereMedien, speichereMedium, loescheMedium, ladeKommentare, setzeKommentarVerborgen, loescheKommentar, schreibeKommentare,
+  ladeMedien, speichereMedien, speichereMedium, loescheMedium, ladeKommentare, setzeKommentarVerborgen, loescheKommentar, schreibeKommentare, ladeReviewFoto,
   ladeProduktkosten, speichereProduktkosten } from "./heart-lifeskin-adapter.js";
 import { medienListe, mediumNormalisieren, neueMediumId } from "../../shared/lifeskin-medien.js";
 import { kommentarMedien, kommentarVorschauSetzen, ausschnittGriff, ausschnittZoom, ausschnittLesen } from "./heart-lifeskin-medien.js";
@@ -4496,6 +4498,10 @@ const operations = {
   speichereLifeskinMedium() { return speichereLifeskinMedium(); },
   loescheLifeskinMedium() { return loescheLifeskinMedium(); },
   lifeskinMediumSchieben(id, richtung) { return lifeskinMediumSchieben(id, richtung); },
+  lifeskinReviewFotos(id) {
+    const review = store.getState().lifeskin?.medienKommentare?.[SHOP_REVIEW_MEDIUM]?.find(k => k.id === id);
+    return reviewGalerie(review?.bilder, 0, { laden: ladeReviewFoto });
+  },
   lifeskinKommentar(was, medium, id) { return lifeskinKommentar(was, medium, id); },
   lifeskinKommentarVorschau() { lifeskinKommentarVorschau(); },
   lifeskinAusschnittGriff(event) { ausschnittGriff(event, lifeskinAusschnittMerken); },
