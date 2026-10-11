@@ -65,9 +65,11 @@ export function aktionStarten({ dok = globalThis.document, aktion, jetzt = () =>
   };
 
   let zeitgeber = null, lagerZeit = null;
-  const stopp = () => { clearInterval(zeitgeber); clearInterval(lagerZeit); };
+  let gestoppt = false;
+  const stopp = () => { gestoppt = true; clearInterval(zeitgeber); clearInterval(lagerZeit); };
 
   const ticken = () => {
+    if (gestoppt) return;
     if (jetzt() >= bis) {
       block.hidden = true;
       knoepfe(false);
@@ -81,11 +83,11 @@ export function aktionStarten({ dok = globalThis.document, aktion, jetzt = () =>
   };
 
   const lager = async () => {
-    if (aktion.sete == null || !holen || !stok || !stokText) return;
+    if (gestoppt || aktion.sete == null || !holen || !stok || !stokText) return;
     try {
       const antwort = await holen(LAGER_ADRESSE, { cache: "no-store" });
       const daten = antwort.ok ? await antwort.json() : null;
-      if (!daten?.ok || !Number.isFinite(daten.sete)) return;
+      if (gestoppt || !daten?.ok || !Number.isFinite(daten.sete)) return;
       const { leer, html } = lagerText(daten.sete);
       stokText.innerHTML = html;
       stok.toggleAttribute("data-leer", leer);

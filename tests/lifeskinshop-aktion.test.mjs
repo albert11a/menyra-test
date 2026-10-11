@@ -174,8 +174,24 @@ test("HTML: Voreinstellung bis 19:00, abgelaufen sofort weg, kein Pixel im Aktio
 
 test("Kasse: Zbritje mit Normalpreis und Ende, Acne Duo mit Set-Bild (Inhaber 09.10.)", () => {
   const js = lies("apps/lifeskin-shop/shop.js");
-  assert.match(js, /const zbritje = n === 2 && !istChatKorb\(this\.korb\) && aktionLaeuft\(this\.aktion\) && aktionNormalpreis\(\) > summe\(this\.korb\);/);
+  assert.match(js, /const zbritje = n === 2 && !isPersonalRoutine\(this\.korb\) && !istChatKorb\(this\.korb\) && aktionLaeuft\(this\.aktion\) && aktionNormalpreis\(\) > summe\(this\.korb\);/);
   assert.match(js, /oferta\.textContent = zbritje \? `Oferta: \$\{aktionTexte\(this\.aktion\)\.ende\.replace\(\/\^M\/, "m"\)\}` : "";/);
   assert.match(js, /const titel = istChatKorb\(this\.korb\) \? "Oferta juaj nga chat-i" : duo \? "Acne Duo" :/);
   assert.match(js, /<img class="kasa-set__set" src="\$\{e\(setBild\)\}"/);
+});
+
+test('stopped Duo offer cannot disable personal-set checkout after a delayed stock response', async () => {
+  const { aktionStarten } = await import('../apps/lifeskin-shop/aktion.js');
+  const dok = fakeDok();
+  let resolve, reads = 0;
+  const pending = new Promise(done => { resolve = done; });
+  const clock = aktionStarten({ dok, aktion: AKTION, jetzt: () => Date.parse('2026-10-12T10:00:00Z'),
+    holen: () => { reads++; return pending; } });
+  clock.stopp();
+  resolve({ ok: true, json: async () => ({ ok: true, sete: 0 }) });
+  await new Promise(done => setImmediate(done));
+  assert.equal(dok.knopf.disabled, false);
+  assert.equal(dok.els['aktion-stok'].hidden, true);
+  await clock.lager();
+  assert.equal(reads, 1, 'no stale visibility-change request after stopping the offer');
 });
