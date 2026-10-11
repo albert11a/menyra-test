@@ -1,5 +1,5 @@
 /* Scoped personal routine; same swipe rail in the builder and selected product page. */
-#ls-einstieg .page .personal-panel{padding:28px;border:1px solid #dce3d5;border-radius:20px;background:#f4f6ef;color:#253720;min-width:0}
+#ls-einstieg .page .personal-panel{padding:28px;border:1px solid #dce3d5;border-radius:8px;background:#f4f6ef;color:#253720;min-width:0}
 #ls-einstieg .page .personal-panel [hidden]{display:none!important}
 #ls-einstieg .page .personal-panel h2{font-size:clamp(26px,5vw,36px);line-height:1.15;margin:10px 0 14px;letter-spacing:-.035em;text-wrap:balance}
 #ls-einstieg .page .personal-panel p{margin:0;font-size:14px;color:#68775f;line-height:1.55}
@@ -10,7 +10,7 @@
 #ls-einstieg .page .personal-panel button:focus-visible{outline:3px solid #087078;outline-offset:3px}
 #ls-einstieg .page [data-routine-screen="intro"]>small{display:block;font-size:12px;line-height:1.5;color:#78846f;margin-top:14px;text-align:center}
 #ls-einstieg .page .personal-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:22px 0 18px}
-#ls-einstieg .page .personal-choice{position:relative;display:flex;min-width:0;border:1px solid #dbe2d3;border-radius:14px;background:#fff;cursor:pointer;overflow:hidden}
+#ls-einstieg .page .personal-choice{position:relative;display:flex;min-width:0;border:1px solid #dbe2d3;border-radius:8px;background:#fff;cursor:pointer;overflow:hidden}
 #ls-einstieg .page .personal-choice:has(input:checked){border-color:#076d73;background:#edf5f0;box-shadow:inset 0 0 0 1px #076d73}
 #ls-einstieg .page .personal-choice:has(input:focus-visible){outline:3px solid #087078;outline-offset:3px}
 #ls-einstieg .page .personal-choice input{position:absolute;width:1px;height:1px;opacity:0}
@@ -31,7 +31,7 @@
 #ls-einstieg .page [data-routine-products]{margin-top:22px;min-width:0}
 #ls-einstieg .page .personal-products{display:flex;align-items:flex-start;gap:12px;width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-padding-inline:0;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:0 0 4px;margin:0}
 #ls-einstieg .page .personal-product{display:flex;flex-direction:column;flex:0 0 calc((100% - 12px)/2);scroll-snap-align:start;min-width:0;margin:0;padding:0}
-#ls-einstieg .page .personal-product-photo{position:relative;width:100%;aspect-ratio:3/4;border:1px solid #e1e6da;background:#fff;border-radius:14px;overflow:hidden}
+#ls-einstieg .page .personal-product-photo{position:relative;width:100%;aspect-ratio:3/4;border:1px solid #e1e6da;background:#fff;border-radius:6px;overflow:hidden}
 #ls-einstieg .page .personal-product-photo img{position:absolute;inset:0;display:block;width:100%;height:100%;max-width:100%;max-height:none;object-fit:cover;object-position:center;margin:0;padding:0;border:0;border-radius:0}
 #ls-einstieg .page .personal-product>strong{display:block;font-size:12px;line-height:1.35;letter-spacing:.025em;margin:12px 0 4px;color:#253720;overflow-wrap:anywhere}
 #ls-einstieg .page .personal-product>small{display:block;font-size:11px;line-height:1.4;color:#76836d;margin:0}
@@ -59,5 +59,8 @@
 #ls-einstieg.personal-active #setet .routine-grid{display:block}
 #ls-einstieg .page .personal-hero-link{display:block;text-align:center;margin:16px 0;font-size:13px;color:#086c73;text-underline-offset:4px}
 
-@media(max-width:480px){#ls-einstieg .page .personal-panel{padding:22px 16px;border-radius:18px}#ls-einstieg .page .personal-choices{gap:10px}#ls-einstieg .page .personal-choice-body{padding:14px 12px 44px}#ls-einstieg .page .personal-choice-body>strong{font-size:14px}#ls-einstieg .page .personal-choice-copy{font-size:11px}#ls-einstieg .page .personal-products{gap:10px}#ls-einstieg .page .personal-product{flex-basis:calc((100% - 10px)/2)}}
+@media(max-width:480px){#ls-einstieg .page .personal-panel{padding:22px 16px;border-radius:8px}#ls-einstieg .page .personal-choices{gap:10px}#ls-einstieg .page .personal-choice-body{padding:14px 12px 44px}#ls-einstieg .page .personal-choice-body>strong{font-size:14px}#ls-einstieg .page .personal-choice-copy{font-size:11px}#ls-einstieg .page .personal-products{gap:10px}#ls-einstieg .page .personal-product{flex-basis:calc((100% - 10px)/2)}}
 @media(max-width:359px){#ls-einstieg .page .personal-choices{grid-template-columns:minmax(0,1fr)}#ls-einstieg .page .personal-choice-top{min-height:0}#ls-einstieg .page .personal-actions{grid-template-columns:1fr}#ls-einstieg .page .personal-actions .personal-back{justify-self:start}#ls-einstieg .page .personal-assurances{gap:8px}}
+
+#ls-einstieg .page #personal-routine{margin:24px 0 0;padding:0;border:0;min-width:0}
+#ls-einstieg .page #personal-routine>.wrap{padding:0;max-width:100%;margin:0}
