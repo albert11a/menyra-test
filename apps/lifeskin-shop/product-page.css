@@ -929,7 +929,7 @@
   height: auto;
   aspect-ratio: 7/5;
   min-height: 0;
-  border-radius: 14px;
+  border-radius: 18px;
   background: #efeee9;
   box-shadow: none;
   overflow: hidden;
@@ -1468,7 +1468,7 @@
 }
 #ls-einstieg .page .hero .hero-set {
   margin: 0;
-  border-radius: 3px;
+  border-radius: 18px;
 }
 #ls-einstieg .page .hero .cta {
   font-size: 14px;
@@ -1724,7 +1724,7 @@
   }
 }
 
-/* Customer messages and reviews: same gutters, compact cards, no picture-only slide. */
+/* Customer messages and reviews: same gutters and compact cards. */
 #ls-einstieg .page #klientet {
   background: #f4f7ef;
 }
@@ -1759,8 +1759,33 @@
   font-size: 11px;
 }
 #ls-einstieg .page #klientet .ig-erste {
-  display: none !important;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  text-decoration: none;
 }
+#ls-einstieg .page #klientet .ig-erste::before { content: none; }
+#ls-einstieg .page #klientet .ig-erste__bild {
+  position: static;
+  flex: none;
+  min-height: 0;
+  height: 180px;
+  margin: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: hidden;
+}
+#ls-einstieg .page #klientet .ig-erste__bild img {
+  position: static;
+  width: auto;
+  max-width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: none;
+}
+#ls-einstieg .page #klientet .ig-erste > strong { font-size: 13px; font-weight: 600; }
+#ls-einstieg .page #klientet .ig-erste:focus-visible { outline: 2px solid #536746; outline-offset: -3px; }
 #ls-einstieg .page #setet .routine-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
@@ -1998,3 +2023,7 @@
 #ls-einstieg .page .review-upload-photo img { width:100%; height:100%; object-fit:contain; border-radius:7px; background:#edf1e7; border:1px solid #dce5d4; }
 #ls-einstieg .page .review-upload-photo button { position:absolute; right:-6px; top:-8px; width:32px; height:32px; border:0; border-radius:50%; background:#fff; color:#263d27; box-shadow:0 1px 5px #263d2720; font-size:22px; }
 #ls-einstieg .page .review-upload small,#ls-einstieg .page [data-review-photo-status] { font-size:11px; line-height:1.5; color:#617157; }
+
+/* Review average: stars use exactly the surrounding number's font size. */
+#ls-einstieg .page .review-summary-stars { display: inline-block; position: relative; font: inherit; line-height: 1; vertical-align: baseline; margin-right: .4em; color: #d2dacb; white-space: nowrap; }
+#ls-einstieg .page .review-summary-stars > span { position: absolute; inset: 0 auto 0 0; overflow: hidden; color: #536746; }

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { nachrichtenNormalisieren, bewertungText, bewertungLesen, bewertungZusammenfassung, SHOP_REVIEW_MEDIUM } from '../shared/lifeskin-shop-bewertungen.js';
 import { kommentarSchreiben } from '../shared/lifeskin-medien.js';
-import { reviewMarkup, nachrichtMarkup } from '../apps/lifeskin-shop/bewertungen.js';
+import { reviewMarkup, nachrichtMarkup, reviewSummaryMarkup, nachrichtenAktualisieren } from '../apps/lifeskin-shop/bewertungen.js';
 import { kommentarMedien, renderMedienReaktionen } from '../apps/mnyra-heart/heart-lifeskin-medien.js';
 import { renderShopNachrichten } from '../apps/mnyra-heart/heart-lifeskin-shopnachrichten.js';
 
@@ -60,4 +60,34 @@ test('Heart includes shop reviews, media comments and hidden reviews for moderat
   assert.match(rendered, /data-action="lifeskin-kommentare-laden"/);
   assert.doesNotMatch(renderShopNachrichten({ shopNachrichten: [] }), /mesazh-ftyra/);
   assert.match(renderShopNachrichten({ shopNachrichtLoeschen: 'mesazh-ftyra' }), /Wirklich löschen/);
+});
+
+
+test('summary stars show the genuine average before the numeric rating and disappear without ratings', () => {
+  assert.equal(reviewSummaryMarkup([]), '');
+  assert.equal(reviewSummaryMarkup([{ text: 'Original message' }]), '');
+  const full = reviewSummaryMarkup([{ text: bewertungText('Good', 5) }]);
+  assert.match(full, /review-summary-stars.*width:100%/);
+  assert.match(full, /<\/span>5\.0 \/ 5 · 1 vleresime/);
+  const mixed = reviewSummaryMarkup([{ text: bewertungText('Good', 5) }, { text: bewertungText('Okay', 2) }]);
+  assert.match(mixed, /width:70%/);
+  assert.match(mixed, /3\.5 \/ 5 · 2 vleresime/);
+});
+
+test('Heart message refresh preserves the already loaded first Instagram card, even with zero messages', () => {
+  const profile = { id: 'instagram-profile' };
+  const rail = {
+    children: [profile, { id: 'old-message' }],
+    querySelectorAll(selector) {
+      assert.equal(selector, '.message-card:not(.ig-erste)');
+      return this.children.slice(1).map(c => ({ remove: () => { this.children = this.children.filter(x => x !== c); } }));
+    },
+    insertAdjacentHTML(position, html) { assert.equal(position, 'beforeend'); this.html = html; }
+  };
+  nachrichtenAktualisieren(rail, [{ id: 'real', text: 'Quote', bild: '/apps/lifeskin-shop/assets/mesazh-ftyra.jpg' }]);
+  assert.equal(rail.children[0], profile);
+  assert.match(rail.html, /Quote/);
+  nachrichtenAktualisieren(rail, []);
+  assert.equal(rail.children[0], profile);
+  assert.equal(rail.html, '');
 });

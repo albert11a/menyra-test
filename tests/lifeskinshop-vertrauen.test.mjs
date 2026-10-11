@@ -56,7 +56,7 @@ test('Galerie-Knoepfe reagieren auf spaeter geladene Heart-Medien und Scrollgren
   const rail = { children: [], scrollLeft: 0, scrollWidth: 600, clientWidth: 220, handlers: {}, addEventListener(type, fn) { this.handlers[type] = fn; }, scrollBy(options) { this.lastScroll = options; } };
   railControls(controls, rail);
   assert.equal(controls.hidden, true);
-  rail.children = [0, 112, 224].map(offsetLeft => ({ offsetLeft, classList: { contains: () => false } }));
+  rail.children = [0, 112, 224].map((offsetLeft, i) => ({ offsetLeft, classList: { contains: name => i === 0 && name === 'ig-erste' } }));
   changed();
   assert.equal(controls.hidden, false);
   assert.equal(count.textContent, '1 / 3');

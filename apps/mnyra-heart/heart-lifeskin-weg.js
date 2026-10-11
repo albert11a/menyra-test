@@ -156,7 +156,7 @@ export const SHOP_SEITE = Object.freeze(SHOP_ABSCHNITTE.map((a) => Object.freeze
 // Reihe "bis hierher", sonst stuende Garancioni unter jedem, der scannt.
 function mitSkanimZeile(seite, liste) {
   const gedrueckt = liste.filter(skanimGedrueckt).length;
-  return seite.map((stufe) => (stufe.nr === SKINREACT_NR
+  return seite.map((stufe) => (stufe.id === "skinreact" || stufe.id === `s${SKINREACT_NR}`
     ? { ...stufe, unter: { label: "Fillo skanim", anzahl: gedrueckt } }
     : stufe));
 }
@@ -290,7 +290,7 @@ export function baueShopWeg(sitzungen) {
   const analyseKauf = stufenZaehlen(seitenListe, SHOP_ANALYSE_KAUF);
   return {
     seite,
-    abschnitte: shopAbschnitte(liste),
+    abschnitte: mitSkanimZeile(shopAbschnitte(liste), liste),
     kauf,
     analyse,
     // Die Chips: je ein Weg, Balken am ersten Punkt des Chips.

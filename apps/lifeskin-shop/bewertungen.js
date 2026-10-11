@@ -18,6 +18,19 @@ export function nachrichtMarkup(k) {
   return `<button type="button" class="message-card" data-zitat-bild="${escape(k.bild)}"><span class="message-quote" aria-hidden="true">“</span><span class="message-copy"><strong>“${escape(k.text)}”</strong><span>Shiko mesazhin origjinal <span aria-hidden="true">↗</span></span></span></button>`;
 }
 
+export function reviewSummaryMarkup(liste) {
+  const sum = bewertungZusammenfassung(liste);
+  if (!sum.anzahl) return '';
+  return `<span class="review-summary-stars" aria-hidden="true">★★★★★<span style="width:${sum.durchschnitt / 5 * 100}%">★★★★★</span></span>${sum.durchschnitt.toFixed(1)} / 5 · ${sum.anzahl} vleresime`;
+}
+
+export function nachrichtenAktualisieren(rail, roh) {
+  if (!rail) return;
+  // Keep the already loaded profile card and replace only Heart's messages.
+  for (const card of rail.querySelectorAll('.message-card:not(.ig-erste)')) card.remove();
+  rail.insertAdjacentHTML('beforeend', nachrichtenNormalisieren(roh).map(nachrichtMarkup).join(''));
+}
+
 function init(dok) {
   const section = dok.getElementById('vleresimet');
   const form = dok.getElementById('shop-review-form');
@@ -29,7 +42,7 @@ function init(dok) {
     const summary = dok.getElementById('reviews-summary');
     const sum = bewertungZusammenfassung(liste);
     summary.hidden = !sum.anzahl;
-    summary.textContent = sum.anzahl ? `${sum.durchschnitt.toFixed(1)} / 5 · ${sum.anzahl} vleresime` : '';
+    summary.innerHTML = reviewSummaryMarkup(liste);
   };
   const laden = async () => {
     const geladen = await kommentareLaden(SHOP_REVIEW_MEDIUM, optionen);
@@ -44,7 +57,7 @@ function init(dok) {
       const values = data.fields?.lista?.arrayValue?.values || [];
       const roh = values.map(v => Object.fromEntries(Object.entries(v.mapValue?.fields || {}).map(([key, val]) => [key, val.stringValue || ''])));
       const rail = dok.querySelector('#klientet .message-rail');
-      if (rail) rail.innerHTML = nachrichtenNormalisieren(roh).map(nachrichtMarkup).join('');
+      nachrichtenAktualisieren(rail, roh);
       dok.getElementById('klientet')?.toggleAttribute('hidden', !rail?.children.length);
     } catch { /* Keep the real original messages on read failures. */ }
   };

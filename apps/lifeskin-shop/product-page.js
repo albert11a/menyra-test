@@ -7,7 +7,7 @@ export function railControls(controls, rail) {
   const count = controls.querySelector('[data-rail-count]');
   const reduced = () => globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const update = () => {
-    const cards = [...rail.children].filter(card => !card.classList.contains('ig-erste'));
+    const cards = [...rail.children];
     controls.hidden = !cards.length;
     if (!cards.length) return;
     const left = rail.scrollLeft;

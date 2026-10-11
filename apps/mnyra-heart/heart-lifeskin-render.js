@@ -699,7 +699,6 @@ function renderShopSchritte(stufen, basis) {
 // An jedem Chip steht, wie viele diesen Weg angefangen haben (Punkt 1).
 export const SHOP_CHIPS = Object.freeze([
   { id: "shop", label: "Shop", titel: "Shop · vom Besuch bis zum Kauf" },
-  { id: "abschnitte", label: "Seite", titel: "Seite · tatsächlich sichtbare Abschnitte" },
   { id: "rutina", label: "Rutina", titel: "Rutina · persönliche Produktauswahl" },
   { id: "scan", label: "Scan", titel: "Scan · Bildschirm für Bildschirm" },
   { id: "foto", label: "Foto", titel: "Foto · Bildschirm für Bildschirm" },
@@ -712,22 +711,23 @@ export const SHOP_CHIPS = Object.freeze([
 // Was unter einem Chip steht (ohne die Chips).
 function renderShopAnsicht(weg, id, trichter = [], rutina) {
   if (id === "rutina") return renderRutina(rutina);
-  if (id === "abschnitte") return `<div class="heart-shopschritte">${renderShopSchritte(weg.abschnitte || [], weg.besucher)}</div><p class="heart-lifeskin-block__fuss">Tatsächlich sichtbar, je Besuch einmal. Kein automatisches Hochzählen vorheriger Abschnitte. Neue Abschnitte zählen ab Einführung.</p>`;
   if (id === "gjeni") return `<div class="heart-lifeskin-trichter">${renderStufen(weg.analyse)}</div>`;
   const zusatz = trichter.find((t) => t.id === id);
   if (zusatz) return `<div class="heart-shopschritte">${renderShopSchritte(zusatz.stufen.map((s, i) => ({ ...s, nr: i + 1 })), zusatz.stufen[0]?.anzahl || 0)}</div>${zusatz.extra || ""}${zusatz.fuss ? `<p class="heart-lifeskin-block__fuss">${escapeHtml(zusatz.fuss)}</p>` : ""}`;
   if (id === "shop") {
+    const seite = weg.abschnitte || weg.seite;
+    const kauf = weg.kauf.map((s, i) => ({ ...s, nr: seite.length + i + 1 }));
     const was = weg.nachSet.length
       ? weg.nachSet.map(([name, n]) => `${escapeHtml(name)}: <b>${n}</b>`).join(" · ")
       : "noch kein Kauf";
     return `
-      <div class="heart-shopschritte">${renderShopSchritte(weg.seite, weg.besucher)}</div>
-      <div class="heart-shopschritte heart-shopschritte--kauf">${renderShopSchritte(weg.kauf, weg.besucher)}</div>
+      <div class="heart-shopschritte">${renderShopSchritte(seite, weg.besucher)}</div>
+      <div class="heart-shopschritte heart-shopschritte--kauf">${renderShopSchritte(kauf, weg.besucher)}</div>
       <p class="heart-lifeskin-block__fuss">Umsatz <b>${escapeHtml(euro(weg.umsatz) || "0 €")}</b> · ${weg.kaeufe} ${weg.kaeufe === 1 ? "Bestellung" : "Bestellungen"}
         · Ø Bestellung <b>${escapeHtml(euro(weg.bestellwert) || "—")}</b> · Ø Warenkorb <b>${escapeHtml(euro(weg.korbwert) || "—")}</b>
         · Kauf je Besuch <b>${prozent(weg.kaufquote)}</b></p>
       <p class="heart-lifeskin-block__fuss">Gekauft: ${was}</p>
-      <p class="heart-lifeskin-block__fuss">Kaufvorgang gestartet = Eingabe begonnen. Frühere reine Kassenöffnungen zählen im Shop nicht mit; historische Pixel-Meldungen bleiben unverändert.</p>`;
+      <p class="heart-lifeskin-block__fuss">Abschnitte zählen tatsächliche Sichtbarkeit, je Besuch einmal; neue Bereiche ab Einführung. Kaufvorgang gestartet = Eingabe begonnen.</p>`;
   }
   if (id === "analyse") {
     const a = weg.chips.analyse;
@@ -743,7 +743,6 @@ function renderShopWeg(weg, zeitraum = "", chip = "shop", trichter = [], rutina 
   const wort = ZEITRAEUME.find((z) => z.id === (zeitraum || "heute"))?.label || "";
   const offen = SHOP_CHIPS.find((c) => c.id === chip) || SHOP_CHIPS[0];
   const anzahl = (c) => {
-    if (c.id === "abschnitte") return weg.besucher;
     if (c.id === "rutina") return rutina.finishes;
     if (c.id === "gjeni") return weg.analyse.at(-1)?.anzahl || 0;
     const t = trichter.find((t) => t.id === c.id);
