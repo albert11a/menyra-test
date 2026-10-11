@@ -5,6 +5,9 @@ export const ROUTINE_PRODUCTS = Object.freeze([
   { id: 'lf-pore', name: 'LF PORE', goal: 'Pore, gropeza + pika te zeza', text: 'Pastron dhe minimizon poret e zgjeruara, largon pikat e zeza dhe mbush gropezat me qeliza te reja.', photo: '/apps/lifeskin-shop/assets/lf-pore.jpg', time: 'MBREMJE', use: 'Sipas udhezimit te produktit. Me LF ACNE, perdori ne mbremje te ndryshme.' },
   { id: 'lf-clean', name: 'LF CLEAN', goal: 'Lekure e yndyrshme', text: 'Laresi adekuat qe balancon sebumin e lekures.', photo: '/apps/lifeskin-shop/assets/lf-clean-illustration.svg', time: 'MENGJES + MBREMJE', use: 'Pastro lekuren dhe shperlaje, para produkteve te tjera, sipas udhezimit.' }
 ].map(Object.freeze));
+export function isAcneDuoSelection(ids) {
+  return Array.isArray(ids) && new Set(ids).size === 2 && ids.includes('lf-acne') && ids.includes('lf-moistur');
+}
 export const isPersonalRoutine = cart => /^personal-[01]{4}$/.test(String(cart?.set || cart?.id || ''));
 export function personalRoutine(ids) {
   if (!Array.isArray(ids) || ids.some(id => !ROUTINE_PRODUCTS.some(p => p.id === id))) return null;

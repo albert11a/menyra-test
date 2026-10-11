@@ -43,7 +43,7 @@ import { aktionStarten } from "./aktion.js";
 import { SHOP_ABSCHNITTE, shopSichtPatch } from "../../shared/lifeskin-shopsicht.js";
 import { schirmGesehen } from "../../shared/lifeskin-landingtiefe.js";
 
-import { ROUTINE_PRODUCTS, personalRoutine, personalCartRestore, isPersonalRoutine, personalOrderPrices } from "../../shared/lifeskin-personal-routine.js";
+import { ROUTINE_PRODUCTS, personalRoutine, personalCartRestore, isPersonalRoutine, personalOrderPrices, isAcneDuoSelection } from "../../shared/lifeskin-personal-routine.js";
 import { RoutineBuilder, productRail, routineInstructions } from "./routine-builder.js";
 
 const BASIS = `${LIFESKIN_FIRESTORE_BASE}/lifeskin/${LIFESKIN_TENANT}/config`;
@@ -397,9 +397,13 @@ export class Dyqan {
     this.angebotSetDok = SHOP_START_SETET;
     this.aktion = aktionNormalisieren(AKTION_STANDARD);
     this.setet = mitAktion(acneDuoSets(aktiveSetet(setetOderStandard(this.angebotSetDok))), this.aktion);
-    this.korb = personalCartRestore(this.korb) || acneDuoCart(this.korb, this.setet);
+    this.korb = isAcneDuoSelection(this.korb.ids) ? acneDuoCart(this.korb, this.setet) : personalCartRestore(this.korb) || acneDuoCart(this.korb, this.setet);
     this.personalSet = isPersonalRoutine(this.korb) ? personalRoutine(this.korb.ids) : null;
     try { this.personalSet = personalRoutine(JSON.parse(this.speicher?.getItem(ROUTINE_SCHLUESSEL) || "null")) || this.personalSet; } catch { /* untrusted cache ignored */ }
+    if (isAcneDuoSelection(this.personalSet?.produkte)) {
+      this.personalSet = null;
+      try { this.speicher?.removeItem(ROUTINE_SCHLUESSEL); } catch { /* optional storage */ }
+    }
     korbSchreiben(this.speicher, this.korb);
     this.setFotos = new Map();
     this.gemerkt = new Set();
@@ -452,6 +456,7 @@ export class Dyqan {
     this.#korbZahl();
     this.routineBuilder = new RoutineBuilder({ root: $("#personal-routine", this.dok), catalog: () => this.mittel, apply: ids => this.routineUebernehmen(ids), order: id => this.setLegen(id), reset: () => this.routineZurueck() });
     this.routineBuilder.start();
+    void this.routineFotoLaden();
     this.#ereignisse();
     this.#beobachten();
     this.laden();
@@ -782,7 +787,7 @@ export class Dyqan {
       .filter((s) => s.produkte.length === 2), this.aktion);
     // Der Korb darf nur Mittel tragen, die es noch gibt. Ein Angebot aus
     // dem Chat (chatBestellen) bleibt, wie es ist.
-    if (!istChatKorb(this.korb)) this.korb = personalCartRestore(this.korb) || acneDuoCart(this.korb, this.setet);
+    if (!istChatKorb(this.korb)) this.korb = isAcneDuoSelection(this.korb.ids) ? acneDuoCart(this.korb, this.setet) : personalCartRestore(this.korb) || acneDuoCart(this.korb, this.setet);
     if (this.personalSet && !this.personalSet.produkte.every(id => da.has(id))) {
       this.routineZurueck();
       this.routineBuilder?.feedback("Nje produkt nuk eshte i disponueshem. Zgjidh perseri setin tend.");
@@ -796,13 +801,34 @@ export class Dyqan {
 
   mittelVon(id) { return this.mittel.find((m) => m.id === id); }
   setVon(id) {
+    if (id === "personal-1100") return this.setet[0];
     if (isPersonalRoutine({ id })) return personalRoutine(ROUTINE_PRODUCTS.filter((_, i) => id.slice(9)[i] === "1").map(p => p.id));
     return this.setet.find((s) => s.id === id);
+  }
+
+  // Load the existing public catalog photo without waiting for #setet to scroll into view.
+  async routineFotoLaden() {
+    try {
+      const d = await holeDok(`${FOTO_PRAEFIX}lf-clean`, this.holen);
+      const foto = d?.fotot?.find(f => typeof f === "string" && f.startsWith("data:image/"));
+      const mittel = this.mittelVon("lf-clean");
+      if (!foto || !mittel) return false;
+      mittel.fotot = [foto];
+      this.routineBuilder?.refreshPhotos();
+      if (this.personalSet?.produkte.includes("lf-clean")) this.#zeichneSetet();
+      return true;
+    } catch { return false; }
   }
 
   routineUebernehmen(ids) {
     const set = personalRoutine(ids);
     if (!set || !this.angebotBereit || !set.produkte.every(id => this.mittelVon(id))) return false;
+    if (isAcneDuoSelection(set.produkte)) {
+      const duo = this.setet[0];
+      if (!duo) return false;
+      this.routineZurueck();
+      return duo.id;
+    }
     this.personalSet = set;
     try { this.speicher?.setItem(ROUTINE_SCHLUESSEL, JSON.stringify(set.produkte)); } catch { /* checkout works without storage */ }
     this.#zeichneSetet();

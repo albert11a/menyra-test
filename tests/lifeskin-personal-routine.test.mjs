@@ -120,14 +120,14 @@ test('rail uses full chosen images and instructions order cleanser before active
   assert.match(use, /mbremje te ndryshme/);
 });
 
-function builderFixture() {
+function builderFixture(applyResult = true) {
   const nodes = new Map(), listeners = {}, applied = [], ordered = [];
   const node = selector => { if (!nodes.has(selector)) nodes.set(selector, { textContent: '', innerHTML: '', hidden: true, disabled: false, dataset: {}, setAttribute() {}, focus() {} }); return nodes.get(selector); };
   const screens = ['intro', 'choose', 'result'].map(stage => Object.assign(node(stage), { dataset: { routineScreen: stage } }));
   const root = { innerHTML: '', selected: [], ownerDocument: { querySelector: () => null },
     querySelector: node, querySelectorAll: selector => selector === 'input:checked' ? root.selected.map(value => ({ value })) : screens,
     addEventListener: (name, handler) => { listeners[name] = handler; } };
-  const builder = new RoutineBuilder({ root, catalog: () => [], apply: ids => { applied.push(ids); return true; }, order: id => ordered.push(id), reset() {} });
+  const builder = new RoutineBuilder({ root, catalog: () => [], apply: ids => { applied.push(ids); return applyResult; }, order: id => ordered.push(id), reset() {} });
   builder.start();
   const click = action => listeners.click({ target: { closest: () => ({ disabled: false, dataset: { routineAction: action } }) } });
   const select = ids => { root.selected = ids; listeners.change({ target: { matches: () => true } }); };
@@ -150,4 +150,54 @@ test('same-card steps, no initial price, valid selection enables continue; apply
   assert.deepEqual(f.ordered, ['personal-1111']);
   f.select([]); assert.equal(f.node('[data-routine-action="result"]').disabled, true);
   assert.equal(f.node('.personal-recommend').hidden, true);
+});
+
+ test('Acne + Moistur keeps the duo page and orders the existing duo in either order', () => {
+  for (const ids of [['lf-acne', 'lf-moistur'], ['lf-moistur', 'lf-acne']]) {
+    const f = fixture();
+    f.node('.product-line').innerHTML = 'THE ACNE DUO';
+    assert.equal(f.shop.routineUebernehmen(ids), 'acne');
+    assert.equal(f.shop.personalSet, null);
+    assert.equal(f.node('.product-line').innerHTML, 'THE ACNE DUO');
+    assert.equal(f.storage.has('lifeskinshop.routine'), false);
+    assert.equal(f.button.dataset.set, 'acne');
+    assert.equal(f.events.length, 0);
+    f.shop.setLegen('personal-1100');
+    assert.equal(f.shop.korb.set, 'acne');
+    assert.deepEqual(f.shop.korb.ids, ['lf-acne', 'lf-moistur']);
+  }
+});
+ test('switching a personal set back to duo restores original page and reload stays duo', () => {
+  const f = fixture(); f.node('.product-line').innerHTML = 'THE ACNE DUO';
+  f.shop.routineUebernehmen(['lf-clean']);
+  f.shop.routineUebernehmen(['lf-acne', 'lf-moistur']);
+  assert.equal(f.node('.product-line').innerHTML, 'THE ACNE DUO');
+  f.storage.set('lifeskinshop.routine', JSON.stringify(['lf-acne', 'lf-moistur']));
+  f.storage.set('lifeskinshop.shporta', JSON.stringify({ ids: ['lf-acne', 'lf-moistur'], set: 'personal-1100', cmimi: 25 }));
+  const reloaded = fixture(f.storage);
+  assert.equal(reloaded.shop.personalSet, null);
+  assert.equal(reloaded.shop.korb.set, 'acne');
+});
+
+test('builder orders the canonical duo returned by apply and hides the reset button', () => {
+  const f = builderFixture('acne');
+  f.select(['lf-acne', 'lf-moistur']); f.click('result'); f.click('order');
+  assert.deepEqual(f.ordered, ['acne']);
+  assert.equal(f.node('[data-routine-action="reset"]').hidden, true);
+});
+test('Clean photo loads directly from its existing catalog document before product section visibility', async () => {
+  const f = fixture(); let called = ''; let refreshed = false;
+  f.shop.holen = async url => { called = url; return { ok: true, json: async () => ({ fields: { fotot: { arrayValue: { values: [{ stringValue: 'data:image/jpeg;base64,PHOTO' }] } } } }) }; };
+  f.shop.routineBuilder = { refreshPhotos() { refreshed = true; } };
+  assert.equal(await f.shop.routineFotoLaden(), true);
+  assert.match(called, /landingFotot-lf-clean/);
+  assert.deepEqual(f.shop.mittelVon('lf-clean').fotot, ['data:image/jpeg;base64,PHOTO']);
+  assert.equal(refreshed, true);
+  assert.match(productRail(['lf-clean'], f.shop.mittel), /data:image\/jpeg;base64,PHOTO/);
+});
+test('Clean photo failure leaves fallback and ordering available', async () => {
+  const f = fixture();
+  assert.equal(await f.shop.routineFotoLaden(), false);
+  assert.equal(f.shop.routineUebernehmen(['lf-clean']), true);
+  assert.match(productRail(['lf-clean'], f.shop.mittel), /lf-clean-illustration/);
 });
