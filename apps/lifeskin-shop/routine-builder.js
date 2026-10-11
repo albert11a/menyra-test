@@ -1,4 +1,4 @@
-import { ROUTINE_PRODUCTS, personalRoutine } from '../../shared/lifeskin-personal-routine.js';
+import { ROUTINE_PRODUCTS, personalRoutine, isAcneDuoSelection } from '../../shared/lifeskin-personal-routine.js';
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export function productRail(ids, catalog = [], descriptions = false) {
   const products = ROUTINE_PRODUCTS.filter(p => ids.includes(p.id));
@@ -40,11 +40,16 @@ export class RoutineBuilder {
       if (['intro', 'choose', 'result'].includes(action)) { this.show(action); return; }
       if (action === 'reset') { this.reset(); this.feedback('U kthye seti Acne Duo.'); button.hidden = true; return; }
       const set = personalRoutine(this.ids);
-      if (!set || this.apply(set.produkte) === false) { this.feedback('Seti nuk eshte i disponueshem. Provo perseri.'); return; }
-      this.root.querySelector('[data-routine-action="reset"]').hidden = false;
-      if (action === 'order') this.order(set.id);
-      else { this.feedback('Seti yt u shtua ne faqen e produktit.'); this.root.ownerDocument.querySelector('#fillimi')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      const applied = set ? this.apply(set.produkte) : false;
+      if (!set || applied === false) { this.feedback('Seti nuk eshte i disponueshem. Provo perseri.'); return; }
+      const duo = isAcneDuoSelection(set.produkte);
+      this.root.querySelector('[data-routine-action="reset"]').hidden = duo;
+      if (action === 'order') this.order(typeof applied === 'string' ? applied : set.id);
+      else { this.feedback(duo ? 'Zgjodhe Acne Duo: LF ACNE + LF MOISTURE.' : 'Seti yt u shtua ne faqen e produktit.'); this.root.ownerDocument.querySelector('#fillimi')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     });
+  }
+  refreshPhotos() {
+    if (this.stage === 'result') this.root.querySelector('[data-routine-products]').innerHTML = productRail(this.ids, this.catalog());
   }
   feedback(text) { const node = this.root.querySelector('[data-routine-feedback]'); node.textContent = text; node.hidden = false; }
   update() {
