@@ -2,6 +2,7 @@ import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promi
 import { dirname, extname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build, transform } from "esbuild";
+import { inlineShopFirstPaint } from "./lifeskin-shop-first-paint.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const distRoot = resolve(repoRoot, "dist");
@@ -177,6 +178,12 @@ async function kommentareEntfernen() {
 }
 
 const entkommentiert = await kommentareEntfernen();
+
+const shopHtmlPath = resolve(distRoot, "apps/lifeskin-shop/index.html");
+await writeFile(shopHtmlPath, await inlineShopFirstPaint(
+  await readFile(shopHtmlPath, "utf8"),
+  path => readFile(resolve(distRoot, path.slice(1)), "utf8")
+), "utf8");
 
 // Vite-Bundle-Manifest direkt in die ausgelieferte Social-Shell inlinen:
 // entfernt den blockierenden manifest.json-Roundtrip vom Cold-Start-Kritikpfad

@@ -62,3 +62,16 @@ well. Tests verify output dimensions/format, cache invalidation and preload
 order. These transfer-size gains do not establish a mobile LCP measurement.
 Validation: all 3200 unit tests, lint (no errors), production build and bundle
 budget passed. Tracked application bundles are unchanged. Pixel/CAPI unchanged.
+
+## First-paint follow-up
+
+Live PageSpeed mobile cold-load test (Moto G Power, slow 4G, 12:33 Vienna):
+normal shop 91/100, FCP 2.0s, LCP 3.2s (hero), TBT 0ms, CLS 0.002.
+Report: https://pagespeed.web.dev/analysis/https-www-mnyra-com-lifeskinshop/74d20gthlt?form_factor=mobile
+The report identified ten blocking stylesheets and the still-mode script,
+with estimated 600ms savings. Scope: build-only inline those exact assets in
+the shop HTML; retain all rules and cascade order and run the still-mode code
+before startup. Other pages and source scripts stay untouched. The build fails
+if future stylesheet-relative assets require rewriting, rather than breaking
+their URLs. Re-measure the live mobile page after publication. No physical
+iPhone or real-user percentile is implied by the lab test.
