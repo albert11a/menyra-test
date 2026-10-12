@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ROUTINE_PRODUCTS, personalRoutine, personalCartRestore, personalOrderPrices } from '../shared/lifeskin-personal-routine.js';
+import { SHOP_START_SETET, shopOffer } from '../shared/lifeskin-shop-first-render.js';
 import { RoutineBuilder, productRail, routineInstructions } from '../apps/lifeskin-shop/routine-builder.js';
 globalThis.__LIFESKIN_TEST__ = true;
 const { Dyqan, bestellZeilen, summe } = await import('../apps/lifeskin-shop/shop.js');
@@ -21,7 +22,7 @@ function fixture(storage = new Map()) {
     querySelectorAll: selector => selector === '[data-preis]' ? [price] : selector.includes('[data-set]') ? [button] : [], createElement: () => node('new'), addEventListener() {} };
   const speicher = { getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) };
   const sitzung = { code: 'LOCAL-ONLY', ergaenze() {}, liveMerken() {}, schritt: async (_, value) => { orders.push(value.order); return { ok: true }; } };
-  const shop = new Dyqan({ dokument: doc, speicher, dauerSpeicher: null, holen: async () => ({ ok: false, status: 404 }),
+  const shop = new Dyqan({ seed: { offer: shopOffer(SHOP_START_SETET, { aktiv: false }) }, dokument: doc, speicher, dauerSpeicher: null, holen: async () => ({ ok: false, status: 404 }),
     trichter: () => ({ sitzung, pixel: { meldeKorb: price => events.push(['cart', price]), meldeKasse: price => events.push(['checkout', price]) } }) });
   return { shop, node, storage, price, button, events, orders };
 }

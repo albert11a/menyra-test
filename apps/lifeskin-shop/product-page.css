@@ -1,4 +1,15 @@
 /* Approved LifeSkin PDP. Presentation only, scoped to this shop entry. */
+/* Stock arrives separately; its one-line slot must not move the purchase button. */
+#ls-einstieg .page .deal-foot { min-height: 33px; }
+#ls-einstieg .page .deal-stock { min-height: 17px; }
+/* Only the static/network-error fallback needs a placeholder. Normal visits
+   receive the complete offer in the HTML, with its final dimensions. */
+html[data-shop-preis="pending"] #ls-einstieg .page .price-line,
+html[data-shop-preis="fehler"] #ls-einstieg .page .price-line {
+  min-height: 60px;
+  background: #f4f7ef;
+  border-radius: 14px;
+}
 #ls-einstieg .page * {
   box-sizing: border-box;
 }

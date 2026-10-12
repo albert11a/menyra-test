@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { shopOffer, SHOP_START_SETET } from '../shared/lifeskin-shop-first-render.js';
 
 globalThis.__LIFESKIN_TEST__ = true;
 const { Dyqan, shopFetch, shopBeiSicht } = await import('../apps/lifeskin-shop/shop.js');
@@ -14,7 +15,7 @@ const field = value => typeof value === 'string' ? { stringValue: value }
 const response = value => ({ ok: true, status: 200, json: async () => ({ fields: Object.fromEntries(Object.entries(value).map(([k, v]) => [k, field(v)])) }) });
 const offer = price => response({ lista: [{ id: 'acne', produkte: ['lf-acne', 'lf-moistur'], cmimi: price, aktiv: true, bild: true, titulli: 'Acne Duo' }] });
 
-function fixture(holen) {
+function fixture(holen, seed) {
   const elements = new Map();
   const node = selector => {
     if (!elements.has(selector)) elements.set(selector, {
@@ -40,21 +41,19 @@ function fixture(holen) {
   };
   const events = [], patches = [];
   const sitzung = { angelegt: true, stand: {}, kasseSchreiben: async patch => patches.push({ timings: { kasse: patch } }), code: 'TEST-LOCAL', ergaenze: patch => patches.push(patch), liveMerken() {}, schritt: async (_, data) => { events.push(['saved', data.order.total]); return { ok: true }; } };
-  const shop = new Dyqan({ dokument: dok, speicher: null, dauerSpeicher: { getItem: () => JSON.stringify({ cmimi: 39 }) }, holen,
+  const shop = new Dyqan({ seed, dokument: dok, speicher: null, dauerSpeicher: { getItem: () => JSON.stringify({ cmimi: 39 }) }, holen: (url, options) => url.endsWith("/shopAktion") ? Promise.resolve(response({ aktiv: false })) : holen(url, options),
     trichter: () => ({ sitzung, pixel: { meldeKorb: value => events.push(['AddToCart', value]), meldeKasse: value => events.push(['InitiateCheckout', value]) } }) });
   return { shop, dok, node, price, buttons, events, patches, sitzung };
 }
 
-test('published Shop-Sets price is usable immediately despite slow Heart and stale local cache', async () => {
+test('slow Heart and stale cache never expose or sell a guessed price', async () => {
   const pending = deferred();
   const f = fixture(() => pending.promise);
   const loading = f.shop.angebotLaden();
-  // Startpreis vor der Antwort aus Heart: 25 € (Inhaber 07.10.).
-  assert.equal(f.shop.setVon('acne').cmimi, 25);
-  assert.equal(f.shop.angebotBereit, true);
+  assert.equal(f.shop.angebotBereit, false);
   f.shop.setLegen('acne');
-  assert.deepEqual(f.events, [['AddToCart', 25]]);
-  assert.equal(f.node('#kasa-shuma').textContent, '25 €');
+  assert.deepEqual(f.events, []);
+  assert.equal(f.node('#kasa').hidden, true);
   pending.resolve(offer(19)); await loading;
   assert.equal(f.price.textContent, '19 €');
   assert.equal(f.dok.documentElement['data-shop-preis'], 'bereit');
@@ -79,24 +78,24 @@ test('buy button preserves full cart and AddToCart, then opens the real checkout
   assert.equal(f.node('#kasa-faleminderit').hidden, false);
 });
 
-test('offline keeps published 25 EUR purchasable; later Shop-Sets update also refreshes open checkout', async () => {
+test('offline offer stays unpurchasable; retry restores the correct checkout', async () => {
   let failure = true;
   const f = fixture(async () => { if (failure) throw Error('offline'); return offer(27); });
   await f.shop.angebotLaden(); f.shop.setLegen('acne');
-  assert.equal(f.shop.angebotBereit, true);
-  assert.equal(f.node('#shop-preisstatus').hidden, true);
-  assert.deepEqual(f.events, [['AddToCart', 25]]);
-  failure = false; await f.shop.angebotLaden();
+  assert.equal(f.shop.angebotBereit, false);
+  assert.equal(f.node('#shop-preisstatus').hidden, false);
+  assert.match(f.node('#shop-preisstatus').innerHTML, /Provo perseri/);
+  assert.deepEqual(f.events, []);
+  failure = false; await f.shop.angebotLaden(); f.shop.setLegen('acne');
   assert.equal(f.price.textContent, '27 €');
   assert.equal(f.node('#kasa-shuma').textContent, '27 €');
   assert.equal(f.shop.korb.cmimi, 27);
 });
 
-test('malformed config retains published Shop-Sets price', async () => {
+test('malformed config cannot enable checkout at a guessed price', async () => {
   const f = fixture(async () => response({ broken: true }));
   await f.shop.angebotLaden();
-  assert.equal(f.shop.angebotBereit, true);
-  assert.equal(f.shop.setVon('acne').cmimi, 25);
+  assert.equal(f.shop.angebotBereit, false);
 });
 
 test('missing Heart config retains 25 EUR instead of reverting to the old 39 EUR standard', async () => {
@@ -117,7 +116,7 @@ test('slow case index and large media cannot block the authoritative price', asy
     const loading = f.shop.laden(); await tick();
     assert.equal(f.shop.angebotBereit, true);
     assert.equal(f.price.textContent, '19 €');
-    assert.equal(requests.length, 4, 'price, zbritje and customer media start independently; optional product images still wait');
+    assert.equal(requests.length, 3, 'price, zbritje and customer media start independently; optional product images still wait');
     assert.equal(typeof onVisible, 'function');
     index.resolve({ status: 404, ok: false }); await loading;
     assert.equal(f.node('#proof-bahn').children.length, 3);
@@ -198,17 +197,15 @@ test('hanging reads time out even on older browsers without AbortController', as
   finally { globalThis.AbortController = saved; }
 });
 
-test('initial HTML displays 25 EUR without waiting and mobile CSS puts purchase before product photos', () => {
+test('static fallback has no hardcoded purchasable price or default hero flash', () => {
   const html = readFileSync(new URL('../apps/lifeskin-shop/index.html', import.meta.url), 'utf8');
   const prices = [...html.matchAll(/data-preis="cmimi">([^<]+)/g)].map(m => m[1]);
   assert.ok(prices.length > 4);
-  // 07.10. (Inhaber): Preis 25 € - dieselbe Zahl wie in Heart (Shop-Sets), sonst springt der Preis beim Laden.
-  assert.ok(prices.every(price => price === "25 €"));
-  assert.doesNotMatch(html, /data-set="acne" disabled|visibility:hidden|Po ngarkohet cmimi/);
-  assert.doesNotMatch(html, /lifeskinshop:cmimi/);
-  const css = readFileSync(new URL('../apps/lifeskin-shop/shop-youth.css', import.meta.url), 'utf8');
-  assert.match(css, /\.page \.buy\{order:1\}/);
-  assert.match(css, /\.page \.visual\{order:4;/);
+  assert.ok(prices.every(price => price === '—'));
+  assert.match(html, /data-shop-preis="pending"/);
+  assert.match(html, /data-set="acne" disabled data-shop-await/);
+  assert.match(html, /<img data-shop-hero-src/);
+  assert.doesNotMatch(html, /localStorage.getItem/);
 });
 
 
@@ -265,4 +262,18 @@ test('form input and autofill change start checkout; field focus does not', asyn
       assert.equal(f.events.filter(e => e[0] === 'InitiateCheckout').length, 1);
     }
   } finally { globalThis.IntersectionObserver = oldObserver; }
+});
+
+
+test('server snapshot survives hydration with no offer requests and the same checkout price', async () => {
+  const requests = [];
+  const action = { aktiv: true, cmimi: 18, bis: new Date(Date.now() + 3600000).toISOString() };
+  const f = fixture(async url => { requests.push(url); throw Error('unexpected request'); }, { offer: shopOffer(SHOP_START_SETET, action) });
+  assert.equal(f.shop.angebotBereit, true);
+  assert.equal(f.shop.setVon('acne').cmimi, 18);
+  await f.shop.angebotLaden();
+  assert.deepEqual(requests, []);
+  f.shop.setLegen('acne');
+  assert.equal(f.node('#kasa-shuma').textContent, '18 €');
+  assert.deepEqual(f.events, [['AddToCart', 18]]);
 });

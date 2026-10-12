@@ -22,7 +22,7 @@ test("der Weg 'lifeskinshop' ist bekannt und steht in der Sitzung", async () => 
 });
 
 test("die Seite: Laden als Einstieg, darunter die Bildschirme der Analyse", () => {
-  assert.match(HTML, /<html lang="sq" data-ls-variante="kurz" data-ls-landing="lifeskinshop" data-ls-scan-workflow="skinreact">/);
+  assert.match(HTML, /<html[^>]*lang="sq" data-ls-variante="kurz" data-ls-landing="lifeskinshop" data-ls-scan-workflow="skinreact">/);
   assert.match(HTML, /<script src="\/shared\/lifeskin-still\.js"><\/script>/, "ohne stillen Modus zaehlen eigene Tests");
   assert.equal((HTML.match(/id="ls-start"/g) || []).length, 1, "genau ein Startknopf fuer den Trichter");
   assert.match(HTML, /id="ls-start" data-ls-start data-ls-quelle="shop">Fillo skanimin/);
@@ -62,7 +62,7 @@ test("das Stilblatt des Ladens fasst die Analyse nicht an, die Leiste haengt unt
 test("erreichbar: Vercel, Entwicklungsserver, Service Worker, Build", () => {
   const vercel = JSON.parse(lies("vercel.json"));
   const regeln = [...(vercel.rewrites || []), ...(vercel.routes || [])];
-  assert.ok(regeln.some((r) => (r.source || r.src) === "/lifeskinshop" && /lifeskin-shop\/index\.html/.test(r.destination || r.dest)));
+  assert.ok(regeln.some((r) => (r.source || r.src) === "/lifeskinshop" && /api\/lifeskin-shop$/.test(r.destination || r.dest)));
   assert.match(lies("scripts/local-dev-server.mjs"), /"\/lifeskinshop"[^\n]*"\/apps\/lifeskin-shop\/index\.html"/);
   const sw = lies("sw.js");
   assert.match(sw, /'\/lifeskinshop',/);

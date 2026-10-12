@@ -508,7 +508,7 @@ test("stille Links: kein Sprung auf einen Fall, den es im stillen Modus nicht gi
   assert.match(lies("apps/lifeskin-astra/astra.js"), /globalThis\.__mnyraStill === true\s*\? "Stiller Modus: Es wird kein Fall angelegt/);
 });
 
-test("das Titelbild springt nicht: Rahmen von Anfang an 7:5, das eigene Bild kommt vom Geraet", async () => {
+test("das Titelbild springt nicht: Rahmen von Anfang an 7:5, das eigene Bild wird vor Anzeige bestaetigt", async () => {
   assert.match(lies("apps/lifeskin-shop/shop-rahmen.css"), /\n#ls-einstieg \.hero-photo \{ height: auto; aspect-ratio: 7 \/ 5; \}/);
   const { Dyqan } = await import("../apps/lifeskin-shop/shop.js");
   const lager = new Map();
@@ -530,15 +530,14 @@ test("das Titelbild springt nicht: Rahmen von Anfang an 7:5, das eigene Bild kom
   let offen;
   const langsam = () => new Promise((r) => { offen = r; });
   const lauf = new Dyqan({ dokument: zweit.dokument, speicher: null, holen: langsam, dauerSpeicher: dauer }).titelbild();
-  assert.equal(zweit.img.src, foto);
-  assert.ok("data-eigen" in zweit.attr);
+  assert.notEqual(zweit.img.src, foto, "unverified cache cannot flash before current Heart content");
   offen({ ok: false, status: 503 });
   await lauf;
-  assert.equal(zweit.img.src, foto, "ohne Netz bleibt das gemerkte Bild");
+  assert.equal(zweit.img.src, "/apps/lifeskin-shop/assets/set-hero.jpg", "bounded failure uses the published fallback");
   // In Heart entfernt (404): zurueck zum Standardbild, nichts mehr gemerkt.
   const dritt = baue();
   await new Dyqan({ dokument: dritt.dokument, speicher: null, holen: async () => ({ ok: false, status: 404 }), dauerSpeicher: dauer }).titelbild();
-  assert.equal(dritt.img.src, "/apps/lifeskin-shop/assets/lf-acne-2.jpg");
+  assert.equal(dritt.img.src, "/apps/lifeskin-shop/assets/set-hero.jpg");
   assert.ok(!("data-eigen" in dritt.attr));
   assert.equal(lager.has("lifeskin:shopHero"), false);
 });
@@ -566,19 +565,11 @@ test("eine Bestellung aus dem stillen Modus zaehlt in Heart als Test, nicht als 
   assert.match(lies("apps/mnyra-heart/heart-lifeskin-live.js"), /istTest\(/);
 });
 
-test("der Kopf der Seite fragt den Stempel unter derselben Adresse ab wie shop.js", async () => {
-  const { HERO_ADRESSE, HERO_NUR_STAND } = await import("../apps/lifeskin-shop/shop.js");
+test("first render uses the server snapshot, never an unverified local image", () => {
   const html = lies("apps/lifeskin-shop/index.html");
-  // Nur mit gemerktem Bild UND Stempel - sonst fragt shop.js selbst.
-  assert.match(html, /if \(!localStorage\.getItem\("lifeskin:shopHero"\) \|\| !localStorage\.getItem\("lifeskin:shopHeroStand"\)\) return;/);
-  assert.equal(html.match(/var url = "([^"]+)";/)?.[1], HERO_ADRESSE + HERO_NUR_STAND,
-    "shop.js wuerde die Antwort aus dem Kopf nicht benutzen und ein zweites Mal fragen");
-  // Das Titelbild aus Heart steht seit dem 08.10. wieder auf der Seite -
-  // ganz oben im Kopf als Set-Bild (Inhaber), nicht mehr bei Instagram.
-  assert.doesNotMatch(html, /<div class="hero-photo">/);
-  const kopf = html.slice(html.indexOf('<section class="hero"'), html.indexOf("</section>", html.indexOf('<section class="hero"')));
-  assert.match(kopf, /<div class="hero-photo hero-set"><img src="\/apps\/lifeskin-shop\/assets\/set-hero\.jpg"/);
-  assert.match(kopf, /localStorage\.getItem\("lifeskin:shopHero"\)/);
+  assert.match(html, /window.__lsShopSeed/);
+  assert.match(html, /<img data-shop-hero-src/);
+  assert.doesNotMatch(html, /localStorage.getItem/);
 });
 
 test("nach einem Kauf im Laden fuehrt Neuladen nicht auf eine Warteseite ohne Fall", async () => {

@@ -159,14 +159,13 @@ test("Heart: Block 'Zbritje im Shop' mit an/aus, Preis, Ende, Lager", async () =
   assert.match(adapter, /\.filter\(\(d\) => d\.id !== AKTION_DOK\)/, "nicht in die Konfiguration einruehren");
 });
 
-test("HTML: Voreinstellung bis 19:00, abgelaufen sofort weg, kein Pixel im Aktionscode", () => {
+test("HTML: keine veraltete Aktion vor der Serverantwort, kein Pixel im Aktionscode", () => {
   const html = lies("apps/lifeskin-shop/index.html");
-  assert.match(html, /data-aktion-bis="2026-10-09T19:00:00\+02:00"/);
-  assert.match(html, /<span id="aktion-ende">Mbaron sot në ora 19:00<\/span>/);
+  assert.match(html, /id="aktion" hidden/);
+  assert.match(html, /<span id="aktion-ende">—<\/span>/);
   assert.match(html, /Çmimi normal: 2 produkte × 29 € = 58 €/);
-  assert.match(html, /<del id="aktion-vecmas">58 €<\/del>/);
+  assert.match(html, /<del id="aktion-vecmas">—<\/del>/);
   assert.match(html, /id="aktion-stok" hidden/);
-  assert.match(html, /if\(!\(Date\.now\(\)<Date\.parse\(b\.getAttribute\("data-aktion-bis"\)\)\)\)b\.hidden=true/);
   for (const datei of ["apps/lifeskin-shop/aktion.js", "api/lifeskin-lager.js", "shared/lifeskin-aktion.js"]) {
     assert.doesNotMatch(lies(datei), /fbq\(|lifeskin-pixel|capi/i);
   }

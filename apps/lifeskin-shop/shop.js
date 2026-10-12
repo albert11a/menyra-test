@@ -1,3 +1,5 @@
+import { SHOP_START_SETET, SHOP_HERO_FALLBACK, shopOffer } from "../../shared/lifeskin-shop-first-render.js";
+export { SHOP_START_SETET };
 import { rutinaEvent } from "../../shared/lifeskin-rutina.js";
 /* DER LADEN UNTER /lifeskinshop (docs/lifeskin-shop.md).
  * ══════════════════════════════════════════════════════════════════════
@@ -33,7 +35,7 @@ import { ansichtOeffnen, ansichtSchliessen } from "../../shared/lifeskin-ansicht
 import { mittelBauen, holeSammlung, FOTO_PRAEFIX } from "../lifeskin-landing/shop.js";
 import { RASTE_STANDARD, rasteLaden, rasteFuer, rasteMitBildern } from "../../shared/lifeskin-raste.js";
 import {
-  SETET_DOK, SHOP_HERO_DOK, SHOP_HERO_MAX, shopHeroDokId, SHOP_PRODUKT_FOTO_PRAEFIX, SHOP_PRODUKT_FOTOS, SETET_STANDARD, MITTEL_FOTOS_STANDARD, MITTEL_NENTITUJ,
+  SETET_DOK, SHOP_HERO_DOK, SHOP_HERO_MAX, shopHeroDokId, SHOP_PRODUKT_FOTO_PRAEFIX, SHOP_PRODUKT_FOTOS, MITTEL_FOTOS_STANDARD, MITTEL_NENTITUJ,
   setetOderStandard, setetNormalisieren, aktiveSetet, nevojaKennung, setPreis
 } from "../../shared/lifeskin-shop-sets.js";
 
@@ -141,7 +143,7 @@ export function bestellZeilen(korb, mittel) {
 // ── Firestore lesen, ohne die Firebase-App (REST, wie der ganze Trichter) ──
 async function holeDok(name, holen = fetch, suche = "") {
   const url = `${BASIS}/${encodeURIComponent(name)}${suche}`;
-  const vorab = name === SETET_DOK ? globalThis.__lsShopSetet : null;
+  const vorab = globalThis.__lsShopReads?.[name] || (name === SETET_DOK ? globalThis.__lsShopSetet : null);
   let antwort;
   if (vorab?.antwort && vorab.url === url) {
     const lauf = vorab.antwort;
@@ -279,10 +281,6 @@ export function klientBlatt(m) {
   return `${medium}${m.produkt ? `<h2 id="sheet-title">${e(m.produkt)}</h2>` : ''}${m.text ? `<p>${e(m.text)}</p>` : ''}`;
 }
 
-// Veroeffentlichtes Shop-Sets-Angebot, vom Inhaber am 06.10.2026 bestaetigt.
-// Keine Abhaengigkeit von Netz oder einem alten lokalen Preis beim Erstbesuch.
-export const SHOP_START_SETET = { lista: SETET_STANDARD.map(s => s.id === "acne" ? { ...s, cmimi: 25 } : s) };
-
 const pause = (ms) => new Promise((fertig) => setTimeout(fertig, ms));
 
 // DIE KASSE GENAU SEHEN (07.10., Inhaber: "sofort sobald jemand was tippt
@@ -382,7 +380,7 @@ export function shopStickyBeobachten({ sticky, hero, scan, Beobachter = globalTh
 }
 
 export class Dyqan {
-  constructor({ dokument = document, speicher = globalThis.sessionStorage, holen, trichter,
+  constructor({ dokument = document, speicher = globalThis.sessionStorage, holen, trichter, seed = globalThis.__lsShopSeed,
     dauerSpeicher = (() => { try { return globalThis.localStorage || null; } catch { return null; } })() } = {}) {
     this.dok = dokument;
     this.speicher = speicher;
@@ -395,8 +393,9 @@ export class Dyqan {
     this.trichterFn = trichter || (() => globalThis.__lifeskinTrichter);
     this.korb = korbLesen(this.speicher);
     this.mittel = mittelBauen([], this.#standardFotos(new Map()));
-    this.angebotSetDok = SHOP_START_SETET;
-    this.aktion = aktionNormalisieren(AKTION_STANDARD);
+    this.seed = seed || null;
+    this.angebotSetDok = this.seed?.offer?.setDok || SHOP_START_SETET;
+    this.aktion = aktionNormalisieren(this.seed?.offer?.aktion || AKTION_STANDARD);
     this.setet = mitAktion(acneDuoSets(aktiveSetet(setetOderStandard(this.angebotSetDok))), this.aktion);
     this.korb = isAcneDuoSelection(this.korb.ids) ? acneDuoCart(this.korb, this.setet) : personalCartRestore(this.korb) || acneDuoCart(this.korb, this.setet);
     this.personalSet = isPersonalRoutine(this.korb) ? personalRoutine(this.korb.ids) : null;
@@ -413,7 +412,7 @@ export class Dyqan {
     this.fotosBereit = false;
     this.filter = "all";
     this.sendet = false;
-    this.angebotBereit = true;
+    this.angebotBereit = Boolean(this.seed?.offer);
     this.angebotLaedt = false;
     this.opener = null;
     this.kasseGetippt = new Set();
@@ -457,12 +456,20 @@ export class Dyqan {
     this.#korbZahl();
     this.routineBuilder = new RoutineBuilder({ root: $("#personal-routine", this.dok), catalog: () => this.mittel, apply: ids => this.routineUebernehmen(ids), order: id => this.setLegen(id), reset: () => this.routineZurueck(), track: (kind, ids) => this.rutinaTrack(kind, ids) });
     this.routineBuilder.start();
-    void this.routineFotoLaden();
+    shopBeiSicht($("#personal-routine", this.dok), () => this.routineFotoLaden());
     this.#ereignisse();
     this.#beobachten();
     this.laden();
+    globalThis.__lsShopInteractive = true;
+    if (globalThis.__lsEarlySet && this.angebotBereit) {
+      const id = globalThis.__lsEarlySet;
+      delete globalThis.__lsEarlySet;
+      for (const button of this.dok.querySelectorAll("[aria-busy]")) button.removeAttribute("aria-busy");
+      this.setLegen(id);
+    }
     shopBeiSicht($(".hero-photo", this.dok), async () => {
       await this.titelbild();
+      await this.#ersterBildschirm();
       await this.#heroGalerie();
     });
   }
@@ -471,26 +478,26 @@ export class Dyqan {
   // Eine eigene Anfrage, damit es nicht auf Produkte und Faelle wartet. Das
   // neue Bild wird erst dekodiert, dann getauscht - kein leerer Rahmen.
   //
-  // ZUERST DAS GEMERKTE BILD, OHNE ZU WARTEN. Beim letzten Besuch kam es
-  // aus Heart und steht auf dem Geraet (HERO_SCHLUESSEL) - so gibt es beim
-  // Neuladen keinen Wechsel vom Standardbild auf das eigene mehr. Die
-  // Hoehe des Rahmens haengt ohnehin nicht mehr daran (shop-rahmen.css).
-  // Danach wird nachgefragt: neues Bild -> tauschen und merken; keines
-  // mehr in Heart -> das Standardbild zurueck.
+  // Normal visits already have the correct URL in server-rendered HTML.
+  // Static/error fallback confirms cached pictures before displaying them;
+  // the neutral 7:5 frame preserves mobile layout while that read completes.
   async titelbild() {
     const rahmen = $("#ls-einstieg .hero-photo", this.dok);
     const img = rahmen?.querySelector(":scope > img");
-    const standard = img?.src || "";
+    const standard = SHOP_HERO_FALLBACK;
+    if (this.seed?.hero) {
+      this.heroAnzahl = this.seed.hero.anzahl;
+      if (img && !img.src) img.src = this.seed.hero.url;
+      this.dok.documentElement?.setAttribute("data-shop-hero", "ready");
+      return;
+    }
     let gemerkt = "";
     let stand = "";
     try {
       gemerkt = String(this.dauer?.getItem?.(HERO_SCHLUESSEL) || "");
       stand = String(this.dauer?.getItem?.(HERO_STAND_SCHLUESSEL) || "");
     } catch { gemerkt = ""; stand = ""; }
-    if (img && gemerkt.startsWith("data:image/")) {
-      img.src = gemerkt;
-      rahmen.setAttribute("data-eigen", "");
-    } else gemerkt = "";
+    if (!img || !gemerkt.startsWith("data:image/")) gemerkt = "";
     const vergessen = () => {
       try { this.dauer?.removeItem?.(HERO_SCHLUESSEL); this.dauer?.removeItem?.(HERO_STAND_SCHLUESSEL); } catch { /* egal */ }
     };
@@ -512,7 +519,10 @@ export class Dyqan {
       if (gemerkt && stand) {
         const kurz = await holeDok(SHOP_HERO_DOK, holen, HERO_NUR_STAND);
         if (kurz) this.heroAnzahl = Number(kurz.anzahl) || 1;
-        if (kurz && String(kurz.updatedAt || "") === stand) return;
+        if (kurz && String(kurz.updatedAt || "") === stand) {
+          if (img) { img.src = gemerkt; rahmen.setAttribute("data-eigen", ""); }
+          return;
+        }
         if (!kurz) {
           // In Heart entfernt (404): das Standardbild zurueck.
           vergessen();
@@ -538,7 +548,7 @@ export class Dyqan {
         this.dauer?.setItem?.(HERO_SCHLUESSEL, foto);
         this.dauer?.setItem?.(HERO_STAND_SCHLUESSEL, String(d.updatedAt || ""));
       } catch { /* voll - dann eben ohne */ }
-      if (foto === gemerkt) return;
+      if (foto === gemerkt) { img.src = foto; rahmen.setAttribute("data-eigen", ""); return; }
       const Bild = this.dok.defaultView?.Image || globalThis.Image;
       if (Bild) {
         const probe = new Bild();
@@ -547,7 +557,11 @@ export class Dyqan {
       }
       img.src = foto;
       rahmen.setAttribute("data-eigen", "");
-    } catch { /* dann bleibt das Bild aus dem Aufbau */ }
+    } catch { if (img) img.src = standard; }
+    finally {
+      if (img && !img.src) img.src = standard;
+      this.dok.documentElement?.setAttribute("data-shop-hero", "ready");
+    }
   }
 
   // ── Was der Laden an der Sitzung festhaelt (wie auf /lifeskin) ──────
@@ -598,23 +612,28 @@ export class Dyqan {
     this.angebotLaedt = true;
     const status = $("#shop-preisstatus", this.dok);
     if (status) status.hidden = true;
-    // Die Zbritje parallel: fehlt das Dokument (oder das Netz), gilt die
-    // Voreinstellung AKTION_STANDARD.
-    const aktionLauf = holeDok(AKTION_DOK, this.holen).catch(() => null);
     try {
-      const setDok = await holeDok(SETET_DOK, this.holen);
-      if (setDok && !Array.isArray(setDok.lista)) throw new Error("invalid offer");
-      this.aktion = aktionNormalisieren((await aktionLauf) || AKTION_STANDARD);
-      this.angebotSetDok = setDok || SHOP_START_SETET;
+      // The server-rendered snapshot is the first browser state as well.
+      // No second roundtrip and no intermediate default price during hydration.
+      const seeded = !this.seedOfferUsed && this.seed?.offer;
+      this.seedOfferUsed = true;
+      const offer = seeded || await Promise.all([
+        holeDok(SETET_DOK, this.holen), holeDok(AKTION_DOK, this.holen)
+      ]).then(([sets, action]) => shopOffer(sets, action));
+      this.aktion = aktionNormalisieren(offer.aktion);
+      this.angebotSetDok = offer.setDok;
       this.angebotBereit = true;
       await this.#setetUebernehmen(this.angebotSetDok);
+      this.#aktionZeigen();
       this.dok.documentElement?.setAttribute("data-shop-preis", this.setet.length ? "bereit" : "fehlt");
       if (status) { status.hidden = this.setet.length > 0; status.textContent = "Seti nuk eshte aktualisht i disponueshem."; }
     } catch {
-      // Bei Netzfehler bleibt das veroeffentlichte 25-EUR-Angebot nutzbar.
-      if (status) status.hidden = true;
+      // A failed promotion read is not permission to sell at a guessed price.
+      if (!this.angebotBereit) {
+        this.dok.documentElement?.setAttribute("data-shop-preis", "fehler");
+        if (status) { status.hidden = false; status.innerHTML = 'Cmimi nuk u ngarkua. <button type="button" data-preis-retry>Provo perseri</button>'; }
+      }
     } finally { this.angebotLaedt = false; }
-    this.#aktionZeigen();
   }
 
   // Block ueber dem Kaufknopf (aktion.js). Am Ende zeigt der Laden von

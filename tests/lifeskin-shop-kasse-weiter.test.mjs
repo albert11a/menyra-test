@@ -6,6 +6,7 @@
 // Heart sah das aus wie ein Bestellversuch ohne Bestellung.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { shopOffer, SHOP_START_SETET } from '../shared/lifeskin-shop-first-render.js';
 
 globalThis.__LIFESKIN_TEST__ = true;
 const { Dyqan } = await import('../apps/lifeskin-shop/shop.js');
@@ -35,7 +36,7 @@ function fixture() {
   };
   const bestellt = [];
   const sitzung = { code: 'TEST-LOCAL', ergaenze() {}, liveMerken() {}, schritt: async () => { bestellt.push(true); return { ok: true }; } };
-  const shop = new Dyqan({ dokument: dok, speicher: null, dauerSpeicher: null, holen: async () => ({ ok: false, status: 404 }),
+  const shop = new Dyqan({ seed: { offer: shopOffer(SHOP_START_SETET, { aktiv: false }) }, dokument: dok, speicher: null, dauerSpeicher: null, holen: async () => ({ ok: false, status: 404 }),
     trichter: () => ({ sitzung, pixel: {} }) });
   return { shop, node, bestellt, fokus: () => fokus };
 }

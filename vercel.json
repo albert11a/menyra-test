@@ -466,11 +466,11 @@
     },
     {
       "source": "/lifeskinshop",
-      "destination": "/apps/lifeskin-shop/index.html"
+      "destination": "/api/lifeskin-shop"
     },
     {
       "source": "/lifeskinshop/",
-      "destination": "/apps/lifeskin-shop/index.html"
+      "destination": "/api/lifeskin-shop"
     },
     {
       "source": "/lifeskin2",
@@ -1146,6 +1146,9 @@
     },
     "api/prezantim.js": {
       "includeFiles": "apps/menyra-social/lead-landing-2/index.html"
+    },
+    "api/lifeskin-shop.js": {
+      "includeFiles": "{dist/apps/lifeskin-shop/index.html,apps/lifeskin-shop/index.html}"
     }
   }
 }

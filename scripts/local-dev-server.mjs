@@ -229,7 +229,7 @@ function serveFile(req, res, filePath = "") {
   }).pipe(res);
 }
 
-const server = createServer((req, res) => {
+const server = createServer(async (req, res) => {
   if (!["GET", "HEAD"].includes(req.method || "")) {
     send(res, 405, "Method not allowed");
     return;
@@ -244,6 +244,15 @@ const server = createServer((req, res) => {
   }
 
   const pathname = decodeURIComponent(url.pathname || "/");
+  if (["/lifeskinshop", "/lifeskinshop/", "/api/lifeskin-shop", "/api/lifeskin-shop-hero"].includes(pathname)) {
+    try {
+      const handler = pathname === "/api/lifeskin-shop-hero"
+        ? (await import("../api/lifeskin-shop-hero.js")).default
+        : (await import("../api/lifeskin-shop.js")).default;
+      await handler(req, res);
+    } catch { send(res, 503, "Shop temporarily unavailable"); }
+    return;
+  }
   const directFile = resolveFilePath(pathname);
   if (directFile) {
     serveFile(req, res, directFile);
