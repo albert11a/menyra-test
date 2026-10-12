@@ -25,6 +25,9 @@ test('first HTML already contains the final promotion, every price and the right
   assert.match(page, /<div class="hero-photo hero-set"><img src="\/api\/lifeskin-shop-hero\?v=test"/);
   assert.match(page, /rel="preload" as="image"[^>]+fetchpriority="high"/);
   assert.ok(page.indexOf('rel="preload" as="image"') < page.indexOf('<script'), 'hero is discovered before any blocking script');
+  const imageSet = page.match(/ srcset="([^"]+)"/)[1];
+  assert.match(imageSet, /w=720 720w/);
+  assert.equal(page.match(/ imagesrcset="([^"]+)"/)[1], imageSet, 'preload and image choose the same variant');
   assert.doesNotMatch(page, /disabled data-shop-await/);
   const seed = seedOf(page);
   assert.equal(seed.offer.price, 18);
@@ -99,6 +102,10 @@ test('hero delivers image bytes and caches success; failure redirects without ca
     assert.equal(metadata.height, 750);
     assert.ok(ok.body.length < source.length);
     assert.match(ok.headers['Cache-Control'], /max-age=31536000.*immutable/);
+    const mobile = response(); await shopHero({ method: 'GET', url: '/api/lifeskin-shop-hero?v=revision-2&w=720' }, mobile);
+    const mobileMetadata = await sharp(mobile.body).metadata();
+    assert.equal(mobileMetadata.width, 720);
+    assert.ok(mobile.body.length < ok.body.length);
     const old = response(); await shopHero({ method: 'GET', url: '/api/lifeskin-shop-hero?v=revision-1' }, old);
     assert.match(old.headers['Cache-Control'], /max-age=60/);
     assert.doesNotMatch(old.headers['Cache-Control'], /immutable/);

@@ -75,3 +75,12 @@ before startup. Other pages and source scripts stay untouched. The build fails
 if future stylesheet-relative assets require rewriting, rather than breaking
 their URLs. Re-measure the live mobile page after publication. No physical
 iPhone or real-user percentile is implied by the lab test.
+
+After inline assets, the mobile report at 12:39 showed FCP 1.5s, speed index
+2.5s, score 93, TBT 0ms and CLS 0.002; the render-blocking audit disappeared.
+LCP remained 3.2s with only 20ms rendering delay and image transfer dominating.
+Next scoped correction: responsive 720px/1050px hero URLs, with identical
+srcset/sizes on the preload and image. The viewport declaration precedes the
+preload so mobile chooses the correct width. The current 720px image is 37588
+bytes. Image transforms accept only bounded preset widths; version caching
+remains unchanged. Re-test live after this correction.

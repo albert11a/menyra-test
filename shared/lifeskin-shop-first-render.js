@@ -39,9 +39,12 @@ export function renderShop(html, { offer, hero } = {}, now = Date.now()) {
   const seed = { offer: offer || null, hero: hero || null };
   html = html.replace('/*SHOP_FIRST_RENDER*/null', () => json(seed));
   if (hero) {
+    const responsive = hero.url.startsWith('/api/lifeskin-shop-hero?')
+      ? `${hero.url}&w=720 720w, ${hero.url} 1050w` : '';
+    const sizes = '(min-width: 900px) 510px, calc(100vw - 40px)';
     html = html.replace('data-shop-hero="pending"', 'data-shop-hero="ready"')
-      .replace('data-shop-hero-src', `src="${escape(hero.url)}"`)
-      .replace('<head>', `<head>\n<link rel="preload" as="image" href="${escape(hero.url)}" fetchpriority="high">`);
+      .replace('data-shop-hero-src', `src="${escape(hero.url)}"${responsive ? ` srcset="${escape(responsive)}" sizes="${sizes}"` : ''}`)
+      .replace(/<meta name="viewport"[^>]+>/, viewport => `${viewport}\n<link rel="preload" as="image" href="${escape(hero.url)}"${responsive ? ` imagesrcset="${escape(responsive)}" imagesizes="${sizes}"` : ''} fetchpriority="high">`);
   }
   if (!offer) return html;
   html = html.replace('data-shop-preis="pending"', `data-shop-preis="${offer.available ? 'bereit' : 'fehlt'}"`);

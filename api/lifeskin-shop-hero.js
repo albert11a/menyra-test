@@ -10,11 +10,13 @@ export default async function shopHero(req, res) {
     const match = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=\r\n]+)$/.exec(doc?.foto || '');
     if (!match) throw new Error('No hero');
     const original = Buffer.from(match[2], 'base64');
+    const query = new URL(req.url || '/', 'https://shop.invalid').searchParams;
+    const width = query.get('w') === '720' ? 720 : 1050;
     // Bound decoded pixels and output size; never upscale or change the crop.
     const bytes = await sharp(original, { limitInputPixels: 25000000 })
-      .rotate().resize({ width: 1050, withoutEnlargement: true })
+      .rotate().resize({ width, withoutEnlargement: true })
       .webp({ quality: 78, effort: 4 }).toBuffer();
-    const version = new URL(req.url || '/', 'https://shop.invalid').searchParams.get('v');
+    const version = query.get('v');
     // Only the matching Heart revision is immutable. An old URL must not
     // permanently cache a newer upload after an edge-cache miss.
     const versioned = typeof doc.updatedAt === 'string' && version === doc.updatedAt;
