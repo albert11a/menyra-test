@@ -46,3 +46,19 @@ shows that offer and the expected hero. Two detailed HTTP samples had about
 4.7 seconds of environment TLS/proxy setup, followed by 0.74 and 0.19 seconds
 to first response byte. These are not mobile or throttled-network benchmarks.
 Physical mobile verification remains outstanding.
+
+## Hero speed follow-up
+
+Albert reported a slow hero after the CI fix. The live image endpoint returned
+a 299042-byte 1400x1000 JPEG on a CDN miss with only 60 seconds of cache life.
+The handler now delivers a 1050px WebP (no crop or upscaling, bounded decoded
+pixels) and reads only the photo plus revision fields. The same current photo
+encodes to 62632 bytes: 79% less transfer. Its preload is emitted first in head,
+ahead of blocking scripts. Matching Heart revisions receive immutable caching;
+unversioned or mismatched requests retain only 60 seconds, and failures remain
+uncached. Heart photo writes were checked to update the revision timestamp.
+Sharp is a pinned-through-lockfile production dependency for future uploads as
+well. Tests verify output dimensions/format, cache invalidation and preload
+order. These transfer-size gains do not establish a mobile LCP measurement.
+Validation: all 3200 unit tests, lint (no errors), production build and bundle
+budget passed. Tracked application bundles are unchanged. Pixel/CAPI unchanged.

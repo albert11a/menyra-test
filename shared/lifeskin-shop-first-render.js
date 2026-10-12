@@ -41,7 +41,7 @@ export function renderShop(html, { offer, hero } = {}, now = Date.now()) {
   if (hero) {
     html = html.replace('data-shop-hero="pending"', 'data-shop-hero="ready"')
       .replace('data-shop-hero-src', `src="${escape(hero.url)}"`)
-      .replace('</head>', `<link rel="preload" as="image" href="${escape(hero.url)}" fetchpriority="high">\n</head>`);
+      .replace('<head>', `<head>\n<link rel="preload" as="image" href="${escape(hero.url)}" fetchpriority="high">`);
   }
   if (!offer) return html;
   html = html.replace('data-shop-preis="pending"', `data-shop-preis="${offer.available ? 'bereit' : 'fehlt'}"`);

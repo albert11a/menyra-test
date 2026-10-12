@@ -5,6 +5,7 @@ import { runInNewContext } from 'node:vm';
 import { shopOffer, renderShop, SHOP_START_SETET, SHOP_HERO_FALLBACK } from '../shared/lifeskin-shop-first-render.js';
 import { loadShopSnapshot } from '../api/lifeskin-shop.js';
 import shopHero from '../api/lifeskin-shop-hero.js';
+import sharp from 'sharp';
 
 const html = readFileSync(new URL('../apps/lifeskin-shop/index.html', import.meta.url), 'utf8');
 const now = Date.parse('2026-10-12T08:00:00Z');
@@ -23,6 +24,7 @@ test('first HTML already contains the final promotion, every price and the right
   assert.match(page, /id="aktion-mbetur"[^>]*>13:59:00/);
   assert.match(page, /<div class="hero-photo hero-set"><img src="\/api\/lifeskin-shop-hero\?v=test"/);
   assert.match(page, /rel="preload" as="image"[^>]+fetchpriority="high"/);
+  assert.ok(page.indexOf('rel="preload" as="image"') < page.indexOf('<script'), 'hero is discovered before any blocking script');
   assert.doesNotMatch(page, /disabled data-shop-await/);
   const seed = seedOf(page);
   assert.equal(seed.offer.price, 18);
@@ -82,11 +84,24 @@ test('hero delivers image bytes and caches success; failure redirects without ca
   const original = globalThis.fetch;
   const response = () => ({ headers: {}, setHeader(k, v) { this.headers[k] = v; }, end(body) { this.body = body; } });
   try {
-    globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ fields: { foto: { stringValue: 'data:image/jpeg;base64,aW1hZ2U=' } } }) });
-    const ok = response(); await shopHero({ method: 'GET' }, ok);
-    assert.equal(ok.headers['Content-Type'], 'image/jpeg');
-    assert.equal(ok.body.toString(), 'image');
-    assert.match(ok.headers['Cache-Control'], /max-age=60/);
+    const source = await sharp({ create: { width: 1400, height: 1000, channels: 3, background: '#4f7662' } }).jpeg().toBuffer();
+    globalThis.fetch = async url => {
+      assert.match(url, /mask.fieldPaths=foto&mask.fieldPaths=updatedAt/);
+      return { ok: true, status: 200, json: async () => ({ fields: {
+        foto: { stringValue: `data:image/jpeg;base64,${source.toString('base64')}` },
+        updatedAt: { stringValue: 'revision-2' }
+      } }) };
+    };
+    const ok = response(); await shopHero({ method: 'GET', url: '/api/lifeskin-shop-hero?v=revision-2' }, ok);
+    assert.equal(ok.headers['Content-Type'], 'image/webp');
+    const metadata = await sharp(ok.body).metadata();
+    assert.equal(metadata.width, 1050);
+    assert.equal(metadata.height, 750);
+    assert.ok(ok.body.length < source.length);
+    assert.match(ok.headers['Cache-Control'], /max-age=31536000.*immutable/);
+    const old = response(); await shopHero({ method: 'GET', url: '/api/lifeskin-shop-hero?v=revision-1' }, old);
+    assert.match(old.headers['Cache-Control'], /max-age=60/);
+    assert.doesNotMatch(old.headers['Cache-Control'], /immutable/);
     globalThis.fetch = async () => { throw Error('offline'); };
     const failed = response(); await shopHero({ method: 'GET' }, failed);
     assert.equal(failed.statusCode, 302);
