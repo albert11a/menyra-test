@@ -1,14 +1,14 @@
 # Architecture Dependency Report
-
-Generated: 2026-07-01T06:29:17.199Z
+Generated: 2026-10-12T10:20:04.534Z
 Scope: static relative-import scan plus Dependency Cruiser/Madge tooling baseline.
-
 ## Direct imports from social-app.js
-
 - `apps/menyra-social/_shared/image-compressor.js`
 - `apps/menyra-social/_shared/image-resolver.js`
 - `apps/menyra-social/_shared/social-core.js`
 - `apps/menyra-social/_shared/social-storage.js`
+- `apps/menyra-social/core/ads/ads-view-render-utils.js`
+- `apps/menyra-social/core/analytics/analytics-tracker.js`
+- `apps/menyra-social/core/analytics/analytics-view-controller.js`
 - `apps/menyra-social/core/app-events/app-events-chat-upload-bind-utils.js`
 - `apps/menyra-social/core/app-events/app-events-crm-staff-bind-utils.js`
 - `apps/menyra-social/core/app-events/app-events-main-bind-utils.js`
@@ -52,8 +52,12 @@ Scope: static relative-import scan plus Dependency Cruiser/Madge tooling baselin
 - `apps/menyra-social/core/crm/crm-lead-geo-support-runtime.js`
 - `apps/menyra-social/core/crm/crm-shared-render-utils.js`
 - `apps/menyra-social/core/crm/staff-save-utils.js`
+- `apps/menyra-social/core/dashboard/dashboard-view-controller.js`
 - `apps/menyra-social/core/feed/feed-cache-utils.js`
 - `apps/menyra-social/core/feed/feed-visibility-runtime-cluster.js`
+- `apps/menyra-social/core/go/go-admin-boundary.js`
+- `apps/menyra-social/core/go/go-api-client.js`
+- `apps/menyra-social/core/go/go-page-boundary.js`
 - `apps/menyra-social/core/leads/lead-type-utils.js`
 - `apps/menyra-social/core/map/search-score-utils.js`
 - `apps/menyra-social/core/marketplace/marketplace-runtime-boundary.js`
@@ -76,11 +80,14 @@ Scope: static relative-import scan plus Dependency Cruiser/Madge tooling baselin
 - `apps/menyra-social/core/overlays/overlay-menu-focus-bind-utils.js`
 - `apps/menyra-social/core/overlays/overlay-render-orchestrator-utils.js`
 - `apps/menyra-social/core/overlays/overlay-root-ui-utils.js`
+- `apps/menyra-social/core/profile/business-category-visibility-utils.js`
 - `apps/menyra-social/core/profile/business-profile-type-utils.js`
+- `apps/menyra-social/core/profile/business-type-hint-utils.js`
 - `apps/menyra-social/core/profile/business-visibility-utils.js`
 - `apps/menyra-social/core/profile/handle-utils.js`
 - `apps/menyra-social/core/profile/profile-display-utils.js`
 - `apps/menyra-social/core/profile/profile-menu-focus-render-preload-utils.js`
+- `apps/menyra-social/core/profile/profile-open-flow-utils.js`
 - `apps/menyra-social/core/profile/profile-route-open-utils.js`
 - `apps/menyra-social/core/profile/public-profile-surface-controller.js`
 - `apps/menyra-social/core/profile/restaurant-identity-utils.js`
@@ -94,9 +101,9 @@ Scope: static relative-import scan plus Dependency Cruiser/Madge tooling baselin
 - `apps/menyra-social/core/router/startup-route-runtime-context.js`
 - `apps/menyra-social/core/shop/shop-cart-access-utils.js`
 - `apps/menyra-social/core/ui/dom-focus-utils.js`
-
+- `apps/menyra-social/core/vouchers/voucher-runtime-controller.js`
+- `apps/menyra-social/core/vouchers/voucher-view-controller.js`
 ## Critical indirect dependencies reachable from social-app.js
-
 - `apps/menyra-social/core/chat/chat-app-runtime-boundary.js`
 - `apps/menyra-social/core/chat/chat-app-runtime-facade.js`
 - `apps/menyra-social/core/chat/chat-app-runtime-lazy-facade.js`
@@ -139,11 +146,14 @@ Scope: static relative-import scan plus Dependency Cruiser/Madge tooling baselin
 - `apps/menyra-social/core/crm/crm-shared-render-utils.js`
 - `apps/menyra-social/core/crm/staff-save-utils.js`
 - `apps/menyra-social/core/feed/feed-cache-utils.js`
+- `apps/menyra-social/core/feed/feed-card-markup-utils.js`
 - `apps/menyra-social/core/feed/feed-story-utils.js`
 - `apps/menyra-social/core/feed/feed-view-orchestration-controller.js`
 - `apps/menyra-social/core/feed/feed-visibility-runtime-cluster.js`
 - `apps/menyra-social/core/feed/post-doc-normalize-utils.js`
+- `apps/menyra-social/core/feed/story-tile-markup-utils.js`
 - `apps/menyra-social/core/marketplace/marketplace-runtime-boundary.js`
+- `apps/menyra-social/core/marketplace/marketplace-skeleton-markup.js`
 - `apps/menyra-social/core/marketplace/marketplace-view-render-utils.js`
 - `apps/menyra-social/core/marketplace/restaurant-view-event-bindings.js`
 - `apps/menyra-social/core/marketplace/shopping-view-event-bindings.js`
@@ -153,6 +163,7 @@ Scope: static relative-import scan plus Dependency Cruiser/Madge tooling baselin
 - `apps/menyra-social/core/media/media-upload-runtime-cluster.js`
 - `apps/menyra-social/core/media/media-upload-runtime-controller.js`
 - `apps/menyra-social/core/media/media-upload-view-render-utils.js`
+- `apps/menyra-social/core/media/video-poster-utils.js`
 - `apps/menyra-social/core/menu/ads-runtime-controller.js`
 - `apps/menyra-social/core/menu/catalog-mode-utils.js`
 - `apps/menyra-social/core/menu/customer-focus-modal-render-utils.js`
@@ -162,6 +173,7 @@ Scope: static relative-import scan plus Dependency Cruiser/Madge tooling baselin
 - `apps/menyra-social/core/menu/menu-doc-normalize-utils.js`
 - `apps/menyra-social/core/menu/menu-input-utils.js`
 - `apps/menyra-social/core/menu/menu-item-coercion-utils.js`
+- `apps/menyra-social/core/menu/menu-item-deeplink-utils.js`
 - `apps/menyra-social/core/menu/menu-layout-utils.js`
 - `apps/menyra-social/core/menu/menu-modal-render-utils.js`
 - `apps/menyra-social/core/menu/menu-public-runtime-controller.js`
@@ -172,32 +184,17 @@ Scope: static relative-import scan plus Dependency Cruiser/Madge tooling baselin
 - `apps/menyra-social/core/notifications/notification-item-utils.js`
 - `apps/menyra-social/core/notifications/notification-native-push-utils.js`
 - `apps/menyra-social/core/notifications/notification-query-utils.js`
-- `apps/menyra-social/core/notifications/notification-read-state-utils.js`
-- `apps/menyra-social/core/notifications/notification-route-open-utils.js`
-- `apps/menyra-social/core/notifications/notification-support-runtime-controller.js`
-- `apps/menyra-social/core/notifications/notification-target-utils.js`
-- `apps/menyra-social/core/notifications/notification-write-utils.js`
-- ... 43 more
-
+- ... 59 more
 ## Circular dependencies
-
 - No cycles found by the built-in static scan. Run `npm run arch:cycles` for Madge output.
-
 ## QR/Menu unnecessary dependency candidates
-
 - `apps/menyra-social/core/app-shell/feed-search-map-runtime.js`
-
 ## Public Profile unnecessary dependency candidates
-
 - Static scan did not prove a specific Public Profile unwanted import; verify with entry-level bundle analysis.
-
 ## Waiter coupling
-
 - `apps/waiter/sw.js`
 - `apps/waiter/waiter-app.js`
-
 ## Owner/Heart coupling
-
 - `apps/menyra-social/core/crm/ceo-access-utils.js`
 - `apps/menyra-social/core/crm/ceo-crm-count-runtime-controller.js`
 - `apps/menyra-social/core/crm/ceo-meta-utils.js`
@@ -224,32 +221,62 @@ Scope: static relative-import scan plus Dependency Cruiser/Madge tooling baselin
 - `apps/menyra-social/core/crm/crm-shared-render-utils.js`
 - `apps/menyra-social/core/crm/customer-save-utils.js`
 - `apps/menyra-social/core/crm/staff-save-utils.js`
+- `apps/mnyra-heart/heart-analytics-adapter.js`
+- `apps/mnyra-heart/heart-analytics-render.js`
 - `apps/mnyra-heart/heart-api-client.js`
+- `apps/mnyra-heart/heart-async-utils.js`
 - `apps/mnyra-heart/heart-auth.js`
+- `apps/mnyra-heart/heart-bestellung-neu-daten.js`
+- `apps/mnyra-heart/heart-bestellung-neu.js`
+- `apps/mnyra-heart/heart-chat-render.js`
+- `apps/mnyra-heart/heart-chat.js`
 - `apps/mnyra-heart/heart-crm-admin-read-loaders.js`
 - `apps/mnyra-heart/heart-crm-admin-read-view.js`
 - `apps/mnyra-heart/heart-crm-admin-shell-consumer.js`
 - `apps/mnyra-heart/heart-crm-admin-write-adapter.js`
-- `apps/mnyra-heart/heart-dashboard-render.js`
+- `apps/mnyra-heart/heart-destination-location-picker.js`
+- `apps/mnyra-heart/heart-destinations-adapter.js`
+- `apps/mnyra-heart/heart-destinations-render.js`
 - `apps/mnyra-heart/heart-events.js`
+- `apps/mnyra-heart/heart-go-adapter.js`
+- `apps/mnyra-heart/heart-go-render.js`
 - `apps/mnyra-heart/heart-icons.js`
-- `apps/mnyra-heart/heart-incidents-render.js`
-- `apps/mnyra-heart/heart-modules-render.js`
+- `apps/mnyra-heart/heart-landing-adapter.js`
+- `apps/mnyra-heart/heart-landing-render.js`
+- `apps/mnyra-heart/heart-lifeskin-adapter.js`
+- `apps/mnyra-heart/heart-lifeskin-befundstand.js`
+- `apps/mnyra-heart/heart-lifeskin-berechnung.js`
+- `apps/mnyra-heart/heart-lifeskin-bereiche.js`
+- `apps/mnyra-heart/heart-lifeskin-bogenspeicher.js`
+- `apps/mnyra-heart/heart-lifeskin-dergesat-adapter.js`
+- `apps/mnyra-heart/heart-lifeskin-dergesat-render.js`
+- `apps/mnyra-heart/heart-lifeskin-dergesat.js`
+- `apps/mnyra-heart/heart-lifeskin-entwurf.js`
+- `apps/mnyra-heart/heart-lifeskin-klapp.js`
+- `apps/mnyra-heart/heart-lifeskin-kosten.js`
+- `apps/mnyra-heart/heart-lifeskin-live.js`
+- `apps/mnyra-heart/heart-lifeskin-medien.js`
+- `apps/mnyra-heart/heart-lifeskin-ndjekja-adapter.js`
+- `apps/mnyra-heart/heart-lifeskin-ndjekja-render.js`
+- `apps/mnyra-heart/heart-lifeskin-ndjekja.js`
+- `apps/mnyra-heart/heart-lifeskin-prompt.js`
+- `apps/mnyra-heart/heart-lifeskin-raste.js`
+- `apps/mnyra-heart/heart-lifeskin-render.js`
+- `apps/mnyra-heart/heart-lifeskin-rutina.js`
+- `apps/mnyra-heart/heart-lifeskin-schnitt.js`
+- `apps/mnyra-heart/heart-lifeskin-shopnachrichten.js`
+- `apps/mnyra-heart/heart-lifeskin-shopsets.js`
+- `apps/mnyra-heart/heart-lifeskin-vorschau.js`
+- `apps/mnyra-heart/heart-lifeskin-weg.js`
 - `apps/mnyra-heart/heart-monitoring-adapter.js`
+- `apps/mnyra-heart/heart-morph.js`
+- `apps/mnyra-heart/heart-push-utils.js`
+- `apps/mnyra-heart/heart-push.js`
 - `apps/mnyra-heart/heart-render.js`
 - `apps/mnyra-heart/heart-route-view-resolver.js`
-- `apps/mnyra-heart/heart-runs-render.js`
 - `apps/mnyra-heart/heart-settings-render.js`
-- `apps/mnyra-heart/heart-setup-adapter.js`
-- `apps/mnyra-heart/heart-state.js`
-- `apps/mnyra-heart/heart-test-report-normalizer.js`
-- `apps/mnyra-heart/heart-test-runner-adapter.js`
-- `apps/mnyra-heart/heart-ui-utils.js`
-- `apps/mnyra-heart/heart.js`
-- `apps/mnyra-heart/sw.js`
-
+- ... 11 more
 ## Safe extraction order
-
 1. Freeze route, public visibility and Firestore read/write contracts.
 2. Extract pure normalize/state helpers that have no DOM or Firebase ownership.
 3. Split public profile read-only runtime behind false feature flags.
@@ -258,9 +285,7 @@ Scope: static relative-import scan plus Dependency Cruiser/Madge tooling baselin
 6. Split owner/editor runtime after direct client-write inventory is reviewed.
 7. Split Heart/CRM after CRM facade boundaries are locked.
 8. Move feed, travel and shopping into route-owned lazy runtimes.
-
 ## Follow-up commands
-
 - `npm run arch:check` writes `docs/codex/generated/dependency-cruiser-check.txt`.
 - `npm run arch:graph` writes `docs/codex/generated/madge-social-app-graph.json`.
 - `npm run arch:cycles` writes `docs/codex/generated/madge-cycles.txt`.

@@ -1,6 +1,6 @@
 # Bundle Analysis Report
 
-Generated: 2026-08-06T21:04:10.037Z
+Generated: 2026-10-12T10:20:12.840Z
 
 Scope: current Vite output in `apps/menyra-social/bundled`.
 
@@ -8,26 +8,26 @@ Scope: current Vite output in `apps/menyra-social/bundled`.
 
 | File | Raw | Gzip |
 | --- | ---: | ---: |
+| `apps/menyra-social/bundled/entry/social-app.js` | 511.8 kB | 137.3 kB |
 | `apps/menyra-social/bundled/chunks/vendor-firebase-D7Ks7H8l.js` | 453.9 kB | 136.2 kB |
-| `apps/menyra-social/bundled/entry/social-app.js` | 492.2 kB | 131.5 kB |
-| `apps/menyra-social/bundled/chunks/domain-feed-social-eager-CSzqAfRb.js` | 355.5 kB | 100.2 kB |
-| `apps/menyra-social/bundled/chunks/profile-menu-focus-render-controller-CPb0rbZU.js` | 193.0 kB | 49.1 kB |
-| `apps/menyra-social/bundled/chunks/domain-menu-eager-BUdqOprI.js` | 81.2 kB | 23.6 kB |
-| `apps/menyra-social/bundled/chunks/crm-domain-runtime-cluster-CDOk1pWX.js` | 83.2 kB | 23.5 kB |
-| `apps/menyra-social/bundled/chunks/domain-auth-Aq-4Vdvh.js` | 78.7 kB | 21.7 kB |
-| `apps/menyra-social/bundled/chunks/marketplace-view-render-utils-DA7NVGOC.js` | 90.3 kB | 21.4 kB |
-| `apps/menyra-social/bundled/chunks/domain-app-events-hrSGrzeg.js` | 72.1 kB | 20.0 kB |
-| `apps/menyra-social/bundled/chunks/domain-analytics-jv5B-kA2.js` | 48.2 kB | 15.1 kB |
-| `apps/menyra-social/bundled/chunks/discovery-runtime-controller-BCDtflc4.js` | 42.9 kB | 13.7 kB |
-| `apps/menyra-social/bundled/chunks/domain-crm-eager-B7nua6M4.js` | 40.2 kB | 12.1 kB |
-| `apps/menyra-social/bundled/chunks/business-composer-controller-Cf-AFRjW.js` | 41.1 kB | 12.0 kB |
-| `apps/menyra-social/bundled/chunks/menu-modal-render-utils-A41a92zY.js` | 48.4 kB | 11.5 kB |
-| `apps/menyra-social/bundled/chunks/domain-dashboard-XgTL-wxD.js` | 30.8 kB | 9.6 kB |
-| `apps/menyra-social/bundled/chunks/crm-lazy-renderers-DqbT42M1.js` | 47.8 kB | 8.9 kB |
-| `apps/menyra-social/bundled/chunks/profile-open-flow-utils-B3YvHiY-.js` | 31.2 kB | 8.8 kB |
+| `apps/menyra-social/bundled/chunks/domain-feed-social-eager-Cm4N_JU6.js` | 375.4 kB | 108.6 kB |
+| `apps/menyra-social/bundled/chunks/domain-dashboard-B852JR7I.js` | 188.3 kB | 58.1 kB |
+| `apps/menyra-social/bundled/chunks/profile-menu-focus-render-controller-Bnjvi--2.js` | 193.3 kB | 49.2 kB |
+| `apps/menyra-social/bundled/chunks/crm-domain-runtime-cluster-Y5peCSqd.js` | 83.9 kB | 23.7 kB |
+| `apps/menyra-social/bundled/chunks/domain-menu-eager-DziUQlMt.js` | 81.2 kB | 23.6 kB |
+| `apps/menyra-social/bundled/chunks/domain-auth-Bp-V_YK4.js` | 79.0 kB | 21.8 kB |
+| `apps/menyra-social/bundled/chunks/marketplace-view-render-utils-DeKbyA4W.js` | 90.1 kB | 21.4 kB |
+| `apps/menyra-social/bundled/chunks/domain-app-events-Co9MgHzU.js` | 72.7 kB | 20.2 kB |
+| `apps/menyra-social/bundled/chunks/go-page-render-utils-DtxLeEQe.js` | 62.1 kB | 18.1 kB |
+| `apps/menyra-social/bundled/chunks/domain-analytics-Bhqgy4J1.js` | 49.7 kB | 15.6 kB |
+| `apps/menyra-social/bundled/chunks/discovery-runtime-controller-2VYy1WSl.js` | 42.0 kB | 13.6 kB |
+| `apps/menyra-social/bundled/chunks/business-composer-controller-Cv8CnPsM.js` | 44.7 kB | 13.1 kB |
+| `apps/menyra-social/bundled/chunks/domain-crm-eager-BCumtZ71.js` | 40.2 kB | 12.1 kB |
+| `apps/menyra-social/bundled/chunks/menu-modal-render-utils-BIGoTnAD.js` | 48.4 kB | 11.5 kB |
+| `apps/menyra-social/bundled/chunks/crm-lazy-renderers-Dvrz233W.js` | 51.2 kB | 9.8 kB |
+| `apps/menyra-social/bundled/chunks/profile-open-flow-utils-DG7VpGzS.js` | 31.2 kB | 8.8 kB |
 | `apps/menyra-social/bundled/chunks/chat-app-runtime-lazy-facade-DwsInXe4.js` | 26.1 kB | 7.7 kB |
-| `apps/menyra-social/bundled/chunks/social-engagement-runtime-controller-DwfQRZpC.js` | 22.7 kB | 7.4 kB |
-| `apps/menyra-social/bundled/chunks/travel-view-event-bindings-C5_zWOvT.js` | 19.9 kB | 5.8 kB |
+| `apps/menyra-social/bundled/chunks/social-engagement-runtime-controller-1l9jZwaO.js` | 22.7 kB | 7.4 kB |
 
 ## Current loading risk
 

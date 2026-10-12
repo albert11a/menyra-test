@@ -66,7 +66,8 @@ test("Freigegebener Produktkopf: Galerie vor Name, Nutzen und echtem Kaufknopf",
     assert.ok(kopf.includes(`icons.svg#${id}`));
     assert.ok(lies("apps/lifeskin-shop/icons.svg").includes(`<symbol id="${id}"`));
   }
-  assert.match(kopf, /class="cta" data-set="acne">Porosit Acne Duo/);
+  assert.match(kopf, /class="cta" data-set="acne" disabled data-shop-await>Porosit Acne Duo/,
+    "ohne bestaetigtes Angebot bleibt der Kaufknopf bis zur Preisfreigabe gesperrt");
   assert.match(kopf, /data-preis="cmimi"/);
   assert.doesNotMatch(kopf, /hero-tabs|hero-fakte|thumbs|breadcrumbs/);
 });
