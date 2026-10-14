@@ -38,7 +38,7 @@ import {
 } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import {
   CHIPS_DERGESAT, DERGESA, STATUS_CHIPS, austriDok, dergesaLesen, euroSq, fillimiPeriudhes, fundiDites, hyrja, kthimNeDepo, levizjeDok,
-  levizjeLesen, llogaritFinancen, mbylljeDok, ndryshimi, netoPasRibes, periudhat, shumaLexo, KTHIMI,
+  levizjeLesen, llogaritFinancen, mbylljeDok, ndryshimi, netoPasRibes, netoPosta, periudhat, shumaLexo, KTHIMI,
   arsyejaPaGatshme, lidhGatshme, hiqGatshme, produkteNeDergesa
 } from "/shared/lifeskin-dergesat.js";
 import { eFleteValide, gatshmePer, kohaSq, renderChips, renderDetajet, renderKartat, renderListe } from "./dergesat-pamja.js";
@@ -477,7 +477,7 @@ document.addEventListener("click", (ngjarja) => {
     return;
   }
   if (veprimi === "barazo") {
-    if (!d || !globalThis.confirm?.(`Barazuar: ${d.postaBeki} · ${euroSq(Math.max(0, d.cmimi - DERGESA.postaTarifa))}?`)) return;
+    if (!d || !globalThis.confirm?.(`Barazuar: ${d.postaBeki} · ${euroSq(netoPosta(d))}?`)) return;
     bej(celes, () => shenoTeGjitha([kennung], "barazuarAt", (x) => x.statusi === "pranuar" && !x.barazuarAt), "Barazuar ✓");
     return;
   }
@@ -496,7 +496,7 @@ document.addEventListener("click", (ngjarja) => {
   }
   if (veprimi === "barazo-zgjedhur") {
     const lista = llogaritFinancen(gjendja.liste, gjendja.levizjet).financa.paBarazuar.lista.filter((x) => gjendja.zgjedhur.has(x.kennung));
-    const shuma = lista.reduce((s, x) => s + Math.max(0, x.cmimi - DERGESA.postaTarifa), 0);
+    const shuma = lista.reduce((s, x) => s + netoPosta(x), 0);
     if (!lista.length || !globalThis.confirm?.(`Barazo: ${lista.length} porosi · ${euroSq(shuma)}?`)) return;
     bej("barazo-zgjedhur:", async () => {
       await shenoTeGjitha(lista.map((x) => x.kennung), "barazuarAt", (x) => x.statusi === "pranuar" && !x.barazuarAt);

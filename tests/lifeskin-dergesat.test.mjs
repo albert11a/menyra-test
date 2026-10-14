@@ -17,7 +17,66 @@ import { renderListe, renderKartat, renderChips, renderDetajet, KARTAT_ID } from
 
 const lies = (pfad) => readFileSync(new URL(`../${pfad}`, import.meta.url), "utf8");
 const T = "2026-10-05T10:00:00.000Z";
-const d = (kennung, felder = {}) => dergesaLesen({ postaBeki: `PB-${kennung}`, cmimi: 39, statusi: "porosi", createdAt: T, ...felder }, kennung);
+const d = (kennung, felder = {}) => dergesaLesen({ postaBeki: `100-${kennung}`, cmimi: 39, statusi: "porosi", createdAt: T, ...felder }, kennung);
+
+test("Postkosten: Buchstabe am Anfang = Albanien 5 €, sonst weiterhin 2,50 €", async () => {
+  const { tarifaPosta, netoPosta, netoPasRibes } = await import("../shared/lifeskin-dergesat.js");
+  for (const postaBeki of ["A12345", "a12345", "  B12345  ", "Ç12345"]) {
+    assert.equal(tarifaPosta({ postaBeki }), 5);
+    assert.equal(netoPosta(d("al", { postaBeki, cmimi: 29 })), 24);
+    assert.equal(netoPasRibes(d("al", { postaBeki, cmimi: 29 })), 22);
+  }
+  for (const postaBeki of ["12345", " 12345 ", "123A45", "", null, undefined]) {
+    assert.equal(tarifaPosta({ postaBeki }), 2.5);
+    assert.equal(netoPosta({ postaBeki, cmimi: 29 }), 26.5);
+  }
+  assert.equal(netoPosta(), 0);
+  assert.equal(netoPosta({ postaBeki: "A1", cmimi: 4 }), 0);
+  assert.equal(netoPosta({ postaBeki: "A1", cmimi: 29.99 }), 24.99);
+  assert.equal(netoPosta(d("edit", { postaBeki: "A123" })), 34);
+  assert.equal(netoPosta(d("edit", { postaBeki: "123" })), 36.5);
+});
+
+test("Gemischte Sendungen: Financat, Barazuar, Riba, Perioden und Listen nutzen denselben Tarif", async () => {
+  const { llogaritFinancen } = await import("../shared/lifeskin-dergesat.js");
+  const B = "2026-10-06T18:00:00.000Z";
+  const liste = [
+    d("ks", { postaBeki: "12345", cmimi: 29 }),
+    d("al-new", { postaBeki: "A12345", cmimi: 29, statusi: "gati" }),
+    d("al-road", { postaBeki: "b12345", cmimi: 29, statusi: "derguar" }),
+    d("al-ready", { postaBeki: "C12345", cmimi: 29, statusi: "pranuar" }),
+    d("al-settled", { postaBeki: "D12345", cmimi: 29, statusi: "pranuar", barazuarAt: B }),
+    d("ks-settled", { postaBeki: "67890", cmimi: 29, statusi: "pranuar", barazuarAt: B }),
+    d("al-cancelled", { postaBeki: "E12345", cmimi: 29, statusi: "anuluar" })
+  ];
+  const old = llogarit(liste);
+  assert.equal(old.pritjeBarazim.shuma, 98.5);
+  assert.equal(old.barazuar.shuma, 50.5);
+  assert.equal(old.barazuar.grupet[0].shuma, 50.5);
+  const fin = llogaritFinancen(liste);
+  assert.equal(fin.financa.shuma, 98.5);
+  assert.equal(fin.financa.reja.shuma, 50.5);
+  assert.equal(fin.financa.neShperndarje.shuma, 24);
+  assert.equal(fin.financa.paBarazuar.shuma, 24);
+  assert.equal(fin.kosova.shuma, 46.5);
+  assert.equal(fin.kosova.paDerguar.shuma, 50.5);
+  assert.equal(fin.perRiba.shuma, 8);
+  assert.equal(fin.ribaNgjep.shuma, 4);
+  const levizjet = [{ lloji: "mbyllje", at: B, prej: "", deri: B }];
+  const closed = llogaritFinancen(liste, levizjet, { periudha: levizjet[0] });
+  const current = llogaritFinancen(liste, levizjet);
+  assert.equal(closed.kosova.shuma, 46.5);
+  assert.equal(current.kosova.bartur, 46.5);
+  assert.equal(current.kosova.shuma, 46.5);
+  assert.equal(current.financa.shuma, 98.5);
+  const html = renderDetajet("financa", liste, "heart", "", null, { zgjedhur: new Set(["al-ready"]) });
+  assert.match(html, /Barazo · 1 porosi · 24 €/);
+  assert.match(renderDetajet("kosova", liste, "heart", "", null, { zgjedhur: new Set(["al-settled"]) }), /Propozim: 22 €/);
+  const source = lies("apps/lifeskin-dergesat/dergesat.js");
+  assert.doesNotMatch(source, /cmimi\s*-\s*DERGESA\.postaTarifa/);
+  assert.match(source, /euroSq\(netoPosta\(d\)\)/);
+  assert.match(source, /lista\.reduce\(\(s, x\) => s \+ netoPosta\(x\), 0\)/);
+});
 
 test("die fuenf Chips in der gewuenschten Reihenfolge", () => {
   assert.deepEqual(STATUS_CHIPS.map((c) => c.label), ["Porosiat", "Gati", "Dërguar", "Pranuar", "Anuluar"]);
@@ -169,10 +228,10 @@ test("Produkte: Ladenzeilen, sonst der Befund, sonst das Set", () => {
 test("Akte: Feld Posta Beki mit Chip, ueberlebt das Neuzeichnen, gesperrt wenn storniert", () => {
   const sitzung = { id: "a", order: { orderId: "A", status: "neu" } };
   const html = renderPostaBeki(sitzung, { dergesat: { a: d("a", { statusi: "derguar" }) } });
-  assert.match(html, /name="posta-beki" value="PB-a"/);
-  assert.match(html, /data-bewahren="dg-pb:a:PB-a"/);
+  assert.match(html, /name="posta-beki" value="100-a"/);
+  assert.match(html, /data-bewahren="dg-pb:a:100-a"/);
   assert.match(html, /data-action="dergesa" data-was="posta-beki"\s+data-id="a"/);
-  assert.match(html, /heart-dergesa-chip--derguar">Dërguar · Beki PB-a/);
+  assert.match(html, /heart-dergesa-chip--derguar">Dërguar · Beki 100-a/);
   assert.equal(renderPostaBeki({ id: "x", order: null }, {}), "");
   assert.match(renderPostaBeki({ id: "s", order: { orderId: "S", status: "storniert" } }, {}), /disabled/);
   assert.match(renderDergesaChip("porosi", null), />Porosi</);
@@ -200,7 +259,7 @@ test("Heart, Karte Bestellungen: fuenf Stand-Chips mit Zahl, jede Bestellung in 
   assert.match(porosi, /data-id="a"/);
   assert.doesNotMatch(porosi, /data-id="b"|data-id="c"|data-id="s"/);
   const derguar = renderBestellungen(sitzungen, "max", { ...zustand, bestellStatus: "derguar" });
-  assert.match(derguar, /data-id="b"[\s\S]*heart-dergesa-chip--derguar">Dërguar · Beki PB-b/);
+  assert.match(derguar, /data-id="b"[\s\S]*heart-dergesa-chip--derguar">Dërguar · Beki 100-b/);
   const anuluar = renderBestellungen(sitzungen, "max", { ...zustand, bestellStatus: "anuluar" });
   assert.match(anuluar, /data-id="s"[\s\S]*storniert/);
 });
@@ -218,7 +277,7 @@ test("Storniert zaehlt in keinem Umsatz mehr", async () => {
 test("/dergesat: Riba sieht Gati, Te Beki und Pranuar/Anuluar, nie Barazuar oder Kthe", () => {
   const liste = [d("a"), d("g", { statusi: "gati", gatiAt: T }), d("b", { statusi: "derguar", derguarAt: T }), d("c", { statusi: "pranuar", pranuarAt: T })];
   const porosi = renderListe(liste, "porosi", "riba");
-  assert.match(porosi, /<b>PB-a<\/b>/);
+  assert.match(porosi, /<b>100-a<\/b>/);
   assert.match(porosi, /data-veprim="gati" data-kennung="a"[^>]*>Gati</);
   assert.doesNotMatch(porosi, /Te Beki/);
   const gati = renderListe(liste, "gati", "riba");
@@ -364,11 +423,11 @@ test("Antippen einer Karte: Liste mit Datum und Uhrzeit, Ndepo zuletzt und auf A
   assert.doesNotMatch(kartat + renderDetajet("ndepo", liste, "heart", "", lenda), /Lagerbestand|Produktkosten|prej tyre/);
   const pritje = renderDetajet("per-riba", liste, "riba");
   assert.match(pritje, /role="dialog"/);
-  assert.match(pritje, /<b>PB-a<\/b>/);
+  assert.match(pritje, /<b>100-a<\/b>/);
   assert.match(pritje, /#LS-1/);
   assert.match(pritje, /<span>Dërguar<\/span><time datetime="2026-10-05T14:22:00.000Z">\d\d\.10\.2026 · \d\d:22<\/time>/);
   assert.match(pritje, /<span>Gati<\/span><time/);
-  assert.match(renderDetajet("kosova", liste, "riba"), /Pa dërguar në Austri[\s\S]*PB-b/);
+  assert.match(renderDetajet("kosova", liste, "riba"), /Pa dërguar në Austri[\s\S]*100-b/);
   const depoRiba = renderDetajet("ndepo", liste, "riba", "", lenda);
   assert.doesNotMatch(depoRiba, /Shishe|Stikera/, "Riba sieht keine Einkaufszahlen");
   assert.match(depoRiba, /data-veprim="kthe-depo" data-kennung="x"/);
@@ -425,7 +484,7 @@ test("Financa: Kosovo = Barazuar - Riba ± Eintraege - Oesterreich; Oesterreich 
   assert.match(kartat, /T'kryme n'Austri[\s\S]*?29,50 €[\s\S]*?1 dërgesa · − 5 € WU/);
   const austri = renderDetajet("austri", liste, "heart", "", null, { levizjet });
   assert.match(austri, /Dërguar<\/span><b>34,50 €[\s\S]*WU tarifa<\/span><b class="dg-minus">− 5 €[\s\S]*Ardhur në Austri<\/span><b>29,50 €/);
-  assert.match(austri, /PB-a/);
+  assert.match(austri, /100-a/);
   const kosova = renderDetajet("kosova", liste, "heart", "", null, { levizjet, zgjedhur: new Set(["b"]) });
   assert.match(kosova, /data-forma="levizje"/);
   assert.match(kosova, /data-forma="austri"[\s\S]*Dërgo në Austri · 1 porosi/);

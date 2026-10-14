@@ -13,7 +13,8 @@
 // Geld (alles ohne Anuluar - eine stornierte Bestellung zaehlt nirgends):
 //   Pritje barazim  = je Bestellung, die Porosi/Gati (neu), Dërguar oder
 //                     Pranuar ist und noch nicht barazuar: Gesamtpreis -
-//                     2,50 € (Post). Porosi und Gati sind fuers Geld
+//                     Postkosten (2,50 €, mit Buchstaben-Praefix 5 €).
+//                     Porosi und Gati sind fuers Geld
 //                     dasselbe (Gati heisst nur: abholbereit) und stehen in
 //                     der Karte zusammen als "Porosi të reja" ueber Dërguar
 //                     (Wunsch Inhaber 06.10.).
@@ -28,6 +29,7 @@
 export const DERGESA = Object.freeze({
   // Was die Post je Bestellung einbehaelt.
   postaTarifa: 2.5,
+  postaTarifaShqiperi: 5,
   // Was Riba je angenommener Bestellung bekommt.
   ribaPerPorosi: 2,
   // Der Benutzername fuer Riba auf /dergesat und die Adresse dahinter.
@@ -232,8 +234,14 @@ function grupoSipasKohes(liste, fusha, vlera) {
   return [...grupet.values()].sort((a, b) => String(b.at).localeCompare(String(a.at)));
 }
 
+// Albanien: Posta Beki beginnt mit einem Buchstaben (Inhaber 14.10.).
+// Aus der vorhandenen Nummer abgeleitet, ohne neue gespeicherte Felder.
+export function tarifaPosta(d) {
+  return /^\p{L}/u.test(postaBekiGueltig(d?.postaBeki)) ? DERGESA.postaTarifaShqiperi : DERGESA.postaTarifa;
+}
+
 export function netoPosta(d) {
-  return cent(Math.max(0, (Number(d?.cmimi) || 0) - DERGESA.postaTarifa));
+  return cent(Math.max(0, (Number(d?.cmimi) || 0) - tarifaPosta(d)));
 }
 
 // Die Karten oben (ohne Ndepo - die rechnet llogaritDepon).
@@ -282,9 +290,9 @@ export function llogarit(liste) {
 //
 // Das Geld laeuft in Stufen, jede Zahl steht nur einmal:
 //   Financat          - bei Posta Beki: Porosi të reja, Në shpërndarje,
-//                       Pranuar pa barazuar - je Preis - 2,50 € Post.
+//                       Pranuar pa barazuar - je Preis - Postkosten.
 //   Pare n'Kosovë     - in Kosovo: Bartur (aus abgeschlossenen Perioden)
-//                       + Barazuar (Preis - 2,50) - Riba (2 € je Barazim)
+//                       + Barazuar (Preis - Postkosten) - Riba (2 € je Barazim)
 //                       ± eigene Eintraege - nach Oesterreich (brutto).
 //   T'kryme n'Austri  - je Ueberweisung: brutto - WU-Gebuehr = netto.
 //   Për Riben         - 2 € je Bestellung, die noch nicht barazuar ist
