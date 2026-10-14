@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-10-08
+Last updated: 2026-10-14
 
 # Dërgesat (/dergesat) – Versand über Posta Beki
 
@@ -15,7 +15,10 @@ Last updated: 2026-10-08
    und „Als storniert markieren“ in Heart auch `/dergesat` weiter.
 
 ## Geld (Anuluar zählt nirgends – auch nicht im Umsatz in Heart)
-- **Pritje barazim** = je Dërguar/Pranuar, noch nicht barazuar: Gesamtpreis − 2,50 € (Post).
+- **Postkosten (14.10.)**: Beginnt die getrimmte Posta-Beki-Nummer mit einem Buchstaben, gilt Albanien: **5 €**. Sonst bleibt der bestehende Tarif **2,50 €**. Groß-/Kleinschreibung ist egal.
+- Umfang: zentrale Nettoberechnung für Heart, Financat, Barazuar, Perioden/Übertrag und Überweisungsvorschläge sowie die Bestätigungsbeträge auf `/dergesat`. Keine Datenmigration oder Änderung an Status, Lager, Riba-Vergütung, gespeicherten Überweisungen oder Firebase-Regeln.
+- Auch bestehende Bestellungen werden aus ihrer gespeicherten Nummer neu berechnet, einschließlich bereits abgerechneter Bestellungen und abgeschlossener Perioden. Gespeicherte Überweisungsbeträge bleiben unverändert.
+- **Pritje barazim** = je Porosi/Gati/Dërguar/Pranuar, noch nicht barazuar: Gesamtpreis − Postkosten.
 - **Barazuar** = schon abgerechnet, je Abrechnung (Knopf „Barazuar“, nur Inhaber).
 - **Pritje për Riben** = 2 € je Dërguar.
 - **€ për Riben** = 2 € je Pranuar, noch nicht ausbezahlt (Knopf „Paguar“, nur Inhaber).
@@ -52,3 +55,8 @@ Last updated: 2026-10-08
 - Daten: `lifeskin/lifeskin/dergesat/{sitzung}`, Zugang: `lifeskin/lifeskin/dergesatZugang/riba`.
 - Rechnung und Regeln: `shared/lifeskin-dergesat.js`. Seite: `apps/lifeskin-dergesat/`. Heart: `heart-lifeskin-dergesat*.js`.
 - Tests: `tests/lifeskin-dergesat.test.mjs`, `tests/rules/lifeskin-dergesat.test.mjs`.
+
+## Prüfung der Postkosten-Anpassung (14.10.)
+- `node --test tests/lifeskin-dergesat*.test.mjs tests/lifeskin-pixel-sperre.test.mjs`: 32 Tests bestanden. Numerische Kosovo-Testnummern sichern den bisherigen Tarif; zusätzliche gemischte Fälle prüfen Albanien, Abrechnung, Riba, Perioden und gerenderte Beträge.
+- `npm run build`: erfolgreich; keine Änderungen an getrackten Bundle-Dateien.
+- Keine Prüfung auf einem echten Handy, keine Browser-/Playwright- oder Emulator-Ausführung und kein Produktionsdeploy. Manuell nach Übernahme: je eine Nummer `A12345` und `12345` bei 29 € prüfen (Financat: 24 € / 26,50 €), Barazuar-Auswahl bestätigen und Riba-Betrag kontrollieren.
