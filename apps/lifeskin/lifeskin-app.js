@@ -894,6 +894,12 @@ export class Trichter {
       this.fragen.antworten = { ...stand.antworten };
       this.zustand.nachFragen = true;
       const liste = fragenNachAufnahme(this.weg);
+      // A saved session may still point at the now-removed question.
+      if (!liste.length) {
+        this.zustand.nachFragen = false;
+        this.#nameZeigen(false);
+        return true;
+      }
       this.#fragenStarten(liste, {
         danach: "name",
         einleitung: stand.einleitung === "einleitungNachFoto" ? "einleitungNachFoto" : "einleitungNachScan"
@@ -4306,9 +4312,11 @@ export class Trichter {
   #aufnahmeFragen(weg) {
     this.#antwortzeitHolen();
     if (!$("#ls-fragen")) { this.#nameZeigen(); return; }
-    this.zustand.nachFragen = true;
-    // Im Laden drei statt vier (fragenNachAufnahme, lifeskin-content.js).
-    this.#fragenStarten(fragenNachAufnahme(this.weg), {
+    const liste = fragenNachAufnahme(this.weg);
+    this.zustand.nachFragen = liste.length > 0;
+    // /lifeskin skips questions; keep capture/upload and name/contact intact.
+    if (!liste.length) { this.#nameZeigen(); return; }
+    this.#fragenStarten(liste, {
       danach: "name",
       einleitung: weg === "foto" ? "einleitungNachFoto" : "einleitungNachScan"
     });

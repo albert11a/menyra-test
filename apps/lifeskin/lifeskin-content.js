@@ -1271,6 +1271,11 @@ export const FRAGEN = Object.freeze([
 // Nur, was dort "Analyse" verspricht, wo LifeSkin 2 eine Antwort
 // verspricht: ob die Therapie passt. Alles andere gilt wie in OBERFLAECHE.
 export const OBERFLAECHE_WEGE = Object.freeze({
+  // /lifeskin no longer asks a concern question after scan/photo.
+  "": Object.freeze({
+    telGespeichertFoto: { sq: "Fotoja juaj eshte ruajtur.", de: "Ihr Foto ist gespeichert." },
+    telGespeichertScan: { sq: "Fotot tuaja jane ruajtur.", de: "Ihre Aufnahmen sind gespeichert." }
+  }),
   lifeskin2: Object.freeze({
     telKnopf: { sq: "Merrni përgjigjen në WhatsApp", de: "Antwort per WhatsApp erhalten" },
     telKnopfViber: { sq: "Merrni përgjigjen në Viber", de: "Antwort per Viber erhalten" },
@@ -1401,14 +1406,9 @@ export const FRAGEN_NACH_AUFNAHME_WEGE = Object.freeze({
   lifeskinshop: Object.freeze(["anliegen", "kohezgjatja", "perdorimi"].map(ausVorrat))
 });
 
-// AUF /lifeskin NUR NOCH DIE ERSTE FRAGE (01.10., Wunsch Inhaber): was ihn
-// stoert. Danach gleich Name und Nummer. /lifeskin hat keine Marke am
-// <html> (wegLesen() gibt dort ""), /lifeskin2 und der Laden behalten ihre
-// Listen. Die Stufen pyetja2 bis pyetja4 werden hier nie erreicht -
-// schritt() geht nie zurueck, und Heart zaehlt wer weiter ist als
-// durchgegangen. Therapieseite und Prompt kommen ohne die drei Antworten
-// aus (shared/lifeskin-antworten.js), wie im Laden schon ohne die vierte.
-export const FRAGEN_NACH_AUFNAHME_LIFESKIN = Object.freeze([ausVorrat("anliegen")]);
+// /lifeskin: after scan/photo go directly to name/age, then contact.
+// Other site variants retain their own question lists. No invented answers.
+export const FRAGEN_NACH_AUFNAHME_LIFESKIN = Object.freeze([]);
 
 // "një pyetje e shkurtër" / "3 pyetje të shkurtra" fuer {pyetjet}.
 export function pyetjetSatz(anzahl, sprache = "sq") {

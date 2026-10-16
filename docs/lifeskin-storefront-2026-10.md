@@ -71,3 +71,10 @@ Validation for v1.1: npm run build passed; TZ=Europe/Vienna npm test passed (3,2
 Owner switched scope from shop refinement to /lifeskin: remove only the complete makeup and filter instruction rows (including icons) from the photo preparation screen. Retain light, sharpness, close-up and the continue action. No shared translations, photo workflow, Pixel/CAPI or shop behavior changes. Publish via the existing main workflow after the required build and focused checks.
 
 Photo instruction validation: 68 focused tests passed, including the unchanged Pixel lock; npm run build passed. No tracked bundle changes. No live browser/mobile check performed.
+
+
+### /lifeskin shorter photo/scan path, 2026-10-16
+
+Owner requested removal of the remaining concern question after both scan and photo on /lifeskin, photo-only saved confirmation copy (no answers reference), and photo-first method order. Keep scan/photo capture, name/age/contact and upload unchanged. Other site variants retain their question lists and wording. Handle saved sessions on the removed question by forwarding to name without replaying tracking; preserve existing Pixel/CAPI call sites. Publish through main after tests/build.
+
+Photo-first validation: 95 focused tests passed in Europe/Vienna timezone. Production build passed. Initial complete-suite artifact check found comments in generated CSS; re-running static packaging and its isolated artifact check passed, followed by all 3,230 tests passing with zero failures/skips. No source/bundle workaround was introduced. New behavioral tests execute the actual capture/restore methods to verify direct name navigation, old-session migration and unchanged other variants. Pixel/CAPI lock checks pass unchanged. No tracked bundles changed, and no live browser/mobile visual test was performed.

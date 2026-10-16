@@ -148,7 +148,7 @@ test("Neuladen mitten in den Fragen: zurueck an dieselbe Frage, mit den Antworte
   assert.match(merken, /antworten: \{ \.\.\.\(this\.fragen\.antworten \|\| \{\}\) \}/);
   const aufnehmen = methode(APP, "#standAufnehmen");
   assert.match(aufnehmen, /if \(stand\.schirm === "fragen"\) \{/);
-  assert.match(aufnehmen, /const liste = fragenNachAufnahme\(this\.weg\);\s*this\.#fragenStarten\(liste,/);
+  assert.match(aufnehmen, /const liste = fragenNachAufnahme\(this\.weg\);[\s\S]*?this\.#fragenStarten\(liste,/);
   // Jede neue Frage wird sofort gemerkt - ein hart beendetes App-Fenster
   // meldet kein pagehide mehr.
   assert.match(methode(APP, "#frageZeichnen"), /this\.#standMerken\(\);/);

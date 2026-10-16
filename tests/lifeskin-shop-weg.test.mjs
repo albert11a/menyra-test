@@ -49,9 +49,9 @@ test("der Laden spricht in eigenen Worten - und nur mit Schluesseln, die es gibt
 test("im Laden drei Fragen nach der Aufnahme - ohne die Bereitschaft (Frage 4)", async () => {
   const { fragenNachAufnahme, FRAGEN } = await import("../apps/lifeskin/lifeskin-content.js");
   assert.deepEqual(fragenNachAufnahme("lifeskinshop").map((f) => f.id), ["anliegen", "kohezgjatja", "perdorimi"]);
-  // /lifeskin seit dem 01.10. nur noch die erste Frage (Wunsch Inhaber),
+  // /lifeskin seit dem 16.10. ohne Frage nach der Aufnahme (Wunsch Inhaber),
   // /lifeskin2 behaelt seine vier.
-  assert.deepEqual(fragenNachAufnahme("").map((f) => f.id), ["anliegen"]);
+  assert.deepEqual(fragenNachAufnahme("").map((f) => f.id), []);
   assert.deepEqual(fragenNachAufnahme("lifeskin2").map((f) => f.id), FRAGEN_NACH_AUFNAHME.map((f) => f.id));
   assert.equal(fragenNachAufnahme("lifeskin2").length, 4);
   // Keine Worte mehr fuer eine Frage, die der Laden nicht stellt.
@@ -882,7 +882,7 @@ test("die neuen Marken: Bild da, Nummer getippt, Abschnitte der Analyseseite - o
   assert.match(urls[0], /currentDocument\.exists=true/);
 });
 
-test("/lifeskin (01.10.): eine Frage nach der Aufnahme, und der Satz darueber sagt genau das", async () => {
+test("Einleitungen verbleibender Fragenstrecken nennen die korrekte Anzahl", async () => {
   const { FRAGEN_TEXTE: TEXTE, pyetjetSatz, fuelle } = await import("../apps/lifeskin/lifeskin-content.js");
   const satz = (key, n, sprache = "sq") => fuelle(t(TEXTE[key], sprache), { pyetjet: pyetjetSatz(n, sprache) });
   assert.equal(satz("einleitungNachFoto", 1), "Fotoja u ruajt ✓ Ndërsa po i shkon Dr. Gashit: një pyetje e shkurtër, vetëm me prekje.");

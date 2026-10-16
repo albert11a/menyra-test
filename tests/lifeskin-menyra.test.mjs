@@ -64,7 +64,7 @@ test("drei Karten, in dieser Reihenfolge - und die empfohlene ist erkennbar", ()
   const wahl = menyraBlock();
 
   const wege = [...wahl.matchAll(/data-ls-weg="([a-z-]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(wege, ["skanim", "foto", "trup"],
+  assert.deepEqual(wege, ["foto", "skanim", "trup"],
     "Die drei Wege stehen nicht in dieser Reihenfolge im Aufbau");
 
   // DER NIEDRIGSTE EINSTIEG STEHT UNTEN. Eine Karte, die oben steht,

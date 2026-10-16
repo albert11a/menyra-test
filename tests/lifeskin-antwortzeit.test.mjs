@@ -160,8 +160,8 @@ test("die Worte der Nummer-Seite - wie der Inhaber sie geschrieben hat; der Lade
   assert.equal(sq("telSchritt"), "Hapi i fundit");
   assert.equal(sq("telZiel"), "Merrni rezultatin tuaj nga Dr. Violeta Gashi");
   assert.equal(sq("telZielName"), "{name}, merrni rezultatin tuaj nga Dr. Violeta Gashi");
-  assert.equal(sq("telGespeichertFoto"), "Fotoja dhe përgjigjet tuaja janë ruajtur.");
-  assert.equal(sq("telGespeichertScan"), "Fotot dhe përgjigjet tuaja janë ruajtur.");
+  assert.equal(sq("telGespeichertFoto"), "Fotoja juaj eshte ruajtur.");
+  assert.equal(sq("telGespeichertScan"), "Fotot tuaja jane ruajtur.");
   assert.equal(sq("telPersoenlich"), "Dr. Violeta Gashi do t’i shqyrtojë personalisht dhe do t’jua dërgojë analizën në WhatsApp.");
   assert.equal(sq("telTitel"), "Numri juaj i WhatsApp-it");
   assert.deepEqual(["telTelefonata", "telHakenZweck", "telHakenPrivat"].map((k) => sq(k)),
