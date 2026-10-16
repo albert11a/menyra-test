@@ -78,3 +78,10 @@ Photo instruction validation: 68 focused tests passed, including the unchanged P
 Owner requested removal of the remaining concern question after both scan and photo on /lifeskin, photo-only saved confirmation copy (no answers reference), and photo-first method order. Keep scan/photo capture, name/age/contact and upload unchanged. Other site variants retain their question lists and wording. Handle saved sessions on the removed question by forwarding to name without replaying tracking; preserve existing Pixel/CAPI call sites. Publish through main after tests/build.
 
 Photo-first validation: 95 focused tests passed in Europe/Vienna timezone. Production build passed. Initial complete-suite artifact check found comments in generated CSS; re-running static packaging and its isolated artifact check passed, followed by all 3,230 tests passing with zero failures/skips. No source/bundle workaround was introduced. New behavioral tests execute the actual capture/restore methods to verify direct name navigation, old-session migration and unchanged other variants. Pixel/CAPI lock checks pass unchanged. No tracked bundles changed, and no live browser/mobile visual test was performed.
+
+
+### Frameless shop photos, 2026-10-16
+
+Owner clarified that product photos should appear without frames. Remove added photo padding, colored picture-box backgrounds and rounded picture masks from catalog/detail/gallery and promotional photo sections. Keep image aspect ratios, contain sizing for complete product/label visibility, the slider, layout dimensions and purchase behavior. Original photo backgrounds remain part of their source images. No source photo editing, Pixel/CAPI or analysis-path changes. Publish on main using the established workflow; browser/mobile visual QA remains unavailable after denied browser access.
+
+Frameless validation: production build passed; all 29 focused storefront, slider, Pixel lock and generated-artifact tests passed. Tracked bundles unchanged. No new tests added for this CSS-only presentation adjustment. No browser/mobile rendering verification performed.
