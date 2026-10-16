@@ -481,6 +481,14 @@
       "destination": "/apps/lifeskin-2/index.html"
     },
     {
+      "source": "/lifeskinlifeskin",
+      "destination": "/apps/lifeskinlifeskin/index.html"
+    },
+    {
+      "source": "/lifeskinlifeskin/",
+      "destination": "/apps/lifeskinlifeskin/index.html"
+    },
+    {
       "source": "/lifeskin",
       "destination": "/apps/lifeskin-landing/index.html"
     },
