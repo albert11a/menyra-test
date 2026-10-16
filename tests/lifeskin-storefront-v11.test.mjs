@@ -36,8 +36,10 @@ test('native swipe and keyboard navigation update the same slider without vertic
   events.keydown({target:{},key:'ArrowLeft',preventDefault(){throw Error('unrelated key intercepted');}});
 });
 test('deferred photo refresh preserves the selected image and does not reset quantity',()=>{
-  const {sf,moves}=gallery();sf.galleryPosition=2;sf.quantity=4;
-  sf.refreshGallery();assert.equal(sf.quantity,4);assert.deepEqual(moves.pop(),{left:640,behavior:'instant'});
+  const {sf,moves,track}=gallery();sf.galleryPosition=2;sf.quantity=4;
+  track.children=[{},{},{}];
+  sf.doc.querySelector('.sf-gallery').querySelector=()=>track;
+  sf.refreshGallery();assert.equal(sf.quantity,4);assert.equal(sf.galleryPosition,2);assert.deepEqual(moves,[]);
 });
 test('quantity CTA follows the selected total with bounds at one and twenty',()=>{
   const output={},total={},buttons=[button({sfPdpQty:'-1'}),button({sfPdpQty:'1'})];

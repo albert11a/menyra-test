@@ -1229,6 +1229,12 @@
     },
     "api/lifeskin-shop.js": {
       "includeFiles": "{dist/apps/lifeskin-shop/index.html,apps/lifeskin-shop/index.html}"
+    },
+    "api/lifeskin-product-photo.js": {
+      "includeFiles": "apps/lifeskin-shop/assets/{lf-acne-2.jpg,lf-acne-3.jpg,lf-moistur.jpg,lf-pore.jpg,lf-pigment.jpg,produkt-lf-acne.jpg,produkt-lf-moistur.jpg}"
+    },
+    "api/lifeskin-product-media.js": {
+      "includeFiles": "apps/lifeskin-shop/assets/{lf-acne-2.jpg,lf-acne-3.jpg,lf-moistur.jpg,lf-pore.jpg,lf-pigment.jpg,produkt-lf-acne.jpg,produkt-lf-moistur.jpg}"
     }
   }
 }

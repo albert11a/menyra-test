@@ -1,7 +1,13 @@
-import { money, SHOP_CATEGORIES, filterCatalog } from '../../shared/lifeskin-storefront.js';
+import { money, SHOP_CATEGORIES, filterCatalog, productImageVariant } from '../../shared/lifeskin-storefront.js';
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 export const sfIcon = name => `<svg class="sf-icon" aria-hidden="true"><use href="/apps/lifeskin-shop/icons.svg#${name}"></use></svg>`;
-const image = (p, lazy = true, index = 0) => p.images[index] ? `<img src="${esc(p.images[index])}" alt="${esc(p.name)}" width="640" height="800" ${lazy ? 'loading="lazy"' : 'fetchpriority="high"'} decoding="async">` : '<span class="sf-card-placeholder">lifeskin<span>Foto se shpejti</span></span>';
+const image = (p, lazy = true, index = 0, detail = false) => {
+  const url = p.images[index];
+  if (!url) return '<span class="sf-card-placeholder">lifeskin<span>Foto se shpejti</span></span>';
+  const responsive = url.startsWith('/api/lifeskin-product-photo?')
+    ? ` srcset="${esc(productImageVariant(url,480))} 480w, ${esc(productImageVariant(url,960))} 960w" sizes="${detail ? '(min-width:1200px) 520px, (min-width:701px) 45vw, calc(100vw - 36px)' : '(min-width:1200px) 280px, (min-width:701px) 30vw, calc((100vw - 44px) / 2)'}"` : '';
+  return `<img src="${esc(url)}"${responsive} alt="${esc(p.name)}" width="640" height="800" ${lazy ? 'loading="lazy"' : 'fetchpriority="high"'} decoding="async">`;
+};
 export function productCard(p) {
   return `<article class="sf-card"><a href="/lifeskinshop/p/${encodeURIComponent(p.id)}" class="sf-card-image" data-sf-product="${esc(p.id)}">${image(p)}${p.badge ? `<span class="sf-card-label">${esc(p.badge)}</span>` : ''}<span class="sf-card-look">Shiko produktin ${sfIcon('ArrowUpRight')}</span></a><div class="sf-card-info"><span class="sf-card-category">${esc(p.label)}</span><a class="sf-card-name" href="/lifeskinshop/p/${encodeURIComponent(p.id)}" data-sf-product="${esc(p.id)}">${esc(p.name)}</a><p>${esc(p.subtitle)}</p><div class="sf-card-meta"><strong>${money(p.price)}</strong><span>${esc(p.size)}</span></div><button type="button" class="sf-card-add" data-sf-add="${esc(p.id)}" ${p.soldOut ? 'disabled' : ''}>${sfIcon('ShoppingBag')}${p.soldOut ? 'Nuk ka ne stok' : 'Shto ne shport'}</button><button type="button" class="sf-card-buy" data-sf-buy="${esc(p.id)}" ${p.soldOut ? 'disabled' : ''}>Porosit ${sfIcon('ArrowRight')}</button></div></article>`;
 }
@@ -10,8 +16,8 @@ export function galleryIndex(index, count) {
 }
 export function productGallery(p, selected = 0) {
   const index = galleryIndex(selected, p.images.length);
-  const slides = p.images.length ? p.images.map((url, i) => `<div class="sf-gallery-slide" role="group" aria-roledescription="slide" aria-label="${i + 1} / ${p.images.length}">${image(p, i !== 0, i)}</div>`).join('') : `<div class="sf-gallery-slide"><span class="sf-card-placeholder">lifeskin<span>Foto se shpejti</span></span></div>`;
-  return `<div class="sf-detail-photo"><div id="sf-gallery-track" class="sf-gallery-track" tabindex="0" role="region" aria-roledescription="carousel" aria-label="Fotot e ${esc(p.name)}">${slides}</div></div>${p.images.length > 1 ? `<div class="sf-gallery-controls"><button type="button" class="sf-icon-button" data-sf-slide="-1" aria-label="Foto e meparshme" aria-controls="sf-gallery-track" ${index === 0 ? 'disabled' : ''}>${sfIcon('ChevronLeft')}</button><span class="sf-gallery-count" role="status" aria-live="polite">${index + 1} / ${p.images.length}</span><button type="button" class="sf-icon-button" data-sf-slide="1" aria-label="Foto tjeter" aria-controls="sf-gallery-track" ${index === p.images.length - 1 ? 'disabled' : ''}>${sfIcon('ChevronRight')}</button></div><div class="sf-thumbnails" role="group" aria-label="Zgjidh foton">${p.images.map((url, i) => `<button type="button" data-sf-image="${i}" aria-pressed="${i === index}" aria-label="Foto ${i + 1}" aria-controls="sf-gallery-track"><img src="${esc(url)}" alt="" width="60" height="60" loading="lazy"></button>`).join('')}</div>` : ''}`;
+  const slides = p.images.length ? p.images.map((url, i) => `<div class="sf-gallery-slide" role="group" aria-roledescription="slide" aria-label="${i + 1} / ${p.images.length}">${image(p, i !== 0, i, true)}</div>`).join('') : `<div class="sf-gallery-slide"><span class="sf-card-placeholder">lifeskin<span>Foto se shpejti</span></span></div>`;
+  return `<div class="sf-detail-photo"><div id="sf-gallery-track" class="sf-gallery-track" tabindex="0" role="region" aria-roledescription="carousel" aria-label="Fotot e ${esc(p.name)}">${slides}</div></div>${p.images.length > 1 ? `<div class="sf-gallery-controls"><button type="button" class="sf-icon-button" data-sf-slide="-1" aria-label="Foto e meparshme" aria-controls="sf-gallery-track" ${index === 0 ? 'disabled' : ''}>${sfIcon('ChevronLeft')}</button><span class="sf-gallery-count" role="status" aria-live="polite">${index + 1} / ${p.images.length}</span><button type="button" class="sf-icon-button" data-sf-slide="1" aria-label="Foto tjeter" aria-controls="sf-gallery-track" ${index === p.images.length - 1 ? 'disabled' : ''}>${sfIcon('ChevronRight')}</button></div><div class="sf-thumbnails" role="group" aria-label="Zgjidh foton">${p.images.map((url, i) => `<button type="button" data-sf-image="${i}" aria-pressed="${i === index}" aria-label="Foto ${i + 1}" aria-controls="sf-gallery-track"><img src="${esc(productImageVariant(url,240))}" alt="" width="60" height="60" loading="lazy" decoding="async"></button>`).join('')}</div>` : ''}`;
 }
 export function productDetail(p) {
   return `<nav class="sf-breadcrumb" aria-label="Vendndodhja"><button type="button" data-sf-home>Ballina</button>${sfIcon('ChevronRight')}<button type="button" data-sf-category="${esc(p.category)}">${esc(p.label)}</button>${sfIcon('ChevronRight')}<span>${esc(p.name)}</span></nav><div class="sf-detail"><div class="sf-gallery">${productGallery(p)}</div><div class="sf-detail-copy"><span class="sf-kicker">${esc(p.label)} / LIFESKIN</span><h1 id="sf-product-title">${esc(p.name)}</h1><p class="sf-detail-subtitle">${esc(p.subtitle)}</p><div class="sf-pdp-price"><strong>${money(p.price)}</strong><span>${esc(p.size)}</span></div><p class="sf-product-description">${esc(p.description)}</p>${p.skinTypes ? `<p class="sf-skin-types">${sfIcon('Sparkles')}${esc(p.skinTypes)}</p>` : ''}<div class="sf-pdp-quantity"><span>Sasia</span><div class="sf-quantity"><button type="button" data-sf-pdp-qty="-1" aria-label="Zvogelo sasine">${sfIcon('Minus')}</button><output id="sf-pdp-quantity">1</output><button type="button" data-sf-pdp-qty="1" aria-label="Rrit sasine">${sfIcon('Plus')}</button></div>${p.soldOut ? '<span class="sf-stock">Nuk ka ne stok</span>' : ''}</div><button type="button" class="sf-button sf-button-dark" data-sf-add="${esc(p.id)}" ${p.soldOut ? 'disabled' : ''}>${sfIcon('ShoppingBag')}Shto ne shport <span data-sf-pdp-total>${money(p.price)}</span></button><button type="button" class="sf-button sf-button-outline" data-sf-buy="${esc(p.id)}" ${p.soldOut ? 'disabled' : ''}>Porosit tani ${sfIcon('ArrowRight')}</button><div class="sf-pdp-services"><span>${sfIcon('Truck')}Dergesa 1–3 dite</span><span>${sfIcon('Banknote')}Pagesa te dera</span><span>${sfIcon('ShieldCheck')}45 dite garanci</span></div><div class="sf-pdp-accordions"><details open><summary>Per produktin ${sfIcon('Plus')}</summary><p>${esc(p.description)}</p></details>${p.usage.length ? `<details><summary>Si perdoret? ${sfIcon('Plus')}</summary>${p.usage.map(line => `<p>${esc(line)}</p>`).join('')}</details>` : ''}${p.ingredients.length ? `<details><summary>Perberesit kryesore ${sfIcon('Plus')}</summary><p>${p.ingredients.map(esc).join(' · ')}</p></details>` : ''}<details><summary>Dergesa dhe garancia ${sfIcon('Plus')}</summary><p>Pagesen e ben kur e merr porosine. Te kontaktojme per konfirmim. Garancia vlen sipas kushteve te blerjes.</p><a href="/apps/lifeskin-shop/kushtet.html">Lexo kushtet</a></details></div><a class="sf-pdp-help" href="https://wa.me/436508564879" target="_blank" rel="noopener">${sfIcon('Phone')}Ke pyetje? Na shkruaj ne WhatsApp ${sfIcon('ArrowUpRight')}</a></div></div>`;
@@ -99,7 +105,9 @@ export class Storefront {
     grid.setAttribute('aria-busy','false'); error.hidden = this.shop.catalogReady;
     if (!this.shop.catalogReady) { grid.innerHTML = ''; this.doc.getElementById('sf-results').textContent = 'Produktet nuk u ngarkuan.'; return; }
     const products = filterCatalog(this.shop.catalogProducts, { category:this.filter, search:this.search, sort:this.sort });
-    grid.innerHTML = products.slice(0,this.limit).map(productCard).join('') || `<div class="sf-empty">${sfIcon('Search')}<h3>Nuk u gjet asnje produkt.</h3><p>Provo nje emer ose kategori tjeter.</p><button type="button" data-sf-products>Shiko te gjitha</button></div>`;
+    const markup = products.slice(0,this.limit).map(productCard).join('') || `<div class="sf-empty">${sfIcon('Search')}<h3>Nuk u gjet asnje produkt.</h3><p>Provo nje emer ose kategori tjeter.</p><button type="button" data-sf-products>Shiko te gjitha</button></div>`;
+    // Offers/cart/loading may render repeatedly; retain the existing image elements.
+    if (this.gridMarkup !== markup) { grid.innerHTML = markup; this.gridMarkup = markup; }
     this.doc.getElementById('sf-results').textContent = `${products.length} produkte`;
     const more = this.doc.getElementById('sf-load-more'); if (more) more.hidden = products.length <= this.limit;
     for (const button of this.doc.querySelectorAll('[data-sf-filter]')) button.setAttribute('aria-pressed', String(button.dataset.sfFilter === this.filter));
@@ -132,16 +140,29 @@ export class Storefront {
     this.doc.getElementById('sf-product-content').innerHTML = p ? productDetail(p) + `<section class="sf-related"><div class="sf-section-head"><div><span class="sf-kicker">ME SHUME LIFESKIN</span><h2>Shiko edhe.</h2></div></div><div class="sf-grid">${this.shop.catalogProducts.filter(x => x.id !== id).slice(0,4).map(productCard).join('')}</div></section>` : '<div class="sf-empty"><h1>Produkti nuk eshte i disponueshem.</h1><button type="button" data-sf-products>Shiko produktet</button></div>';
     this.show('product');
     this.bindGallery(); this.changeQuantity(0);
-    if (p && this.shop.catalogFotosLaden) void this.shop.catalogFotosLaden(id).then(() => { if (this.activeProduct?.id === id) this.refreshGallery(); });
+    if (p && this.shop.catalogFotosLaden) void this.shop.catalogFotosLaden(id).then(changed => { if (changed && this.activeProduct?.id === id) this.refreshGallery(); });
     if (push) this.route(`/p/${encodeURIComponent(id)}`);
     if (!this.restoreScroll()) this.doc.defaultView?.scrollTo({ top:0, behavior:'instant' });
   }
   refreshGallery() {
-    const p = this.activeProduct;
-    const root = this.doc.querySelector('.sf-gallery');
+    const p = this.activeProduct, root = this.doc.querySelector('.sf-gallery');
     if (!p || !root) return;
-    root.innerHTML = productGallery(p, this.galleryPosition);
-    this.bindGallery(); this.changeImage(this.galleryPosition, false);
+    const track = root.querySelector('.sf-gallery-track');
+    if (!track) return;
+    const existing = [...track.children];
+    if (existing.length >= p.images.length) return;
+    const template = this.doc.createElement('template');
+    template.innerHTML = productGallery(p, this.galleryPosition);
+    const fresh = template.content.querySelector('.sf-gallery-track');
+    // Preserve the first image DOM node, decoded bitmap and scroll position.
+    for (const slide of [...fresh.children].slice(existing.length)) track.appendChild(slide);
+    for (const [i, slide] of [...track.children].entries()) slide.setAttribute('aria-label', `${i+1} / ${p.images.length}`);
+    root.querySelector('.sf-gallery-controls')?.remove();
+    root.querySelector('.sf-thumbnails')?.remove();
+    for (const selector of ['.sf-gallery-controls','.sf-thumbnails']) {
+      const node = template.content.querySelector(selector); if (node) root.appendChild(node);
+    }
+    this.syncGallery(this.galleryPosition || 0);
   }
   bindGallery() {
     const track = this.doc.querySelector('.sf-gallery-track'); if (!track) return;

@@ -64,3 +64,18 @@ export function filterCatalog(products, { category = 'all', search = '', sort = 
   const list = products.filter(p => (category === 'all' || p.category === category) && (!query || sqText([p.name, p.subtitle, p.description, p.label].join(' ')).toLowerCase().includes(query)));
   return sort === 'recommended' ? list : [...list].sort((a,b) => (a.price - b.price) * (sort === 'price-down' ? -1 : 1));
 }
+
+// One canonical media URL per source; size selection belongs to the browser.
+export function productImageVariant(value, width) {
+  if (!String(value).startsWith('/api/lifeskin-product-photo?')) return value;
+  const url = new URL(value, 'https://shop.invalid');
+  url.searchParams.set('w', String(width));
+  return url.pathname + url.search;
+}
+export function catalogMediaUrls(id, data) {
+  if (data?.id !== id || !Array.isArray(data.images)) return [];
+  return [...new Set(data.images.filter(value => {
+    if (typeof value !== 'string' || !value.startsWith('/api/lifeskin-product-photo?')) return false;
+    try { const url = new URL(value, 'https://shop.invalid'); return url.searchParams.get('id') === id; } catch { return false; }
+  }))].slice(0, 32);
+}

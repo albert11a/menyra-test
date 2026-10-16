@@ -1,5 +1,5 @@
 import { Storefront } from "./storefront.js";
-import { CATALOG_CART, CATALOG_FIELDS, CART_MAX_LINES, catalogCart, changeCatalogQuantity, storefrontProducts } from "../../shared/lifeskin-storefront.js";
+import { CATALOG_CART, CATALOG_FIELDS, CART_MAX_LINES, catalogCart, changeCatalogQuantity, storefrontProducts, catalogMediaUrls } from "../../shared/lifeskin-storefront.js";
 import { SHOP_START_SETET, SHOP_HERO_FALLBACK, shopOffer } from "../../shared/lifeskin-shop-first-render.js";
 export { SHOP_START_SETET };
 import { rutinaEvent } from "../../shared/lifeskin-rutina.js";
@@ -842,7 +842,7 @@ export class Dyqan {
   }
 
   async catalogLaden() {
-    if (this.catalogLoading) return;
+    if (this.catalogLoading || this.catalogReady) return;
     this.catalogLoading = true;
     this.storefront.render();
     try { await this.#produktDatenLaden(); }
@@ -859,15 +859,27 @@ export class Dyqan {
     return true;
   }
 
-  async catalogFotosLaden(id) {
+  catalogFotosLaden(id) {
     const product = this.catalogProducts.find(p => p.id === id);
-    if (!product || product.galleryLoaded) return;
-    try {
-      const data = await holeDok(`${FOTO_PRAEFIX}${id}`, this.holen);
-      const gallery = (Array.isArray(data?.fotot) ? data.fotot : []).filter(x => typeof x === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(x)).slice(0, 5);
-      product.images = [`/api/lifeskin-product-photo?id=${encodeURIComponent(id)}&w=960`, ...gallery];
-      product.galleryLoaded = true;
-    } catch { /* the main image is still available */ }
+    if (!product || product.galleryLoaded) return Promise.resolve(false);
+    this.catalogMediaRequests ||= new Map();
+    if (this.catalogMediaRequests.has(id)) return this.catalogMediaRequests.get(id);
+    const request = (async () => {
+      try {
+        const response = await this.holen(`/api/lifeskin-product-media?id=${encodeURIComponent(id)}`, { signal:AbortSignal.timeout(7000) });
+        if (!response.ok) return false;
+        const data = await response.json(), urls = catalogMediaUrls(id, data);
+        if (!urls.length) return false;
+        // Keep the already visible main image and its exact URL. Append only new sources.
+        const images = [...new Set([...product.images, ...urls].filter(Boolean))];
+        const changed = images.join('|') !== product.images.join('|');
+        product.images = images;
+        product.galleryLoaded = data.complete === true;
+        return changed;
+      } catch { return false; } // preserve the visible image and permit a later retry
+    })().finally(() => this.catalogMediaRequests.delete(id));
+    this.catalogMediaRequests.set(id, request);
+    return request;
   }
 
   catalogHinzufuegen(id, quantity = 1) {
