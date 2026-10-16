@@ -85,3 +85,10 @@ Photo-first validation: 95 focused tests passed in Europe/Vienna timezone. Produ
 Owner clarified that product photos should appear without frames. Remove added photo padding, colored picture-box backgrounds and rounded picture masks from catalog/detail/gallery and promotional photo sections. Keep image aspect ratios, contain sizing for complete product/label visibility, the slider, layout dimensions and purchase behavior. Original photo backgrounds remain part of their source images. No source photo editing, Pixel/CAPI or analysis-path changes. Publish on main using the established workflow; browser/mobile visual QA remains unavailable after denied browser access.
 
 Frameless validation: production build passed; all 29 focused storefront, slider, Pixel lock and generated-artifact tests passed. Tracked bundles unchanged. No new tests added for this CSS-only presentation adjustment. No browser/mobile rendering verification performed.
+
+
+### Consistent full-width photo crops, 2026-10-16
+
+Owner corrected the prior interpretation: all photo tiles must share their column width, fill the tile edge to edge, and have rounded corners. Replace contain letterboxing with proportion-preserving cover crops for catalog/gallery, remove intrinsic width constraints, restore rounded photo clipping, and explicitly stretch the hero image region to prevent aspect-ratio/max-height from making it narrower than its grid column. Use a square product gallery to reduce portrait cropping. Keep padding zero, no colored inset borders; no source image edits, Pixel/CAPI or purchase changes. Publish directly to main per the established workflow. No browser access retried after the earlier denial.
+
+Full-width photo validation: production build passed; 29 focused storefront, slider, Pixel lock and generated-output checks passed. Verified source rules use cover, explicit full width/height and zero inset padding; every photo card uses the same grid width and square aspect ratio. Existing tracked bundles unchanged. No browser/mobile rendering check performed after the earlier denied access; crop composition is not visually certified.
