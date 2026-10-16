@@ -1,3 +1,4 @@
+import { SHOP_CATEGORIES, safeProductImage } from "../../shared/lifeskin-storefront.js";
 import { baueRutina, renderRutina } from "./heart-lifeskin-rutina.js";
 import { renderShopNachrichten } from "./heart-lifeskin-shopnachrichten.js";
 import { skinreactEntwuerfe, skinreactSendet } from "./heart-skinreact.js";
@@ -1131,6 +1132,7 @@ function renderProdukte(produkte) {
 
   const zeilen = (produkte || []).map((p) => `
     <button type="button" class="heart-lifeskin-zeile" data-action="lifeskin-produkt" data-id="${escapeHtml(p.id)}">
+      ${safeProductImage(p.photoRef) ? `<img class="heart-store-product-image" src="${escapeHtml(safeProductImage(p.photoRef))}" alt="" width="48" height="60" loading="lazy">` : ""}
       <span class="heart-lifeskin-zeile__leib">
         <b>${escapeHtml(p.name || p.id)}</b>
         <small>${escapeHtml(p.inhalt || "")}</small>
@@ -3197,8 +3199,11 @@ function renderProduktEditor(produkt, status, entwurf) {
       ${feld("nenName_sq", "Untertitel (albanisch)", feldwert("nenName_sq", p.nenName?.sq), { hinweis: "z. B. Terapi kundër aknes" })}
       ${feld("nenName_de", "Untertitel (deutsch)", feldwert("nenName_de", p.nenName?.de))}
       ${feld("inhalt", "Inhalt", feldwert("inhalt", p.inhalt), { hinweis: "z. B. 30 ml" })}
-      ${feld("einzelpreis", "Einzelpreis in Euro", feldwert("einzelpreis", p.einzelpreis), { art: "number", hinweis: "Der Ankerpreis (33). Verkauft wird nach Staffel: 1 = 29, 2 = 39, 3 = 49, 4 = 59 - die Summe der Einzelpreise steht durchgestrichen ueber dem Setpreis." })}
+      ${feld("einzelpreis", "Einzelpreis in Euro", feldwert("einzelpreis", p.einzelpreis), { art: "number", hinweis: "Verkaufspreis fuer dieses Einzelprodukt im neuen Shop. Set-Angebote und persoenliche Routinen haben ihren eigenen Preis." })}
       ${feld("order", "Reihenfolge", feldwert("order", p.order ?? 1), { art: "number" })}
+      <label class="heart-lifeskin-feld"><span>Shop-Kategorie</span><select data-produktfeld="shopKategorie"><option value="">Automatisch nach Produkt</option>${Object.entries(SHOP_CATEGORIES).map(([key,label]) => `<option value="${key}"${feldwert("shopKategorie", p.shopKategorie) === key ? " selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select></label>
+      ${feld("shopBadge", "Optionales Karten-Label", feldwert("shopBadge", p.shopBadge), { hinweis: "Nur belegte Angaben, z. B. Neu. Leer lassen, wenn kein Label noetig ist." })}
+      ${feld("shopSkinTypes", "Geeignet fuer (albanisch)", feldwert("shopSkinTypes", p.shopSkinTypes), { hinweis: "Nur verifizierte Angaben zum Produkt." })}
 
       <!-- Art und Rolle.
            Die Art traegt das Zeichen, wenn kein Foto da ist. Die Rolle
@@ -3378,8 +3383,9 @@ function renderProduktEditor(produkt, status, entwurf) {
       <label class="heart-lifeskin-feld heart-lifeskin-feld--reihe">
         <span>Im Trichter</span>
         <select data-produktfeld="availability">
-          <option value="visible" ${feldwert("availability", p.availability) !== "hidden" ? "selected" : ""}>sichtbar</option>
+          <option value="visible" ${!["hidden", "soldout"].includes(feldwert("availability", p.availability)) ? "selected" : ""}>sichtbar</option>
           <option value="hidden" ${feldwert("availability", p.availability) === "hidden" ? "selected" : ""}>ausgeblendet</option>
+          <option value="soldout" ${feldwert("availability", p.availability) === "soldout" ? "selected" : ""}>ausverkauft</option>
         </select>
       </label>
       <h4 class="heart-lifeskin-verteilung__titel">Foto</h4>
@@ -3697,6 +3703,8 @@ export function renderLifeskin(zustand) {
     return `<div class="heart-lifeskin">${renderProduktEditor(produkt, zustand.produktStatus, zustand.produktEntwurf)}</div>`;
   }
 
+  if (zustand.shopVerwaltung) return renderShopVerwaltung(zustand);
+
   // Ein Fall der Begleitung ist offen: er steht allein da, wie eine Akte.
   if (zustand.ndjekja?.an && zustand.ndjekja?.offen) {
     return `<div class="heart-lifeskin">${renderBetreuungFall(zustand, { sitzungen: sitzungen || [], berichte: zustand.berichte || {} })}</div>`;
@@ -3946,4 +3954,18 @@ function renderWegUebersicht(zustand, weg, offenerWeg = weg) {
       </details>
       ${"" /* Meldungs-Schalter und Reset-Knopf stehen seit dem 23.09. in
            den Einstellungen (heart-settings-render.js). */}`;
+}
+
+
+export function renderShopVerwaltung(zustand = {}) {
+  const produkte = zustand.produkte || [];
+  const visible = produkte.filter(p => p.availability !== "hidden").length;
+  const photos = produkte.filter(p => safeProductImage(p.photoRef)).length;
+  return `<div class="heart-lifeskin heart-store-admin">
+    <div class="heart-store-heading"><div><span class="heart-store-eyebrow">LIFESKIN / SHOP</span><h1>Dein Shop. Deine Produkte.</h1><p>Produkte, Preise und Bilder an einem Ort.</p></div><a class="heart-lifeskin-knopf" href="/lifeskinshop?still=1" target="_blank" rel="noopener">Shop ansehen ↗</a></div>
+    <div class="heart-store-stats"><div><strong>${produkte.length}</strong><span>Produkte</span></div><div><strong>${visible}</strong><span>Sichtbar im Shop</span></div><div><strong>${photos}</strong><span>Mit eigenem Produktfoto</span></div></div>
+    <p class="heart-store-info">Produkt antippen, Foto hochladen, Texte und Preis eintragen, speichern. „hidden“ blendet das Produkt im Shop aus. Produktbilder und weitere Fotos werden im bestehenden Produkteditor gepflegt.</p>
+    ${renderProdukte(produkte)}
+    <section class="heart-store-offers"><h2>Acne Duo &amp; Shop-Inhalte</h2><p>Set-Preis, Angebote und Bilder fuer die Acne-Duo-Produktseite.</p>${renderShopAktion(zustand)}${renderShopHero(zustand)}${renderShopProduktFotos(zustand)}${renderShopSetet(zustand, produkte)}${renderRaste(zustand)}${renderMedien(zustand)}</section>
+  </div>`;
 }

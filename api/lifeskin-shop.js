@@ -20,6 +20,14 @@ export async function loadShopSnapshot(fetchFn = fetch, now = Date.now()) {
   return { offer, hero };
 }
 
+export function shopPageCanonical(req) {
+  const host = String(req.headers?.host || '').toLowerCase().split(':')[0];
+  const custom = ['lifeskin-ks.com', 'www.lifeskin-ks.com'].includes(host);
+  const id = String(req.query?.produkt || new URL(req.url || '/', 'https://local.invalid').pathname.match(/\/p\/([\w-]+)\/?$/)?.[1] || '');
+  const base = custom ? `https://${host}` : 'https://www.mnyra.com';
+  return /^[\w-]{1,40}$/.test(id) ? `${base}${custom ? '' : '/lifeskinshop'}/p/${encodeURIComponent(id)}` : `${base}${custom ? '/' : '/lifeskinshop'}`;
+}
+
 export default async function shopPage(req, res) {
   if (!['GET', 'HEAD'].includes(req.method)) { res.statusCode = 405; res.setHeader('Allow', 'GET, HEAD'); res.end(); return; }
   const [html, snapshot] = await Promise.all([
@@ -33,5 +41,6 @@ export default async function shopPage(req, res) {
   res.setHeader('Vercel-CDN-Cache-Control', snapshot.offer && snapshot.hero && seconds ? `public, s-maxage=${seconds}` : 'no-store');
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.statusCode = 200;
-  res.end(req.method === 'HEAD' ? undefined : renderShop(html, snapshot));
+  const page = html.replaceAll('https://www.mnyra.com/lifeskinshop', shopPageCanonical(req));
+  res.end(req.method === 'HEAD' ? undefined : renderShop(page, snapshot));
 }

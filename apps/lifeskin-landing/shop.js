@@ -127,7 +127,8 @@ export async function holeSammlung(name, holen = fetch, nurFeld = "") {
   /* NUR DAS NOETIGE FELD. In "config" liegen auch die Bilder der
      Analyseseite (Feld "bilder") und der Vorher/Nachher-Faelle - mit
      mask.fieldPaths kommen die nicht mit, nur "fotot". */
-  const maske = nurFeld ? `&mask.fieldPaths=${encodeURIComponent(nurFeld)}` : "";
+  const felder = Array.isArray(nurFeld) ? nurFeld : nurFeld ? [nurFeld] : [];
+  const maske = felder.map(feld => `&mask.fieldPaths=${encodeURIComponent(feld)}`).join("");
   const basis = `${LIFESKIN_FIRESTORE_BASE}/lifeskin/${LIFESKIN_TENANT}/${name}?pageSize=60${maske}`;
   const raus = [];
   let token = "";

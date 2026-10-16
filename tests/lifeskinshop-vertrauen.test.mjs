@@ -31,7 +31,7 @@ test("Freigegebener Kopf ohne unbelegte Sternbewertung", () => {
 test("Instagram-Bestellung nur im Fussbereich, nicht zwischen den Produkten", () => {
   assert.doesNotMatch(HTML, /class="ig-porosi"|id="porosit-instagram"/);
   const fuss = HTML.slice(HTML.indexOf('<footer class="footer">'));
-  assert.match(fuss, /href="https:\/\/ig\.me\/m\/lifeskin\.ks"[^>]*>Porosit në Instagram<\/a>/);
+  assert.match(fuss, /href="https:\/\/ig\.me\/m\/lifeskin\.ks"[^>]*>Porosit n[eë] Instagram<\/a>/);
   assert.equal((HTML.match(/ig\.me\/m\/lifeskin\.ks/g) || []).length, 1);
 });
 

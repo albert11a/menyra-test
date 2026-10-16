@@ -64,7 +64,7 @@ const NAV_HINTS = Object.freeze({
   mnyraGo: "Mnyra GO: Provision, Trichter und Lokale",
   lifeskin: "Skinreact, Lifeskin, Acne duo",
   lifeskin2: "Neuer Weg: passt es? → Therapie",
-  lifeskinshop: "Shop: Sets, Korb, Kasse, Bestellungen",
+  lifeskinshop: "Produkte, Preise, Bilder und Shop-Angebote",
   analytics: "Business-Analytics und Reichweite",
   connections: "Einrichtung, Konten und Links"
 });
@@ -355,9 +355,12 @@ function lifeskinWeg(state) {
 
 function navAktiv(key, state) {
   const weg = lifeskinWeg(state);
+  let verwaltung = false;
+  try { verwaltung = state.lifeskin?.shopVerwaltung === true; } catch { /* Navigation remains usable if the view fails. */ }
   // Im Menue gibt es nur noch "Lifeskin" - angehakt im ganzen Tab.
-  if (key === "lifeskin") return state.shell.activeView === "lifeskin";
-  if (key === "lifeskin2" || key === "lifeskinshop") return state.shell.activeView === "lifeskin" && weg === key;
+  if (key === "lifeskin") return state.shell.activeView === "lifeskin" && !verwaltung;
+  if (key === "lifeskinshop") return state.shell.activeView === "lifeskin" && verwaltung;
+  if (key === "lifeskin2") return state.shell.activeView === "lifeskin" && weg === key;
   return state.shell.activeView === key;
 }
 
@@ -385,11 +388,7 @@ function renderDrawerNav(state) {
   const unter = NAV_MNYRA.map((key) => renderNavLink(eintrag.get(key), state, { unter: true })).join("");
   return `
     ${renderNavLink(eintrag.get("lifeskin"), state)}
-    ${"" /* Seit dem 02.10. stehen "Lifeskin 2" und "Lifeskin Shop" nicht
-         mehr im Menue: Der Shop ist der Chip "Acne duo" im Lifeskin-Tab,
-         das bisherige Lifeskin der Chip "Skinreact"
-         (heart-lifeskin-bereiche.js); "Lifeskin 2 brauchen wir nicht
-         mehr". #lifeskin2 und #lifeskinshop in der Adresse gehen weiter. */}
+    ${renderNavLink({ ...LIFESKINSHOP_NAV, label: "lifeskinshop" }, state)}
     <div class="heart-nav-gruppe${offen ? " heart-nav-gruppe--offen" : ""}">
       <button class="heart-nav-link heart-nav-gruppe__kopf${inMnyra ? " heart-nav-link--hier" : ""}" data-action="nav-gruppe"
               data-offen="${offen ? "1" : "0"}" aria-expanded="${offen}">

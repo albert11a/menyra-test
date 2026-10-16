@@ -157,7 +157,7 @@ actions.setActiveView(initialRouteView || "lifeskin");
 // #lifeskin2 in der Adresse: der Tab Lifeskin 2 (Faelle von /lifeskin2).
 if (/^#lifeskin2$/i.test(String(globalThis.location?.hash || ""))) actions.patchLifeskin({ weg: "lifeskin2" });
 // #lifeskinshop: der Tab Lifeskin Shop (Faelle von /lifeskinshop).
-if (/^#lifeskinshop$/i.test(String(globalThis.location?.hash || ""))) actions.patchLifeskin({ weg: "lifeskinshop" });
+if (/^#lifeskinshop$/i.test(String(globalThis.location?.hash || ""))) actions.patchLifeskin({ weg: "lifeskinshop", shopVerwaltung: true });
 const authController = createHeartAuthController({ store });
 const runtimeConfig = globalThis.__MNYRA_HEART_CONFIG__ || {};
 const apiClient = createHeartApiClient({
@@ -1546,7 +1546,10 @@ function produktAusFormular(vorhandenerId = "") {
     order: Number(wert("order")) || 1,
     kurztext: { sq: wert("kurztext_sq"), de: wert("kurztext_de") },
     beschreibung: { sq: wert("beschreibung_sq"), de: wert("beschreibung_de") },
-    availability: wert("availability") === "hidden" ? "hidden" : "visible",
+    availability: ["hidden", "soldout"].includes(wert("availability")) ? wert("availability") : "visible",
+    shopKategorie: wert("shopKategorie").slice(0, 30),
+    shopBadge: wert("shopBadge").slice(0, 30),
+    shopSkinTypes: wert("shopSkinTypes").slice(0, 200),
     photoRef: wert("photoRef"),
     // Einmal je Produkt geschrieben, bei jeder Patientin gefuellt.
     persoenlich: { sq: wert("persoenlich_sq"), de: wert("persoenlich_de") },
@@ -4558,6 +4561,7 @@ const operations = {
       const bereich = safeViewKey === "lifeskinshop" ? "acneduo" : safeViewKey === "lifeskin2" ? "skinreact" : STANDARD_BEREICH;
       lifeskinBereichSetzen(bereich, safeViewKey === "lifeskin2" ? "lifeskin2" : wegDesBereichs(bereich));
       bereichFestlegen(bereich);
+      actions.patchLifeskin({ shopVerwaltung: safeViewKey === "lifeskinshop", offen: "", produktOffen: "", shopSetOffen: "", medienOffen: "", shopHeroRoh: "", produktFotoRoh: "" });
       safeViewKey = "lifeskin";
     }
     if (store.getState().shell.activeView === safeViewKey) {
@@ -5330,7 +5334,7 @@ function syncViewInAddress(state) {
   if (!canRestoreHeartView(view)) return;
   // Lifeskin 2 behaelt seine Adresse, damit ein Neuladen dort bleibt.
   const lsWeg = String(state?.lifeskin?.weg || "");
-  const gewuenscht = view === "lifeskin" && ["lifeskin2", "lifeskinshop"].includes(lsWeg) ? `#${lsWeg}` : `#${view}`;
+  const gewuenscht = view === "lifeskin" && state.lifeskin?.shopVerwaltung ? "#lifeskinshop" : view === "lifeskin" && lsWeg === "lifeskin2" ? "#lifeskin2" : `#${view}`;
   if (window.location.hash === gewuenscht) return;
   try {
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${gewuenscht}`);

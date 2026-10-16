@@ -173,9 +173,9 @@ test("HTML: keine veraltete Aktion vor der Serverantwort, kein Pixel im Aktionsc
 
 test("Kasse: Zbritje mit Normalpreis und Ende, Acne Duo mit Set-Bild (Inhaber 09.10.)", () => {
   const js = lies("apps/lifeskin-shop/shop.js");
-  assert.match(js, /const zbritje = n === 2 && !isPersonalRoutine\(this\.korb\) && !istChatKorb\(this\.korb\) && aktionLaeuft\(this\.aktion\) && aktionNormalpreis\(\) > summe\(this\.korb\);/);
+  assert.match(js, /const zbritje = this\.korb\.set !== CATALOG_CART && n === 2 && !isPersonalRoutine\(this\.korb\) && !istChatKorb\(this\.korb\) && aktionLaeuft\(this\.aktion\) && aktionNormalpreis\(\) > summe\(this\.korb\);/);
   assert.match(js, /oferta\.textContent = zbritje \? `Oferta: \$\{aktionTexte\(this\.aktion\)\.ende\.replace\(\/\^M\/, "m"\)\}` : "";/);
-  assert.match(js, /const titel = istChatKorb\(this\.korb\) \? "Oferta juaj nga chat-i" : duo \? "Acne Duo" :/);
+  assert.match(js, /const titel = this\.korb\.set === CATALOG_CART \? mittel\.map\(m => m\.name\)\.join\(" \+ "\) : istChatKorb\(this\.korb\) \? "Oferta juaj nga chat-i" : duo \? "Acne Duo" :/);
   assert.match(js, /<img class="kasa-set__set" src="\$\{e\(setBild\)\}"/);
 });
 

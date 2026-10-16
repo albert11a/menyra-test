@@ -1,3 +1,5 @@
+import { Storefront } from "./storefront.js";
+import { CATALOG_CART, CATALOG_FIELDS, CART_MAX_LINES, catalogCart, changeCatalogQuantity, storefrontProducts } from "../../shared/lifeskin-storefront.js";
 import { SHOP_START_SETET, SHOP_HERO_FALLBACK, shopOffer } from "../../shared/lifeskin-shop-first-render.js";
 export { SHOP_START_SETET };
 import { rutinaEvent } from "../../shared/lifeskin-rutina.js";
@@ -69,8 +71,9 @@ export function korbLesen(speicher) {
     const roh = JSON.parse(speicher?.getItem(KORB_SCHLUESSEL) || "null");
     const ids = Array.isArray(roh?.ids) ? roh.ids : [];
     return {
-      ids: [...new Set(ids.filter((id) => typeof id === "string" && /^[\w-]{1,40}$/.test(id)))].slice(0, 8),
-      set: typeof roh?.set === "string" ? roh.set.slice(0, 40) : ""
+      ids: [...new Set(ids.filter((id) => typeof id === "string" && /^[\w-]{1,40}$/.test(id)))].slice(0, roh?.set === CATALOG_CART ? CART_MAX_LINES : 8),
+      set: typeof roh?.set === "string" ? roh.set.slice(0, 40) : "",
+      ...(roh?.set === CATALOG_CART ? { mengen: Object.fromEntries(ids.map(id => [id, Math.min(20, Math.max(1, Math.floor(Number(roh?.mengen?.[id]) || 1)))])) } : {})
     };
   } catch {
     return { ids: [], set: "" };
@@ -78,7 +81,7 @@ export function korbLesen(speicher) {
 }
 
 export function korbSchreiben(speicher, korb) {
-  try { speicher?.setItem(KORB_SCHLUESSEL, JSON.stringify({ ids: korb.ids, set: korb.set || "" })); }
+  try { speicher?.setItem(KORB_SCHLUESSEL, JSON.stringify({ ids: korb.ids, set: korb.set || "", ...(korb.set === CATALOG_CART ? { mengen: korb.mengen || {} } : {}) })); }
   catch { /* ohne Speicher geht es auch - der Korb lebt dann nur bis zum Neuladen */ }
 }
 
@@ -136,6 +139,7 @@ export function bestellNachricht(werte, betrag, titel = "Acne Duo") {
 // Laden der Landingpage (Heart liest order.items).
 export function bestellZeilen(korb, mittel) {
   const nachId = new Map(mittel.map((m) => [m.id, m]));
+  if (korb.set === CATALOG_CART) return (korb.lines || []).map(line => ({ ...line }));
   const prices = isPersonalRoutine(korb) ? personalOrderPrices(korb.ids.length) : [];
   return korb.ids.map((id, i) => ({ id, name: nachId.get(id)?.name || id, cmimi: prices[i] ?? preisFuer(1), sasia: 1 }));
 }
@@ -393,11 +397,14 @@ export class Dyqan {
     this.trichterFn = trichter || (() => globalThis.__lifeskinTrichter);
     this.korb = korbLesen(this.speicher);
     this.mittel = mittelBauen([], this.#standardFotos(new Map()));
+    this.catalogProducts = [];
+    this.catalogReady = false;
+    this.storefront = new Storefront(this);
     this.seed = seed || null;
     this.angebotSetDok = this.seed?.offer?.setDok || SHOP_START_SETET;
     this.aktion = aktionNormalisieren(this.seed?.offer?.aktion || AKTION_STANDARD);
     this.setet = mitAktion(acneDuoSets(aktiveSetet(setetOderStandard(this.angebotSetDok))), this.aktion);
-    this.korb = isAcneDuoSelection(this.korb.ids) ? acneDuoCart(this.korb, this.setet) : personalCartRestore(this.korb) || acneDuoCart(this.korb, this.setet);
+    if (this.korb.set !== CATALOG_CART) this.korb = isAcneDuoSelection(this.korb.ids) ? acneDuoCart(this.korb, this.setet) : personalCartRestore(this.korb) || acneDuoCart(this.korb, this.setet);
     this.personalSet = isPersonalRoutine(this.korb) ? personalRoutine(this.korb.ids) : null;
     try { this.personalSet = personalRoutine(JSON.parse(this.speicher?.getItem(ROUTINE_SCHLUESSEL) || "null")) || this.personalSet; } catch { /* untrusted cache ignored */ }
     if (isAcneDuoSelection(this.personalSet?.produkte)) {
@@ -450,6 +457,7 @@ export class Dyqan {
   }
 
   starte() {
+    this.storefront.start();
     if (!PAK_SETE) this.dok.querySelectorAll(".pak-sete").forEach((z) => z.remove());
     this.#zeichneSetet();
     this.#zeichneMittel();
@@ -599,11 +607,12 @@ export class Dyqan {
   async laden() {
     // Weder Preis noch erster Fall wartet auf Produkt-/Markenbilder.
     const angebot = this.angebotLaden();
+    if (this.dok.getElementById?.("storefront-home")) void this.catalogLaden();
     const faelle = this.#faelleLaden();
     // :empty wird per CSS ausgeblendet und kann deshalb nie intersecten.
     // Medien sofort separat laden; weder Preis noch erster Fall wartet darauf.
     void this.#kundenLaden();
-    shopBeiSicht($("#setet", this.dok), () => { void this.#produktDatenLaden(); void this.#produktFotosLaden(); });
+    shopBeiSicht($("#setet", this.dok), () => { void this.catalogLaden(); void this.#produktFotosLaden(); });
     await Promise.all([angebot, faelle]);
   }
 
@@ -724,9 +733,10 @@ export class Dyqan {
 
   async #produktDatenLaden() {
     // Diese Daten koennen Bilder enthalten; sie entscheiden nicht ueber den Preis.
+    const deferredImages = Boolean(this.dok.getElementById?.("storefront-home"));
     const [produkte, konfig] = await Promise.all([
-      holeSammlung("products", this.holen).catch(() => []),
-      holeSammlung("config", this.holen, "fotot").catch(() => [])
+      holeSammlung("products", this.holen, deferredImages ? CATALOG_FIELDS : "").catch(() => null),
+      deferredImages ? Promise.resolve([]) : holeSammlung("config", this.holen, "fotot").catch(() => [])
     ]);
     const fotos = new Map();
     for (const doku of konfig || []) {
@@ -734,7 +744,18 @@ export class Dyqan {
       const liste = Array.isArray(doku.fotot) ? doku.fotot : [];
       fotos.set(doku.id.slice(FOTO_PRAEFIX.length), liste.filter(f => typeof f === "string" && f.startsWith("data:image/")));
     }
+    this.catalogReady = Array.isArray(produkte);
+    this.catalogProducts = storefrontProducts(produkte, fotos, { deferredImages });
     this.mittel = mittelBauen(produkte || [], this.#standardFotos(fotos));
+    for (const p of this.catalogProducts) {
+      const m = this.mittel.find(m => m.id === p.id);
+      const fields = { id: p.id, name: p.name, inhalt: p.size, anker: p.price, cmimi: p.price,
+        fotot: p.images.length ? p.images : ["/apps/lifeskin-shop/assets/catalog-placeholder.svg"] };
+      if (m) Object.assign(m, fields); else this.mittel.push(fields);
+    }
+    if (this.korb.set === CATALOG_CART) this.korb = catalogCart(this.korb.ids, this.catalogProducts, this.korb.mengen) || { ids: [], set: "" };
+    korbSchreiben(this.speicher, this.korb);
+    this.storefront.render();
     this.fotosBereit = true;
     if (this.angebotBereit) await this.#setetUebernehmen(this.angebotSetDok);
   }
@@ -807,7 +828,7 @@ export class Dyqan {
       .filter((s) => s.produkte.length === 2), this.aktion);
     // Der Korb darf nur Mittel tragen, die es noch gibt. Ein Angebot aus
     // dem Chat (chatBestellen) bleibt, wie es ist.
-    if (!istChatKorb(this.korb)) this.korb = isAcneDuoSelection(this.korb.ids) ? acneDuoCart(this.korb, this.setet) : personalCartRestore(this.korb) || acneDuoCart(this.korb, this.setet);
+    if (!istChatKorb(this.korb) && this.korb.set !== CATALOG_CART) this.korb = isAcneDuoSelection(this.korb.ids) ? acneDuoCart(this.korb, this.setet) : personalCartRestore(this.korb) || acneDuoCart(this.korb, this.setet);
     if (this.personalSet && !this.personalSet.produkte.every(id => da.has(id))) {
       this.routineZurueck();
       this.routineBuilder?.feedback("Nje produkt nuk eshte i disponueshem. Zgjidh perseri setin tend.");
@@ -816,7 +837,70 @@ export class Dyqan {
     this.#zeichneSetet();
     this.#zeichneMittel();
     this.#korbZahl();
+    this.storefront.render();
     if ($("#kasa", this.dok)?.hidden === false) this.#kasseZeichnen();
+  }
+
+  async catalogLaden() {
+    if (this.catalogLoading) return;
+    this.catalogLoading = true;
+    this.storefront.render();
+    try { await this.#produktDatenLaden(); }
+    finally { this.catalogLoading = false; this.storefront.render(); }
+  }
+
+  catalogLegen(ids) {
+    if (!this.catalogReady) return false;
+    const cart = catalogCart(ids, this.catalogProducts);
+    if (!cart) return false;
+    this.korb = cart;
+    this.#nachLegen();
+    this.kasseOeffnen();
+    return true;
+  }
+
+  async catalogFotosLaden(id) {
+    const product = this.catalogProducts.find(p => p.id === id);
+    if (!product || product.galleryLoaded) return;
+    try {
+      const data = await holeDok(`${FOTO_PRAEFIX}${id}`, this.holen);
+      const gallery = (Array.isArray(data?.fotot) ? data.fotot : []).filter(x => typeof x === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(x)).slice(0, 5);
+      product.images = [`/api/lifeskin-product-photo?id=${encodeURIComponent(id)}&w=960`, ...gallery];
+      product.galleryLoaded = true;
+    } catch { /* the main image is still available */ }
+  }
+
+  catalogHinzufuegen(id, quantity = 1) {
+    if (!this.catalogReady || (this.korb.ids.length && this.korb.set !== CATALOG_CART)) return false;
+    const current = this.korb.set === CATALOG_CART ? this.korb : { ids: [], mengen: {} };
+    const cart = changeCatalogQuantity(current, id, (current.mengen?.[id] || 0) + quantity, this.catalogProducts);
+    if (!cart) return false;
+    this.korb = cart;
+    this.#nachLegen();
+    this.storefront.renderCart();
+    return true;
+  }
+
+  catalogMenge(id, quantity) {
+    if (!this.catalogReady || this.korb.set !== CATALOG_CART) return false;
+    const cart = changeCatalogQuantity(this.korb, id, quantity, this.catalogProducts);
+    if (!cart) return false;
+    this.korb = cart;
+    korbSchreiben(this.speicher, cart);
+    this.#korbZahl();
+    this.storefront.renderCart();
+    return true;
+  }
+
+  catalogZbraze() {
+    this.korb = { ids: [], set: "", mengen: {}, lines: [], cmimi: 0 };
+    korbSchreiben(this.speicher, this.korb);
+    this.#korbZahl();
+    this.storefront.renderCart();
+  }
+
+  katalogBestelltext() {
+    return this.korb.set === CATALOG_CART ? (this.korb.lines || []).map(line => `${line.sasia}× ${line.name}`).join(" + ") : this.korb.ids.map(id => this.mittelVon(id)?.name || id).join(" + ");
   }
 
   mittelVon(id) { return this.mittel.find((m) => m.id === id); }
@@ -1029,7 +1113,7 @@ export class Dyqan {
   #korbZahl() {
     const zahl = $("#bag-count", this.dok);
     if (zahl) {
-      zahl.textContent = String(this.korb.ids.length);
+      zahl.textContent = String(this.korb.set === CATALOG_CART ? (this.korb.lines || []).reduce((n, p) => n + p.sasia, 0) : this.korb.ids.length);
       zahl.hidden = !this.korb.ids.length;
     }
   }
@@ -1072,7 +1156,8 @@ export class Dyqan {
     const bilder = setBild
       ? `<img class="kasa-set__set" src="${e(setBild)}" alt="" width="64" height="48">`
       : mittel.slice(0, isPersonalRoutine(this.korb) ? 4 : 2).map((m) => `<img src="${e(m.fotot[0])}" alt="" width="40" height="50">`).join("");
-    const titel = istChatKorb(this.korb) ? "Oferta juaj nga chat-i" : duo ? "Acne Duo" : (s?.titulli || "Acne Duo");
+    if (this.korb.set === CATALOG_CART) return `<div class="sf-checkout-lines">${this.korb.lines.map(line => { const p = this.mittelVon(line.id); return `<div class="sf-checkout-line"><img src="${e(p?.fotot?.[0] || "/apps/lifeskin-shop/assets/catalog-placeholder.svg")}" alt="" width="52" height="65"><span><b>${e(line.name)}</b><small>${line.sasia} × ${line.cmimi} €</small></span><strong>${Math.round(line.sasia * line.cmimi * 100) / 100} €</strong></div>`; }).join("")}</div>`;
+    const titel = this.korb.set === CATALOG_CART ? mittel.map(m => m.name).join(" + ") : istChatKorb(this.korb) ? "Oferta juaj nga chat-i" : duo ? "Acne Duo" : (s?.titulli || "Acne Duo");
     return `<div class="kasa-set"><span class="kasa-set__bilder">${bilder}</span><span class="kasa-set__text"><b>${e(titel)}</b><small>${isPersonalRoutine(this.korb) ? e(mittel.map(m => `${m.name} · ${m.inhalt || "30 ml"}`).join(" + ")) : `${e(mittel.map((m) => m.name).join(" + "))} · ${e(mittel[0].inhalt || "30 ml")} secili`}</small></span></div>`;
   }
 
@@ -1087,6 +1172,7 @@ export class Dyqan {
   }
 
   #kursim() {
+    if (this.korb.set === CATALOG_CART) return "";
     const n = this.korb.ids.length;
     const each = isPersonalRoutine(this.korb) ? 15 : preisFuer(1);
     return n > 1 ? `Veçmas ${n * each} € · Kurseni ${n * each - summe(this.korb)} € së bashku.` : "";
@@ -1156,7 +1242,7 @@ export class Dyqan {
 
   // ── Die Kasse: eine eigene Ansicht an der Stelle des Ladens ─────────
   kasseOeffnen() {
-    if (!this.angebotBereit) return;
+    if (this.korb.set === CATALOG_CART ? !this.catalogReady : !this.angebotBereit) return;
     const kasa = $("#kasa", this.dok);
     if (!kasa) return;
     this.#blattZu();
@@ -1215,8 +1301,8 @@ export class Dyqan {
     // ZBRITJE AUCH IN DER KASSE (09.10., Inhaber): Solange sie laeuft, steht
     // der echte Normalpreis (2 x 29 = 58 EUR) durchgestrichen neben dem
     // Preis, mit "Kurseni" und dem echten Ende. Sonst wie bisher.
-    const zbritje = n === 2 && !isPersonalRoutine(this.korb) && !istChatKorb(this.korb) && aktionLaeuft(this.aktion) && aktionNormalpreis() > summe(this.korb);
-    const spart = zbritje ? aktionNormalpreis() - summe(this.korb) : n > 1 && VERGLEICHSPREIS_ZEIGEN ? einzeln - summe(this.korb) : 0;
+    const zbritje = this.korb.set !== CATALOG_CART && n === 2 && !isPersonalRoutine(this.korb) && !istChatKorb(this.korb) && aktionLaeuft(this.aktion) && aktionNormalpreis() > summe(this.korb);
+    const spart = zbritje ? aktionNormalpreis() - summe(this.korb) : this.korb.set !== CATALOG_CART && n > 1 && VERGLEICHSPREIS_ZEIGEN ? einzeln - summe(this.korb) : 0;
     const oferta = $("#kasa-oferta", this.dok);
     if (oferta) { oferta.textContent = zbritje ? `Oferta: ${aktionTexte(this.aktion).ende.replace(/^M/, "m")}` : ""; oferta.hidden = !zbritje; }
     const vorher = $("#kasa-vecmas", this.dok);
@@ -1227,7 +1313,7 @@ export class Dyqan {
     // WhatsApp als zweiter Weg - mit fertiger Nachricht.
     const wa = $("#kasa-wa", this.dok);
     if (wa) {
-      wa.href = `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(`Përshëndetje, dua të porosis setin ${isPersonalRoutine(this.korb) ? `${s?.titulli || "personal"}: ${this.korb.ids.map(id => this.mittelVon(id)?.name || id).join(" + ")}` : "Acne Duo"} (${summe(this.korb)} €).`)}`;
+      wa.href = `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(`Përshëndetje, dua të porosis setin ${(isPersonalRoutine(this.korb) || this.korb.set === CATALOG_CART) ? `${s?.titulli || "personal"}: ${this.katalogBestelltext()}` : "Acne Duo"} (${summe(this.korb)} €).`)}`;
       wa.hidden = n === 0;
     }
   }
@@ -1249,7 +1335,7 @@ export class Dyqan {
   // und erst NACH der Antwort des Servers bestaetigen.
   async bestellen() {
     if (this.sendet) { this.#pfad("fehler", "Porositni tani nochmal gedrückt – wird noch gesendet · kasa"); return; }
-    if (!this.korb.ids.length || !this.angebotBereit) {
+    if (!this.korb.ids.length || (this.korb.set === CATALOG_CART ? !this.catalogReady : !this.angebotBereit)) {
       this.#pfad("fehler", `Bestellung nicht möglich: ${!this.korb.ids.length ? "Warenkorb leer" : "Angebot lädt noch"} · kasa`);
       this.#pfadSofort();
       return;
@@ -1340,7 +1426,7 @@ export class Dyqan {
       // jetzt alles, was eingegeben wurde - ein Tipp, und sie ist da.
       const wa = $("#kasa-wa", this.dok);
       if (wa) {
-        wa.href = `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(bestellNachricht(werte, betrag, isPersonalRoutine(this.korb) ? this.korb.ids.map(id => this.mittelVon(id)?.name || id).join(" + ") : "Acne Duo"))}`;
+        wa.href = `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(bestellNachricht(werte, betrag, (isPersonalRoutine(this.korb) || this.korb.set === CATALOG_CART) ? this.katalogBestelltext() : "Acne Duo"))}`;
         wa.hidden = false;
       }
       return;

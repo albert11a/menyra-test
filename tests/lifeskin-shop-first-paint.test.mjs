@@ -7,7 +7,7 @@ test('production shop keeps every stylesheet in cascade order without blocking r
   const html = await readFile(new URL('../apps/lifeskin-shop/index.html', import.meta.url), 'utf8');
   const paths = [...html.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map(m => m[1]);
   const out = await inlineShopFirstPaint(html, p => readFile(new URL(`..${p}`, import.meta.url), 'utf8'));
-  assert.equal(paths.length, 10);
+  assert.equal(paths.length, 11);
   assert.deepEqual([...out.matchAll(/<style data-shop-style="([^"]+)"/g)].map(m => m[1]), paths);
   assert.doesNotMatch(out, /<link rel="stylesheet"/);
   assert.doesNotMatch(out, /src="\/shared\/lifeskin-still.js"/);

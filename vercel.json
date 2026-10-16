@@ -209,6 +209,54 @@
   ],
   "rewrites": [
     {
+      "source": "/lifeskinshop/p/:id",
+      "destination": "/api/lifeskin-shop?produkt=:id"
+    },
+    {
+      "source": "/lifeskinshop/p/:id/",
+      "destination": "/api/lifeskin-shop?produkt=:id"
+    },
+    {
+      "source": "/p/:id",
+      "has": [
+        {
+          "type": "host",
+          "value": "lifeskin-ks.com"
+        }
+      ],
+      "destination": "/api/lifeskin-shop?produkt=:id"
+    },
+    {
+      "source": "/p/:id",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.lifeskin-ks.com"
+        }
+      ],
+      "destination": "/api/lifeskin-shop?produkt=:id"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "lifeskin-ks.com"
+        }
+      ],
+      "destination": "/api/lifeskin-shop"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.lifeskin-ks.com"
+        }
+      ],
+      "destination": "/api/lifeskin-shop"
+    },
+    {
       "source": "/hub",
       "destination": "/hub/index.html"
     },

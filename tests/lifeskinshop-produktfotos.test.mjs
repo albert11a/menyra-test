@@ -19,7 +19,7 @@ test("Shop: beide Bilder mit Standardbild und Kennung fuer Heart", async () => {
   const js = lies("apps/lifeskin-shop/shop.js");
   assert.match(js, /async #produktFotosLaden\(\)/);
   assert.match(js, /holeDok\(`\$\{SHOP_PRODUKT_FOTO_PRAEFIX\}\$\{id\}`, this\.holen\)/);
-  assert.match(js, /shopBeiSicht\(\$\("#setet", this\.dok\), \(\) => \{ void this\.#produktDatenLaden\(\); void this\.#produktFotosLaden\(\); \}\);/);
+  assert.match(js, /shopBeiSicht\(\$\("#setet", this\.dok\), \(\) => \{ void this\.catalogLaden\(\); void this\.#produktFotosLaden\(\); \}\);/);
 });
 
 test("Heart: Block 'Shop-Produktbilder' und Zuschnitt 3:4", async () => {

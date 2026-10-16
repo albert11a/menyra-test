@@ -9,15 +9,20 @@ const lies = (p) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const HTML = lies("apps/lifeskin-shop/index.html");
 
 test("Kopf: Menu links, Logo, Shporta", () => {
-  assert.match(HTML, /<nav class="wrap nav header"><button type="button" class="nav-menu" id="menu-hap" aria-label="Hap menynë" aria-controls="menu" aria-expanded="false">/);
+  assert.match(HTML, /class="sf-header-main"/);
+  assert.match(HTML, /id="menu-hap" aria-label="Hap menune" aria-controls="menu" aria-expanded="false"/);
+  assert.match(HTML, /data-sf-cart/);
+  assert.match(HTML, /id="sf-search"/);
   assert.match(HTML, /<script type="module" src="\/apps\/lifeskin-shop\/menu\.js"><\/script>/);
 });
 
-test("Menu: drei Punkte auf Albanisch, nur einer offen, Sets aus Heart", async () => {
-  const menu = HTML.slice(HTML.indexOf('<dialog class="menu" id="menu"'), HTML.indexOf("</dialog>", HTML.indexOf('<dialog class="menu"')));
-  const punkte = [...menu.matchAll(/<details class="menu__pjesa" name="menu-pjesa" data-gruppe="menu"[^>]*><summary>([^<]+)</g)].map((m) => m[1]);
-  assert.deepEqual(punkte, ["Trajtimet", "Rreth nesh", "Përdorimi"]);
-  assert.match(menu, /id="menu-setet"/);
+test("Menu: Kategorien, alle Produkte und Routine statt einzelner Kampagne", async () => {
+  const start = HTML.indexOf('<dialog class="menu sf-navigation"');
+  const menu = HTML.slice(start, HTML.indexOf('</dialog>', start));
+  assert.match(menu, /Te gjitha produktet/);
+  assert.match(menu, /id="sf-dynamic-categories"/);
+  assert.match(menu, /Gjej rutinen tende/);
+  assert.match(menu, /Na shkruaj ne WhatsApp/);
   globalThis.__LIFESKIN_TEST__ = true;
   const { menuKarte } = await import("../apps/lifeskin-shop/shop.js");
   const karte = menuKarte({ id: "acne", titulli: "Seti kundër akneve", produkte: ["lf-acne", "lf-moistur"], cmimi: 25 }, "/bild.jpg", { zbritje: true });
