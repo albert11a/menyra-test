@@ -93,6 +93,18 @@ test('only LIFESKIN domain roots are routed to the shop; mnyra root routing stay
   assert.deepEqual(rules.map(r => r.has[0].value), ['lifeskin-ks.com','www.lifeskin-ks.com']);
   assert.ok(rules.every(r => r.destination === '/api/lifeskin-shop'));
   assert.ok(!config.rewrites.some(r => r.source === '/' && !r.has && r.destination === '/api/lifeskin-shop'));
+  // Redirects run before rewrites: custom roots must never be sent to /feed.
+  const rootRedirects = config.redirects.filter(r => r.source === '/');
+  const matches = (rule, host) => (rule.has || []).every(h => h.type !== 'host' || h.value === host)
+    && (rule.missing || []).every(h => h.type !== 'host' || h.value !== host);
+  for (const host of ['lifeskin-ks.com', 'www.lifeskin-ks.com']) {
+    assert.equal(rootRedirects.find(r => matches(r, host)), undefined);
+  }
+  for (const host of ['mnyra.com', 'www.mnyra.com', 'menyra-test.vercel.app']) {
+    assert.equal(rootRedirects.find(r => matches(r, host))?.destination, '/feed');
+  }
+  assert.equal(rootRedirects.find(r => matches(r, 'ceo.mnyra.com'))?.destination, '/ceo');
+  assert.equal(config.rewrites.find(r => r.source === '/lifeskin')?.destination, '/apps/lifeskin-landing/index.html');
 });
 
 test('multi-product cart preserves quantities, recomputes cents, removes lines and restores quantities without cached prices', async () => {

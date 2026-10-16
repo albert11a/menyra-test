@@ -50,3 +50,8 @@ The owner rejected the first narrow concept and requested a complete, youthful, 
 - No physical mobile, real browser rendering, authenticated Heart upload or live order test. These are release acceptance items, not claimed as completed by the preview.
 - The existing Instagram ordering link remains in the footer. Single-set campaigns remain separate; adding catalog items cannot silently replace a discounted offer, and clearing it requires an explicit cart action.
 - No GitHub push, main merge, DNS change or production deployment performed. The earlier automatic approval rejection still applies until explicit publication authorization is given.
+
+
+### Custom domain connection, 2026-10-16
+
+Owner explicitly authorized connecting lifeskin-ks.com to the existing menyra-test project while preserving mnyra.com/lifeskin and its Pixel behavior. Exclude only the two LifeSkin hosts from the generic root-to-feed redirect, then attach the apex and www domains to production. Existing Mnyra domains and /lifeskin routes remain untouched. No Pixel/CAPI code changes: browser uses the existing consent-gated ID; server source URL validation currently accepts only mnyra.com and needs separate explicit Pixel authorization before expansion. No real orders or synthetic advertising events for verification.

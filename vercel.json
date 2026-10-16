@@ -204,7 +204,17 @@
     {
       "source": "/",
       "destination": "/feed",
-      "permanent": false
+      "permanent": false,
+      "missing": [
+        {
+          "type": "host",
+          "value": "lifeskin-ks.com"
+        },
+        {
+          "type": "host",
+          "value": "www.lifeskin-ks.com"
+        }
+      ]
     }
   ],
   "rewrites": [
