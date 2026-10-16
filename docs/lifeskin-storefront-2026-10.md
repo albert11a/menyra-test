@@ -64,3 +64,10 @@ Live verification found that Vercel serves the physical root index.html before t
 Owner requested a restrained update and direct publication to main: compact catalog photography, bounded product-page gallery with native swipe/keyboard/button navigation, tighter mobile layout and smooth deliberate section scrolling. Fix search-induced scroll jumps, preserve product-list position on browser back and gallery selection after deferred photos, and reflect selected quantity in the product CTA amount. Respect reduced motion; no forced scroll animations or invented photos. Existing checkout, prices, Pixel/CAPI and Mnyra landing are outside this change. Browser access was denied; verification is code-based and must not be described as physical/mobile visual QA.
 
 Validation for v1.1: npm run build passed; TZ=Europe/Vienna npm test passed (3,227 tests, zero failures/skips). Seven new behavioral tests cover slider navigation, native scroll/keyboard synchronization, single/no-photo states, reduced motion, deferred-photo selection, quantity CTA, search stability and history restoration. Pixel lock tests pass unchanged. Existing tracked bundles did not change. No real mobile/browser rendering check: browser permission was denied. No real order or advertising event submitted. Release goes directly to main per the owner's explicit follow-up.
+
+
+### /lifeskin photo instructions, 2026-10-16
+
+Owner switched scope from shop refinement to /lifeskin: remove only the complete makeup and filter instruction rows (including icons) from the photo preparation screen. Retain light, sharpness, close-up and the continue action. No shared translations, photo workflow, Pixel/CAPI or shop behavior changes. Publish via the existing main workflow after the required build and focused checks.
+
+Photo instruction validation: 68 focused tests passed, including the unchanged Pixel lock; npm run build passed. No tracked bundle changes. No live browser/mobile check performed.

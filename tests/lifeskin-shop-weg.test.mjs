@@ -79,13 +79,12 @@ test("im Laden kuerzer (29.09.): kein Pa detyrim, drei Foto-Regeln, Frage 1 ohne
   assert.deepEqual([...para.matchAll(/data-text="(fotoPara[A-Za-z]+)"/g)].map((m) => m[1]),
     ["fotoParaTitel", "fotoParaLicht", "fotoParaKlar", "fotoParaNah"]);
   assert.doesNotMatch(para, /weg-tipp|KËSHILLË PËR FOTON/);
-  // /lifeskin: Die freigegebene Fassung vom 04.10. ("approved LifeSkin")
-  // hat wieder fuenf Regeln mit Make-up und Filter und keinen Titel - der
-  // Laden bleibt bei seinen dreien.
+  // /lifeskin: Inhaber entfernt am 16.10. ebenfalls Make-up und Filter.
+  // Licht, Schaerfe und Naehe bleiben, ebenso der Aufbau ohne Titel.
   const lifeskin = lies("apps/lifeskin-landing/index.html");
   const lifeskinPara = lifeskin.slice(lifeskin.indexOf('id="ls-fotopara"'), lifeskin.indexOf('id="ls-fotoweiter"'));
   assert.deepEqual([...lifeskinPara.matchAll(/data-text="(fotoPara[A-Za-z]+)"/g)].map((m) => m[1]),
-    ["fotoParaMakeup", "fotoParaLicht", "fotoParaKlar", "fotoParaFilter", "fotoParaNah"]);
+    ["fotoParaLicht", "fotoParaKlar", "fotoParaNah"]);
   // Frage 1 im Laden ohne "Shkëlqimi" und "Nuk e di", Frage 3 kuerzer.
   const { FRAGEN, frageFuerWeg } = await import("../apps/lifeskin/lifeskin-content.js");
   const frage = (id, weg) => frageFuerWeg(FRAGEN.find((f) => f.id === id), weg);
