@@ -203,6 +203,28 @@
     },
     {
       "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "lifeskin-ks.com"
+        }
+      ],
+      "destination": "/lifeskinshop",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.lifeskin-ks.com"
+        }
+      ],
+      "destination": "/lifeskinshop",
+      "permanent": false
+    },
+    {
+      "source": "/",
       "destination": "/feed",
       "permanent": false,
       "missing": [

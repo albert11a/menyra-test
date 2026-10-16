@@ -98,7 +98,7 @@ test('only LIFESKIN domain roots are routed to the shop; mnyra root routing stay
   const matches = (rule, host) => (rule.has || []).every(h => h.type !== 'host' || h.value === host)
     && (rule.missing || []).every(h => h.type !== 'host' || h.value !== host);
   for (const host of ['lifeskin-ks.com', 'www.lifeskin-ks.com']) {
-    assert.equal(rootRedirects.find(r => matches(r, host)), undefined);
+    assert.equal(rootRedirects.find(r => matches(r, host))?.destination, '/lifeskinshop');
   }
   for (const host of ['mnyra.com', 'www.mnyra.com', 'menyra-test.vercel.app']) {
     assert.equal(rootRedirects.find(r => matches(r, host))?.destination, '/feed');

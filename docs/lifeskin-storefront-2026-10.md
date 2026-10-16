@@ -55,3 +55,5 @@ The owner rejected the first narrow concept and requested a complete, youthful, 
 ### Custom domain connection, 2026-10-16
 
 Owner explicitly authorized connecting lifeskin-ks.com to the existing menyra-test project while preserving mnyra.com/lifeskin and its Pixel behavior. Exclude only the two LifeSkin hosts from the generic root-to-feed redirect, then attach the apex and www domains to production. Existing Mnyra domains and /lifeskin routes remain untouched. No Pixel/CAPI code changes: browser uses the existing consent-gated ID; server source URL validation currently accepts only mnyra.com and needs separate explicit Pixel authorization before expansion. No real orders or synthetic advertising events for verification.
+
+Live verification found that Vercel serves the physical root index.html before the host rewrite. Add explicit host-bound root redirects to /lifeskinshop so the custom domain reliably opens the shop, preserving query strings and the host; Mnyra routing is unchanged. Both apex and www were attached and verified, with www redirecting to the apex.
