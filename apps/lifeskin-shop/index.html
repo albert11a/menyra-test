@@ -15,7 +15,7 @@
      Sets, Einzelmittel mit Fotos und die Vorher/Nachher-Faelle kommen aus
      Heart (shop.js). Was hier im Aufbau steht, ist der Rueckweg, wenn
      Firestore nicht antwortet. -->
-<html data-storefront="catalog" data-shop-preis="pending" data-shop-hero="pending" lang="sq" data-ls-variante="kurz" data-ls-landing="lifeskinshop" data-ls-scan-workflow="skinreact">
+<html data-storefront="catalog" data-shop-version="1.1" data-shop-preis="pending" data-shop-hero="pending" lang="sq" data-ls-variante="kurz" data-ls-landing="lifeskinshop" data-ls-scan-workflow="skinreact">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -253,11 +253,11 @@
 
 <script>
 (function () {
-  var SCHLUESSEL = "lifeskinshop:y";
+  function schluessel() { return "lifeskinshop:y:" + location.pathname; }
   try {
     if ("scrollRestoration" in history) history.scrollRestoration = "manual";
     var nav = (performance.getEntriesByType && performance.getEntriesByType("navigation")[0]) || {};
-    var y = Number(sessionStorage.getItem(SCHLUESSEL) || 0);
+    var y = Number(sessionStorage.getItem(schluessel()) || 0);
     if (y > 0 && (nav.type === "reload" || nav.type === "back_forward")) {
       // Sofort, nicht weich: Die Seite scrollt sonst sichtbar dorthin.
       var html = document.documentElement, alt = html.style.scrollBehavior;
@@ -272,7 +272,7 @@
     try {
       var laden = document.getElementById("ls-einstieg");
       if (!laden || laden.getAttribute("data-aktiv") !== "ja" || document.documentElement.hasAttribute("data-ansicht")) return;
-      sessionStorage.setItem(SCHLUESSEL, String(Math.round(window.scrollY)));
+      sessionStorage.setItem(schluessel(), String(Math.round(window.scrollY)));
     } catch (e) { /* egal */ }
   }
   window.addEventListener("scroll", function () { if (!wartet) { wartet = true; requestAnimationFrame(merken); } }, { passive: true });

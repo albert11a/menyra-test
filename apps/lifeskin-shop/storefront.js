@@ -5,18 +5,26 @@ const image = (p, lazy = true, index = 0) => p.images[index] ? `<img src="${esc(
 export function productCard(p) {
   return `<article class="sf-card"><a href="/lifeskinshop/p/${encodeURIComponent(p.id)}" class="sf-card-image" data-sf-product="${esc(p.id)}">${image(p)}${p.badge ? `<span class="sf-card-label">${esc(p.badge)}</span>` : ''}<span class="sf-card-look">Shiko produktin ${sfIcon('ArrowUpRight')}</span></a><div class="sf-card-info"><span class="sf-card-category">${esc(p.label)}</span><a class="sf-card-name" href="/lifeskinshop/p/${encodeURIComponent(p.id)}" data-sf-product="${esc(p.id)}">${esc(p.name)}</a><p>${esc(p.subtitle)}</p><div class="sf-card-meta"><strong>${money(p.price)}</strong><span>${esc(p.size)}</span></div><button type="button" class="sf-card-add" data-sf-add="${esc(p.id)}" ${p.soldOut ? 'disabled' : ''}>${sfIcon('ShoppingBag')}${p.soldOut ? 'Nuk ka ne stok' : 'Shto ne shport'}</button><button type="button" class="sf-card-buy" data-sf-buy="${esc(p.id)}" ${p.soldOut ? 'disabled' : ''}>Porosit ${sfIcon('ArrowRight')}</button></div></article>`;
 }
+export function galleryIndex(index, count) {
+  return Math.max(0, Math.min(Math.max(0, count - 1), Math.round(Number(index) || 0)));
+}
+export function productGallery(p, selected = 0) {
+  const index = galleryIndex(selected, p.images.length);
+  const slides = p.images.length ? p.images.map((url, i) => `<div class="sf-gallery-slide" role="group" aria-roledescription="slide" aria-label="${i + 1} / ${p.images.length}">${image(p, i !== 0, i)}</div>`).join('') : `<div class="sf-gallery-slide"><span class="sf-card-placeholder">lifeskin<span>Foto se shpejti</span></span></div>`;
+  return `<div class="sf-detail-photo"><div id="sf-gallery-track" class="sf-gallery-track" tabindex="0" role="region" aria-roledescription="carousel" aria-label="Fotot e ${esc(p.name)}">${slides}</div></div>${p.images.length > 1 ? `<div class="sf-gallery-controls"><button type="button" class="sf-icon-button" data-sf-slide="-1" aria-label="Foto e meparshme" aria-controls="sf-gallery-track" ${index === 0 ? 'disabled' : ''}>${sfIcon('ChevronLeft')}</button><span class="sf-gallery-count" role="status" aria-live="polite">${index + 1} / ${p.images.length}</span><button type="button" class="sf-icon-button" data-sf-slide="1" aria-label="Foto tjeter" aria-controls="sf-gallery-track" ${index === p.images.length - 1 ? 'disabled' : ''}>${sfIcon('ChevronRight')}</button></div><div class="sf-thumbnails" role="group" aria-label="Zgjidh foton">${p.images.map((url, i) => `<button type="button" data-sf-image="${i}" aria-pressed="${i === index}" aria-label="Foto ${i + 1}" aria-controls="sf-gallery-track"><img src="${esc(url)}" alt="" width="60" height="60" loading="lazy"></button>`).join('')}</div>` : ''}`;
+}
 export function productDetail(p) {
-  return `<nav class="sf-breadcrumb" aria-label="Vendndodhja"><button type="button" data-sf-home>Ballina</button>${sfIcon('ChevronRight')}<button type="button" data-sf-category="${esc(p.category)}">${esc(p.label)}</button>${sfIcon('ChevronRight')}<span>${esc(p.name)}</span></nav><div class="sf-detail"><div class="sf-gallery"><div class="sf-detail-photo">${image(p, false)}</div>${p.images.length > 1 ? `<div class="sf-thumbnails" role="group" aria-label="Fotot e produktit">${p.images.map((url, i) => `<button type="button" data-sf-image="${i}" aria-pressed="${i === 0}" aria-label="Foto ${i + 1}"><img src="${esc(url)}" alt="" width="72" height="90"></button>`).join('')}</div>` : ''}</div><div class="sf-detail-copy"><span class="sf-kicker">${esc(p.label)} / LIFESKIN</span><h1 id="sf-product-title">${esc(p.name)}</h1><p class="sf-detail-subtitle">${esc(p.subtitle)}</p><div class="sf-pdp-price"><strong>${money(p.price)}</strong><span>${esc(p.size)}</span></div><p class="sf-product-description">${esc(p.description)}</p>${p.skinTypes ? `<p class="sf-skin-types">${sfIcon('Sparkles')}${esc(p.skinTypes)}</p>` : ''}<div class="sf-pdp-quantity"><span>Sasia</span><div class="sf-quantity"><button type="button" data-sf-pdp-qty="-1" aria-label="Zvogelo sasine">${sfIcon('Minus')}</button><output id="sf-pdp-quantity">1</output><button type="button" data-sf-pdp-qty="1" aria-label="Rrit sasine">${sfIcon('Plus')}</button></div>${p.soldOut ? '<span class="sf-stock">Nuk ka ne stok</span>' : ''}</div><button type="button" class="sf-button sf-button-dark" data-sf-add="${esc(p.id)}" ${p.soldOut ? 'disabled' : ''}>${sfIcon('ShoppingBag')}Shto ne shport <span>${money(p.price)}</span></button><button type="button" class="sf-button sf-button-outline" data-sf-buy="${esc(p.id)}" ${p.soldOut ? 'disabled' : ''}>Porosit tani ${sfIcon('ArrowRight')}</button><div class="sf-pdp-services"><span>${sfIcon('Truck')}Dergesa 1–3 dite</span><span>${sfIcon('Banknote')}Pagesa te dera</span><span>${sfIcon('ShieldCheck')}45 dite garanci</span></div><div class="sf-pdp-accordions"><details open><summary>Per produktin ${sfIcon('Plus')}</summary><p>${esc(p.description)}</p></details>${p.usage.length ? `<details><summary>Si perdoret? ${sfIcon('Plus')}</summary>${p.usage.map(line => `<p>${esc(line)}</p>`).join('')}</details>` : ''}${p.ingredients.length ? `<details><summary>Perberesit kryesore ${sfIcon('Plus')}</summary><p>${p.ingredients.map(esc).join(' · ')}</p></details>` : ''}<details><summary>Dergesa dhe garancia ${sfIcon('Plus')}</summary><p>Pagesen e ben kur e merr porosine. Te kontaktojme per konfirmim. Garancia vlen sipas kushteve te blerjes.</p><a href="/apps/lifeskin-shop/kushtet.html">Lexo kushtet</a></details></div><a class="sf-pdp-help" href="https://wa.me/436508564879" target="_blank" rel="noopener">${sfIcon('Phone')}Ke pyetje? Na shkruaj ne WhatsApp ${sfIcon('ArrowUpRight')}</a></div></div>`;
+  return `<nav class="sf-breadcrumb" aria-label="Vendndodhja"><button type="button" data-sf-home>Ballina</button>${sfIcon('ChevronRight')}<button type="button" data-sf-category="${esc(p.category)}">${esc(p.label)}</button>${sfIcon('ChevronRight')}<span>${esc(p.name)}</span></nav><div class="sf-detail"><div class="sf-gallery">${productGallery(p)}</div><div class="sf-detail-copy"><span class="sf-kicker">${esc(p.label)} / LIFESKIN</span><h1 id="sf-product-title">${esc(p.name)}</h1><p class="sf-detail-subtitle">${esc(p.subtitle)}</p><div class="sf-pdp-price"><strong>${money(p.price)}</strong><span>${esc(p.size)}</span></div><p class="sf-product-description">${esc(p.description)}</p>${p.skinTypes ? `<p class="sf-skin-types">${sfIcon('Sparkles')}${esc(p.skinTypes)}</p>` : ''}<div class="sf-pdp-quantity"><span>Sasia</span><div class="sf-quantity"><button type="button" data-sf-pdp-qty="-1" aria-label="Zvogelo sasine">${sfIcon('Minus')}</button><output id="sf-pdp-quantity">1</output><button type="button" data-sf-pdp-qty="1" aria-label="Rrit sasine">${sfIcon('Plus')}</button></div>${p.soldOut ? '<span class="sf-stock">Nuk ka ne stok</span>' : ''}</div><button type="button" class="sf-button sf-button-dark" data-sf-add="${esc(p.id)}" ${p.soldOut ? 'disabled' : ''}>${sfIcon('ShoppingBag')}Shto ne shport <span data-sf-pdp-total>${money(p.price)}</span></button><button type="button" class="sf-button sf-button-outline" data-sf-buy="${esc(p.id)}" ${p.soldOut ? 'disabled' : ''}>Porosit tani ${sfIcon('ArrowRight')}</button><div class="sf-pdp-services"><span>${sfIcon('Truck')}Dergesa 1–3 dite</span><span>${sfIcon('Banknote')}Pagesa te dera</span><span>${sfIcon('ShieldCheck')}45 dite garanci</span></div><div class="sf-pdp-accordions"><details open><summary>Per produktin ${sfIcon('Plus')}</summary><p>${esc(p.description)}</p></details>${p.usage.length ? `<details><summary>Si perdoret? ${sfIcon('Plus')}</summary>${p.usage.map(line => `<p>${esc(line)}</p>`).join('')}</details>` : ''}${p.ingredients.length ? `<details><summary>Perberesit kryesore ${sfIcon('Plus')}</summary><p>${p.ingredients.map(esc).join(' · ')}</p></details>` : ''}<details><summary>Dergesa dhe garancia ${sfIcon('Plus')}</summary><p>Pagesen e ben kur e merr porosine. Te kontaktojme per konfirmim. Garancia vlen sipas kushteve te blerjes.</p><a href="/apps/lifeskin-shop/kushtet.html">Lexo kushtet</a></details></div><a class="sf-pdp-help" href="https://wa.me/436508564879" target="_blank" rel="noopener">${sfIcon('Phone')}Ke pyetje? Na shkruaj ne WhatsApp ${sfIcon('ArrowUpRight')}</a></div></div>`;
 }
 export class Storefront {
   constructor(shop) { this.shop = shop; this.doc = shop.dok; this.filter = 'all'; this.sort = 'recommended'; this.search = ''; this.limit = 12; this.quantity = 1; }
   start() {
     if (!this.doc.getElementById?.('storefront-home')) return;
     this.doc.addEventListener('click', event => {
-      const button = event.target.closest?.('[data-sf-help],[data-sf-product],[data-sf-add],[data-sf-buy],[data-sf-category],[data-sf-filter],[data-sf-home],[data-sf-duo],[data-sf-products],[data-sf-retry],[data-sf-image],[data-sf-cart],[data-sf-cart-close],[data-sf-discard],[data-sf-qty],[data-sf-remove],[data-sf-checkout],[data-sf-more],[data-sf-pdp-qty]');
+      const button = event.target.closest?.('[data-sf-slide],[data-sf-help],[data-sf-product],[data-sf-add],[data-sf-buy],[data-sf-category],[data-sf-filter],[data-sf-home],[data-sf-duo],[data-sf-products],[data-sf-retry],[data-sf-image],[data-sf-cart],[data-sf-cart-close],[data-sf-discard],[data-sf-qty],[data-sf-remove],[data-sf-checkout],[data-sf-more],[data-sf-pdp-qty]');
       if (!button) return;
       const d = button.dataset;
-      if ('sfHelp' in d) { event.preventDefault(); this.home(false); this.doc.getElementById('sf-help')?.scrollIntoView({block:'start'}); }
+      if ('sfHelp' in d) { event.preventDefault(); this.home(false); this.scrollSection('sf-help'); }
       else if ('sfProduct' in d) { event.preventDefault(); this.open(d.sfProduct); }
       else if ('sfAdd' in d || 'sfBuy' in d) {
         const id = d.sfAdd || d.sfBuy;
@@ -26,6 +34,7 @@ export class Storefront {
       }
       else if ('sfCategory' in d || 'sfFilter' in d) { this.filter = d.sfCategory || d.sfFilter; this.limit = 12; this.home(true); this.render(); }
       else if ('sfRetry' in d) void this.shop.catalogLaden();
+      else if ('sfSlide' in d) this.changeImage((this.galleryPosition || 0) + Number(d.sfSlide));
       else if ('sfImage' in d) this.changeImage(Number(d.sfImage));
       else if ('sfHome' in d || 'sfProducts' in d) { event.preventDefault(); if ('sfProducts' in d) { this.filter = 'all'; this.search = ''; const field = this.doc.getElementById('sf-search'); if (field) field.value = ''; this.render(); } this.home('sfProducts' in d); }
       else if ('sfDuo' in d) this.duo();
@@ -36,14 +45,14 @@ export class Storefront {
       else if ('sfRemove' in d) this.shop.catalogMenge(d.sfRemove, 0);
       else if ('sfCheckout' in d && this.shop.korb.ids.length) { this.closeCart(); this.shop.kasseOeffnen(); }
       else if ('sfMore' in d) { this.limit += 12; this.render(); }
-      else if ('sfPdpQty' in d) { this.quantity = Math.max(1, Math.min(20, this.quantity + Number(d.sfPdpQty))); this.doc.getElementById('sf-pdp-quantity').textContent = this.quantity; }
+      else if ('sfPdpQty' in d) this.changeQuantity(Number(d.sfPdpQty));
     });
     this.doc.getElementById('sf-sort')?.addEventListener('change', event => { this.sort = event.target.value; this.render(); });
-    this.doc.getElementById('sf-search')?.addEventListener('input', event => { this.search = event.target.value; this.limit = 12; this.home(true, false); this.render(); });
+    this.doc.getElementById('sf-search')?.addEventListener('input', event => { this.search = event.target.value; this.limit = 12; if (this.doc.documentElement.dataset.storeView !== 'home') this.home(true, true, false); this.render(); });
     this.doc.addEventListener('click', event => { if (event.target.closest?.('[data-ls-start]')) { this.closeMenu(); this.closeCart(); } });
     const cart = this.doc.getElementById('sf-cart');
     cart?.addEventListener('click', event => { if (event.target === cart && event.clientX < cart.getBoundingClientRect().left) cart.close(); });
-    this.doc.defaultView?.addEventListener('popstate', () => this.restoreRoute());
+    this.doc.defaultView?.addEventListener('popstate', () => { this.backScroll = this.doc.defaultView.history?.state?.sfScroll; this.restoreRoute(); });
     this.restoreRoute();
   }
   restoreRoute() {
@@ -56,10 +65,33 @@ export class Storefront {
   }
   closeMenu() { const menu = this.doc.getElementById('menu'); if (menu?.open) menu.close(); this.doc.getElementById('menu-hap')?.setAttribute('aria-expanded', 'false'); }
   base() { return /^(www\.)?lifeskin-ks\.com$/.test(this.doc.defaultView?.location?.hostname || '') ? '' : '/lifeskinshop'; }
-  route(suffix) { const location = this.doc.defaultView?.location; if (!location) return; const params = new URLSearchParams(location.search); params.delete('produkt'); const [path, hash] = suffix.split('#'); const pathname = `${this.base()}${path}` || '/'; this.doc.defaultView.history?.pushState(null, '', `${pathname}${params.size ? `?${params}` : ''}${hash ? `#${hash}` : ''}`); }
-  show(view) { for (const [id,name] of [['storefront-home','home'],['sf-duo-page','duo'],['sf-product','product']]) { const node = this.doc.getElementById(id); if (node) node.hidden = name !== view; } this.doc.documentElement.dataset.storeView = view; this.closeMenu(); }
-  home(toProducts = false, push = true) { this.doc.title = 'LIFESKIN — Skincare, your way.'; this.activeProduct = null; this.pendingProduct = ''; this.show('home'); if (push) this.route(toProducts ? '#sf-products' : ''); if (toProducts) this.doc.getElementById('sf-products')?.scrollIntoView({ block:'start' }); else if (push) this.doc.defaultView?.scrollTo({ top:0, behavior:'instant' }); }
-  duo(push = true) { this.show('duo'); if (push) { this.route('#acne-duo'); this.doc.defaultView?.scrollTo({ top:0, behavior:'instant' }); } }
+  rememberScroll() { const win = this.doc.defaultView; win?.history?.replaceState?.({ ...win.history.state, sfScroll:win.scrollY || 0 }, ''); }
+  route(suffix) { const location = this.doc.defaultView?.location; if (!location) return; const params = new URLSearchParams(location.search); params.delete('produkt'); const [path, hash] = suffix.split('#'); const pathname = `${this.base()}${path}` || '/'; this.doc.defaultView.history?.pushState({ sfScroll:0 }, '', `${pathname}${params.size ? `?${params}` : ''}${hash ? `#${hash}` : ''}`); }
+  motion() { return this.doc.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'; }
+  scrollSection(id) { this.doc.getElementById(id)?.scrollIntoView({ block:'start', behavior:this.motion() }); }
+  restoreScroll() {
+    if (!Number.isFinite(this.backScroll)) return false;
+    const top = this.backScroll; this.backScroll = undefined;
+    const run = () => this.doc.defaultView?.scrollTo({top, behavior:'instant'});
+    if (this.doc.defaultView?.requestAnimationFrame) this.doc.defaultView.requestAnimationFrame(run); else run();
+    return true;
+  }
+  show(view) {
+    const changed = this.doc.documentElement.dataset.storeView !== view;
+    for (const [id,name] of [['storefront-home','home'],['sf-duo-page','duo'],['sf-product','product']]) {
+      const node = this.doc.getElementById(id);
+      if (node) { node.hidden = name !== view; if (changed && !node.hidden && this.motion() === 'smooth') node.animate?.([{opacity:.5,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}], {duration:180,easing:'ease-out'}); }
+    }
+    this.doc.documentElement.dataset.storeView = view; this.closeMenu();
+  }
+  home(toProducts = false, push = true, scroll = true) {
+    if (push) this.rememberScroll();
+    this.doc.title = 'LIFESKIN — Skincare, your way.'; this.activeProduct = null; this.pendingProduct = ''; this.show('home');
+    if (push) this.route(toProducts ? '#sf-products' : '');
+    if (this.restoreScroll() || !scroll) return;
+    if (toProducts) this.scrollSection('sf-products'); else if (push) this.doc.defaultView?.scrollTo({ top:0, behavior:'instant' });
+  }
+  duo(push = true) { if (push) this.rememberScroll(); this.show('duo'); if (push) { this.route('#acne-duo'); this.doc.defaultView?.scrollTo({ top:0, behavior:'instant' }); } }
   render() {
     const grid = this.doc.getElementById?.('sf-grid'); if (!grid) return;
     const error = this.doc.getElementById('sf-catalog-error');
@@ -92,21 +124,55 @@ export class Storefront {
   openCart() { this.renderCart(); const cart = this.doc.getElementById('sf-cart'); if (!cart?.open) cart?.showModal(); }
   closeCart() { this.doc.getElementById('sf-cart')?.close(); this.added = ''; }
   open(id, push = true) {
+    if (push) this.rememberScroll(); this.pendingProduct = '';
     const p = this.shop.catalogProducts.find(p => p.id === id);
     this.doc.title = p ? `${p.name} | LIFESKIN` : 'LIFESKIN';
     this.quantity = 1;
-    this.activeProduct = p || null;
+    this.activeProduct = p || null; this.galleryPosition = 0;
     this.doc.getElementById('sf-product-content').innerHTML = p ? productDetail(p) + `<section class="sf-related"><div class="sf-section-head"><div><span class="sf-kicker">ME SHUME LIFESKIN</span><h2>Shiko edhe.</h2></div></div><div class="sf-grid">${this.shop.catalogProducts.filter(x => x.id !== id).slice(0,4).map(productCard).join('')}</div></section>` : '<div class="sf-empty"><h1>Produkti nuk eshte i disponueshem.</h1><button type="button" data-sf-products>Shiko produktet</button></div>';
     this.show('product');
+    this.bindGallery(); this.changeQuantity(0);
     if (p && this.shop.catalogFotosLaden) void this.shop.catalogFotosLaden(id).then(() => { if (this.activeProduct?.id === id) this.refreshGallery(); });
     if (push) this.route(`/p/${encodeURIComponent(id)}`);
-    this.doc.defaultView?.scrollTo({ top:0, behavior:'instant' });
+    if (!this.restoreScroll()) this.doc.defaultView?.scrollTo({ top:0, behavior:'instant' });
   }
   refreshGallery() {
     const p = this.activeProduct;
     const root = this.doc.querySelector('.sf-gallery');
     if (!p || !root) return;
-    root.innerHTML = `<div class="sf-detail-photo">${image(p, false)}</div>${p.images.length > 1 ? `<div class="sf-thumbnails" role="group" aria-label="Fotot e produktit">${p.images.map((url,i) => `<button type="button" data-sf-image="${i}" aria-pressed="${i===0}" aria-label="Foto ${i+1}"><img src="${esc(url)}" alt="" width="72" height="90"></button>`).join('')}</div>` : ''}`;
+    root.innerHTML = productGallery(p, this.galleryPosition);
+    this.bindGallery(); this.changeImage(this.galleryPosition, false);
   }
-  changeImage(index) { const p = this.activeProduct; if (!p?.images[index]) return; this.doc.querySelector('.sf-detail-photo img').src = p.images[index]; for (const button of this.doc.querySelectorAll('[data-sf-image]')) button.setAttribute('aria-pressed',String(Number(button.dataset.sfImage) === index)); }
+  bindGallery() {
+    const track = this.doc.querySelector('.sf-gallery-track'); if (!track) return;
+    track.addEventListener('scroll', () => {
+      if (this.galleryFrame) return;
+      this.galleryFrame = this.doc.defaultView.requestAnimationFrame(() => { this.galleryFrame = 0; if (track.isConnected && track.clientWidth) this.syncGallery(galleryIndex(track.scrollLeft / track.clientWidth, this.activeProduct?.images.length || 0)); });
+    }, {passive:true});
+    track.addEventListener('keydown', event => {
+      if (event.target !== track || !['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+      event.preventDefault();
+      this.changeImage(event.key === 'Home' ? 0 : event.key === 'End' ? this.activeProduct.images.length - 1 : (this.galleryPosition || 0) + (event.key === 'ArrowRight' ? 1 : -1));
+    });
+  }
+  syncGallery(index) {
+    const count = this.activeProduct?.images.length || 0; this.galleryPosition = galleryIndex(index,count);
+    const root = this.doc.querySelector('.sf-gallery'); if (!root) return;
+    for (const button of root.querySelectorAll('[data-sf-image]')) button.setAttribute('aria-pressed',String(Number(button.dataset.sfImage) === this.galleryPosition));
+    for (const button of root.querySelectorAll('[data-sf-slide]')) button.disabled = Number(button.dataset.sfSlide) < 0 ? this.galleryPosition === 0 : this.galleryPosition >= count - 1;
+    const counter = root.querySelector('.sf-gallery-count');
+    if (counter) { const text = `${this.galleryPosition + 1} / ${count}`; if (counter.textContent !== text) counter.textContent = text; }
+  }
+  changeImage(index, smooth = true) {
+    const p = this.activeProduct; if (!p?.images.length) return;
+    const next = galleryIndex(index,p.images.length), track = this.doc.querySelector('.sf-gallery-track');
+    this.syncGallery(next);
+    track?.scrollTo({left:next * track.clientWidth, behavior:smooth ? this.motion() : 'instant'});
+  }
+  changeQuantity(delta) {
+    this.quantity = Math.max(1, Math.min(20, this.quantity + delta));
+    const output = this.doc.getElementById('sf-pdp-quantity'); if (output) output.textContent = this.quantity;
+    const total = this.doc.querySelector('[data-sf-pdp-total]'); if (total && this.activeProduct) total.textContent = money(this.activeProduct.price * this.quantity);
+    for (const button of this.doc.querySelectorAll('[data-sf-pdp-qty]')) button.disabled = Number(button.dataset.sfPdpQty) < 0 ? this.quantity === 1 : this.quantity === 20;
+  }
 }
