@@ -19,6 +19,7 @@ import { SKINREACT_BEREICHE, skinreactBereich, skinreactErgebnis, istSkinreact }
 // Gerendert wird als Zeichenkette, wie ueberall in Heart.
 
 import { pfadLesen } from "../../shared/lifeskin-klickpfad.js";
+import { renderBefundVergleich } from "./heart-lifeskin-vergleich.js";
 import { escapeHtml } from "./heart-ui-utils.js";
 import { renderBereiche, bereichGueltig, wegDesBereichs, bereichDesWegs } from "./heart-lifeskin-bereiche.js";
 import { renderHeartIcon, renderGeraetZeichen } from "./heart-icons.js";
@@ -3085,6 +3086,8 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({}), 
       ${befundGruppe("raste", "Ergebnisse auf der Seite", renderBefundRasteAuswahl(raste, bericht, zustand))}
 
       ${befundGruppe("klientet", "Kundenfotos & -videos", renderBefundMedienAuswahl(zustand, bericht))}
+
+      ${befundGruppe("vergleich", "Vorher / Nachher", renderBefundVergleich(bericht?.vergleich))}
 
       ${befundGruppe("details", "Analyse-Details", `
         <textarea hidden data-raport-meta>${escapeHtml(JSON.stringify(raport || {}))}</textarea>

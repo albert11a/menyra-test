@@ -34,6 +34,7 @@ import { LIFESKIN_FIRESTORE_BASE, LIFESKIN_TENANT } from "../lifeskin/lifeskin-c
 import {
   RASTE_STANDARD, rasteLaden, rasteNormalisieren, rasteFuerBericht, rasteMitBildern, rastiProdukteText
 } from "../../shared/lifeskin-raste.js";
+import { zeigeVergleich } from "./terapia-vergleich.js";
 import { KundenMedien } from "./terapia-medien.js";
 import { ansichtOeffnen, ansichtSchliessen } from "./ansicht.js";
 import { NDJEKJA, NDJEKJA_TEXTE, KAUFWEG_VERSION, ndjekjaSichtbar } from "../../shared/lifeskin-ndjekja.js";
@@ -282,7 +283,7 @@ export class Terapia {
     if (!this.daten) { this.#weg(); return; }
     // Nie "links" oder "rechts" (gespiegelte Fotos) - auch nicht in
     // Befunden, die vor dieser Regel freigegeben wurden.
-    this.daten = ohneSeiteTief(this.daten);
+    this.daten = { ...ohneSeiteTief(this.daten), vergleich: this.daten.vergleich };
     this.#kleid();
 
     // Noch nicht freigegeben: Die Warteseite steht auf der Analyseseite.
@@ -563,6 +564,7 @@ export class Terapia {
     // Kundenfotos und -videos: nur die, die Heart fuer diesen Befund
     // gewaehlt hat, in dieser Reihenfolge. Keines gewaehlt: kein Abschnitt.
     this.#medien(mitProdukten);
+    zeigeVergleich($("#t-vergleich"), mitProdukten ? d.vergleich : null);
     zeigen($("#vendimi"), this.mitAngebot);
     schreibe($("#t-dita28"), s.dita_28 || this.produkte[0]?.synimi || "Krahasojmë lëkurën tuaj me foton e sotme.");
     schreibe($("#t-psetani"), s.pse_tani || "");

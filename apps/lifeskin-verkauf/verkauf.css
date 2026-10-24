@@ -937,3 +937,20 @@ details > .kushtet { padding-top: 0; }
 .ndj-lidhje--blok { display: inline-flex; align-items: center; margin-top: 8px; }
 .ndj-kontakt { padding-top: 24px; border-top: 1px solid var(--line); margin-top: 10px; display: grid; gap: 12px; }
 .ndj-kontakt h2 { margin-bottom: 0; }
+
+/* Personal before/after comparison: full-width photos stay registered. */
+.vergleich { margin: 32px 0 0; min-width: 0; }
+.rruga li > div:has(> .vergleich:not([hidden])) { min-width: 0; flex: 1; }
+.vergleich__buehne { position: relative; width: 100%; aspect-ratio: 3 / 4; overflow: hidden; border-radius: 18px; background: var(--green-soft); isolation: isolate; }
+.vergleich__buehne img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; user-select: none; -webkit-user-drag: none; opacity: 0; }
+.vergleich__buehne[data-bereit="ja"] img { opacity: 1; }
+.vergleich__vorher { clip-path: inset(0 calc(100% - var(--teilung)) 0 0); }
+.vergleich__label { position: absolute; top: 12px; padding: 4px 10px; border-radius: 20px; background: #fff; color: var(--ink); font-size: 12px; font-weight: 700; pointer-events: none; }
+.vergleich__label--para { left: 12px; }
+.vergleich__label--pas { right: 12px; }
+.vergleich__griff { position: absolute; top: 0; bottom: 0; left: var(--teilung); width: 2px; background: #fff; transform: translateX(-50%); pointer-events: none; box-shadow: 0 0 3px #0005; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.vergleich__griff::before { content: ""; position: absolute; width: 44px; height: 44px; border-radius: 50%; background: #fff; box-shadow: 0 2px 12px #0003; }
+.vergleich__griff b { position: relative; color: var(--green); font-size: 25px; line-height: 1; }
+.vergleich__regler { position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; touch-action: pan-y; }
+.vergleich__buehne:focus-within { outline: 3px solid var(--green); outline-offset: 3px; }
+.vergleich figcaption { margin-top: 10px; text-align: center; font-size: 12px; color: var(--muted); }

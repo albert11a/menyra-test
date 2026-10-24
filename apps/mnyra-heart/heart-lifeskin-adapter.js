@@ -1,3 +1,4 @@
+import { vergleichLesen } from "../../shared/lifeskin-vergleich.js";
 import { SHOP_NACHRICHTEN_DOK, nachrichtenNormalisieren, SHOP_REVIEW_MEDIUM, reviewBilderNormalisieren, reviewFotoUrl } from "../../shared/lifeskin-shop-bewertungen.js";
 import { skinreactFreigabe, skinreactErgebnis } from "../../shared/lifeskin-skinreact.js";
 // Liest, was im Lifeskin-Trichter passiert ist.
@@ -685,7 +686,7 @@ export async function ladeBericht(sitzungId) {
   return schnappschuss.exists() ? { id: schnappschuss.id, ...(schnappschuss.data() || {}) } : null;
 }
 
-export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport, texte, ohneBild = false, raste = [], klientet = [], nurStaff = false, bereit = false, perputhja = null, antworten = null, weg = "", analyseTemplate = "analysis1" }) {
+export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport, texte, ohneBild = false, raste = [], klientet = [], vergleich = null, nurStaff = false, bereit = false, perputhja = null, antworten = null, weg = "", analyseTemplate = "analysis1" }) {
   if (!sitzungId) throw new Error("Bericht ohne Kennung");
   await setDoc(doc(db, "lifeskin", TENANT, "reports", sitzungId), {
     status: nurStaff || bereit ? "vorschau" : "fertig",
@@ -756,6 +757,7 @@ export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwe
     // Die Kundenbilder ("Nga klientët tanë"), die Heart gewaehlt hat.
     // Leer: Die Seite zeigt den Abschnitt nicht.
     klientet: (Array.isArray(klientet) ? klientet : []).map((x) => String(x || "").slice(0, 40)).filter(Boolean).slice(0, 12),
+    vergleich: vergleichLesen(vergleich),
     // Die Messwerte. Sie tragen auf der Patientenseite die Balken - und
     // ein Balken ist das Einzige auf der Seite, das sich nicht wegdiskutieren
     // laesst. Was ohne erkennbare Stufe hereinkommt, behaelt seinen Text und

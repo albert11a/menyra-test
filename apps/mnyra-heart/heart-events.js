@@ -484,6 +484,14 @@ export function bindHeartEvents({
       await operations.lifeskinProdukteAnlegen?.();
       return;
     }
+    if (action === "lifeskin-vergleich-upload") {
+      operations.lifeskinVergleichUpload?.(target);
+      return;
+    }
+    if (action === "lifeskin-vergleich-entfernen") {
+      operations.lifeskinVergleichEntfernen?.(target);
+      return;
+    }
     // Kundenfotos und -videos (heart-lifeskin-medien.js).
     if (action === "lifeskin-medium") {
       operations.openLifeskinMedium?.(target.getAttribute("data-id"));
@@ -1020,6 +1028,7 @@ export function bindHeartEvents({
   }
 
   function handleInput(event) {
+    if (event.target?.matches?.("[data-vergleich-url]")) operations.lifeskinVergleichVorschau?.(event.target);
     feldAnpassen(event.target);
     // Die Markierung am Feld folgt dem Tippen. Sie sagt "leer" oder
     // "gefuellt", "Standard" oder "eigener Text" - und waere nichts wert,

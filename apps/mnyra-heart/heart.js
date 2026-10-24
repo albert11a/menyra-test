@@ -1,3 +1,4 @@
+import { vergleichHochladen, vergleichVorschau } from "./heart-lifeskin-vergleich.js";
 import { reviewGalerie } from "../../shared/lifeskin-review-gallery.js";
 import { SHOP_REVIEW_MEDIUM } from "../../shared/lifeskin-shop-bewertungen.js";
 import { skinreactWahlMerken, skinreactEntwuerfe, skinreactSendet } from "./heart-skinreact.js";
@@ -3329,6 +3330,10 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff: nurStaffGewaehlt = 
   // Speichern und Neuladen sekundenlang unveraendert - man tippte zwei-,
   // dreimal. Jetzt: gesperrt, mit "Wird gespeichert …", bis es fertig ist.
   if (store.getState().lifeskin?.berichtStatus === "laeuft") return;
+  if (document.querySelector('[data-vergleich-slot][data-uploading="ja"]')) {
+    setToast("Vorher / Nachher", "Bitte warten, bis die Fotos hochgeladen sind.", "danger");
+    return;
+  }
   const knoepfe = [...document.querySelectorAll('[data-action="lifeskin-bericht-freigeben"], [data-action="lifeskin-bericht-vorschau"], [data-action="lifeskin-bericht-bereit"]')];
   const vorher = knoepfe.map((k) => k.textContent);
   const gedrueckt = knoepfe.find((k) => k.getAttribute("data-action") === (bereit ? "lifeskin-bericht-bereit"
@@ -3355,6 +3360,7 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff: nurStaffGewaehlt = 
       .filter((w) => w.type !== "checkbox" || w.checked).map((w) => String(w.value || "")).filter(Boolean))],
     // Die gewaehlten Kundenfotos, in der Reihenfolge der Karten.
     klientet: [...document.querySelectorAll("[data-befund-klienti]:checked")].map((w) => String(w.value || "")).filter(Boolean),
+    vergleich: Object.fromEntries([...document.querySelectorAll("[data-vergleich-url]")].map((feld) => [feld.dataset.vergleichUrl, feld.value])),
     nurStaff,
     bereit,
     analyse: {
@@ -4488,6 +4494,28 @@ const operations = {
     actions.patchLifeskin({ rastOffen: "", rastEntwurf: null, rastLoeschen: false, rastStatus: "" });
   },
   lifeskinRastiFoto(seite) { lifeskinRastiFoto(seite); },
+  lifeskinVergleichUpload(knopf) {
+    if (store.getState().lifeskin?.berichtStatus === "laeuft") return;
+    const slot = knopf.closest("[data-vergleich-slot]");
+    oeffneDateiwahl(false, ([datei]) => {
+      if (store.getState().lifeskin?.berichtStatus === "laeuft") {
+        setToast("Vorher / Nachher", "Bitte nach dem Speichern erneut auswählen.", "danger");
+        return;
+      }
+      return vergleichHochladen(slot, datei, (f) => crmAdminWriteAdapter.uploadLifeskinMedium(f));
+    });
+  },
+  lifeskinVergleichEntfernen(knopf) {
+    if (store.getState().lifeskin?.berichtStatus === "laeuft") return;
+    const slot = knopf.closest("[data-vergleich-slot]");
+    if (!slot || slot.dataset.uploading === "ja") return;
+    const feld = slot.querySelector("[data-vergleich-url]");
+    feld.value = "";
+    vergleichVorschau(feld);
+    slot.querySelector("[data-vergleich-status]").textContent = "Entfernt. Befund speichern, um die Änderung zu übernehmen.";
+    feld.dispatchEvent(new Event("input", { bubbles: true }));
+  },
+  lifeskinVergleichVorschau(feld) { vergleichVorschau(feld); },
   // Kundenfotos und -videos.
   openLifeskinMedium(id) {
     const kennung = String(id || "").trim();

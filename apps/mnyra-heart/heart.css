@@ -10769,3 +10769,9 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 .heart-store-product-image { width:48px; height:60px; object-fit:cover; border-radius:5px; margin-right:10px; }
 .heart-store-offers { margin-top:38px; }.heart-store-offers h2 { font-size:23px; letter-spacing:-.5px; }.heart-store-offers>p { font-size:12px; opacity:.6; margin-bottom:23px; }
 @media(max-width:600px) { .heart-store-heading { align-items:flex-start; flex-direction:column; }.heart-store-heading h1 { font-size:30px; }.heart-store-stats { gap:7px; }.heart-store-stats div { padding:16px 10px; border-radius:10px; }.heart-store-stats strong { font-size:27px; }.heart-store-stats span { font-size:10px; line-height:1.4; } }
+
+.heart-vergleich { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+.heart-vergleich > div { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.heart-vergleich img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 12px; }
+.heart-vergleich button { width: 100%; white-space: normal; }
+.heart-vergleich small { overflow-wrap: anywhere; }
