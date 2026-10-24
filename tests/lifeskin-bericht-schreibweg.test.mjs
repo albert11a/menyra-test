@@ -7,6 +7,7 @@ import { raportLesen } from "../shared/lifeskin-analyse.js";
 import { antwortenFuerBericht } from "../shared/lifeskin-antworten.js";
 import { wegGueltig } from "../shared/lifeskin-weg.js";
 import { perputhjaGueltig } from "../shared/lifeskin-perputhja.js";
+import { vergleichLesen } from "../shared/lifeskin-vergleich.js";
 
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
 const adapter = readFileSync(join(wurzel, "apps/mnyra-heart/heart-lifeskin-adapter.js"), "utf8");
@@ -55,12 +56,12 @@ function dokumentBauen(werte) {
   // perputhja: die Zahl, die Dr. Gashi beim Laden (/lifeskinshop) setzt,
   // gefiltert durch perputhjaGueltig (shared/lifeskin-perputhja.js).
   const bauen = new Function("befund", "produkte", "preis", "schwere", "analyse", "raport", "texte", "nurStaff", "ohneBild", "raste", "klientet", "bereit",
-    "antworten", "antwortenFuerBericht", "weg", "wegGueltig", "perputhja", "perputhjaGueltig", "analyseTemplate",
+    "antworten", "antwortenFuerBericht", "weg", "wegGueltig", "perputhja", "perputhjaGueltig", "analyseTemplate", "vergleich", "vergleichLesen",
     `return (${literal});`);
   return bauen(werte.befund, werte.produkte, werte.preis, werte.schwere, werte.analyse, werte.raport,
     werte.texte || {}, false, false, werte.raste || [], werte.klientet || [], false,
     werte.antworten || null, antwortenFuerBericht, werte.weg || "", wegGueltig,
-    werte.perputhja ?? null, perputhjaGueltig, werte.analyseTemplate);
+    werte.perputhja ?? null, perputhjaGueltig, werte.analyseTemplate, werte.vergleich, vergleichLesen);
 }
 
 const raport = raportLesen(
@@ -142,4 +143,16 @@ test("die Përputhja steht so im Bericht, wie Dr. Gashi sie gesetzt hat", () => 
   for (const [wahl, erwartet] of [[undefined, "analysis1"], ["", "analysis1"], ["fremd", "analysis1"], ["analysis1", "analysis1"], ["analysis2", "analysis2"]]) {
     assert.equal(dokumentBauen({ analyseTemplate: wahl }).analyseTemplate, erwartet);
   }
+});
+
+
+test("Vergleichsbilder werden als Verweise gespeichert und beim Entfernen geleert", () => {
+  const vergleich = { vorher: "https://cdn.example/vorher.jpg", nachher: "https://cdn.example/nachher.jpg" };
+  assert.deepEqual(dokumentBauen({ vergleich }).vergleich, vergleich);
+  assert.deepEqual(dokumentBauen({ vergleich: { vorher: vergleich.vorher } }).vergleich,
+    { vorher: vergleich.vorher, nachher: "" });
+  assert.deepEqual(dokumentBauen({}).vergleich, { vorher: "", nachher: "" },
+    "Leere Werte müssen alte Bildverweise beim Speichern mit merge überschreiben");
+  assert.deepEqual(dokumentBauen({ vergleich: { vorher: "javascript:alert(1)", nachher: "data:image/jpeg;base64,xxx" } }).vergleich,
+    { vorher: "", nachher: "" });
 });
