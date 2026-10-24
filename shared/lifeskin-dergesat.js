@@ -346,6 +346,11 @@ export function numeroPerChipDergesat(liste, prej = "") {
   return Object.fromEntries(CHIPS_DERGESAT.map((c) => [c.id, neChip(liste, c.id, prej).length]));
 }
 
+// Existing documents stored the amount before Shtesa/shpenzime. New ones
+// explicitly identify an amount that already includes them, using the existing
+// notes field so the currently deployed Firestore rules remain compatible.
+const AUSTRI_NETO_SHENIM = "Neto pas shpenzimeve.";
+
 export function levizjeLesen(roh = {}, id = "") {
   const lloji = ["austri", "levizje", "mbyllje"].includes(roh?.lloji) ? roh.lloji : "";
   if (!lloji) return null;
@@ -356,7 +361,9 @@ export function levizjeLesen(roh = {}, id = "") {
     return {
       id: tekst(id, 80), lloji, at, bruto, wu, neto: cent(Math.max(0, bruto - wu)),
       kennungen: (Array.isArray(roh?.kennungen) ? roh.kennungen : []).map((k) => tekst(k, 80)).filter(Boolean).slice(0, FINANCA_MAX.kennungen),
-      shenim: tekst(roh?.shenim, FINANCA_MAX.shenim)
+      netoMeShpenzime: String(roh?.shenim || "").startsWith(AUSTRI_NETO_SHENIM),
+      shenim: tekst(String(roh?.shenim || "").startsWith(AUSTRI_NETO_SHENIM)
+        ? String(roh.shenim).slice(AUSTRI_NETO_SHENIM.length).trim() : roh?.shenim, FINANCA_MAX.shenim)
     };
   }
   if (lloji === "mbyllje") {
@@ -396,7 +403,7 @@ export function austriDok({ kennungen = [], bruto, wu = 0, shenim = "", jetzt = 
   const b = cent(Number(bruto));
   const w = cent(Number(wu) || 0);
   if (!k.length || !Number.isFinite(b) || b <= 0 || w < 0 || w > b) return null;
-  return { lloji: "austri", at: jetzt, kennungen: k, bruto: b, wu: w, shenim: tekst(shenim, FINANCA_MAX.shenim), nga: "heart" };
+  return { lloji: "austri", at: jetzt, kennungen: k, bruto: b, wu: w, shenim: tekst(`${AUSTRI_NETO_SHENIM} ${shenim}`.trim(), FINANCA_MAX.shenim), nga: "heart" };
 }
 
 export function levizjeDok({ shuma, arsyeja = "", jetzt = new Date().toISOString() } = {}) {
@@ -425,7 +432,8 @@ export function fundiDites(dita) {
 
 // Offene Abrechnung: Bestellungen werden ueber ihre IDs geschlossen,
 // Ausgaben mit der ersten folgenden Ueberweisung. Alte Dokumente brauchen
-// keine Migration. Der erfasste Ueberweisungsbetrag bleibt die Geld-Wahrheit.
+// keine Migration. Alte Betraege waren vor Shtesa/shpenzime erfasst;
+// diese Kosten gehoeren zur alten Ueberweisung und nie in die neue Abrechnung.
 function abrechnimetAustri(liste, levizjet, deri = "") {
   const bis = (at) => at && (!deri || at <= deri);
   const barazuar = liste.filter((d) => d.statusi === "pranuar" && bis(d.barazuarAt));
@@ -434,7 +442,6 @@ function abrechnimetAustri(liste, levizjet, deri = "") {
     .slice().sort((a, b) => a.at.localeCompare(b.at) || String(a.id).localeCompare(String(b.id)));
   const verbraucht = new Set();
   const kosten = new Set();
-  let bartur = 0;
   const sum = (l, wert) => cent(l.reduce((s, x) => s + wert(x), 0));
   const lista = transfers.map((t) => {
     const ids = new Set(t.kennungen);
@@ -445,11 +452,13 @@ function abrechnimetAustri(liste, levizjet, deri = "") {
     const hyrje = sum(porosi, netoPosta);
     const riba = cent(porosi.length * DERGESA.ribaPerPorosi);
     const shtesaShuma = sum(shpenzime, (l) => l.shuma);
-    const llogaritur = cent(bartur + hyrje - riba + shtesaShuma);
-    const diferenca = cent(llogaritur - t.bruto);
+    const llogaritur = cent(hyrje - riba + shtesaShuma);
+    // Legacy: Riba was already subtracted, but additional expenses were not.
+    // New transfers contain the final amount, so never subtract costs twice.
+    const bruto = t.netoMeShpenzime ? t.bruto : cent(t.bruto + shtesaShuma);
+    const neto = cent(bruto - t.wu);
     const result = { ...t, barazuar: { numri: porosi.length, shuma: hyrje },
-      riba, shtesa: { shuma: shtesaShuma, lista: shpenzime }, bartur, llogaritur, diferenca };
-    bartur = diferenca;
+      riba, shtesa: { shuma: shtesaShuma, lista: shpenzime }, llogaritur, brutoRegjistruar: t.bruto, bruto, neto };
     return result;
   });
   const hapur = barazuar.filter((d) => !verbraucht.has(d.kennung));
@@ -458,7 +467,7 @@ function abrechnimetAustri(liste, levizjet, deri = "") {
   const riba = cent(hapur.length * DERGESA.ribaPerPorosi);
   const shtesaShuma = sum(shpenzime, (l) => l.shuma);
   return { lista, kosova: {
-    bartur, shuma: cent(bartur + hyrje - riba + shtesaShuma),
+    shuma: cent(hyrje - riba + shtesaShuma),
     barazuar: { numri: hapur.length, shuma: hyrje, lista: hapur, grupet: grupoSipasKohes(hapur, "barazuarAt", netoPosta) },
     riba: { numri: hapur.length, shuma: riba, grupet: grupoSipasKohes(hapur, "barazuarAt", () => DERGESA.ribaPerPorosi) },
     shtesa: { numri: shpenzime.length, shuma: shtesaShuma, lista: shpenzime },
@@ -466,14 +475,14 @@ function abrechnimetAustri(liste, levizjet, deri = "") {
   } };
 }
 
-// Derselbe Vorschlag im Formular und beim Speichern; Ausgaben/Restbetrag
-// werden bei der naechsten Ueberweisung vollstaendig mit abgerechnet.
+// Derselbe Vorschlag im Formular und beim Speichern, inklusive offener
+// Ausgaben. Abgeschlossene Ueberweisungen erzeugen keinen Uebertrag.
 export function propozimAustri(fin, kennungen) {
   const ids = new Set(kennungen);
   const k = fin.kosovaHapur;
   if (!k || !ids.size) return 0;
   return cent(k.paDerguar.lista.filter((d) => ids.has(d.kennung)).reduce((s, d) => s + netoPasRibes(d), 0)
-    + k.shtesa.shuma + k.bartur);
+    + k.shtesa.shuma);
 }
 
 // Die ganze Rechnung - fuer die laufende Periode (ohne periudha) oder eine
@@ -484,7 +493,8 @@ export function llogaritFinancen(liste, levizjet = [], { periudha = null } = {})
   const riba = DERGESA.ribaPerPorosi;
   const te = (liste || []).filter((d) => d && d.statusi !== "anuluar");
   const shuma = (l, vlera) => cent(l.reduce((s, d) => s + vlera(d), 0));
-  const austriTe = (levizjet || []).filter((l) => l?.lloji === "austri");
+  const abrechnimet = abrechnimetAustri(te, levizjet, deri);
+  const austriTe = abrechnimet.lista;
   const shtesaTe = (levizjet || []).filter((l) => l?.lloji === "levizje");
   const rendit = (l, fusha) => [...l].sort((a, b) => String(b[fusha]).localeCompare(String(a[fusha])));
   const dergur = new Set(austriTe.flatMap((t) => t.kennungen));
@@ -520,7 +530,6 @@ export function llogaritFinancen(liste, levizjet = [], { periudha = null } = {})
   const shtesaShuma = cent(shtesa.reduce((s, l) => s + l.shuma, 0));
   const austriBruto = cent(austri.reduce((s, t) => s + t.bruto, 0));
   const bartur = saldoDeri(prej);
-  const abrechnimet = abrechnimetAustri(te, levizjet, deri);
 
   return {
     periudha: { prej, deri },
@@ -542,7 +551,7 @@ export function llogaritFinancen(liste, levizjet = [], { periudha = null } = {})
       bruto: austriBruto,
       wu: cent(austri.reduce((s, t) => s + t.wu, 0)),
       neto: cent(austri.reduce((s, t) => s + t.neto, 0)),
-      lista: austri.map((t) => abrechnimet.lista.find((a) => a.id === t.id) || t)
+      lista: austri
     }
   };
 }
