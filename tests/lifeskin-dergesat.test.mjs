@@ -488,7 +488,7 @@ test("Financa: Kosovo = Barazuar - Riba ± Eintraege - Oesterreich; Oesterreich 
   const kosova = renderDetajet("kosova", liste, "heart", "", null, { levizjet, zgjedhur: new Set(["b"]) });
   assert.match(kosova, /data-forma="levizje"/);
   assert.match(kosova, /data-forma="austri"[\s\S]*Dërgo në Austri · 1 porosi/);
-  assert.match(kosova, /Propozim: 34,50 €/);
+  assert.match(kosova, /Propozim: 24,50 €/);
   assert.match(kosova, /Benzinë[\s\S]*− 10 €/);
 });
 
@@ -541,5 +541,6 @@ test("Perioden: abschliessen, neu bei 0, Bartur, abgeschlossene ansehen", async 
   assert.match(periudha, /Mbetur në Kosovë<\/span><b>24,50 €/);
   assert.equal(renderDetajet("periudha-gibts-nicht", liste, "heart", "", null, { levizjet }), "");
   const kartat = renderKartat(liste, "heart", "", null, { levizjet });
-  assert.match(kartat, /Bartur<\/span><span><\/span><b>\+ 24,50 €/);
+  assert.match(kartat, /Barazuar<\/span><span>2<\/span><b>\+ 73 €/);
+  assert.match(kartat, /Shtesa \/ shpenzime<\/span><span>1<\/span><b>− 10 €/);
 });

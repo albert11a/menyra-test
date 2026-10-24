@@ -423,6 +423,59 @@ export function fundiDites(dita) {
   return Number.isFinite(d.getTime()) ? d.toISOString() : "";
 }
 
+// Offene Abrechnung: Bestellungen werden ueber ihre IDs geschlossen,
+// Ausgaben mit der ersten folgenden Ueberweisung. Alte Dokumente brauchen
+// keine Migration. Der erfasste Ueberweisungsbetrag bleibt die Geld-Wahrheit.
+function abrechnimetAustri(liste, levizjet, deri = "") {
+  const bis = (at) => at && (!deri || at <= deri);
+  const barazuar = liste.filter((d) => d.statusi === "pranuar" && bis(d.barazuarAt));
+  const shtesa = levizjet.filter((l) => l?.lloji === "levizje" && bis(l.at));
+  const transfers = levizjet.filter((l) => l?.lloji === "austri" && bis(l.at))
+    .slice().sort((a, b) => a.at.localeCompare(b.at) || String(a.id).localeCompare(String(b.id)));
+  const verbraucht = new Set();
+  const kosten = new Set();
+  let bartur = 0;
+  const sum = (l, wert) => cent(l.reduce((s, x) => s + wert(x), 0));
+  const lista = transfers.map((t) => {
+    const ids = new Set(t.kennungen);
+    const porosi = barazuar.filter((d) => ids.has(d.kennung) && !verbraucht.has(d.kennung) && d.barazuarAt <= t.at);
+    const shpenzime = shtesa.filter((l) => !kosten.has(l) && l.at <= t.at);
+    porosi.forEach((d) => verbraucht.add(d.kennung));
+    shpenzime.forEach((l) => kosten.add(l));
+    const hyrje = sum(porosi, netoPosta);
+    const riba = cent(porosi.length * DERGESA.ribaPerPorosi);
+    const shtesaShuma = sum(shpenzime, (l) => l.shuma);
+    const llogaritur = cent(bartur + hyrje - riba + shtesaShuma);
+    const diferenca = cent(llogaritur - t.bruto);
+    const result = { ...t, barazuar: { numri: porosi.length, shuma: hyrje },
+      riba, shtesa: { shuma: shtesaShuma, lista: shpenzime }, bartur, llogaritur, diferenca };
+    bartur = diferenca;
+    return result;
+  });
+  const hapur = barazuar.filter((d) => !verbraucht.has(d.kennung));
+  const shpenzime = shtesa.filter((l) => !kosten.has(l));
+  const hyrje = sum(hapur, netoPosta);
+  const riba = cent(hapur.length * DERGESA.ribaPerPorosi);
+  const shtesaShuma = sum(shpenzime, (l) => l.shuma);
+  return { lista, kosova: {
+    bartur, shuma: cent(bartur + hyrje - riba + shtesaShuma),
+    barazuar: { numri: hapur.length, shuma: hyrje, lista: hapur, grupet: grupoSipasKohes(hapur, "barazuarAt", netoPosta) },
+    riba: { numri: hapur.length, shuma: riba, grupet: grupoSipasKohes(hapur, "barazuarAt", () => DERGESA.ribaPerPorosi) },
+    shtesa: { numri: shpenzime.length, shuma: shtesaShuma, lista: shpenzime },
+    paDerguar: { numri: hapur.length, shuma: hyrje, lista: hapur }
+  } };
+}
+
+// Derselbe Vorschlag im Formular und beim Speichern; Ausgaben/Restbetrag
+// werden bei der naechsten Ueberweisung vollstaendig mit abgerechnet.
+export function propozimAustri(fin, kennungen) {
+  const ids = new Set(kennungen);
+  const k = fin.kosovaHapur;
+  if (!k || !ids.size) return 0;
+  return cent(k.paDerguar.lista.filter((d) => ids.has(d.kennung)).reduce((s, d) => s + netoPasRibes(d), 0)
+    + k.shtesa.shuma + k.bartur);
+}
+
 // Die ganze Rechnung - fuer die laufende Periode (ohne periudha) oder eine
 // abgeschlossene ({ prej, deri }).
 export function llogaritFinancen(liste, levizjet = [], { periudha = null } = {}) {
@@ -467,9 +520,11 @@ export function llogaritFinancen(liste, levizjet = [], { periudha = null } = {})
   const shtesaShuma = cent(shtesa.reduce((s, l) => s + l.shuma, 0));
   const austriBruto = cent(austri.reduce((s, t) => s + t.bruto, 0));
   const bartur = saldoDeri(prej);
+  const abrechnimet = abrechnimetAustri(te, levizjet, deri);
 
   return {
     periudha: { prej, deri },
+    kosovaHapur: abrechnimet.kosova,
     financa: tri(netoPosta),
     perRiba: tri(() => riba),
     ribaNgjep: { numri: barazuar.length, shuma: ribaShuma, lista: barazuar, grupet: grupoSipasKohes(barazuar, "barazuarAt", () => riba) },
@@ -487,7 +542,7 @@ export function llogaritFinancen(liste, levizjet = [], { periudha = null } = {})
       bruto: austriBruto,
       wu: cent(austri.reduce((s, t) => s + t.wu, 0)),
       neto: cent(austri.reduce((s, t) => s + t.neto, 0)),
-      lista: austri
+      lista: austri.map((t) => abrechnimet.lista.find((a) => a.id === t.id) || t)
     }
   };
 }

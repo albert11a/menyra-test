@@ -9,7 +9,7 @@
 
 import {
   CHIPS_DERGESAT, DERGESA, STATUS_CHIPS, KALIMET_RIBA, arsyejaPaGatshme, eGatshmeNeDepo, euroSq, fillimiPeriudhes, llogaritDepon, llogaritFinancen, mundTeKthehet,
-  netoPasRibes, netoPosta, numeroPerChipDergesat, periudhat, prituriKthim, produkteNeDergesa, renditPerChipDergesat
+  propozimAustri, netoPosta, numeroPerChipDergesat, periudhat, prituriKthim, produkteNeDergesa, renditPerChipDergesat
 } from "../../shared/lifeskin-dergesat.js";
 
 export function esc(wert) {
@@ -190,7 +190,7 @@ export function renderKartat(liste, roli, _laeuft = "", lenda = null, { levizjet
   const fin = llogaritFinancen(liste, levizjet);
   const heart = roli === "heart";
   const f = fin.financa;
-  const k = fin.kosova;
+  const k = fin.kosovaHapur;
   const a = fin.austri;
   const pr = fin.perRiba;
   const rn = fin.ribaNgjep;
@@ -211,7 +211,6 @@ export function renderKartat(liste, roli, _laeuft = "", lenda = null, { levizjet
           <li><span>Barazuar</span><span>${k.barazuar.numri}</span><b>${esc(shenjaSq(k.barazuar.shuma))}</b></li>
           <li><span>Riba · 2 € për porosi</span><span>${k.riba.numri}</span><b>${esc(shenjaSq(-k.riba.shuma))}</b></li>
           ${k.shtesa.numri ? `<li><span>Shtesa / shpenzime</span><span>${k.shtesa.numri}</span><b>${esc(shenjaSq(k.shtesa.shuma))}</b></li>` : ""}
-          <li><span>Dërguar në Austri</span><span>${k.austri.numri}</span><b>${esc(shenjaSq(-k.austri.shuma))}</b></li>
         </ul>
       </section>
 
@@ -219,6 +218,11 @@ export function renderKartat(liste, roli, _laeuft = "", lenda = null, { levizjet
         <h2>T'kryme n'Austri${shiko}</h2>
         <p class="dg-karte__shuma">${esc(euroSq(a.neto))}</p>
         <p class="dg-karte__pak">${a.numri} dërgesa · − ${esc(euroSq(a.wu))} WU</p>
+        ${a.numri ? `<ul class="dg-ndarja">
+          <li><span>Barazuar</span><span></span><b>${esc(euroSq(a.lista.reduce((s, t) => s + (t.barazuar?.shuma || 0), 0)))}</b></li>
+          <li><span>Riba · 2 € për porosi</span><span></span><b>${esc(shenjaSq(-a.lista.reduce((s, t) => s + (t.riba || 0), 0)))}</b></li>
+          <li><span>Shtesa / shpenzime</span><span></span><b>${esc(shenjaSq(a.lista.reduce((s, t) => s + (t.shtesa?.shuma || 0), 0)))}</b></li>
+        </ul>` : ""}
         ${a.numri ? `<ul class="dg-historia">${a.lista.slice(0, 3).map((t) => `
           <li><span>${esc(kohaSq(t.at))}</span><span>${t.kennungen.length} porosi</span><b>${esc(euroSq(t.neto))}</b></li>`).join("")}</ul>`
           : `<p class="dg-karte__pak">Ende asgjë.</p>`}
@@ -280,9 +284,9 @@ function detajetFinanca(fin, roli, laeuft, zgjedhur) {
 
 function detajetKosova(fin, roli, laeuft, zgjedhur) {
   const heart = roli === "heart";
-  const k = fin.kosova;
+  const k = fin.kosovaHapur;
   const zgj = k.paDerguar.lista.filter((d) => zgjedhur.has(d.kennung));
-  const propozim = zgj.reduce((s, d) => s + netoPasRibes(d), 0);
+  const propozim = propozimAustri(fin, zgj.map((d) => d.kennung));
   const leviz = k.shtesa.lista.map((l) => `
             <li class="dg-levizje">
               <span><b>${esc(l.arsyeja)}</b><small>${esc(kohaSqPlote(l.at))}</small></span>
@@ -315,7 +319,7 @@ function detajetKosova(fin, roli, laeuft, zgjedhur) {
             <label><span>Shuma që dërgon</span><input name="bruto" data-ruaj="austri-bruto" data-propozim="${esc(String(propozim).replace(".", ","))}" inputmode="decimal" placeholder="${esc(euroSq(propozim))}" aria-label="Shuma që dërgon"></label>
             <label><span>WU tarifa</span><input name="wu" data-ruaj="austri-wu" inputmode="decimal" placeholder="p.sh. 8,50" aria-label="Western Union tarifa"></label>
             <button type="submit" class="dg-buton dg-buton--kryesor"${laeuft || !zgj.length ? " disabled" : ""}>${zgj.length ? `Dërgo në Austri · ${zgj.length} porosi` : "Zgjidh barazimet"}</button>
-            <small>Propozim: ${esc(euroSq(propozim))} (pa postën dhe pa 2 € për Riben)</small>
+            <small>Propozim: ${esc(euroSq(propozim))} (posta, Riba, shtesa / shpenzime dhe bartja të përfshira)</small>
           </form>` : ""}
         </section>
         <section class="dg-pjese">
@@ -323,19 +327,25 @@ function detajetKosova(fin, roli, laeuft, zgjedhur) {
           <ul class="dg-levizjet">
             ${leviz}
             ${grupet(k.barazuar.grupet, "Barazuar", 1)}
-            ${grupet(fin.ribaNgjep.grupet, "Riba", -1)}
+            ${grupet(k.riba.grupet, "Riba", -1)}
             ${k.bartur ? `
             <li class="dg-levizje">
-              <span><b>Bartur nga periudha e kaluar</b><small>${esc(kohaSqPlote(fin.periudha.prej))}</small></span>
+              <span><b>Mbetur nga dërgesat e kaluara</b></span>
               <b class="${k.bartur < 0 ? "dg-minus" : "dg-plus"}">${esc(shenjaSq(k.bartur))}</b>
             </li>` : ""}
-            ${fin.austri.lista.map((t) => `
-            <li class="dg-levizje">
-              <span><b>Dërguar në Austri · ${t.kennungen.length} porosi</b><small>${esc(kohaSqPlote(t.at))}</small></span>
-              <b class="dg-minus">${esc(shenjaSq(-t.bruto))}</b>
-            </li>`).join("")}
           </ul>
         </section>` };
+}
+
+function llogariaAustri(t) {
+  if (!t.barazuar) return "";
+  return `
+            ${t.bartur ? `<li><span>Bartur</span><b>${esc(shenjaSq(t.bartur))}</b></li>` : ""}
+            <li><span>Barazuar · ${t.barazuar.numri} porosi</span><b>${esc(euroSq(t.barazuar.shuma))}</b></li>
+            <li><span>Riba · 2 € për porosi</span><b class="dg-minus">− ${esc(euroSq(t.riba))}</b></li>
+            ${t.shtesa.lista.map((l) => `<li><span>Shtesa / shpenzime · ${esc(l.arsyeja)}</span><b>${esc(shenjaSq(l.shuma))}</b></li>`).join("")}
+            <li><span>Shuma e llogaritur</span><b>${esc(euroSq(t.llogaritur))}</b></li>
+            ${t.diferenca ? `<li><span>Mbetur në Kosovë / diferenca</span><b>${esc(shenjaSq(t.diferenca))}</b></li>` : ""}`;
 }
 
 function detajetAustri(fin, liste) {
@@ -345,6 +355,7 @@ function detajetAustri(fin, liste) {
         <section class="dg-grup dg-transfer">
           <h4><span>${esc(kohaSqPlote(t.at))}</span><span>${t.kennungen.length} porosi</span><b>${esc(euroSq(t.neto))}</b></h4>
           <ul class="dg-transfer__llogari">
+            ${llogariaAustri(t)}
             <li><span>Dërguar</span><b>${esc(euroSq(t.bruto))}</b></li>
             <li><span>WU tarifa</span><b class="dg-minus">− ${esc(euroSq(t.wu))}</b></li>
             <li class="dg-transfer__neto"><span>Ardhur në Austri</span><b>${esc(euroSq(t.neto))}</b></li>

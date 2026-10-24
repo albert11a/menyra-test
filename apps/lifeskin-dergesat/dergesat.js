@@ -38,7 +38,7 @@ import {
 } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import {
   CHIPS_DERGESAT, DERGESA, STATUS_CHIPS, austriDok, dergesaLesen, euroSq, fillimiPeriudhes, fundiDites, hyrja, kthimNeDepo, levizjeDok,
-  levizjeLesen, llogaritFinancen, mbylljeDok, ndryshimi, netoPasRibes, netoPosta, periudhat, shumaLexo, KTHIMI,
+  levizjeLesen, llogaritFinancen, mbylljeDok, ndryshimi, propozimAustri, netoPosta, periudhat, shumaLexo, KTHIMI,
   arsyejaPaGatshme, lidhGatshme, hiqGatshme, produkteNeDergesa
 } from "/shared/lifeskin-dergesat.js";
 import { eFleteValide, gatshmePer, kohaSq, renderChips, renderDetajet, renderKartat, renderListe } from "./dergesat-pamja.js";
@@ -488,7 +488,7 @@ document.addEventListener("click", (ngjarja) => {
   }
   if (veprimi === "zgjidh-te-gjitha") {
     const fin = llogaritFinancen(gjendja.liste, gjendja.levizjet);
-    const lista = el.dataset.grupi === "kosova" ? fin.kosova.paDerguar.lista : fin.financa.paBarazuar.lista;
+    const lista = el.dataset.grupi === "kosova" ? fin.kosovaHapur.paDerguar.lista : fin.financa.paBarazuar.lista;
     const tegjitha = lista.every((x) => gjendja.zgjedhur.has(x.kennung));
     for (const x of lista) { if (tegjitha) gjendja.zgjedhur.delete(x.kennung); else gjendja.zgjedhur.add(x.kennung); }
     vizatoFleten();
@@ -597,8 +597,9 @@ document.addEventListener("submit", (ngjarja) => {
     return;
   }
   if (forma.dataset.forma === "austri") {
-    const lista = llogaritFinancen(gjendja.liste, gjendja.levizjet).kosova.paDerguar.lista.filter((x) => gjendja.zgjedhur.has(x.kennung));
-    const propozim = lista.reduce((s, x) => s + netoPasRibes(x), 0);
+    const fin = llogaritFinancen(gjendja.liste, gjendja.levizjet);
+    const lista = fin.kosovaHapur.paDerguar.lista.filter((x) => gjendja.zgjedhur.has(x.kennung));
+    const propozim = propozimAustri(fin, lista.map((x) => x.kennung));
     const bruto = forma.elements.bruto.value.trim() ? shumaLexo(forma.elements.bruto.value) : propozim;
     const wu = forma.elements.wu.value.trim() ? shumaLexo(forma.elements.wu.value) : 0;
     const dok = austriDok({ kennungen: lista.map((x) => x.kennung), bruto, wu });
