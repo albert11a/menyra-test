@@ -958,7 +958,7 @@ details > .kushtet { padding-top: 0; }
 .vergleich figcaption { margin-top: 10px; text-align: left; font-size: 12px; color: var(--muted); }
 
 /* Reviewed personal results: open illustration, compact goals, equal cards. */
-.terapia-ziele { border-top: 1px solid var(--line); margin-top: 32px; padding-top: 36px; }
+.terapia-ziele { margin-top: 32px; padding-top: 36px; }
 .terapia-ziele__intro { color: var(--muted); font-size: .9rem; line-height: 1.65; margin-top: 14px; }
 .terapia-ziele__wochen { display: flex; gap: 5px; padding: 4px; margin: 24px 0; border-radius: 13px; background: var(--green-soft); }
 .terapia-ziele__wochen button { flex: 1; min-width: 0; min-height: 44px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font: inherit; font-size: .8rem; cursor: pointer; }

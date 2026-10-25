@@ -49,3 +49,10 @@ corners to the rounded image. Leave pointer behavior and keyboard focus intact.
 Tap-overlay validation: all 12 targeted tests and npm run build passed. No
 tracked bundle changes. The iPhone tap overlay has not been visually verified
 on a device; the change targets the missing WebKit tap-highlight suppression.
+
+Divider correction scope: remove the results section's extra top border. The
+preceding .pjese already draws its bottom separator; the focus layout continues
+to use its existing single top separator. Keep section spacing unchanged.
+
+Divider validation: npm run build, three Pixel-lock tests and git diff --check
+passed. Tracked bundles unchanged; no mobile/browser visual check performed.
