@@ -41,3 +41,11 @@ long-press selection on that input only; scrolling outside the image remains.
 
 Drag validation: 12 existing targeted tests and npm run build passed; no tracked
 bundle changes. Mobile/browser gesture verification has not been performed.
+
+Tap-overlay scope: suppress the browser's tap highlight specifically on the
+comparison stage and its children. Match the invisible range input's hit-area
+corners to the rounded image. Leave pointer behavior and keyboard focus intact.
+
+Tap-overlay validation: all 12 targeted tests and npm run build passed. No
+tracked bundle changes. The iPhone tap overlay has not been visually verified
+on a device; the change targets the missing WebKit tap-highlight suppression.
