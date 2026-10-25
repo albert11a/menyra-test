@@ -15,3 +15,12 @@ Ten targeted tests passed (week selection/goal updates, illustration identity,
 missing-pair behavior, existing comparison uploads/lazy loading and Pixel lock).
 `git diff --check` passed. No mobile/browser test was run; responsive sizing
 was reviewed in CSS only. Existing Vite circular/large-chunk warnings remain.
+
+Follow-up scope: omit the specific guarantee sentence from the results intro
+without modifying the stored report. Make the entire comparison image respond
+to taps and pointer dragging while retaining native keyboard control and vertical
+page scrolling. No tracking or offer changes.
+
+Follow-up validation: build and all 12 targeted tests passed, including taps,
+pointer cancellation, keyboard/input preservation and the report-text filter.
+Tracked bundles unchanged. Mobile/browser testing was not run.

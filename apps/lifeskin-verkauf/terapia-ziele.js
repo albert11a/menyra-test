@@ -4,6 +4,12 @@ import { vergleichVollstaendig } from "../../shared/lifeskin-vergleich.js";
 // manufactures a patient-specific probability, measurement or forecast.
 export const WOCHENZIELE = [[22, 35], [47, 56], [72, 73], [92, 85]];
 
+export function zieltextLesen(bericht = {}) {
+  return String(bericht.synimi28 || bericht.gjetjaKryesore || "")
+    .replace(/Arritja e plot[eë] e k[eë]tij synimi nuk mund t[eë] garantohet[.!]?/giu, "")
+    .replace(/\s+/g, " ").trim();
+}
+
 export function hautPfad(woche, kontext = "") {
   let saat = 0;
   for (const zeichen of String(kontext)) saat = (saat * 31 + zeichen.charCodeAt(0)) >>> 0;
@@ -15,7 +21,7 @@ export function zeigeTherapieZiele(wurzel, { sichtbar, bericht = {}, vergleich }
   if (!wurzel) return;
   wurzel.hidden = !sichtbar;
   if (!sichtbar) return;
-  const text = String(bericht.synimi28 || bericht.gjetjaKryesore || "").trim();
+  const text = zieltextLesen(bericht);
   wurzel.querySelector("[data-zieltext]").textContent = text || "Synimet per lekuren tende pas 4 javeve.";
   const paar = vergleichVollstaendig(vergleich);
   wurzel.querySelector(".terapia-ziele__reihe").classList.toggle("terapia-ziele__reihe--einzeln", !paar);

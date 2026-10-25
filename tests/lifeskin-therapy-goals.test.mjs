@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { zeigeTherapieZiele, hautPfad } from '../apps/lifeskin-verkauf/terapia-ziele.js';
+import { zeigeTherapieZiele, hautPfad, zieltextLesen } from '../apps/lifeskin-verkauf/terapia-ziele.js';
+
+test('results intro omits the requested sentence without changing the report', () => {
+  const bericht = { synimi28: 'Synimi pas 4 javësh: lëkurë e hidratuar. Arritja e plotë e këtij synimi nuk mund të garantohet.' };
+  assert.equal(zieltextLesen(bericht), 'Synimi pas 4 javësh: lëkurë e hidratuar.');
+  assert.match(bericht.synimi28, /garantohet/);
+});
 
 function surface() {
   const node = () => ({ attrs: {}, style: {}, setAttribute(k, v) { this.attrs[k] = v; } });

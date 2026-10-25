@@ -1,5 +1,10 @@
 import { vergleichLesen, vergleichVollstaendig } from "../../shared/lifeskin-vergleich.js";
 
+export function vergleichPosition(clientX, rechteck) {
+  if (!Number.isFinite(clientX) || !(rechteck.width > 0)) return null;
+  return Math.max(0, Math.min(100, (clientX - rechteck.left) / rechteck.width * 100));
+}
+
 // One native range input: touch, mouse, keyboard and screen readers. Moving
 // the divider only changes a CSS variable; neither image moves or resizes.
 export function zeigeVergleich(wurzel, wert) {
@@ -40,9 +45,33 @@ export function zeigeVergleich(wurzel, wert) {
   regler.className = "vergleich__regler";
   regler.setAttribute("aria-label", "Krahasoni fotot para dhe pas");
   regler.addEventListener("input", () => buehne.style.setProperty("--teilung", `${regler.value}%`));
+  // Mobile browsers can restrict native range taps to the invisible track.
+  // Map the whole image to the divider; keep the native input for keyboards.
+  let zeiger = null;
+  const positionSetzen = (ereignis) => {
+    const position = vergleichPosition(ereignis.clientX, buehne.getBoundingClientRect());
+    if (position === null) return;
+    regler.value = String(Math.round(position));
+    buehne.style.setProperty("--teilung", `${regler.value}%`);
+  };
+  regler.addEventListener("pointerdown", (ereignis) => {
+    if (ereignis.isPrimary === false || (ereignis.button !== undefined && ereignis.button !== 0)) return;
+    ereignis.preventDefault();
+    zeiger = ereignis.pointerId;
+    regler.focus?.({ preventScroll: true });
+    regler.setPointerCapture?.(zeiger);
+    positionSetzen(ereignis);
+  });
+  regler.addEventListener("pointermove", (ereignis) => {
+    if (zeiger !== null && ereignis.pointerId === zeiger) positionSetzen(ereignis);
+  });
+  const ende = () => { zeiger = null; };
+  regler.addEventListener("pointerup", ende);
+  regler.addEventListener("pointercancel", ende);
+  regler.addEventListener("lostpointercapture", ende);
   buehne.append(griff, regler);
   const hinweis = doc.createElement("figcaption");
-  hinweis.textContent = "Rrëshqitni për të krahasuar";
+  hinweis.textContent = "Prekni ose rrëshqitni foton për të krahasuar";
   wurzel.append(buehne, hinweis);
   let aktiv = true;
   let beobachter;

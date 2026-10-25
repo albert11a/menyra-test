@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { vergleichLesen, vergleichVollstaendig } from "../shared/lifeskin-vergleich.js";
-import { zeigeVergleich } from "../apps/lifeskin-verkauf/terapia-vergleich.js";
+import { zeigeVergleich, vergleichPosition } from "../apps/lifeskin-verkauf/terapia-vergleich.js";
 import { vergleichHochladen, renderBefundVergleich } from "../apps/mnyra-heart/heart-lifeskin-vergleich.js";
 const paar = { vorher: "https://cdn.example/before.jpg", nachher: "https://cdn.example/after.jpg" };
 
@@ -83,4 +83,22 @@ test("failed or invalid uploads preserve the previously saved photo", async () =
   assert.equal(nodes["[data-vergleich-url]"].value, paar.vorher);
   assert.ok(buttons.every(b => !b.disabled));
   assert.equal((renderBefundVergleich(paar).match(/data-vergleich-url=/g) || []).length, 2);
+});
+
+test('the whole image responds to taps and drags, and cancellation stops dragging', () => {
+  const root = dom(); zeigeVergleich(root, paar);
+  const stage = root.children[0];
+  stage.getBoundingClientRect = () => ({ left: 20, width: 200 });
+  const input = stage.children.at(-1);
+  const event = (clientX, pointerId = 1) => ({ clientX, pointerId, button: 0, preventDefault() {} });
+  input.listeners.pointerdown(event(70));
+  assert.equal(input.value, '25'); assert.equal(stage.vars['--teilung'], '25%');
+  input.listeners.pointermove(event(170)); assert.equal(input.value, '75');
+  input.listeners.pointermove(event(40, 2)); assert.equal(input.value, '75');
+  input.listeners.pointercancel();
+  input.listeners.pointermove(event(50)); assert.equal(input.value, '75');
+  input.listeners.pointerdown(event(240)); assert.equal(input.value, '100');
+  input.listeners.pointerup();
+  assert.equal(vergleichPosition(-20, { left: 20, width: 200 }), 0);
+  assert.equal(vergleichPosition(50, { left: 20, width: 0 }), null);
 });
