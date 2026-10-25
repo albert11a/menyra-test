@@ -33,3 +33,11 @@ Focus validation: all 12 targeted tests pass, including the no-forced-focus
 pointer regression. Build passed on retry after a transient .rsync-tmp file
 vanished during the first output pass. Tracked bundles unchanged. Mobile/browser
 interaction has not been tested on a device.
+
+Drag interruption scope: reserve touch gestures on the comparison image for
+its slider. The previous pan-y allowed mobile browsers to cancel pointer
+tracking as soon as a drag gained vertical movement. Disable touch panning and
+long-press selection on that input only; scrolling outside the image remains.
+
+Drag validation: 12 existing targeted tests and npm run build passed; no tracked
+bundle changes. Mobile/browser gesture verification has not been performed.
