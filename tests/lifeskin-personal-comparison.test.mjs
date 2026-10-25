@@ -91,7 +91,11 @@ test('the whole image responds to taps and drags, and cancellation stops draggin
   stage.getBoundingClientRect = () => ({ left: 20, width: 200 });
   const input = stage.children.at(-1);
   const event = (clientX, pointerId = 1) => ({ clientX, pointerId, button: 0, preventDefault() {} });
+  input.listeners.focus();
+  assert.equal(stage.dataset.tastatur, 'ja');
+  input.focus = () => assert.fail('Pointer interaction must not force focus');
   input.listeners.pointerdown(event(70));
+  assert.equal(stage.dataset.tastatur, undefined);
   assert.equal(input.value, '25'); assert.equal(stage.vars['--teilung'], '25%');
   input.listeners.pointermove(event(170)); assert.equal(input.value, '75');
   input.listeners.pointermove(event(40, 2)); assert.equal(input.value, '75');

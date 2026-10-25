@@ -44,6 +44,7 @@ export function zeigeVergleich(wurzel, wert) {
   regler.value = "50";
   regler.className = "vergleich__regler";
   regler.setAttribute("aria-label", "Krahasoni fotot para dhe pas");
+  regler.addEventListener("focus", () => { buehne.dataset.tastatur = "ja"; });
   regler.addEventListener("input", () => buehne.style.setProperty("--teilung", `${regler.value}%`));
   // Mobile browsers can restrict native range taps to the invisible track.
   // Map the whole image to the divider; keep the native input for keyboards.
@@ -57,8 +58,8 @@ export function zeigeVergleich(wurzel, wert) {
   regler.addEventListener("pointerdown", (ereignis) => {
     if (ereignis.isPrimary === false || (ereignis.button !== undefined && ereignis.button !== 0)) return;
     ereignis.preventDefault();
+    delete buehne.dataset.tastatur;
     zeiger = ereignis.pointerId;
-    regler.focus?.({ preventScroll: true });
     regler.setPointerCapture?.(zeiger);
     positionSetzen(ereignis);
   });

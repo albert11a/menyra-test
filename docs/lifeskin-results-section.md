@@ -24,3 +24,12 @@ page scrolling. No tracking or offer changes.
 Follow-up validation: build and all 12 targeted tests passed, including taps,
 pointer cancellation, keyboard/input preservation and the report-text filter.
 Tracked bundles unchanged. Mobile/browser testing was not run.
+
+Focus follow-up scope: prevent touch/mouse taps from drawing a focus outline
+around the comparison image; retain a visible focus indicator for keyboard use.
+Keep tap positioning, pointer dragging, native keyboard input and lazy loading.
+
+Focus validation: all 12 targeted tests pass, including the no-forced-focus
+pointer regression. Build passed on retry after a transient .rsync-tmp file
+vanished during the first output pass. Tracked bundles unchanged. Mobile/browser
+interaction has not been tested on a device.
