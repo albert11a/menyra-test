@@ -10775,3 +10775,22 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 .heart-vergleich img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 12px; }
 .heart-vergleich button { width: 100%; white-space: normal; }
 .heart-vergleich small { overflow-wrap: anywhere; }
+
+/* Ads / Umsatz / Gewinn: existing card shell, phone-first two columns. */
+.heart-gewinn { min-width: 0; }
+.heart-gewinn__filter, .heart-gewinn__editor { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+.heart-gewinn label { display: grid; gap: 6px; flex: 1 1 120px; min-width: 0; font-size: 12px; }
+.heart-gewinn .heart-lifeskin-eingabe { width: 100%; min-width: 0; box-sizing: border-box; min-height: 44px; color-scheme: dark; }
+.heart-gewinn__editor p { flex-basis: 100%; margin: 0; }
+.heart-gewinn__raster { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--heart-border, #303036); border-radius: 12px; }
+.heart-gewinn__wert { display: flex; flex-direction: column; gap: 6px; padding: 16px 12px; min-width: 0; }
+.heart-gewinn__wert small { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; opacity: .65; }
+.heart-gewinn__wert strong { font-size: clamp(19px, 5vw, 28px); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.heart-gewinn__wert span, .heart-gewinn__hinweis, .heart-gewinn__editor p { font-size: 12px; line-height: 1.6; opacity: .7; }
+.heart-gewinn__tabelle { overflow-x: auto; margin: 14px 0; -webkit-overflow-scrolling: touch; }
+.heart-gewinn table { border-collapse: collapse; width: 100%; font-size: 12px; font-variant-numeric: tabular-nums; }
+.heart-gewinn th, .heart-gewinn td { text-align: right; padding: 10px 8px; white-space: nowrap; border-bottom: 1px solid var(--heart-border, #303036); }
+.heart-gewinn th:first-child, .heart-gewinn td:first-child { text-align: left; }
+[data-heart-theme="tag"] .heart-gewinn .heart-lifeskin-eingabe { color-scheme: light; }
+.heart-gewinn > .heart-klapp__kopf .heart-lifeskin-block__titel { min-width: 0; }
+.heart-gewinn > .heart-klapp__kopf .heart-klapp__zahl { max-width: 38%; }

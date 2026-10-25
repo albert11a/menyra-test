@@ -1,3 +1,4 @@
+import { renderGewinn } from "./heart-lifeskin-gewinn.js";
 import { SHOP_CATEGORIES, safeProductImage } from "../../shared/lifeskin-storefront.js";
 import { baueRutina, renderRutina } from "./heart-lifeskin-rutina.js";
 import { renderShopNachrichten } from "./heart-lifeskin-shopnachrichten.js";
@@ -3767,6 +3768,7 @@ function renderLifeskinBeide(zustand) {
       ${renderLiveKarte(live?.shop, "beide-shop", "Live · Shop")}
       ${renderLiveKarte(live?.analyse, "beide-analyse", "Live · Analyse")}`}
       ${renderKachelnBeide(zahlen, zeitraum)}
+      ${renderGewinn(alle, zustand, BEIDE_WEGE)}
       ${renderBestellungen(alle, zustand.bestellZeitraum || "heute", zustand)}`;
 }
 
@@ -3911,6 +3913,7 @@ function renderWegUebersicht(zustand, weg, offenerWeg = weg) {
         </p>` : ""}
       ${weg === "lifeskin2" ? renderLs2Weg(baueLs2Weg(imBlick, zustand.berichte || {}), zeitraum) : ""}
       ${renderKacheln(zahlen, zeitraum)}
+      ${renderGewinn(alleDesWegs, zustand, [weg])}
       ${zustand.liveFehler
         ? leererBlock("Live", "Verbindung unterbrochen — Live-Zahlen nicht verfuegbar.")
         : renderLive(live)}

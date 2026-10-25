@@ -562,6 +562,10 @@ export function bindHeartEvents({
     // Ohne await davor: Die Dateiwahl muss im Griff des Fingers aufgehen.
     if (action === "lifeskin-shopset-foto") { operations.shopSetFoto?.(); return; }
     if (action === "lifeskin-shopset-speichern") { await operations.speichereShopSet?.(); return; }
+    if (action === "lifeskin-gewinn-plus") { event.preventDefault(); operations.gewinnPlus?.(target); return; }
+    if (action === "lifeskin-gewinn-speichern") { await operations.gewinnSpeichern?.(target); return; }
+    if (action === "lifeskin-gewinn-abbrechen") { operations.gewinnSchliessen?.(); return; }
+    if (action === "lifeskin-gewinn-laden") { await operations.gewinnLaden?.(); return; }
     if (action === "lifeskin-kosten-speichern") { await operations.produktkostenSpeichern?.(); return; }
     if (action === "lifeskin-krem-neu") { operations.kremNeu?.(); return; }
     if (action === "lifeskin-krem-weg") { operations.kremWeg?.(target); return; }
@@ -892,6 +896,13 @@ export function bindHeartEvents({
   }
 
   async function handleChange(event) {
+    if (event.target?.matches?.("[data-gewinn-filter]")) {
+      operations.gewinnFilter?.(event.target.getAttribute("data-gewinn-filter"), event.target.value); return;
+    }
+    if (event.target?.matches?.("[data-gewinn-datum], [data-gewinn-weg]")) {
+      operations.gewinnAdsVorhanden?.(); return;
+    }
+
     // Zbritje im Laden: Eingaben als Entwurf merken, bis gespeichert wird.
     if (event.target?.matches?.("[data-aktionfeld], [data-aktionfeld-an]")) {
       operations.shopAktionEntwurf?.();
