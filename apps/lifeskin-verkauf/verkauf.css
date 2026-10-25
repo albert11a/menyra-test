@@ -953,3 +953,44 @@ details > .kushtet { padding-top: 0; }
 .vergleich__regler { position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; touch-action: pan-y; }
 .vergleich__buehne:focus-within { outline: 3px solid var(--green); outline-offset: 3px; }
 .vergleich figcaption { margin-top: 10px; text-align: left; font-size: 12px; color: var(--muted); }
+
+/* Reviewed personal results: open illustration, compact goals, equal cards. */
+.terapia-ziele { border-top: 1px solid var(--line); margin-top: 32px; padding-top: 36px; }
+.terapia-ziele__intro { color: var(--muted); font-size: .9rem; line-height: 1.65; margin-top: 14px; }
+.terapia-ziele__wochen { display: flex; gap: 5px; padding: 4px; margin: 24px 0; border-radius: 13px; background: var(--green-soft); }
+.terapia-ziele__wochen button { flex: 1; min-width: 0; min-height: 44px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font: inherit; font-size: .8rem; cursor: pointer; }
+.terapia-ziele__wochen button[aria-pressed="true"] { color: var(--ink); background: var(--white); box-shadow: 0 1px 5px #203a3610; }
+.terapia-ziele__haut { display: grid; grid-template-columns: minmax(0, 1fr) 80px; gap: 14px; align-items: center; margin: 0 0 28px; }
+.terapia-ziele__haut svg { width: 100%; height: 145px; display: block; }
+.terapia-ziele__haut path { transition: d .8s ease; }
+.terapia-ziele__schichten { height: 145px; display: flex; flex-direction: column; justify-content: space-evenly; font-size: 11px; color: var(--muted); }
+.terapia-ziele__schichten span { border-left: 1px solid var(--line); padding-left: 10px; }
+.terapia-ziele__linien { stroke: var(--green); fill: none; stroke-width: 1.2; stroke-dasharray: 4 5; opacity: .55; }
+.terapia-ziele__metrik { margin-top: 20px; }
+.terapia-ziele__metrik p { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: .88rem; margin: 0 0 9px; }
+.terapia-ziele__metrik b { font-variant-numeric: tabular-nums; }
+.terapia-ziele__spur { height: 10px; border-radius: 30px; background: var(--green-soft); overflow: hidden; }
+.terapia-ziele__spur i { display: block; height: 100%; border-radius: inherit; background: var(--green); transition: width .8s ease; }
+.terapia-ziele__hinweis { font-size: 11px; color: var(--muted); margin-top: 14px; }
+.terapia-ziele__sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.terapia-ziele__reihe { display: flex; gap: 14px; align-items: stretch; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin-top: 32px; padding: 3px 2px 10px; }
+.terapia-ziele__reihe::-webkit-scrollbar { display: none; }
+.terapia-ziele__reihe > .vergleich, .terapia-ziele__begleitung { flex: 0 0 calc((100% - 14px) / 1.5); min-width: 0; height: 350px; margin: 0; scroll-snap-align: start; }
+.terapia-ziele .vergleich__buehne { height: 100%; aspect-ratio: auto; border-radius: 20px; }
+.terapia-ziele .vergleich figcaption { display: none; }
+.terapia-ziele__begleitung { background: var(--green-soft); border-radius: 20px; padding: 24px 21px; display: flex; flex-direction: column; justify-content: center; }
+.terapia-ziele__begleitung h3 { font-size: clamp(20px, 5vw, 25px); line-height: 1.2; letter-spacing: -.6px; margin: 0 0 20px; }
+.terapia-ziele__begleitung p { font-size: 14px; line-height: 1.65; color: var(--ink); margin: 0; }
+.terapia-ziele__begleitung p + p { margin-top: 16px; }
+.terapia-ziele__begleitung strong { color: var(--green); }
+.terapia-ziele__reihe--einzeln .terapia-ziele__begleitung { flex-basis: 100%; height: auto; min-height: 220px; }
+.terapia-ziele__navigation { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 11px; color: var(--muted); margin-top: 6px; }
+.terapia-ziele__navigation button { border: 0; padding: 8px 0 8px 10px; min-height: 44px; background: transparent; color: var(--green); font: inherit; cursor: pointer; }
+@media (max-width: 360px) {
+  .terapia-ziele__begleitung { padding: 18px 15px; }
+  .terapia-ziele__begleitung p { font-size: 13px; }
+  .terapia-ziele__haut { grid-template-columns: minmax(0, 1fr) 72px; gap: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .terapia-ziele__haut path, .terapia-ziele__spur i { transition: none; }
+}

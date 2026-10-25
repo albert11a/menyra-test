@@ -200,7 +200,40 @@
           <li><span>3</span><div><h3>Java 2–3 — plani përshtatet</h3><p>Nëse diçka nuk ecën, e ndryshojmë bashkë.</p></div></li>
           <li><span>4</span><div><h3>Java 4 — vlerësimi final</h3><p id="t-dita28">Krahasojmë lëkurën tuaj me foton e sotme.</p></div></li>
         </ol>
-        <figure class="vergleich" id="t-vergleich" hidden></figure>
+      </section>
+
+      <section class="pjese terapia-ziele" id="t-ergebnisse" aria-labelledby="t-ergebnistitel" hidden>
+        <p class="syri">Rezultatet</p>
+        <h2 id="t-ergebnistitel">Pritshmeria e terapise</h2>
+        <p class="terapia-ziele__intro" data-zieltext>Synimet per lekuren tende pas 4 javeve.</p>
+        <div class="terapia-ziele__wochen" role="group" aria-label="Zgjidh javen">
+          <button type="button" data-zielwoche="1" aria-pressed="false">Java 1</button>
+          <button type="button" data-zielwoche="2" aria-pressed="false">Java 2</button>
+          <button type="button" data-zielwoche="3" aria-pressed="false">Java 3</button>
+          <button type="button" data-zielwoche="4" aria-pressed="true">Java 4</button>
+        </div>
+        <div class="terapia-ziele__haut">
+          <svg viewBox="0 0 340 145" preserveAspectRatio="none" role="img" aria-label="Skeme orientuese e shtresave te lekures">
+            <defs><pattern id="ziel-zellen" width="23" height="14" patternUnits="userSpaceOnUse"><rect x="1" y="1" width="20" height="11" rx="5" fill="#ead2bf" stroke="#fff"/></pattern></defs>
+            <path data-hautoberflaeche fill="#d7b69f" d="M0 31 Q42 24 85 29 T170 29 T255 29 T340 30 L340 44 L0 44Z"/>
+            <path fill="url(#ziel-zellen)" d="M0 44H340V76 Q315 84 286 76T230 76T172 76T115 76T58 76T0 76Z"/>
+            <path fill="#f1e2d4" d="M0 76 Q29 84 58 76T115 76T172 76T230 76T286 76T340 76V124H0Z"/>
+            <path fill="#e8d7b7" d="M0 124H340V145H0Z"/>
+            <g fill="none" stroke="#c6aa90" stroke-width="1.5" opacity=".55"><path d="M0 98Q35 80 70 101T140 101T210 101T280 101T350 101"/><path d="M0 114Q35 96 70 116T140 116T210 116T280 116T350 116"/></g>
+            <g class="terapia-ziele__linien"><path d="M57 0V64"/><path d="M170 0V56"/><path d="M283 0V64"/></g>
+            <g data-hautpunkte fill="#bf725c" opacity=".22"><ellipse cx="82" cy="43" rx="7" ry="6"/><ellipse cx="236" cy="47" rx="5" ry="5"/></g>
+          </svg>
+          <div class="terapia-ziele__schichten"><span>Barriera</span><span>Epiderma</span><span>Derma</span><span>Hipoderma</span></div>
+        </div>
+        <div class="terapia-ziele__metrik"><p><span>Qetesimi i lekures</span><b data-zielwert>92%</b></p><div class="terapia-ziele__spur" role="progressbar" aria-label="Synimi i qetesimit" aria-valuenow="92" aria-valuemin="0" aria-valuemax="100"><i style="width:92%"></i></div></div>
+        <div class="terapia-ziele__metrik"><p><span>Hidratimi</span><b data-zielwert>85%</b></p><div class="terapia-ziele__spur" role="progressbar" aria-label="Synimi i hidratimit" aria-valuenow="85" aria-valuemin="0" aria-valuemax="100"><i style="width:85%"></i></div></div>
+        <p class="terapia-ziele__hinweis">Synime orientuese</p>
+        <span class="terapia-ziele__sr" data-zielstatus aria-live="polite"></span>
+        <div class="terapia-ziele__reihe" role="group" aria-label="Fotot dhe kujdesi javor">
+          <figure class="vergleich" id="t-vergleich" hidden></figure>
+          <aside class="terapia-ziele__begleitung"><h3>Cdo jave, kujdes per ty.</h3><p>Cdo jave shohim fotot e tua dhe kontrollojme si po ndryshon lekura.</p><p>Nese lekura nuk permiresohet si presim, <strong>ju shtojme produkte shtese falas.</strong></p></aside>
+        </div>
+        <div class="terapia-ziele__navigation" data-zielnavigation><span>Rreshqit foton per krahasim</span><button type="button" data-zielweiter>Shiko kujdesin →</button></div>
       </section>
 
       <!-- 5. ERGEBNISSE -->

@@ -35,6 +35,7 @@ import {
   RASTE_STANDARD, rasteLaden, rasteNormalisieren, rasteFuerBericht, rasteMitBildern, rastiProdukteText
 } from "../../shared/lifeskin-raste.js";
 import { zeigeVergleich } from "./terapia-vergleich.js";
+import { zeigeTherapieZiele } from "./terapia-ziele.js";
 import { KundenMedien } from "./terapia-medien.js";
 import { ansichtOeffnen, ansichtSchliessen } from "./ansicht.js";
 import { NDJEKJA, NDJEKJA_TEXTE, KAUFWEG_VERSION, ndjekjaSichtbar } from "../../shared/lifeskin-ndjekja.js";
@@ -565,6 +566,7 @@ export class Terapia {
     // gewaehlt hat, in dieser Reihenfolge. Keines gewaehlt: kein Abschnitt.
     this.#medien(mitProdukten);
     zeigeVergleich($("#t-vergleich"), mitProdukten ? d.vergleich : null);
+    zeigeTherapieZiele($("#t-ergebnisse"), { sichtbar: mitProdukten, bericht: r, vergleich: d.vergleich });
     zeigen($("#vendimi"), this.mitAngebot);
     schreibe($("#t-dita28"), s.dita_28 || this.produkte[0]?.synimi || "Krahasojmë lëkurën tuaj me foton e sotme.");
     schreibe($("#t-psetani"), s.pse_tani || "");
