@@ -10851,3 +10851,20 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 .heart-gewinn-abzuege dt { overflow-wrap: anywhere; }
 .heart-gewinn-abzuege dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .heart-gewinn-abzuege .ist-summe { font-weight: 650; }
+
+/* Profit typography uses the shared stat classes (11 / 25 / 12 px).
+   Give label, value and note a little more vertical breathing room. */
+.heart-gewinn__kacheln .heart-lifeskin-kachel {
+  gap: 6px;
+  padding: 14px 13px 15px;
+}
+.heart-gewinn__kacheln .heart-lifeskin-kachel__zusatz { line-height: 1.35; }
+
+/* Safari can focus the summary itself, including its nested action buttons. */
+.heart-gewinn summary { -webkit-tap-highlight-color: transparent; }
+.heart-gewinn summary:focus { outline: none; box-shadow: none; }
+.heart-gewinn summary:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--heart-border-strong, #777);
+  border-radius: 6px;
+}

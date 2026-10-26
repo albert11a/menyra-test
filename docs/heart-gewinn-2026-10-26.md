@@ -42,3 +42,7 @@ Umsetzung auf Feature-Branch gemaess AGENTS.md. Keine Produktionstests, kein Pla
 - Die acht Gewinnwerte verwenden nun dieselben heart-lifeskin-kacheln/-kachel-Klassen wie die Kennzahlen oberhalb, inklusive Zellhintergruenden und Trennlinien. Alte separate Rasterstyles entfernt; Breitenbegrenzung bleibt.
 - 97 gezielte Tests gruen, inklusive DOM-Pruefungen fuer Info-Position, acht Standardkacheln, entfernte Abzugszeile, exakte Summen und Dialogerhalt beim Live-Render. Bestehende Kachel-Reihenfolgetests um das zweite Raster ergaenzt. Pixel-Sperre gruen.
 - Build erfolgreich; keine getrackten Bundle-Aenderungen. ESLint ohne Fehler (drei bestehende Warnungen in heart.js). Kein echter iPhone-Browsercheck.
+
+## Feiner vertikaler Abstand
+
+Gewinnkacheln behalten die gemeinsamen Schriftgroessen der Hauptstatistik (Titel 11 px, Wert 25 px, Zusatz 12 px). Zellabstand auf 6 px, vertikales Padding auf 14/15 px und Zusatz-Zeilenhoehe auf 1,35 angepasst. Safari-Fokus am summary selbst ergaenzt: kein blauer Fokus-/Tap-Rahmen; neutraler innerer Tastaturfokus. Nur CSS, keine Daten-/Berechnungsaenderung. Build erfolgreich; keine getrackten Bundle-Aenderungen. Kein echter iPhone-Browsercheck.
