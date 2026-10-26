@@ -13,12 +13,12 @@ const calc = (ss, st = state()) => baueGewinn(ss, st, ['lifeskinshop'], jetzt);
 
 test('cent ledger: correct quantity, transport, Riba, extras, ads, ratios; no double generic shipping', () => {
   const r = calc([fall()]);
-  assert.deepEqual(r.summe, { seen: 1, bestellungen: 1, umsatz: 4000, ads: 1000, produkt: 900, transport: 250, riba: 200, extra: 150, verpackung: 100, sonstiges: 50, fehlt: 0, zugestellt: 1, anulime: 0, anulimeWert: 0, gewinn: 1500 });
+  assert.deepEqual(r.summe, { seen: 1, bestellungen: 1, umsatz: 4000, ads: 1000, produkt: 900, transport: 250, riba: 200, extra: 30, verpackung: 30, sonstiges: 0, fehlt: 0, zugestellt: 1, anulime: 0, anulimeWert: 0, gewinn: 1620 });
   assert.equal(r.jeSeen, 1000); assert.equal(r.jeBestellung, 1000); assert.equal(r.analysenJeBestellung, 1);
 });
 test('Albania follows existing Beki prefix tariff', () => {
   const st = state({ dergesat: { a: { postaBeki: 'A123' } } });
-  assert.equal(calc([fall()], st).summe.gewinn, 1250);
+  assert.equal(calc([fall()], st).summe.gewinn, 1370);
 });
 test('first Seen day counts once, returning visitors not recounted on another day', () => {
   const s = fall(); s.timings.ereignisse['2026-10-25'] = { berichtGeoeffnet: true };
@@ -126,11 +126,11 @@ test('yesterday and day before yesterday use calendar days across month and DST 
   assert.deepEqual(gewinnGrenzen({ zeit: 'gestern' }, '2026-10-25T23:30:00Z'), { von: '2026-10-25', bis: '2026-10-25' });
   assert.deepEqual(gewinnGrenzen({ zeit: 'vorgestern' }, '2027-01-01T12:00:00Z'), { von: '2026-12-30', bis: '2026-12-30' });
 });
-test('packaging and miscellaneous are separate configured per-order costs, not per-product charges', () => {
+test('packaging is fixed at 30 cents per active order, regardless of product quantity or old configuration', () => {
   const st = state({ produktkosten: { ...kosten, verpackung: 1.4, sonstiges: 1 } });
   const r = calc([fall()], st);
-  assert.equal(r.summe.verpackung, 140); assert.equal(r.summe.sonstiges, 100); assert.equal(r.summe.extra, 240);
-  assert.equal(r.summe.gewinn, 1410);
+  assert.equal(r.summe.verpackung, 30); assert.equal(r.summe.sonstiges, 0); assert.equal(r.summe.extra, 30);
+  assert.equal(r.summe.gewinn, 1620);
   const html = renderGewinn([fall()], st, ['lifeskinshop']);
   assert.doesNotMatch(html, /Verpackung\/Sonstiges/);
   assert.doesNotMatch(html, /Gewinn = Umsatz/);
@@ -167,4 +167,15 @@ test('cost days without an order exclude zero-budget days, group both ways by da
   assert.equal(r.summe.ads, 3100); assert.equal(r.summe.anulime, 1);
   assert.equal(r.reihen.find((z) => z.tag === '2026-10-25').bestellungen, 0);
   assert.equal(r.reihen.find((z) => z.tag === '2026-10-24').adsErfasst, true);
+});
+
+
+test('packaging counts active orders once, not items, duplicates, cancelled or out-of-range orders', () => {
+  const cancelled = fall('cancelled'); cancelled.order.status = 'storniert';
+  const r = calc([fall(), fall(), fall('b'), cancelled, fall('old', '2026-10-25')], state({ dergesat: { a: { postaBeki: '123' }, b: { postaBeki: '456' } } }));
+  assert.equal(r.summe.bestellungen, 2);
+  assert.equal(r.summe.verpackung, 60);
+  assert.equal(r.summe.sonstiges, 0);
+  assert.equal(r.summe.extra, 60);
+  assert.equal(calc([cancelled]).summe.verpackung, 0);
 });

@@ -72,3 +72,15 @@ Unter Anulime steht nun die laufende Rechnung: Umsatz, minus Posta/Transport, Zw
 ## Fokusrahmen vollstaendig entfernt
 
 Der graue summary-Rahmen stammte aus dem zuvor ergaenzten Tastaturfokus. Diese Regel sowie die neu eingefuehrten Profit-Fokusrahmen entfernt. Abschliessende Heart-weite Regel deaktiviert Fokus-outline/box-shadow und Tap-Highlights auch fuer Dialoge und alle anderen Controls. Dauerhafte Layout-Raender bleiben. Expliziter Inhaberwunsch fuer zukuenftige Projekt-UI in AGENTS.md festgehalten. Nur CSS und Dokumentation, keine Rechen-/Datenlogik. Build erfolgreich, keine getrackten Bundle-Aenderungen. Kein echter iPhone-Browsercheck.
+
+## Auftrag: feste Verpackung, Sonstiges aussetzen
+
+Gewinnrechnung: automatisch 30 Cent Verpackung je nicht stornierter Bestellung,
+unabhaengig von Produktanzahl und bisherigen Kosten-Konfigurationswerten.
+Sonstiges wird vorerst weder abgezogen noch in Info/Stats angezeigt. Keine
+Aenderung gespeicherter Einkaufskosten, Ads, Posta, Riba oder Produktionsdaten.
+
+Umgesetzt und validiert: 34 gezielte Node-/DOM-Pruefungen inklusive
+Mehrfachprodukten, Duplikaten, Stornos, Zeitraumgrenzen, exakten Zwischenstaenden
+und Pixel-Sperre bestanden. ESLint ohne Fehler/Warnungen. Build erfolgreich,
+keine getrackten Bundle-Aenderungen. Kein echter Mobilbrowsercheck.

@@ -11,6 +11,8 @@ export const GEWINN_ZEITRAEUME = Object.freeze([
   ["heute", "Heute"], ["gestern", "Gestern"], ["vorgestern", "Vorgestern"],
   ["woche", "Letzte 7 Tage"], ["monat", "Dieser Monat"], ["max", "Max · alle"], ["vonbis", "Eigene Auswahl"]
 ]);
+// Inhaber: feste Verpackung je aktiver Bestellung; Sonstiges vorerst ausgesetzt.
+const VERPACKUNG_CENT = 30;
 export const ADS_PREFIX = "lifeskin__ads__";
 export const cent = (n) => Math.round((n + Number.EPSILON) * 100);
 const euro = (n) => `${(n / 100).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
@@ -71,8 +73,8 @@ export function bestellKosten(s, zustand) {
   return {
     fehlt: [...new Set(fehlt)], ausBericht,
     produkt, transport: d?.postaBeki ? cent(tarifaPosta(d)) : 0,
-    riba: cent(DERGESA.ribaPerPorosi), verpackung: cent(k?.verpackung || 0), sonstiges: cent(k?.sonstiges || 0),
-    extra: cent(k?.verpackung || 0) + cent(k?.sonstiges || 0)
+    riba: cent(DERGESA.ribaPerPorosi), verpackung: VERPACKUNG_CENT, sonstiges: 0,
+    extra: VERPACKUNG_CENT
   };
 }
 

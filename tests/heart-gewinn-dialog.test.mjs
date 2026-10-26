@@ -124,12 +124,12 @@ test('profit card uses the standard stat tiles and puts deductions behind Info b
 
 test('Info shows the selected period and exact deductions, survives live renders, closes normally', () => {
   const env = dom();
-  const rechnung = { summe: { umsatz: 4400, produkt: 631, transport: 500, riba: 200, verpackung: 0, sonstiges: 30, ads: 2570, gewinn: 469, fehlt: 0, bestellungen: 1 }, grenzen: { von: '2026-10-24', bis: '2026-10-24' }, vorlaeufig: false };
+  const rechnung = { summe: { umsatz: 4400, produkt: 631, transport: 500, riba: 200, verpackung: 30, sonstiges: 0, ads: 2570, gewinn: 469, fehlt: 0, bestellungen: 1 }, grenzen: { von: '2026-10-24', bis: '2026-10-24' }, vorlaeufig: false };
   try {
     const el = oeffneGewinnInfo({ rechnung, adsBereit: true });
     const rows = Object.fromEntries([...el.querySelectorAll('dl > div')].map((r) => [r.querySelector('dt').textContent, r.querySelector('dd').textContent]));
     assert.equal(rows['Abzüge gesamt'], '39,31 €'); assert.equal(rows['Gewinn nach Kosten'], '4,69 €');
-    assert.equal(rows.Transport, '5,00 €'); assert.equal(rows.Sonstiges, '0,30 €');
+    assert.equal(rows.Transport, '5,00 €'); assert.equal(rows.Verpackung, '0,30 €'); assert.equal(rows.Sonstiges, undefined);
     assert.match(el.textContent, /24.10.2026/);
     morphInhalt(env.document.getElementById('root'), renderGewinn([], { gewinnStatus: 'laedt' }, ['']));
     assert.equal(el.isConnected, true);
@@ -166,7 +166,7 @@ test('Stats opens expandable order and ads lists for the same dates, with red ze
 test('daily table colors positive orders and profit green, zero orders and losses red, zero/unknown profit neutral', () => {
   const env = dom();
   try {
-    const sessions = [20, 1, 4.5, 8].map((total, i) => ({ id: `color${i}`, source: { weg: '' }, order: { orderId: `C${i}`, createdAt: `2026-10-${24 + i}T10:00:00Z`, total, items: [{ id: 'p', sasia: 1 }] } }));
+    const sessions = [20, 1, 4.8, 8].map((total, i) => ({ id: `color${i}`, source: { weg: '' }, order: { orderId: `C${i}`, createdAt: `2026-10-${24 + i}T10:00:00Z`, total, items: [{ id: 'p', sasia: 1 }] } }));
     const st = { gewinnStatus: 'bereit', gewinnFilter: { zeit: 'max' }, gewinnAds: [24, 25, 26, 27, 28].map((n) => ({ weg: '', tag: `2026-10-${n}`, cent: n === 28 ? 100 : 0 })),
       produktkosten: { shisheStueck: 1, stikerStueck: 1, kreme: [{ name: 'p', produkt: 'p', preis: 0, menge: 30 }] },
       dergesat: Object.fromEntries([0, 1, 2].map((i) => [`color${i}`, { postaBeki: '123' }])) };
@@ -205,14 +205,14 @@ test('profit card keeps the same blocks across loading, errors and legacy-data n
 
 test('Stats running balance subtracts each expense once and leaves cancellations out of the net calculation', () => {
   const env = dom();
-  const rechnung = { summe: { umsatz: 10000, transport: 1000, riba: 500, produkt: 2000, verpackung: 100, sonstiges: 50, ads: 3000, gewinn: 3350, fehlt: 0, anulimeWert: 5000 }, vorlaeufig: false };
+  const rechnung = { summe: { umsatz: 10000, transport: 1000, riba: 500, produkt: 2000, verpackung: 100, sonstiges: 0, ads: 3000, gewinn: 3400, fehlt: 0, anulimeWert: 5000 }, vorlaeufig: false };
   try {
     const root = env.document.getElementById('root'); root.innerHTML = renderGewinnVerlauf(rechnung, true);
     const rows = Object.fromEntries([...root.querySelectorAll('dl > div')].map((r) => [r.querySelector('dt').textContent, r.querySelector('dd').textContent]));
     assert.equal(rows.Umsatz, '100,00 €'); assert.equal(rows.Posta, '− 10,00 €'); assert.equal(rows['Nach Posta'], '90,00 €');
     assert.equal(rows['Nach Riba'], '85,00 €'); assert.equal(rows['Nach Produktkosten'], '65,00 €');
-    assert.equal(rows['Nach Verpackung'], '64,00 €'); assert.equal(rows['Nach Sonstiges'], '63,50 €');
-    assert.equal(rows.Ads, '− 30,00 €'); assert.equal(rows.Reingewinn, '33,50 €');
+    assert.equal(rows['Nach Verpackung'], '64,00 €'); assert.equal(rows['Nach Sonstiges'], undefined); assert.equal(rows.Sonstiges, undefined);
+    assert.equal(rows.Ads, '− 30,00 €'); assert.equal(rows.Reingewinn, '34,00 €');
     assert.equal(root.querySelector('.ist-reingewinn').classList.contains('ist-positiv'), true);
     root.innerHTML = renderGewinnVerlauf(rechnung, false);
     assert.equal(root.querySelector('.ist-reingewinn dd').textContent, '—');
@@ -220,7 +220,7 @@ test('Stats running balance subtracts each expense once and leaves cancellations
     root.innerHTML = renderGewinnVerlauf({ ...rechnung, summe: { ...rechnung.summe, fehlt: 1 } }, true);
     assert.equal(root.querySelector('.ist-zwischenstand dd').textContent, '—');
     root.innerHTML = renderGewinnVerlauf({ ...rechnung, summe: { ...rechnung.summe, ads: 7000 } }, true);
-    assert.equal(root.querySelector('.ist-reingewinn dd').textContent, '-6,50 €');
+    assert.equal(root.querySelector('.ist-reingewinn dd').textContent, '-6,00 €');
     assert.equal(root.querySelector('.ist-reingewinn').classList.contains('ist-negativ'), true);
   } finally { env.restore(); }
 });

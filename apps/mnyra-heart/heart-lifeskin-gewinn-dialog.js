@@ -119,13 +119,13 @@ export function renderGewinnAbzuege(rechnung, adsBereit) {
   const euro = (n) => `${(n / 100).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
   const zeile = (name, wert, klasse = "") => `<div class="${klasse}"><dt>${escapeHtml(name)}</dt><dd>${wert == null ? "—" : euro(wert)}</dd></div>`;
   const komplett = adsBereit && !s.fehlt;
-  const abzug = s.produkt + s.transport + s.riba + s.verpackung + s.sonstiges + s.ads;
+  const abzug = s.produkt + s.transport + s.riba + s.verpackung + s.ads;
   const zeitraum = rechnung.grenzen.von ? gewinnDatumsLabel(rechnung.grenzen.von, rechnung.grenzen.bis) : "Alle Tage";
   return `<p class="heart-gewinn-dialog__hilfe">${escapeHtml(zeitraum)} · ${s.bestellungen} Bestellungen</p>
     <dl class="heart-gewinn-abzuege">
     ${zeile("Umsatz", s.umsatz)}
     ${zeile("Produkte", s.produkt)}${zeile("Transport", s.transport)}${zeile("Riba", s.riba)}
-    ${zeile("Verpackung", s.verpackung)}${zeile("Sonstiges", s.sonstiges)}${zeile("Ads", adsBereit ? s.ads : null)}
+    ${zeile("Verpackung", s.verpackung)}${zeile("Ads", adsBereit ? s.ads : null)}
     ${zeile("Abzüge gesamt", komplett ? abzug : null, "ist-summe")}
     ${zeile("Gewinn nach Kosten", komplett ? s.gewinn : null, "ist-summe")}</dl>
     ${!adsBereit ? '<p class="heart-gewinn-dialog__hilfe">Ads-Daten noch nicht verfügbar.</p>' : ""}
@@ -144,7 +144,7 @@ export function renderGewinnVerlauf(rechnung, adsBereit) {
   const zeile = (titel, wert, klasse, abzug = false) => `<div class="${klasse}"><dt>${escapeHtml(titel)}</dt><dd>${wert == null ? "—" : `${abzug && wert > 0 ? "− " : ""}${euro(wert)}`}</dd></div>`;
   let rest = s.fehlt ? null : s.umsatz;
   let zeilen = zeile("Umsatz", s.umsatz, "ist-summe");
-  const posten = [["Posta", s.transport], ["Riba", s.riba], ["Produktkosten", s.produkt], ["Verpackung", s.verpackung], ["Sonstiges", s.sonstiges], ["Ads", adsBereit ? s.ads : null]];
+  const posten = [["Posta", s.transport], ["Riba", s.riba], ["Produktkosten", s.produkt], ["Verpackung", s.verpackung], ["Ads", adsBereit ? s.ads : null]];
   for (const [titel, kosten] of posten) {
     const bekannt = !s.fehlt && kosten != null;
     zeilen += zeile(titel, bekannt ? kosten : null, "ist-abzug", true);
