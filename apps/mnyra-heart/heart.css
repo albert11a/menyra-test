@@ -10778,15 +10778,14 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 
 /* Ads / Umsatz / Gewinn: existing card shell, phone-first two columns. */
 .heart-gewinn { min-width: 0; }
-.heart-gewinn__filter, .heart-gewinn__editor { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+.heart-gewinn__filter { gap: 12px; }
 .heart-gewinn label { display: grid; gap: 6px; flex: 1 1 120px; min-width: 0; font-size: 12px; }
 .heart-gewinn .heart-lifeskin-eingabe { width: 100%; min-width: 0; box-sizing: border-box; min-height: 44px; color-scheme: dark; }
-.heart-gewinn__editor p { flex-basis: 100%; margin: 0; }
 .heart-gewinn__raster { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--heart-border, #303036); border-radius: 12px; }
 .heart-gewinn__wert { display: flex; flex-direction: column; gap: 6px; padding: 16px 12px; min-width: 0; }
 .heart-gewinn__wert small { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; opacity: .65; }
 .heart-gewinn__wert strong { font-size: clamp(19px, 5vw, 28px); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.heart-gewinn__wert span, .heart-gewinn__hinweis, .heart-gewinn__editor p { font-size: 12px; line-height: 1.6; opacity: .7; }
+.heart-gewinn__wert span, .heart-gewinn__hinweis { font-size: 12px; line-height: 1.6; opacity: .7; }
 .heart-gewinn__tabelle { overflow-x: auto; margin: 14px 0; -webkit-overflow-scrolling: touch; }
 .heart-gewinn table { border-collapse: collapse; width: 100%; font-size: 12px; font-variant-numeric: tabular-nums; }
 .heart-gewinn th, .heart-gewinn td { text-align: right; padding: 10px 8px; white-space: nowrap; border-bottom: 1px solid var(--heart-border, #303036); }
@@ -10794,3 +10793,45 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 [data-heart-theme="tag"] .heart-gewinn .heart-lifeskin-eingabe { color-scheme: light; }
 .heart-gewinn > .heart-klapp__kopf .heart-lifeskin-block__titel { min-width: 0; }
 .heart-gewinn > .heart-klapp__kopf .heart-klapp__zahl { max-width: 38%; }
+
+/* Profit controls: constrain every grid item, including iOS date inputs. */
+.heart-gewinn, .heart-gewinn__inhalt, .heart-gewinn__inhalt > *, .heart-gewinn__wert { min-inline-size: 0; max-inline-size: 100%; box-sizing: border-box; }
+.heart-gewinn__inhalt { display: grid; gap: 14px; }
+.heart-gewinn__inhalt p { margin: 0; overflow-wrap: anywhere; }
+.heart-gewinn__wert small, .heart-gewinn__wert span { overflow-wrap: anywhere; }
+.heart-gewinn__filter { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; margin: 4px 0; }
+.heart-gewinn__waehlen { min-height: 44px; padding: 10px 16px; }
+.heart-gewinn__datumslabel { grid-column: 1 / -1; overflow-wrap: anywhere; color: var(--heart-muted, #929297); }
+.heart-gewinn__tabelle { max-width: 100%; width: 100%; min-width: 0; }
+.heart-gewinn > summary > .heart-bestellung-plus { flex: 0 0 32px; }
+.heart-gewinn > summary > h3 { overflow-wrap: anywhere; }
+
+.heart-gewinn-dialog { box-sizing: border-box; width: min(400px, calc(100% - 32px)); max-width: calc(100% - 32px); max-height: calc(100dvh - 32px); margin: auto; padding: 20px; border: 1px solid var(--heart-border, #36363c); border-radius: 18px; background: var(--heart-surface, #18181d); color: var(--heart-text, #f5f5f7); font: 14px/1.5 system-ui, sans-serif; overflow: auto; overscroll-behavior: contain; }
+.heart-gewinn-dialog::backdrop { background: rgb(0 0 0 / .65); }
+.heart-gewinn-dialog *, .heart-gewinn-dialog *::before, .heart-gewinn-dialog *::after { box-sizing: border-box; min-inline-size: 0; }
+.heart-gewinn-dialog__kopf { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.heart-gewinn-dialog h2 { flex: 1; margin: 0; font-size: 18px; overflow-wrap: anywhere; }
+.heart-gewinn-dialog button { border: 1px solid var(--heart-border, #36363c); border-radius: 9px; background: transparent; color: inherit; font: inherit; cursor: pointer; min-height: 44px; padding: 9px 12px; }
+.heart-gewinn-dialog button:disabled { opacity: .5; cursor: default; }
+.heart-gewinn-dialog__kopf button { flex: 0 0 44px; font-size: 22px; }
+.heart-gewinn-dialog__form { display: grid; gap: 14px; }
+.heart-gewinn-dialog label { display: grid; gap: 6px; }
+.heart-gewinn-dialog input, .heart-gewinn-dialog select { display: block; width: 100%; max-width: 100%; min-width: 0; min-height: 46px; padding: 10px; border: 1px solid var(--heart-border, #36363c); border-radius: 9px; background: var(--heart-surface, #18181d); color: inherit; font: inherit; font-size: 16px; color-scheme: dark; }
+.heart-gewinn-dialog input::-webkit-date-and-time-value { min-width: 0; text-align: left; }
+.heart-gewinn-dialog p { margin: 0; overflow-wrap: anywhere; }
+.heart-gewinn-dialog__hilfe { font-size: 13px; color: var(--heart-muted, #929297); }
+.heart-gewinn-dialog [role="alert"]:empty { display: none; }
+.heart-gewinn-dialog [role="alert"] { color: var(--heart-danger, #f48484); }
+.heart-gewinn-dialog__aktionen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.heart-gewinn-dialog button.ist-haupt { background: var(--heart-text, #f5f5f7); color: var(--heart-surface, #18181d); font-weight: 650; }
+.heart-gewinn-dialog button:focus-visible { outline: 2px solid var(--heart-accent, #3fbf9b); outline-offset: 2px; }
+.heart-gewinn-kalender__monat { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; text-align: center; gap: 8px; margin: 16px 0 12px; }
+.heart-gewinn-kalender__monat button { font-size: 24px; padding: 0; }
+.heart-gewinn-kalender__raster { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.heart-gewinn-kalender__raster small { text-align: center; color: var(--heart-muted, #929297); padding: 4px 0; }
+.heart-gewinn-kalender__raster button { padding: 0; width: 100%; min-height: 36px; aspect-ratio: 1; border-color: transparent; border-radius: 8px; font-variant-numeric: tabular-nums; }
+.heart-gewinn-kalender__raster button[aria-current="date"] { border-color: var(--heart-muted, #929297); }
+.heart-gewinn-kalender__raster .ist-bereich { background: rgb(128 128 140 / .22); }
+.heart-gewinn-kalender__raster .ist-rand { background: var(--heart-text, #f5f5f7); color: var(--heart-surface, #18181d); font-weight: 700; }
+.heart-gewinn-dialog__auswahl { margin-top: 16px !important; text-align: center; font-weight: 650; }
+[data-heart-theme="tag"] .heart-gewinn-dialog input, [data-heart-theme="tag"] .heart-gewinn-dialog select { color-scheme: light; }

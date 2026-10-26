@@ -121,21 +121,12 @@ export function baueGewinn(sitzungen = [], zustand = {}, wege = [""], jetzt) {
 export function renderGewinn(sitzungen, zustand, wege) {
   const r = baueGewinn(sitzungen, zustand, wege);
   const scope = wege.join("|");
-  const plus = `<button type="button" class="heart-bestellung-plus" data-action="lifeskin-gewinn-plus" aria-label="Ads-Tagesbetrag eintragen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>`;
+  const plus = `<button type="button" class="heart-bestellung-plus" data-gewinn-wege="${escapeHtml(JSON.stringify(wege))}" data-action="lifeskin-gewinn-plus" aria-label="Ads-Tagesbetrag eintragen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>`;
   const filter = zustand.gewinnFilter || { zeit: "heute" };
-  const feld = (name, label, type, value) => `<label>${label}<input class="heart-lifeskin-eingabe" type="${type}" data-gewinn-filter="${name}" value="${escapeHtml(value || "")}"></label>`;
   const kopf = `<h3 class="heart-lifeskin-block__titel">Ads · Umsatz · Gewinn</h3>`;
-  const form = zustand.gewinnEditor === scope ? `<div class="heart-gewinn__editor" data-bewahren="gewinn-ads:${escapeHtml(scope)}">
-    <p>Ads-Gesamtbetrag pro Tag und Bereich. Erneutes Speichern ersetzt den Betrag; 0 € bedeutet ausdrücklich keine Ausgaben.</p>
-    <label>Bereich<select class="heart-lifeskin-eingabe" data-gewinn-weg>${wege.map((w) => `<option value="${escapeHtml(w)}">${escapeHtml(({ "": "Skinreact", lifeskinshop: "Acne duo", lifeskin2: "Lifeskin 2" })[w] || w)}</option>`).join("")}</select></label>
-    <label>Datum<input type="date" class="heart-lifeskin-eingabe" data-gewinn-datum value="${statistikTag(new Date().toISOString())}"></label>
-    <label>Ads-Kosten (€)<input class="heart-lifeskin-eingabe" type="text" inputmode="decimal" autocomplete="off" data-gewinn-betrag placeholder="z. B. 25,50"></label>
-    <p data-gewinn-vorhanden></p>
-    <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-gewinn-speichern" ${zustand.gewinnSpeichert ? "disabled" : ""}>${zustand.gewinnSpeichert ? "Speichert …" : "Tagesbetrag speichern"}</button>
-    <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-gewinn-abbrechen">Schließen</button>
-    </div>` : "";
-  const auswahl = `<div class="heart-gewinn__filter"><label>Zeitraum<select class="heart-lifeskin-eingabe" data-gewinn-filter="zeit">${[["heute", "Heute"], ["woche", "Letzte 7 Tage"], ["monat", "Dieser Monat"], ["max", "Max · alle"], ["vonbis", "Von bis"]].map(([v, l]) => `<option value="${v}"${(filter.zeit || "heute") === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>
-    ${filter.zeit === "vonbis" ? feld("von", "Von", "date", filter.von) + feld("bis", "Bis", "date", filter.bis) : ""}</div>`;
+  const auswahl = `<div class="heart-gewinn__filter" data-morph-key="gewinn-filter:${escapeHtml(scope)}"><label>Zeitraum<select class="heart-lifeskin-eingabe" data-gewinn-filter="zeit">${[["heute", "Heute"], ["woche", "Letzte 7 Tage"], ["monat", "Dieser Monat"], ["max", "Max · alle"], ...(filter.zeit === "vonbis" ? [["vonbis", "Eigene Auswahl"]] : [])].map(([v, l]) => `<option value="${v}"${(filter.zeit || "heute") === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>
+    <button type="button" class="heart-lifeskin-knopf heart-gewinn__waehlen" data-action="lifeskin-gewinn-waehlen">Wählen</button>
+    ${filter.zeit === "vonbis" ? `<small class="heart-gewinn__datumslabel">${escapeHtml(filter.von?.split("-").reverse().join("."))}${filter.von !== filter.bis ? ` – ${escapeHtml(filter.bis?.split("-").reverse().join("."))}` : ""}</small>` : ""}</div>`;
   const kachel = (titel, wert, zusatz = "") => `<div class="heart-gewinn__wert"><small>${titel}</small><strong>${wert}</strong>${zusatz ? `<span>${zusatz}</span>` : ""}</div>`;
   let inhalt = r.fehler ? `<p>${r.fehler}</p>` : (() => {
     const s = r.summe;
@@ -156,5 +147,5 @@ export function renderGewinn(sitzungen, zustand, wege) {
       <details><summary>Tagesübersicht</summary><div class="heart-gewinn__tabelle"><table><thead><tr><th>Tag</th><th>Seen</th><th>Best.</th><th>Umsatz</th><th>Ads</th><th>Gewinn</th></tr></thead><tbody>${r.reihen.map((z) => `<tr><td>${escapeHtml(z.tag)}</td><td>${z.seen}</td><td>${z.bestellungen}</td><td>${euro(z.umsatz)}</td><td>${euro(z.ads)}${z.adsFehlt ? " *" : ""}</td><td>${z.gewinn == null ? "—" : euro(z.gewinn)}${z.adsFehlt ? " *" : ""}</td></tr>`).join("") || '<tr><td colspan="6">Keine Daten im Zeitraum.</td></tr>'}</tbody></table></div></details>
       <p class="heart-gewinn__hinweis">Gewinn = Umsatz − Produkte − Transport − Riba − Verpackung/Sonstiges − Ads. Einkaufskosten entsprechen der aktuellen Karte „Produktkosten“${r.alteProdukte ? `; bei ${r.alteProdukte} älteren Bestellungen stammen Produkte aus dem Befund` : ""}. Transport: Kosovo ${euro(cent(DERGESA.postaTarifa))}, Albanien ${euro(cent(DERGESA.postaTarifaShqiperi))} nach Beki-Nr.; Riba ${euro(cent(DERGESA.ribaPerPorosi))} je Bestellung. Tests und Stornos sind ausgeschlossen. Bestellumsatz ist noch kein Zahlungseingang. Durchschnittswerte vergleichen Aktivitäten im Zeitraum, keine Werbezuordnung.</p>`;
   })();
-  return alsKlapp(`<section class="heart-lifeskin-block heart-gewinn">${kopf}${form}${auswahl}${inhalt}</section>`, `gewinn:${scope}`, { standard: false, zahl: r.summe ? `${r.summe.bestellungen} Best. · ${r.summe.gewinn == null ? "Kosten offen" : euro(r.summe.gewinn)}${r.vorlaeufig ? " *" : ""}` : "", kopfExtra: plus });
+  return alsKlapp(`<section class="heart-lifeskin-block heart-gewinn" data-morph-key="gewinn-karte:${escapeHtml(scope)}">${kopf}<div class="heart-gewinn__inhalt" data-morph-key="gewinn-inhalt:${escapeHtml(scope)}">${auswahl}${inhalt}</div></section>`, `gewinn:${scope}`, { standard: false, zahl: r.summe ? `${r.summe.bestellungen} Best. · ${r.summe.gewinn == null ? "Kosten offen" : euro(r.summe.gewinn)}${r.vorlaeufig ? " *" : ""}` : "", kopfExtra: plus });
 }

@@ -1,4 +1,4 @@
-import { adsCent, datumGueltig } from "./heart-lifeskin-gewinn.js";
+import { oeffneGewinnAds, oeffneGewinnKalender } from "./heart-lifeskin-gewinn-dialog.js";
 import { vergleichHochladen, vergleichVorschau } from "./heart-lifeskin-vergleich.js";
 import { reviewGalerie } from "../../shared/lifeskin-review-gallery.js";
 import { SHOP_REVIEW_MEDIUM } from "../../shared/lifeskin-shop-bewertungen.js";
@@ -3051,52 +3051,20 @@ async function lifeskinMediumSchieben(id, richtung) {
 }
 
 // Profit reads are independent of customer analytics and never write sessions.
+let gewinnSchreibstand = 0;
 async function gewinnLaden() {
   const stand = store.getState().lifeskin || {};
   if (stand.gewinnStatus === "laedt" || stand.gewinnSpeichert) return;
+  const schreibstand = gewinnSchreibstand;
   actions.patchLifeskin({ gewinnStatus: "laedt" });
   try {
     const ads = await ladeGewinnAds();
-    actions.patchLifeskin({ gewinnAds: ads, gewinnStatus: "bereit" });
-    requestAnimationFrame(gewinnAdsVorhanden);
+    if (schreibstand === gewinnSchreibstand) actions.patchLifeskin({ gewinnAds: ads, gewinnStatus: "bereit" });
   } catch {
-    actions.patchLifeskin({ gewinnStatus: "fehler" });
+    if (schreibstand === gewinnSchreibstand) actions.patchLifeskin({ gewinnStatus: "fehler" });
   }
   if (!store.getState().lifeskin?.produktkosten) await produktkostenLaden();
 }
-function gewinnAdsVorhanden() {
-  const root = document.querySelector(".heart-gewinn__editor");
-  if (!root) return;
-  const tag = root.querySelector("[data-gewinn-datum]").value;
-  const weg = root.querySelector("[data-gewinn-weg]").value;
-  const bisher = (store.getState().lifeskin?.gewinnAds || []).find((a) => a.tag === tag && a.weg === weg);
-  root.querySelector("[data-gewinn-vorhanden]").textContent = bisher
-    ? `Gespeichert: ${(bisher.cent / 100).toLocaleString("de-DE")} €. Neuer Betrag ersetzt diesen Tageswert.`
-    : "Für diesen Tag/Bereich noch kein Ads-Betrag gespeichert.";
-}
-async function gewinnSpeichern(knopf) {
-  if (store.getState().lifeskin?.gewinnSpeichert) return;
-  const root = knopf.closest(".heart-gewinn");
-  const tag = root.querySelector("[data-gewinn-datum]")?.value || "";
-  const weg = root.querySelector("[data-gewinn-weg]")?.value || "";
-  const cent = adsCent(root.querySelector("[data-gewinn-betrag]")?.value);
-  if (!datumGueltig(tag) || cent == null) {
-    setToast("Ads", "Bitte Datum und Betrag mit höchstens zwei Nachkommastellen eingeben.", "danger"); return;
-  }
-  knopf.disabled = true;
-  actions.patchLifeskin({ gewinnSpeichert: true });
-  try {
-    const wert = await speichereGewinnAds({ tag, weg, cent });
-    const liste = store.getState().lifeskin?.gewinnAds || [];
-    actions.patchLifeskin({ gewinnAds: [...liste.filter((a) => a.tag !== tag || a.weg !== weg), wert], gewinnSpeichert: false, gewinnEditor: false });
-    setToast("Ads", "Tagesbetrag gespeichert.", "success");
-  } catch (fehler) {
-    actions.patchLifeskin({ gewinnSpeichert: false });
-    knopf.disabled = false;
-    setToast("Ads", fehler?.message || "Nicht gespeichert. Bitte erneut versuchen.", "danger");
-  }
-}
-
 // PRODUKTKOSTEN - erst, wenn die Karte aufgeht (heart-lifeskin-kosten.js).
 async function produktkostenLaden() {
   const stand = store.getState().lifeskin || {};
@@ -4498,15 +4466,15 @@ const operations = {
     if (name.startsWith("gewinn:") && offen) gewinnLaden();
   },
   gewinnPlus(knopf) {
-    const karte = knopf.closest("[data-klapp]");
-    if (karte) klappSetzen(karte.getAttribute("data-klapp"), true);
-    actions.patchLifeskin({ gewinnEditor: (karte?.getAttribute("data-klapp") || "gewinn:").slice("gewinn:".length) });
-    gewinnLaden();
+    const wege = JSON.parse(knopf.getAttribute("data-gewinn-wege") || '[""]');
+    oeffneGewinnAds({ wege, laden: ladeGewinnAds, speichern: speichereGewinnAds,
+      nachher: (ads) => { gewinnSchreibstand++; actions.patchLifeskin({ gewinnAds: ads, gewinnStatus: "bereit" }); setToast("Ads", "Tagesbetrag gespeichert.", "success"); } });
   },
-  gewinnSchliessen() { actions.patchLifeskin({ gewinnEditor: false }); },
+  gewinnWaehlen() {
+    oeffneGewinnKalender({ filter: store.getState().lifeskin?.gewinnFilter,
+      uebernehmen: (gewinnFilter) => actions.patchLifeskin({ gewinnFilter }) });
+  },
   gewinnLaden() { return gewinnLaden(); },
-  gewinnSpeichern(knopf) { return gewinnSpeichern(knopf); },
-  gewinnAdsVorhanden() { gewinnAdsVorhanden(); },
   gewinnFilter(name, wert) {
     if (!["zeit", "von", "bis"].includes(name)) return;
     const vorher = store.getState().lifeskin?.gewinnFilter || { zeit: "heute" };

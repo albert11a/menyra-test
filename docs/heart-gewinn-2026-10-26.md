@@ -16,3 +16,12 @@ Umsetzung auf Feature-Branch gemaess AGENTS.md. Keine Produktionstests, kein Pla
 - `npm run build` erfolgreich. Keine getrackten Bundle-Dateien geaendert; Heart wird im statischen Output mitgebaut. Bestehende Social-Chunk-/Groessenwarnungen bleiben.
 - `git diff --check` erfolgreich.
 - Kein mobiler Browsercheck und kein Produktionsschreibtest. Nach Review manuell pruefen: Karte auf/zu und Zustandserhalt, Plus in allen drei Swipe-Bereichen, Tagesbetrag 0/Komma/Bearbeiten, Filter von/bis, Kosten ohne Beki, explizite Ads-Luecken und Abgleich mit echten Bestellungen. Kein Playwright/Smoke gemaess AGENTS.md ohne ausdruecklichen Auftrag.
+
+## Bedienkorrektur 26.10.
+
+- Plus oeffnet jetzt einen nativen modalen Ads-Dialog ausserhalb des Heart-Morph-Baums. Laden, Live-Takte und Neuzeichnen der Statistik koennen den Dialog und seine ungespeicherten Eingaben nicht entfernen. Fehler bleiben im Dialog, Laden ist wiederholbar und Doppelspeichern wird blockiert.
+- Der Button `Wählen` ersetzt die Von-/Bis-Eingabefelder. Kalender mit Monatsnavigation: erster Tipp waehlt einen Tag, zweiter Tipp den Bereich; `Übernehmen` uebertraegt die Auswahl gemeinsam. Abbrechen aendert den Filter nicht. Einzelne Tage und Bereiche ueber Monats-/Jahresgrenzen sind moeglich.
+- Karte/Inhaltsraster/Tabelle und iOS-Datumsfeld im Dialog haben eigene Breitenbegrenzungen; Tabelle scrollt ausschliesslich im eigenen Container. Keine maskierende globale Overflow-Regel.
+- Datenpfad gemaess Verifikations-Workflow: Plus -> separater Dialog -> unveraenderter CEO-Ads-Adapter -> Tagesdokument -> aktualisierte Statistik; Kalender -> atomarer Filter -> unveraenderte Berechnung. Ein alter Lesevorgang darf einen neu gespeicherten Betrag nicht ueberschreiben.
+- 91 gezielte Tests bestanden, davon neue DOM-Pruefungen fuer Dialogerhalt ueber Morph-/Ladezustaende, Speichern/Doppelklick, Ladefehler/Retry, Speicherfehler/Eingabeerhalt und Kalenderuebernahme/Abbruch. Linkedom ist ausschliesslich eine Entwicklungsabhaengigkeit.
+- Build erfolgreich, keine getrackten Bundle-Aenderungen. ESLint: keine Fehler, drei bestehende Warnungen in heart.js. Pixel-Sperre gruen. Kein echter iPhone-/Browsercheck und kein Produktionsschreibtest; Browser-/Produktionsgrenze daher weiterhin nicht als end-to-end verifiziert ausgewiesen.

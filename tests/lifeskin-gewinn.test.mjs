@@ -90,26 +90,28 @@ test('money validation, invalid dates, render card uses existing collapsible con
   assert.doesNotMatch(html, /NaN|Infinity/);
 });
 
-test('only the requested panel renders an editor even when three swipe panels are mounted', () => {
-  const st = state({ gewinnEditor: 'lifeskinshop' });
-  assert.match(renderGewinn([], st, ['lifeskinshop']), /data-gewinn-datum/);
-  assert.doesNotMatch(renderGewinn([], st, ['']), /data-gewinn-datum/);
-  assert.doesNotMatch(renderGewinn([], st, ['', 'lifeskinshop']), /data-gewinn-datum/);
-  assert.match(renderGewinn([], state({ gewinnEditor: '' }), ['']), />Skinreact<\/option>/);
+test('plus carries exact scope and forms do not live in the three morph panels', () => {
+  const st = state();
+  for (const wege of [[''], ['lifeskinshop'], ['', 'lifeskinshop']]) {
+    const html = renderGewinn([], st, wege);
+    assert.match(html, /data-gewinn-wege=/);
+    assert.match(html, /lifeskin-gewinn-waehlen/);
+    assert.doesNotMatch(html, /data-gewinn-datum|type="date"|>Von bis</);
+  }
 });
 
-test('event routing dispatches the actual plus/save target and prevents summary toggle', async () => {
+test('event routing dispatches the actual plus/calendar target and prevents summary toggle', async () => {
   const { bindHeartEvents } = await import('../apps/mnyra-heart/heart-events.js');
   const events = {}, calls = [];
   const root = { addEventListener: (name, fn) => { events[name] = fn; }, removeEventListener() {} };
-  const operations = { gewinnPlus: (t) => calls.push(['plus', t]), gewinnSpeichern: (t) => calls.push(['save', t]), gewinnFilter: (a, b) => calls.push([a, b]) };
+  const operations = { gewinnPlus: (t) => calls.push(['plus', t]), gewinnWaehlen: () => calls.push(['calendar']), gewinnFilter: (a, b) => calls.push([a, b]) };
   bindHeartEvents({ root, operations });
   const target = (action) => ({ hasAttribute: () => false, matches: () => false, getAttribute: () => action, closest(sel) { return sel === '[data-action]' || sel.includes('[data-nav-key]') ? this : null; } });
   const plus = target('lifeskin-gewinn-plus'); let prevented = false;
   await events.click({ target: plus, preventDefault: () => { prevented = true; } });
   assert.equal(prevented, true); assert.deepEqual(calls[0], ['plus', plus]);
-  const save = target('lifeskin-gewinn-speichern');
-  await events.click({ target: save, preventDefault() {} }); assert.deepEqual(calls[1], ['save', save]);
+  const save = target('lifeskin-gewinn-waehlen');
+  await events.click({ target: save, preventDefault() {} }); assert.deepEqual(calls[1], ['calendar']);
   await events.change({ target: { matches: (sel) => sel === '[data-gewinn-filter]', getAttribute: () => 'zeit', value: 'max' } });
   assert.deepEqual(calls[2], ['zeit', 'max']);
 });
