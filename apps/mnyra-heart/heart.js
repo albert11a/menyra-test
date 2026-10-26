@@ -1170,7 +1170,7 @@ async function ladeLifeskinBereich({ force = false, voll = false } = {}) {
     // "Reaktionen" war beim letzten Mal offen: gleich die Kommentare dazu.
     if (klappOffen("reaktionen")) medienKommentareLaden();
     if (klappOffen("produktkosten")) produktkostenLaden();
-    if (["", "lifeskinshop", "lifeskin2", "|lifeskinshop"].some((w) => klappOffen(`gewinn:${w}`))) gewinnLaden();
+    gewinnLaden({ force: true });
   } catch (fehler) {
     // Ein gescheiterter Abgleich darf nicht loeschen, was schon dasteht.
     if (store.getState().lifeskin?.status === "ready") return;
@@ -3052,9 +3052,9 @@ async function lifeskinMediumSchieben(id, richtung) {
 
 // Profit reads are independent of customer analytics and never write sessions.
 let gewinnSchreibstand = 0;
-async function gewinnLaden() {
+async function gewinnLaden({ force = false } = {}) {
   const stand = store.getState().lifeskin || {};
-  if (stand.gewinnStatus === "laedt" || stand.gewinnSpeichert) return;
+  if (stand.gewinnStatus === "laedt" || stand.gewinnSpeichert || (!force && stand.gewinnStatus === "bereit")) return;
   const schreibstand = gewinnSchreibstand;
   actions.patchLifeskin({ gewinnStatus: "laedt" });
   try {
@@ -4474,9 +4474,16 @@ const operations = {
     oeffneGewinnKalender({ filter: store.getState().lifeskin?.gewinnFilter,
       uebernehmen: (gewinnFilter) => actions.patchLifeskin({ gewinnFilter }) });
   },
-  gewinnLaden() { return gewinnLaden(); },
-  gewinnFilter(name, wert) {
+  gewinnLaden() { return gewinnLaden({ force: true }); },
+  gewinnFilter(name, wert, feld) {
     if (!["zeit", "von", "bis"].includes(name)) return;
+    if (name === "zeit" && wert === "vonbis") {
+      // Native selects change immediately; Cancel must retain the applied range.
+      if (feld) feld.value = store.getState().lifeskin?.gewinnFilter?.zeit || "heute";
+      oeffneGewinnKalender({ filter: store.getState().lifeskin?.gewinnFilter,
+        uebernehmen: (gewinnFilter) => actions.patchLifeskin({ gewinnFilter }) });
+      return;
+    }
     const vorher = store.getState().lifeskin?.gewinnFilter || { zeit: "heute" };
     actions.patchLifeskin({ gewinnFilter: { ...vorher, [name]: wert } });
   },

@@ -13,7 +13,7 @@ const calc = (ss, st = state()) => baueGewinn(ss, st, ['lifeskinshop'], jetzt);
 
 test('cent ledger: correct quantity, transport, Riba, extras, ads, ratios; no double generic shipping', () => {
   const r = calc([fall()]);
-  assert.deepEqual(r.summe, { seen: 1, bestellungen: 1, umsatz: 4000, ads: 1000, produkt: 900, transport: 250, riba: 200, extra: 150, fehlt: 0, zugestellt: 1, gewinn: 1500 });
+  assert.deepEqual(r.summe, { seen: 1, bestellungen: 1, umsatz: 4000, ads: 1000, produkt: 900, transport: 250, riba: 200, extra: 150, verpackung: 100, sonstiges: 50, fehlt: 0, zugestellt: 1, gewinn: 1500 });
   assert.equal(r.jeSeen, 1000); assert.equal(r.jeBestellung, 1000); assert.equal(r.analysenJeBestellung, 1);
 });
 test('Albania follows existing Beki prefix tariff', () => {
@@ -114,4 +114,27 @@ test('event routing dispatches the actual plus/calendar target and prevents summ
   await events.click({ target: save, preventDefault() {} }); assert.deepEqual(calls[1], ['calendar']);
   await events.change({ target: { matches: (sel) => sel === '[data-gewinn-filter]', getAttribute: () => 'zeit', value: 'max' } });
   assert.deepEqual(calls[2], ['zeit', 'max']);
+});
+
+
+test('yesterday and day before yesterday use calendar days across month and DST boundaries', () => {
+  assert.deepEqual(gewinnGrenzen({ zeit: 'gestern' }, '2026-11-01T12:00:00Z'), { von: '2026-10-31', bis: '2026-10-31' });
+  assert.deepEqual(gewinnGrenzen({ zeit: 'vorgestern' }, '2026-10-26T12:00:00Z'), { von: '2026-10-24', bis: '2026-10-24' });
+  assert.deepEqual(gewinnGrenzen({ zeit: 'gestern' }, '2026-10-25T23:30:00Z'), { von: '2026-10-25', bis: '2026-10-25' });
+  assert.deepEqual(gewinnGrenzen({ zeit: 'vorgestern' }, '2027-01-01T12:00:00Z'), { von: '2026-12-30', bis: '2026-12-30' });
+});
+test('packaging and miscellaneous are separate configured per-order costs, not per-product charges', () => {
+  const st = state({ produktkosten: { ...kosten, verpackung: 1.4, sonstiges: 1 } });
+  const r = calc([fall()], st);
+  assert.equal(r.summe.verpackung, 140); assert.equal(r.summe.sonstiges, 100); assert.equal(r.summe.extra, 240);
+  assert.equal(r.summe.gewinn, 1410);
+  const html = renderGewinn([fall()], st, ['lifeskinshop']);
+  assert.doesNotMatch(html, /Verpackung\/Sonstiges/);
+  assert.doesNotMatch(html, /Gewinn = Umsatz/);
+});
+test('loading is neutral, missing-ad notice appears only after loading and only for active days', () => {
+  for (const gewinnStatus of [undefined, 'laedt', 'bereit', 'fehler']) {
+    const html = renderGewinn([], state({ gewinnStatus }), ['lifeskinshop']);
+    assert.doesNotMatch(html, /heart-lifeskin-warnung|Ads für .* noch offen|Vorläufig: Ads-Daten fehlen/);
+  }
 });

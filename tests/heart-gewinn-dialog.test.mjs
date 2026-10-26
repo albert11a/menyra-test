@@ -89,3 +89,20 @@ test('failed ads load retries, failed save keeps inputs and re-enables controls'
     assert.equal(el.querySelector('[type="submit"]').disabled, false); assert.match(el.querySelector('[role="alert"]').textContent, /offline/);
   } finally { env.restore(); }
 });
+
+
+test('calendar filter and select remain consistent after morphing from today to a chosen day', () => {
+  const env = dom();
+  try {
+    const root = env.document.getElementById('root');
+    morphInhalt(root, renderGewinn([], { gewinnStatus: 'bereit', gewinnFilter: { zeit: 'heute' } }, ['']));
+    const oldSelect = root.querySelector('select');
+    morphInhalt(root, renderGewinn([], { gewinnStatus: 'bereit', gewinnFilter: { zeit: 'vonbis', von: '2026-10-24', bis: '2026-10-24' } }, ['']));
+    const select = root.querySelector('select');
+    assert.notEqual(select, oldSelect);
+    assert.equal(select.value, 'vonbis');
+    assert.equal(select.querySelector('option[selected]').textContent, 'Eigene Auswahl');
+    assert.match(root.querySelector('.heart-gewinn__datumslabel').textContent, /24.10.2026/);
+    assert.deepEqual([...select.options].map((o) => o.textContent), ['Heute', 'Gestern', 'Vorgestern', 'Letzte 7 Tage', 'Dieser Monat', 'Max · alle', 'Eigene Auswahl']);
+  } finally { env.restore(); }
+});

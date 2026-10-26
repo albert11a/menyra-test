@@ -25,3 +25,12 @@ Umsetzung auf Feature-Branch gemaess AGENTS.md. Keine Produktionstests, kein Pla
 - Datenpfad gemaess Verifikations-Workflow: Plus -> separater Dialog -> unveraenderter CEO-Ads-Adapter -> Tagesdokument -> aktualisierte Statistik; Kalender -> atomarer Filter -> unveraenderte Berechnung. Ein alter Lesevorgang darf einen neu gespeicherten Betrag nicht ueberschreiben.
 - 91 gezielte Tests bestanden, davon neue DOM-Pruefungen fuer Dialogerhalt ueber Morph-/Ladezustaende, Speichern/Doppelklick, Ladefehler/Retry, Speicherfehler/Eingabeerhalt und Kalenderuebernahme/Abbruch. Linkedom ist ausschliesslich eine Entwicklungsabhaengigkeit.
 - Build erfolgreich, keine getrackten Bundle-Aenderungen. ESLint: keine Fehler, drei bestehende Warnungen in heart.js. Pixel-Sperre gruen. Kein echter iPhone-/Browsercheck und kein Produktionsschreibtest; Browser-/Produktionsgrenze daher weiterhin nicht als end-to-end verifiziert ausgewiesen.
+
+## Status, Zeitraeume und Kostentransparenz
+
+- Die rote Vorlaeufig-Warnung erschien auch waehrend normalem Laden. Laden ist jetzt ein neutraler Status; ein kurzer Hinweis zu offenen Ads-Tagen erscheint erst nach erfolgreichem Laden und tatsaechlich fehlenden Eintraegen. Ads werden bei der initialen Heart-Datenladung geholt, nicht erst durch ein Toggle. Wiederholte Render-/Toggle-Ereignisse laden fertige Daten nicht erneut.
+- Verpackung/Sonstiges wurden aus den gleichnamigen Feldern der bestehenden Produktkosten je Bestellung berechnet. Keine erfundenen Pauschalen. Beide Posten sind nun getrennt sichtbar und werden weiterhin genau einmal je Bestellung abgezogen; hinterlegte Kostenwerte bleiben unveraendert.
+- Zeitraeume: Heute, Gestern, Vorgestern, Letzte 7 Tage, Dieser Monat, Max · alle, Eigene Auswahl. Vergangene Tage sind lokale Kalendertage inklusive Monats-/Jahres-/DST-Grenzen. Eigene Auswahl oeffnet denselben Kalender wie Wählen. Ein vom angewendeten Filter abhaengiger Select-Schluessel verhindert einen alten Heute-Anzeigewert nach Kalenderuebernahme; Abbrechen behaelt die vorige Auswahl.
+- Wählen und Auswahlfeld exakt 44 px hoch. Keine blaue Fokus-/Tap-Umrandung an den Gewinn-Steuerelementen, stattdessen dezenter neutraler Tastaturfokus.
+- Der lange Erklaertext unter Tagesuebersicht ist entfernt.
+- 95 gezielte Tests einschliesslich Pixel-Sperre bestanden. Build erfolgreich, keine getrackten Bundle-Aenderungen. Kein echter iPhone-Browsercheck.

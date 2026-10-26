@@ -896,7 +896,7 @@ export function bindHeartEvents({
 
   async function handleChange(event) {
     if (event.target?.matches?.("[data-gewinn-filter]")) {
-      operations.gewinnFilter?.(event.target.getAttribute("data-gewinn-filter"), event.target.value); return;
+      operations.gewinnFilter?.(event.target.getAttribute("data-gewinn-filter"), event.target.value, event.target); return;
     }
 
     // Zbritje im Laden: Eingaben als Entwurf merken, bis gespeichert wird.
