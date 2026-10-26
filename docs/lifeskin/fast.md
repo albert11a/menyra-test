@@ -90,3 +90,11 @@ Validation: 30 focused Fast tests and 1,712 LifeSkin/Heart tests passed, includi
 real gallery DOM rendering beyond twelve pictures, pagination, hidden content,
 all before/after product sets and category exclusivity through every case stage.
 Build passed; no tracked bundle changes. No mobile browser visual run.
+
+## Follow-up: remove method accordion from Fast pages
+
+Hide the complete “Si vlerësohet?” accordion on Fast pages, clear its body and
+close any open state. This includes already-created Fast reports; normal reports
+retain their existing method section. The separate answer-based set description
+remains. Focused Fast/Pixel tests and build passed; no tracked bundle changes.
+No mobile browser visual run.

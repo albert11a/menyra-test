@@ -10,7 +10,9 @@ export function fastSeite(root, data, products) {
   text('#t-faq2', 'Reagimi i lëkurës ndryshon nga personi në person. Nisni gradualisht dhe ndiqni udhëzimet e produkteve.');
   text('#t-analizasyri', 'Analiza e plotë');
   text('#t-analizatitulli', 'Bazuar në përgjigjet tuaja.');
-  text('#t-metoda', 'Fotoja juaj është ruajtur me rastin. Ky rekomandim krijohet automatikisht nga përgjigjet tuaja; fotoja nuk është vlerësuar nga mjeku.');
+  text('#t-metoda', '');
+  hide('#t-metodablock');
+  get('#t-metodablock')?.removeAttribute('open');
   text('#t-permbledhja', data.raport?.gjetjet || '');
   text('#t-keshillablock strong', 'Kujdesi i përditshëm');
   text('#t-psetitulli', 'Pse këto produkte për ju');

@@ -35,7 +35,8 @@ test('Four-product Fast page preserves exact summary and short answer-based expl
   fastSeite(document,recommendation,catalog.filter(p=>recommendation.produkte.some(x=>x.id===p.id)));
   assert.match(document.querySelector('#t-hyrja').textContent,/4 produkte/);
   assert.equal(document.querySelectorAll('#t-gjetjet li').length,4);
-  assert.match(document.querySelector('#t-metoda').textContent,/automatikisht nga përgjigjet/);
+  assert.equal(document.querySelector('#t-metodablock').hidden,true);
+  assert.equal(document.querySelector('#t-metoda').textContent,'');
   assert.equal(document.querySelector('#t-mjeku').hidden,true);
   assert.equal(document.querySelector('#t-diagnoza').hidden,true);
   assert.equal(document.querySelector('#t-parametratblock').hidden,true);
