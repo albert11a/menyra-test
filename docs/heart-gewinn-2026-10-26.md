@@ -34,3 +34,11 @@ Umsetzung auf Feature-Branch gemaess AGENTS.md. Keine Produktionstests, kein Pla
 - Wählen und Auswahlfeld exakt 44 px hoch. Keine blaue Fokus-/Tap-Umrandung an den Gewinn-Steuerelementen, stattdessen dezenter neutraler Tastaturfokus.
 - Der lange Erklaertext unter Tagesuebersicht ist entfernt.
 - 95 gezielte Tests einschliesslich Pixel-Sperre bestanden. Build erfolgreich, keine getrackten Bundle-Aenderungen. Kein echter iPhone-Browsercheck.
+
+## Abzuege hinter Info, einheitliche Kacheln
+
+- Die Abzugszeile ist aus der Hauptkarte entfernt. Ein Info-Button direkt links vom Plus ist nur bei geoeffneter Karte sichtbar. Er oeffnet den bestehenden nativen Dialog mit Umsatz, allen sechs Abzugsposten, Gesamtabzuegen und Gewinn zur Kontrolle.
+- Info verwendet dieselbe baueGewinn-Rechnung mit aktuellem Zeitraum und dem Weg des angeklickten Bereichs. Bei fehlenden Daten bleiben Gesamtabzuege/Gewinn unbekannt, bei offenen Ads-Eintraegen wird die Rechnung als vorlaeufig bezeichnet. Keine Aenderung der finanziellen Berechnung.
+- Die acht Gewinnwerte verwenden nun dieselben heart-lifeskin-kacheln/-kachel-Klassen wie die Kennzahlen oberhalb, inklusive Zellhintergruenden und Trennlinien. Alte separate Rasterstyles entfernt; Breitenbegrenzung bleibt.
+- 97 gezielte Tests gruen, inklusive DOM-Pruefungen fuer Info-Position, acht Standardkacheln, entfernte Abzugszeile, exakte Summen und Dialogerhalt beim Live-Render. Bestehende Kachel-Reihenfolgetests um das zweite Raster ergaenzt. Pixel-Sperre gruen.
+- Build erfolgreich; keine getrackten Bundle-Aenderungen. ESLint ohne Fehler (drei bestehende Warnungen in heart.js). Kein echter iPhone-Browsercheck.

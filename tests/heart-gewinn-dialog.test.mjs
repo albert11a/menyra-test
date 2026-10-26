@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseHTML } from 'linkedom';
-import { oeffneGewinnAds, oeffneGewinnKalender, kalenderKlick, kalenderTage } from '../apps/mnyra-heart/heart-lifeskin-gewinn-dialog.js';
+import { oeffneGewinnAds, oeffneGewinnKalender, kalenderKlick, kalenderTage, oeffneGewinnInfo, renderGewinnAbzuege } from '../apps/mnyra-heart/heart-lifeskin-gewinn-dialog.js';
 import { morphInhalt } from '../apps/mnyra-heart/heart-morph.js';
 import { renderGewinn } from '../apps/mnyra-heart/heart-lifeskin-gewinn.js';
 
@@ -104,5 +104,37 @@ test('calendar filter and select remain consistent after morphing from today to 
     assert.equal(select.querySelector('option[selected]').textContent, 'Eigene Auswahl');
     assert.match(root.querySelector('.heart-gewinn__datumslabel').textContent, /24.10.2026/);
     assert.deepEqual([...select.options].map((o) => o.textContent), ['Heute', 'Gestern', 'Vorgestern', 'Letzte 7 Tage', 'Dieser Monat', 'Max · alle', 'Eigene Auswahl']);
+  } finally { env.restore(); }
+});
+
+
+test('profit card uses the standard eight stat tiles and puts deductions behind Info beside Plus', () => {
+  const env = dom();
+  try {
+    const root = env.document.getElementById('root');
+    morphInhalt(root, renderGewinn([], { gewinnStatus: 'bereit' }, ['lifeskinshop']));
+    assert.equal(root.querySelectorAll('.heart-lifeskin-kacheln > .heart-lifeskin-kachel').length, 8);
+    const info = root.querySelector('[data-action="lifeskin-gewinn-info"]');
+    assert.equal(info.parentElement.tagName, 'SUMMARY');
+    assert.equal(info.nextElementSibling.getAttribute('data-action'), 'lifeskin-gewinn-plus');
+    assert.equal(info.getAttribute('data-gewinn-wege'), '["lifeskinshop"]');
+    assert.doesNotMatch(root.textContent, /Abzüge:|Verpackung|Sonstiges/);
+  } finally { env.restore(); }
+});
+
+test('Info shows the selected period and exact deductions, survives live renders, closes normally', () => {
+  const env = dom();
+  const rechnung = { summe: { umsatz: 4400, produkt: 631, transport: 500, riba: 200, verpackung: 0, sonstiges: 30, ads: 2570, gewinn: 469, fehlt: 0, bestellungen: 1 }, grenzen: { von: '2026-10-24', bis: '2026-10-24' }, vorlaeufig: false };
+  try {
+    const el = oeffneGewinnInfo({ rechnung, adsBereit: true });
+    const rows = Object.fromEntries([...el.querySelectorAll('dl > div')].map((r) => [r.querySelector('dt').textContent, r.querySelector('dd').textContent]));
+    assert.equal(rows['Abzüge gesamt'], '39,31 €'); assert.equal(rows['Gewinn nach Kosten'], '4,69 €');
+    assert.equal(rows.Transport, '5,00 €'); assert.equal(rows.Sonstiges, '0,30 €');
+    assert.match(el.textContent, /24.10.2026/);
+    morphInhalt(env.document.getElementById('root'), renderGewinn([], { gewinnStatus: 'laedt' }, ['']));
+    assert.equal(el.isConnected, true);
+    env.click(el.querySelector('[data-dialog-zu]')); assert.equal(el.isConnected, false);
+    const missing = renderGewinnAbzuege({ ...rechnung, summe: { ...rechnung.summe, fehlt: 1 } }, false);
+    assert.match(missing, /unvollständig/); assert.doesNotMatch(missing, /39,31 €|4,69 €/);
   } finally { env.restore(); }
 });

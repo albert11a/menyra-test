@@ -1,4 +1,5 @@
-import { oeffneGewinnAds, oeffneGewinnKalender } from "./heart-lifeskin-gewinn-dialog.js";
+import { baueGewinn } from "./heart-lifeskin-gewinn.js";
+import { oeffneGewinnAds, oeffneGewinnKalender, oeffneGewinnInfo } from "./heart-lifeskin-gewinn-dialog.js";
 import { vergleichHochladen, vergleichVorschau } from "./heart-lifeskin-vergleich.js";
 import { reviewGalerie } from "../../shared/lifeskin-review-gallery.js";
 import { SHOP_REVIEW_MEDIUM } from "../../shared/lifeskin-shop-bewertungen.js";
@@ -4469,6 +4470,11 @@ const operations = {
     const wege = JSON.parse(knopf.getAttribute("data-gewinn-wege") || '[""]');
     oeffneGewinnAds({ wege, laden: ladeGewinnAds, speichern: speichereGewinnAds,
       nachher: (ads) => { gewinnSchreibstand++; actions.patchLifeskin({ gewinnAds: ads, gewinnStatus: "bereit" }); setToast("Ads", "Tagesbetrag gespeichert.", "success"); } });
+  },
+  gewinnInfo(knopf) {
+    const stand = store.getState().lifeskin || {};
+    const wege = JSON.parse(knopf.getAttribute("data-gewinn-wege") || '[""]');
+    oeffneGewinnInfo({ rechnung: baueGewinn(stand.sitzungen || [], stand, wege), adsBereit: stand.gewinnStatus === "bereit" });
   },
   gewinnWaehlen() {
     oeffneGewinnKalender({ filter: store.getState().lifeskin?.gewinnFilter,

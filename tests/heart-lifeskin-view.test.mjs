@@ -76,10 +76,10 @@ test("null Analysen zeigen die Kacheln und sagen, dass es kein Fehler ist", () =
   assert.match(html, /mnyra\.com\/lifeskin/);
 });
 
-test("die acht Kacheln stehen in der Reihenfolge, in der gefragt wird", () => {
+test("Kennzahlen und Gewinnkacheln stehen in ihrer jeweiligen Reihenfolge", () => {
   const html = renderLifeskin(fertigerZustand());
   const marken = [...html.matchAll(/kachel__marke">([^<]+)</g)].map((m) => m[1]);
-  assert.deepEqual(marken, KACHELN);
+  assert.deepEqual(marken, [...KACHELN, "Umsatz", "Gewinn nach Kosten", "Ads-Kosten", "Seen-Analysen", "Analysen / Bestellung", "Ads / Seen-Analyse", "Ads / Bestellung", "Bestellwert Ø"]);
 });
 
 test("mit Sitzungen verschwindet der Hinweis wieder", () => {

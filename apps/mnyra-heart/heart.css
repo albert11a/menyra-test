@@ -10781,11 +10781,6 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 .heart-gewinn__filter { gap: 12px; }
 .heart-gewinn label { display: grid; gap: 6px; flex: 1 1 120px; min-width: 0; font-size: 12px; }
 .heart-gewinn .heart-lifeskin-eingabe { width: 100%; min-width: 0; box-sizing: border-box; min-height: 44px; color-scheme: dark; }
-.heart-gewinn__raster { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--heart-border, #303036); border-radius: 12px; }
-.heart-gewinn__wert { display: flex; flex-direction: column; gap: 6px; padding: 16px 12px; min-width: 0; }
-.heart-gewinn__wert small { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; opacity: .65; }
-.heart-gewinn__wert strong { font-size: clamp(19px, 5vw, 28px); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.heart-gewinn__wert span, .heart-gewinn__hinweis { font-size: 12px; line-height: 1.6; opacity: .7; }
 .heart-gewinn__tabelle { overflow-x: auto; margin: 14px 0; -webkit-overflow-scrolling: touch; }
 .heart-gewinn table { border-collapse: collapse; width: 100%; font-size: 12px; font-variant-numeric: tabular-nums; }
 .heart-gewinn th, .heart-gewinn td { text-align: right; padding: 10px 8px; white-space: nowrap; border-bottom: 1px solid var(--heart-border, #303036); }
@@ -10795,10 +10790,9 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 .heart-gewinn > .heart-klapp__kopf .heart-klapp__zahl { max-width: 38%; }
 
 /* Profit controls: constrain every grid item, including iOS date inputs. */
-.heart-gewinn, .heart-gewinn__inhalt, .heart-gewinn__inhalt > *, .heart-gewinn__wert { min-inline-size: 0; max-inline-size: 100%; box-sizing: border-box; }
+.heart-gewinn, .heart-gewinn__inhalt, .heart-gewinn__inhalt > *, .heart-gewinn__kacheln .heart-lifeskin-kachel { min-inline-size: 0; max-inline-size: 100%; box-sizing: border-box; }
 .heart-gewinn__inhalt { display: grid; gap: 14px; }
 .heart-gewinn__inhalt p { margin: 0; overflow-wrap: anywhere; }
-.heart-gewinn__wert small, .heart-gewinn__wert span { overflow-wrap: anywhere; }
 .heart-gewinn__filter { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; margin: 4px 0; }
 .heart-gewinn__waehlen { min-height: 44px; padding: 10px 16px; }
 .heart-gewinn__datumslabel { grid-column: 1 / -1; overflow-wrap: anywhere; color: var(--heart-muted, #929297); }
@@ -10846,3 +10840,14 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 .heart-gewinn-dialog button:focus, .heart-gewinn-dialog input:focus, .heart-gewinn-dialog select:focus { outline: none; box-shadow: none; }
 .heart-gewinn button:focus-visible, .heart-gewinn select:focus-visible,
 .heart-gewinn-dialog button:focus-visible, .heart-gewinn-dialog input:focus-visible, .heart-gewinn-dialog select:focus-visible { outline: 2px solid var(--heart-border-strong, #777); outline-offset: 2px; }
+
+
+.heart-gewinn:not([open]) > summary .heart-gewinn__info { display: none; }
+.heart-gewinn__kacheln .heart-lifeskin-kachel__marke,
+.heart-gewinn__kacheln .heart-lifeskin-kachel__wert,
+.heart-gewinn__kacheln .heart-lifeskin-kachel__zusatz { overflow-wrap: anywhere; }
+.heart-gewinn-abzuege { margin: 16px 0 0; }
+.heart-gewinn-abzuege > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--heart-border, #36363c); }
+.heart-gewinn-abzuege dt { overflow-wrap: anywhere; }
+.heart-gewinn-abzuege dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.heart-gewinn-abzuege .ist-summe { font-weight: 650; }

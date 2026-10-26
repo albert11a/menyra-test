@@ -563,6 +563,7 @@ export function bindHeartEvents({
     if (action === "lifeskin-shopset-foto") { operations.shopSetFoto?.(); return; }
     if (action === "lifeskin-shopset-speichern") { await operations.speichereShopSet?.(); return; }
     if (action === "lifeskin-gewinn-plus") { event.preventDefault(); operations.gewinnPlus?.(target); return; }
+    if (action === "lifeskin-gewinn-info") { operations.gewinnInfo?.(target); return; }
     if (action === "lifeskin-gewinn-waehlen") { operations.gewinnWaehlen?.(); return; }
     if (action === "lifeskin-gewinn-laden") { await operations.gewinnLaden?.(); return; }
     if (action === "lifeskin-kosten-speichern") { await operations.produktkostenSpeichern?.(); return; }

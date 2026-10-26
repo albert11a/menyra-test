@@ -108,3 +108,29 @@ export function oeffneGewinnAds({ wege, laden, speichern, nachher }) {
   neuLaden();
   return el;
 }
+
+
+// Snapshot of the same calculation used in the open card, including its scope
+// and applied date range. No additional costs or second accounting logic.
+export function renderGewinnAbzuege(rechnung, adsBereit) {
+  if (rechnung.fehler) return `<p>${escapeHtml(rechnung.fehler)}</p>`;
+  const s = rechnung.summe;
+  const euro = (n) => `${(n / 100).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+  const zeile = (name, wert, klasse = "") => `<div class="${klasse}"><dt>${escapeHtml(name)}</dt><dd>${wert == null ? "—" : euro(wert)}</dd></div>`;
+  const komplett = adsBereit && !s.fehlt;
+  const abzug = s.produkt + s.transport + s.riba + s.verpackung + s.sonstiges + s.ads;
+  const zeitraum = rechnung.grenzen.von ? gewinnDatumsLabel(rechnung.grenzen.von, rechnung.grenzen.bis) : "Alle Tage";
+  return `<p class="heart-gewinn-dialog__hilfe">${escapeHtml(zeitraum)} · ${s.bestellungen} Bestellungen</p>
+    <dl class="heart-gewinn-abzuege">
+    ${zeile("Umsatz", s.umsatz)}
+    ${zeile("Produkte", s.produkt)}${zeile("Transport", s.transport)}${zeile("Riba", s.riba)}
+    ${zeile("Verpackung", s.verpackung)}${zeile("Sonstiges", s.sonstiges)}${zeile("Ads", adsBereit ? s.ads : null)}
+    ${zeile("Abzüge gesamt", komplett ? abzug : null, "ist-summe")}
+    ${zeile("Gewinn nach Kosten", komplett ? s.gewinn : null, "ist-summe")}</dl>
+    ${!adsBereit ? '<p class="heart-gewinn-dialog__hilfe">Ads-Daten noch nicht verfügbar.</p>' : ""}
+    ${s.fehlt ? `<p class="heart-gewinn-dialog__hilfe">Bei ${s.fehlt} Bestellung(en) fehlen Kostendaten. Die Abzüge sind unvollständig.</p>` : ""}
+    ${adsBereit && rechnung.vorlaeufig ? '<p class="heart-gewinn-dialog__hilfe">Ads-Einträge sind noch offen. Die Rechnung ist vorläufig.</p>' : ""}`;
+}
+export function oeffneGewinnInfo({ rechnung, adsBereit }) {
+  return dialogOeffnen("Abzüge prüfen", renderGewinnAbzuege(rechnung, adsBereit));
+}
