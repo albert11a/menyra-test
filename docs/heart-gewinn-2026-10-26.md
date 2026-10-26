@@ -46,3 +46,11 @@ Umsetzung auf Feature-Branch gemaess AGENTS.md. Keine Produktionstests, kein Pla
 ## Feiner vertikaler Abstand
 
 Gewinnkacheln behalten die gemeinsamen Schriftgroessen der Hauptstatistik (Titel 11 px, Wert 25 px, Zusatz 12 px). Zellabstand auf 6 px, vertikales Padding auf 14/15 px und Zusatz-Zeilenhoehe auf 1,35 angepasst. Safari-Fokus am summary selbst ergaenzt: kein blauer Fokus-/Tap-Rahmen; neutraler innerer Tastaturfokus. Nur CSS, keine Daten-/Berechnungsaenderung. Build erfolgreich; keine getrackten Bundle-Aenderungen. Kein echter iPhone-Browsercheck.
+
+## Geplanter Ausbau Stats / gemeinsame Ads
+
+Gewinnkarte in allen Heart-Bereichen gemeinsam fuer Skinreact und LifeSkinshop, weil Ads beide Wege abdecken. Vorhandene Tagesbetraege werden zusammengefuehrt, nicht neu geschrieben oder doppelt addiert. Storno-Wahrheit kommt aus statusiNeHeart, derselben Funktion wie die Bestellkarten. Stats-Dialog: Umsatz mit aufklappbarer Bestellliste, Ads-Tagesliste, sichtbare Anulime. Ads-Tage mit positiven Ausgaben und null aktiven Bestellungen werden als Summe/Anzahl in den Kacheln ausgewiesen; Tageszeilen ohne Bestellung rot plus Text. Zeitraum und Cent-Rechnung bleiben identisch zur Hauptkarte.
+
+Umgesetzt: Stats-Button links neben Info (nur offen sichtbar), nativer Dialog mit aufklappbarem Umsatz/Bestellungen, Ads-Tagesliste und Anulime-Liste. Alle Gewinnkarten rechnen mit beiden Wegen. Ads-Luecken werden pro gemeinsamem Datum statt pro Weg beurteilt. Zusaetzliche Kacheln: Ads ohne Bestellung, Tage ohne Bestellung, Anulime, Wert Anulime. Anulime werden nach dem gemeinsamen Bestellkarten-Status ausgeschlossen und separat gezaehlt; ein veraltetes isoliertes storniert-Flag reicht nicht. Die Ads-Kosten eines stornierten Auftrags bleiben als Tagesausgabe erhalten. Tage mit Nullbudget zaehlen nicht als Kostentage ohne Bestellung.
+
+Validierung: 100 gezielte Node-/DOM-Pruefungen bestanden, einschliesslich gemeinsamer Ads ohne Doppelerfassung, Shop-Bestellungen, Statuskonsistenz, Storno-Summen, positiven Ads ohne Bestellung, redaktionell markierten Tageszeilen und Stats-Klickrouting. Pixel-Sperre gruen; ESLint ohne Fehler (vier bestehende Warnungen). Build erfolgreich; keine getrackten Bundle-Aenderungen. Kein echter iPhone-/Produktionsschreibtest.

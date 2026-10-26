@@ -13,7 +13,7 @@ const calc = (ss, st = state()) => baueGewinn(ss, st, ['lifeskinshop'], jetzt);
 
 test('cent ledger: correct quantity, transport, Riba, extras, ads, ratios; no double generic shipping', () => {
   const r = calc([fall()]);
-  assert.deepEqual(r.summe, { seen: 1, bestellungen: 1, umsatz: 4000, ads: 1000, produkt: 900, transport: 250, riba: 200, extra: 150, verpackung: 100, sonstiges: 50, fehlt: 0, zugestellt: 1, gewinn: 1500 });
+  assert.deepEqual(r.summe, { seen: 1, bestellungen: 1, umsatz: 4000, ads: 1000, produkt: 900, transport: 250, riba: 200, extra: 150, verpackung: 100, sonstiges: 50, fehlt: 0, zugestellt: 1, anulime: 0, anulimeWert: 0, gewinn: 1500 });
   assert.equal(r.jeSeen, 1000); assert.equal(r.jeBestellung, 1000); assert.equal(r.analysenJeBestellung, 1);
 });
 test('Albania follows existing Beki prefix tariff', () => {
@@ -104,7 +104,7 @@ test('event routing dispatches the actual plus/calendar target and prevents summ
   const { bindHeartEvents } = await import('../apps/mnyra-heart/heart-events.js');
   const events = {}, calls = [];
   const root = { addEventListener: (name, fn) => { events[name] = fn; }, removeEventListener() {} };
-  const operations = { gewinnPlus: (t) => calls.push(['plus', t]), gewinnWaehlen: () => calls.push(['calendar']), gewinnFilter: (a, b) => calls.push([a, b]) };
+  const operations = { gewinnStats: (t) => calls.push(['stats', t]), gewinnPlus: (t) => calls.push(['plus', t]), gewinnWaehlen: () => calls.push(['calendar']), gewinnFilter: (a, b) => calls.push([a, b]) };
   bindHeartEvents({ root, operations });
   const target = (action) => ({ hasAttribute: () => false, matches: () => false, getAttribute: () => action, closest(sel) { return sel === '[data-action]' || sel.includes('[data-nav-key]') ? this : null; } });
   const plus = target('lifeskin-gewinn-plus'); let prevented = false;
@@ -114,6 +114,9 @@ test('event routing dispatches the actual plus/calendar target and prevents summ
   await events.click({ target: save, preventDefault() {} }); assert.deepEqual(calls[1], ['calendar']);
   await events.change({ target: { matches: (sel) => sel === '[data-gewinn-filter]', getAttribute: () => 'zeit', value: 'max' } });
   assert.deepEqual(calls[2], ['zeit', 'max']);
+  const stats = target('lifeskin-gewinn-stats');
+  await events.click({ target: stats, preventDefault() {} });
+  assert.deepEqual(calls[3], ['stats', stats]);
 });
 
 
@@ -137,4 +140,31 @@ test('loading is neutral, missing-ad notice appears only after loading and only 
     const html = renderGewinn([], state({ gewinnStatus }), ['lifeskinshop']);
     assert.doesNotMatch(html, /heart-lifeskin-warnung|Ads für .* noch offen|Vorläufig: Ads-Daten fehlen/);
   }
+});
+
+
+test('shared ads cover Skinreact and Shop; cancellations follow card status and stay separately visible', () => {
+  const skin = { ...fall('skin'), source: { weg: '' } };
+  const shop = fall('shop');
+  const cancel = fall('cancel'); cancel.order.status = 'storniert';
+  const staleFlag = { ...fall('stale'), storniert: true };
+  const st = state({ gewinnAds: [{ weg: '', tag: '2026-10-26', cent: 1000 }], dergesat: Object.fromEntries(['skin', 'shop', 'stale'].map((id) => [id, { postaBeki: '123' }])) });
+  const r = baueGewinn([skin, shop, cancel, staleFlag], st, ['', 'lifeskinshop'], jetzt);
+  assert.equal(r.summe.bestellungen, 3); assert.equal(r.summe.umsatz, 12000);
+  assert.equal(r.summe.ads, 1000); assert.equal(r.adsOffeneTage, 0);
+  assert.equal(r.summe.anulime, 1); assert.equal(r.summe.anulimeWert, 4000);
+  assert.equal(r.bestellListe.length, 3); assert.equal(r.anulimeListe[0].id, 'cancel');
+  assert.equal(r.adsOhneBestellung, 0);
+});
+test('cost days without an order exclude zero-budget days, group both ways by date and keep Ads after cancellation', () => {
+  const st = state({ gewinnFilter: { zeit: 'woche' }, gewinnAds: [
+    { weg: '', tag: '2026-10-23', cent: 1000 }, { weg: 'lifeskinshop', tag: '2026-10-23', cent: 500 },
+    { weg: '', tag: '2026-10-24', cent: 0 }, { weg: '', tag: '2026-10-25', cent: 700 },
+    { weg: '', tag: '2026-10-26', cent: 900 }], dergesat: { a: { postaBeki: '123' }, cancelled: { statusi: 'anuluar' } } });
+  const cancelled = fall('cancelled', '2026-10-25');
+  const r = baueGewinn([fall(), cancelled], st, ['', 'lifeskinshop'], jetzt);
+  assert.equal(r.tageOhneBestellung, 2); assert.equal(r.adsOhneBestellung, 2200);
+  assert.equal(r.summe.ads, 3100); assert.equal(r.summe.anulime, 1);
+  assert.equal(r.reihen.find((z) => z.tag === '2026-10-25').bestellungen, 0);
+  assert.equal(r.reihen.find((z) => z.tag === '2026-10-24').adsErfasst, true);
 });

@@ -103,8 +103,8 @@ test("Lifeskin: links Visit, Analysen, Analysenquote, Abbrüche Analysen - recht
   // Das Raster fuellt Reihe fuer Reihe: links, rechts, links, rechts ...
   const links = marken.filter((_, i) => i % 2 === 0);
   const rechts = marken.filter((_, i) => i % 2 === 1);
-  assert.deepEqual(links, ["Visit", "Analysen", "Analysenquote", "Abbrüche Analysen", "Umsatz", "Ads-Kosten", "Analysen / Bestellung", "Ads / Bestellung"]);
-  assert.deepEqual(rechts, ["Shporta", "Arka", "Umsatz", "Abgebrochen Kauf", "Gewinn nach Kosten", "Seen-Analysen", "Ads / Seen-Analyse", "Bestellwert Ø"]);
+  assert.deepEqual(links, ["Visit", "Analysen", "Analysenquote", "Abbrüche Analysen", "Umsatz", "Ads-Kosten", "Analysen / Bestellung", "Ads / Bestellung", "Ads ohne Bestellung", "Anulime"]);
+  assert.deepEqual(rechts, ["Shporta", "Arka", "Umsatz", "Abgebrochen Kauf", "Gewinn nach Kosten", "Seen-Analysen", "Ads / Seen-Analyse", "Bestellwert Ø", "Tage ohne Bestellung", "Wert Anulime"]);
 });
 
 test("Lifeskin zaehlt beide Wege zusammen - Skinreact plus Acne duo", () => {

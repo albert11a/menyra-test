@@ -10868,3 +10868,26 @@ html.heart-wischt--gleitet .heart-bereiche__band {
   box-shadow: inset 0 0 0 1px var(--heart-border-strong, #777);
   border-radius: 6px;
 }
+
+.heart-gewinn:not([open]) > summary .heart-gewinn__stats { display: none; }
+.heart-gewinn-stats-block { margin-top: 16px; border-top: 1px solid var(--heart-border, #36363c); padding-top: 8px; }
+.heart-gewinn-stats-block > summary { display: flex; align-items: center; gap: 10px; min-height: 54px; list-style: none; cursor: pointer; }
+.heart-gewinn-stats-block > summary::-webkit-details-marker { display: none; }
+.heart-gewinn-stats-block > summary > span { flex: 1; }
+.heart-gewinn-stats-block small { display: block; font-size: 11px; color: var(--heart-text-muted, #929297); }
+.heart-gewinn-stats-block > summary > b { font-variant-numeric: tabular-nums; }
+.heart-gewinn-stats-block > summary > i { font-style: normal; font-size: 22px; flex: 0 0 24px; text-align: center; transition: transform .15s; }
+.heart-gewinn-stats-block[open] > summary > i { transform: rotate(45deg); }
+.heart-gewinn-bestellliste { list-style: none; margin: 8px 0 0; padding: 0; }
+.heart-gewinn-bestellliste li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; border-top: 1px solid var(--heart-border, #36363c); padding: 12px 0; }
+.heart-gewinn-bestellliste li div { display: grid; gap: 4px; overflow-wrap: anywhere; }
+.heart-gewinn-bestellliste span { font-size: 12px; color: var(--heart-text-muted, #929297); }
+.heart-gewinn-bestellliste strong { font-variant-numeric: tabular-nums; }
+.heart-gewinn-stats-tabelle { width: 100%; min-width: 0; overflow-x: auto; margin: 10px 0; }
+.heart-gewinn-stats-tabelle table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+.heart-gewinn-stats-tabelle th, .heart-gewinn-stats-tabelle td { padding: 10px 5px; text-align: right; border-bottom: 1px solid var(--heart-border, #36363c); }
+.heart-gewinn-stats-tabelle th:first-child, .heart-gewinn-stats-tabelle td:first-child { text-align: left; }
+.heart-gewinn-stats-tabelle .ohne-bestellung, .heart-gewinn-stats-tabelle .ohne-bestellung small { color: var(--heart-danger, #ff6b57); }
+.heart-gewinn-dialog summary { -webkit-tap-highlight-color: transparent; }
+.heart-gewinn-dialog summary:focus { outline: none; }
+.heart-gewinn-dialog summary:focus-visible { outline: 1px solid var(--heart-border-strong, #777); outline-offset: 2px; border-radius: 6px; }

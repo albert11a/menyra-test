@@ -1,10 +1,11 @@
+import { STATUS_CHIPS } from "../../shared/lifeskin-dergesat.js";
 // These dialogs live outside Heart's morph root. Live data updates cannot
 // replace an open form, dismiss it or reset its unsaved inputs.
 import { adsCent, datumGueltig, gewinnGrenzen } from "./heart-lifeskin-gewinn.js";
 import { statistikTag } from "../../shared/lifeskin-statistik.js";
 import { escapeHtml } from "./heart-ui-utils.js";
 
-const labels = { "": "Skinreact", lifeskinshop: "Acne duo", lifeskin2: "Lifeskin 2" };
+const labels = { "": "Gemeinsam · Skinreact + LifeSkinshop", lifeskinshop: "LifeSkinshop · separat", lifeskin2: "Lifeskin 2" };
 const datum = (tag) => datumGueltig(tag) ? tag.split("-").reverse().join(".") : "";
 export const gewinnDatumsLabel = (von, bis) => von === bis ? datum(von) : `${datum(von)} – ${datum(bis)}`;
 
@@ -133,4 +134,23 @@ export function renderGewinnAbzuege(rechnung, adsBereit) {
 }
 export function oeffneGewinnInfo({ rechnung, adsBereit }) {
   return dialogOeffnen("Abzüge prüfen", renderGewinnAbzuege(rechnung, adsBereit));
+}
+
+export function renderGewinnStats(rechnung, adsBereit) {
+  if (rechnung.fehler) return `<p>${escapeHtml(rechnung.fehler)}</p>`;
+  const euro = (n) => n == null ? "—" : `${(n / 100).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+  const s = rechnung.summe;
+  const zeitraum = rechnung.grenzen.von ? gewinnDatumsLabel(rechnung.grenzen.von, rechnung.grenzen.bis) : "Alle Tage";
+  const liste = (bestellungen) => bestellungen.length ? `<ul class="heart-gewinn-bestellliste">${bestellungen.map((b) => `<li>
+    <div><b>${escapeHtml(b.name || b.orderId)}</b><span>${escapeHtml(datum(b.tag))} · ${escapeHtml(b.weg === "lifeskinshop" ? "LifeSkinshop" : "Skinreact")}</span><small>${escapeHtml(b.orderId)} · ${escapeHtml(STATUS_CHIPS.find((c) => c.id === b.status)?.njejes || b.status)}</small></div>
+    <strong>${euro(b.wert)}</strong></li>`).join("")}</ul>` : '<p class="heart-gewinn-dialog__hilfe">Keine Bestellungen im gewählten Zeitraum.</p>';
+  return `<p class="heart-gewinn-dialog__hilfe">${escapeHtml(zeitraum)} · Skinreact + LifeSkinshop</p>
+    <details class="heart-gewinn-stats-block"><summary><span>Umsatz<small>${s.bestellungen} Bestellungen</small></span><b>${euro(s.umsatz)}</b><i aria-hidden="true">+</i></summary>${liste(rechnung.bestellListe || [])}</details>
+    <details class="heart-gewinn-stats-block"><summary><span>Ads<small>Tageskosten und Bestellungen</small></span><b>${adsBereit ? euro(s.ads) : "—"}</b><i aria-hidden="true">+</i></summary>
+    ${adsBereit ? `<div class="heart-gewinn-stats-tabelle"><table><thead><tr><th>Datum</th><th>Ads</th><th>Best.</th></tr></thead><tbody>${rechnung.reihen.map((z) => `<tr class="${z.bestellungen === 0 ? "ohne-bestellung" : ""}"><td>${escapeHtml(datum(z.tag))}${z.bestellungen === 0 ? '<small>Keine Bestellung</small>' : ""}${z.anulime ? `<small>${z.anulime} Anulime</small>` : ""}</td><td>${z.adsErfasst ? euro(z.ads) : "—"}</td><td>${z.bestellungen}</td></tr>`).join("") || '<tr><td colspan="3">Keine Daten im Zeitraum.</td></tr>'}</tbody></table></div>
+    <p class="heart-gewinn-dialog__hilfe">${rechnung.tageOhneBestellung} ${rechnung.tageOhneBestellung === 1 ? "Tag" : "Tage"} mit Ads-Kosten ohne Bestellung · ${euro(rechnung.adsOhneBestellung)}</p>` : '<p class="heart-gewinn-dialog__hilfe">Ads-Daten noch nicht verfügbar.</p>'}</details>
+    <details class="heart-gewinn-stats-block"><summary><span>Anulime<small>Aus Umsatz ausgeschlossen</small></span><b>${s.anulime} · ${euro(s.anulimeWert)}</b><i aria-hidden="true">+</i></summary>${liste(rechnung.anulimeListe || [])}</details>`;
+}
+export function oeffneGewinnStats({ rechnung, adsBereit }) {
+  return dialogOeffnen("Stats", renderGewinnStats(rechnung, adsBereit));
 }
