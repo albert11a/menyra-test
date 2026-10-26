@@ -54,3 +54,7 @@ Gewinnkarte in allen Heart-Bereichen gemeinsam fuer Skinreact und LifeSkinshop, 
 Umgesetzt: Stats-Button links neben Info (nur offen sichtbar), nativer Dialog mit aufklappbarem Umsatz/Bestellungen, Ads-Tagesliste und Anulime-Liste. Alle Gewinnkarten rechnen mit beiden Wegen. Ads-Luecken werden pro gemeinsamem Datum statt pro Weg beurteilt. Zusaetzliche Kacheln: Ads ohne Bestellung, Tage ohne Bestellung, Anulime, Wert Anulime. Anulime werden nach dem gemeinsamen Bestellkarten-Status ausgeschlossen und separat gezaehlt; ein veraltetes isoliertes storniert-Flag reicht nicht. Die Ads-Kosten eines stornierten Auftrags bleiben als Tagesausgabe erhalten. Tage mit Nullbudget zaehlen nicht als Kostentage ohne Bestellung.
 
 Validierung: 100 gezielte Node-/DOM-Pruefungen bestanden, einschliesslich gemeinsamer Ads ohne Doppelerfassung, Shop-Bestellungen, Statuskonsistenz, Storno-Summen, positiven Ads ohne Bestellung, redaktionell markierten Tageszeilen und Stats-Klickrouting. Pixel-Sperre gruen; ESLint ohne Fehler (vier bestehende Warnungen). Build erfolgreich; keine getrackten Bundle-Aenderungen. Kein echter iPhone-/Produktionsschreibtest.
+
+## Farben in der Tagesuebersicht
+
+Nur Best.- und Gewinnzellen farbig: Bestellungen >= 1 gruen, 0 rot; Gewinn > 0 gruen, < 0 rot; Nullgewinn und unbekannter Gewinn neutral. Gemeinsame Heart-Farbvariablen, keine Rechenaenderung. 31 gezielte Pruefungen einschliesslich DOM-Grenzfaellen und Pixel-Sperre bestanden. Build erfolgreich; getrackte Bundles unveraendert. Kein echter iPhone-Browsercheck.

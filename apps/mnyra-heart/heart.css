@@ -10891,3 +10891,6 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 .heart-gewinn-dialog summary { -webkit-tap-highlight-color: transparent; }
 .heart-gewinn-dialog summary:focus { outline: none; }
 .heart-gewinn-dialog summary:focus-visible { outline: 1px solid var(--heart-border-strong, #777); outline-offset: 2px; border-radius: 6px; }
+
+.heart-gewinn__tabelle td.heart-gewinn__positiv { color: var(--heart-success, #23c483); }
+.heart-gewinn__tabelle td.heart-gewinn__negativ { color: var(--heart-danger, #ff6b57); }

@@ -161,3 +161,22 @@ test('Stats opens expandable order and ads lists for the same dates, with red ze
     env.click(el.querySelector('[data-dialog-zu]')); assert.equal(el.isConnected, false);
   } finally { env.restore(); }
 });
+
+test('daily table colors positive orders and profit green, zero orders and losses red, zero/unknown profit neutral', () => {
+  const env = dom();
+  try {
+    const sessions = [20, 1, 4.5, 8].map((total, i) => ({ id: `color${i}`, source: { weg: '' }, order: { orderId: `C${i}`, createdAt: `2026-10-${24 + i}T10:00:00Z`, total, items: [{ id: 'p', sasia: 1 }] } }));
+    const st = { gewinnStatus: 'bereit', gewinnFilter: { zeit: 'max' }, gewinnAds: [24, 25, 26, 27, 28].map((n) => ({ weg: '', tag: `2026-10-${n}`, cent: n === 28 ? 100 : 0 })),
+      produktkosten: { shisheStueck: 1, stikerStueck: 1, kreme: [{ name: 'p', produkt: 'p', preis: 0, menge: 30 }] },
+      dergesat: Object.fromEntries([0, 1, 2].map((i) => [`color${i}`, { postaBeki: '123' }])) };
+    const root = env.document.getElementById('root'); morphInhalt(root, renderGewinn(sessions, st, ['']));
+    const rows = Object.fromEntries([...root.querySelectorAll('.heart-gewinn__tabelle tbody tr')].map((row) => [row.cells?.[0]?.textContent || row.querySelector('td').textContent, [...row.querySelectorAll('td')]]));
+    assert.equal(rows['2026-10-24'][2].className, 'heart-gewinn__positiv');
+    assert.equal(rows['2026-10-24'][5].className, 'heart-gewinn__positiv');
+    assert.equal(rows['2026-10-25'][5].className, 'heart-gewinn__negativ');
+    assert.equal(rows['2026-10-26'][5].className, '');
+    assert.equal(rows['2026-10-27'][5].className, ''); assert.equal(rows['2026-10-27'][5].textContent, '—');
+    assert.equal(rows['2026-10-28'][2].className, 'heart-gewinn__negativ');
+    assert.equal(rows['2026-10-28'][5].className, 'heart-gewinn__negativ');
+  } finally { env.restore(); }
+});
