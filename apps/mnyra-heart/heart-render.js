@@ -1,3 +1,4 @@
+import { renderFastKnopf } from "./heart-lifeskin-fast.js";
 import {
   HEART_NAV_ITEMS
 } from "./heart-state.js";
@@ -527,7 +528,7 @@ function renderShell(state, runtime = {}) {
           ${renderUhrwahl(antwortzeit)}
           <button class="heart-icon-button heart-zeitwahl__zu" data-action="lifeskin-uhrwahl" aria-label="Antwortzeit schliessen">${renderHeartIcon("x")}</button>
         </header>` : `
-        <header class="heart-topbar">
+        <header class="heart-topbar${zeitKnopf && !lifeskinWeg(state) ? " heart-topbar--fast" : ""}">
           <div class="heart-topbar__left">
             <div class="heart-topbar__menu-slot">
               <button class="heart-icon-button heart-icon-button--menu" data-action="toggle-nav" aria-label="Menue oeffnen">${renderHeartIcon("menu")}</button>
@@ -555,6 +556,7 @@ function renderShell(state, runtime = {}) {
                   <span>Analysen</span>
                 </button>
               ` : ""}
+              ${zeitKnopf && !lifeskinWeg(state) ? renderFastKnopf(state.lifeskin) : ""}
               ${zeitKnopf ? `
                 <button class="heart-icon-button heart-icon-button--uhr" data-action="lifeskin-uhrwahl"
                         aria-label="Antwortzeit: ${escapeHtml(antwortzeitName(antwortzeit))}">${renderHeartIcon("clock")}</button>

@@ -238,10 +238,10 @@ test("es gibt nur noch eine Chipreihe, und die sagt, wie weit ein Fall ist", () 
   const html = zeichne({ sitzungen, zeitraum: "max", fach: "alle" });
   assert.ok(!html.includes('data-action="lifeskin-art"'), "Die Chipreihe nach Art steht noch da");
 
-  // Sieben Chips, in dieser Reihenfolge.
+  // The opt-in Fast workflow has its own chip alongside the existing states.
   const chips = [...html.matchAll(/data-action="lifeskin-fach" data-wert="([a-z]+)"/g)]
     .map((m) => m[1]);
-  assert.deepEqual(chips, ["alle", "ready", "seen", "kasse", "bestellt", "spaeter", "archiviert"]);
+  assert.deepEqual(chips, ["alle", "fast", "ready", "seen", "kasse", "bestellt", "spaeter", "archiviert"]);
 
   // "Alle" heisst: jeder Weg. Es heisst NICHT: jeder Zustand - ein Fall
   // liegt in genau einem Fach und wandert weiter, sobald sich etwas an

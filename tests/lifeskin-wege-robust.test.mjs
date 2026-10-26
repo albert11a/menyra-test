@@ -183,6 +183,8 @@ function probe({ ua = UA.chromeAndroid, gum, mitFoto = true, suche = "" } = {}) 
     MESS_BREITE: 384, STANDARD_KONFIG: { sprache: "sq" }, __LIFESKIN_TEST__: true,
     Pixel: class { meldeWeg() {} melde() {} },
     Sitzung: class {},
+    // The legacy-camera suite keeps Fast off; Fast has a separate injected API suite.
+    FastLauf: class { saved = {}; active = false; select() {} decide() { return Promise.resolve(false); } },
     besteGuete: (kodiere) => ({ jpeg: kodiere(0.9), guete: 0.9 }),
     Flaechenkamera: class { starte() { return Promise.resolve(false); } stoppe() {} },
     beiFreigabe: () => () => {}, KAMERA_HAENGT_MS: 8000, BILD_GRENZE_MS: 5000,

@@ -26,6 +26,7 @@
 // PUNKT aus derselben Datei.
 //
 // lifeskin-haut.js faellt damit ganz weg: Niemand sonst holt etwas daraus.
+import { FastLauf } from "./lifeskin-fast.js";
 import { SkinreactErgebnis, skinreactEinbetten } from "../lifeskin-shop/skinreact-ergebnis.js";
 import { MESS_BREITE, PUNKT } from "./lifeskin-metrics.js";
 import { pruefeAufnahme, schaerfeVonBild } from "./lifeskin-face.js";
@@ -647,6 +648,7 @@ export class Trichter {
        gehoert dem einen Tab und ueberlebt ein Neuladen. */
     try { this.speicher = globalThis.sessionStorage || null; }
     catch { this.speicher = null; }
+    this.fast = !this.weg && !this.skinreact && /^\/lifeskin\/?$/.test(globalThis.location?.pathname || "") ? new FastLauf(this.sitzung, { storage: this.speicher }) : null;
     this.zustand = {
       name: "",
       altersgruppe: "",
@@ -786,6 +788,7 @@ export class Trichter {
         altWeg: this.zustand.altWeg === true,
         fotoAnzahl: Number(this.zustand.fotoAnzahl) || 0,
         nummerGegeben: this.zustand.nummerGegeben === true,
+        fastAntworten: this.fast?.active ? { ...this.fragen.antworten } : null,
         // Aus den Feldern und nicht aus dem Zustand: Was der Browser
         // selbst eingesetzt hat (Autofill, eine Einfuegung ueber das
         // Kontextmenue) loest kein input-Ereignis aus und stand deshalb
@@ -860,6 +863,10 @@ export class Trichter {
     const stand = this.#standHolen();
     if (!stand) return false;
 
+    if (this.fast?.active && stand.fastAntworten) {
+      this.fragen.antworten = { ...stand.fastAntworten };
+      this.zustand.nachFragen = true;
+    }
     this.zustand.typ = stand.typ || this.zustand.typ;
     this.zustand.altWeg = stand.altWeg === true;
     this.zustand.fotoAnzahl = Number(stand.fotoAnzahl) || 0;
@@ -893,7 +900,7 @@ export class Trichter {
       // zurueck und zaehlt nichts doppelt.
       this.fragen.antworten = { ...stand.antworten };
       this.zustand.nachFragen = true;
-      const liste = fragenNachAufnahme(this.weg);
+      const liste = this.fast?.active ? this.#fastFragen() : fragenNachAufnahme(this.weg);
       // A saved session may still point at the now-removed question.
       if (!liste.length) {
         this.zustand.nachFragen = false;
@@ -937,6 +944,12 @@ export class Trichter {
     this.#texteSetzen();
     this.#ereignisse();
 
+    // The report may exist while automatic publication was interrupted.
+    if (this.fast?.active && (this.fast.pending || (this.sitzung.stand?.bericht === true && !this.sitzung.fortsetzbar())) && globalThis.__mnyraStill !== true) {
+      this.#uebergeben();
+      return;
+    }
+
     // Kommt jemand zurueck, faengt er nicht von vorne an.
     //
     // Der WhatsApp-Link ersetzt in den Fenstern von Instagram, TikTok und
@@ -976,6 +989,7 @@ export class Trichter {
     // Reihenfolge: Geschrieben wird erst im naechsten Bild.
     this.landingkarten = starteLandingkarten({ schreiben: (d) => this.sitzung.landingKartenSchreiben(d) });
     this.sitzung.starte({ sprache: this.sprache });
+    this.fast?.decide();
 
     // ZULETZT, und das ist die Reihenfolge, auf die es ankommt: Erst steht
     // die Sitzung, dann wird der Tipp nachgeholt, der waehrend des Ladens
@@ -2063,6 +2077,7 @@ export class Trichter {
     // zurueckzusetzen.
     if (this.zustand.typ && this.zustand.typ !== typ) this.sitzung.zurueckAuf("wahl");
     this.zustand.typ = typ;
+    this.fast?.select(typ);
     this.zustand.paSkanim = typ !== "scan";
     // EINE ANGEFANGENE AUFNAHME GEHOERT ZU IHREM WEG.
     //
@@ -2621,6 +2636,12 @@ export class Trichter {
       this.pixel.meldeAbgabe("details");
     } catch (fehler) {
       globalThis.console?.warn?.("[lifeskin] Angaben nicht gespeichert:", fehler?.message);
+    }
+
+    if (this.fast?.active && this.zustand.nachFragen && ["scan", "foto"].includes(this.zustand.typ)) {
+      this.fast.remember(this.fragen.antworten);
+      this.#analyseZeigen();
+      return;
     }
 
     // Die alte Vorlage behaelt ihren alten Weg: vier Fragen, Name und
@@ -4309,10 +4330,26 @@ export class Trichter {
   // Traegt die Seite keinen Fragenbildschirm, geht es wie bisher direkt
   // zum Namen - ein Schalter auf einen Bildschirm, den es nicht gibt, waere
   // eine weisse Seite.
+  #fastFragen() {
+    return ["anliegen", "lekura", "kujdesi", "perdorimi"].map(id => {
+      const frage = FRAGEN.find(f => f.id === id);
+      return id === "anliegen" ? { ...frage, hoechstens: 3, unter: { sq: "Zgjidhni deri në tri", de: "Bis zu drei auswählen" } } : frage;
+    });
+  }
+
   #aufnahmeFragen(weg) {
     this.#antwortzeitHolen();
+    if (this.fast && !this.fast.saved) {
+      if (this.fastFragenWartet) return;
+      this.fastFragenWartet = true;
+      this.fast.decide().then(() => {
+        this.fastFragenWartet = false;
+        if (this.zustand.typ === (weg === 'foto' ? 'foto' : 'scan')) this.#aufnahmeFragen(weg);
+      });
+      return;
+    }
     if (!$("#ls-fragen")) { this.#nameZeigen(); return; }
-    const liste = fragenNachAufnahme(this.weg);
+    const liste = this.fast?.active ? this.#fastFragen() : fragenNachAufnahme(this.weg);
     this.zustand.nachFragen = liste.length > 0;
     // /lifeskin skips questions; keep capture/upload and name/contact intact.
     if (!liste.length) { this.#nameZeigen(); return; }
@@ -4452,7 +4489,7 @@ export class Trichter {
       schreibe(auswahlZaehler, `${this.#frageAntwort(frage).length} / ${frage.hoechstens}`);
     }
     const unter = $("#ls-frageunter");
-    const unterText = kompakt ? this.text("frageKompaktUnter") : t(frage.unter, this.sprache);
+    const unterText = kompakt && !this.fast?.active ? this.text("frageKompaktUnter") : t(frage.unter, this.sprache);
     schreibe(unter, unterText);
     if (unter) unter.hidden = !unterText;
 
@@ -4660,6 +4697,7 @@ export class Trichter {
     }
     if (Object.keys(einzeln).length) this.sitzung.ergaenze(einzeln);
     this.sitzung.ergaenze({ anamnese: { ...this.fragen.antworten } });
+    if (this.fast?.active) this.fast.remember(this.fragen.antworten);
     this.#standMerken();
   }
 
@@ -4746,6 +4784,7 @@ export class Trichter {
   // echten Speichern: Weiter geht es erst, wenn beides fertig ist. Die
   // Zeilen gehoeren zum Weg - Scan, Foto oder nur Text.
   #aufbereitungZeilen() {
+    if (this.fast?.active) return ["Përgjigjet tuaja po ruhen", "Seti juaj po përgatitet"];
     const typ = this.zustand.typ || "scan";
     if (typ === "foto") {
       return [
@@ -4894,6 +4933,7 @@ export class Trichter {
       ]);
       this.uebergabeVorgang = null;
       if (!ok) throw new Error("save failed");
+      if (this.fast?.active) { this.fast.markPending(); await this.fast.generate(); }
       // Die Zeilen zu Ende laufen lassen - dann erst weiter.
       await anzeige;
       // Erst ein bestaetigter Bericht darf als abgegeben gelten.
@@ -4902,6 +4942,7 @@ export class Trichter {
       this.sitzung.schritt("result");
       if (!this.skinreact) this.#aufbereitungFertig();
       this.#standVergessen();
+      if (this.fast?.active) this.fast.finish();
       if (this.skinreact) { this.#skinreactZeigen(); return; }
       globalThis.location.assign(this.sitzung.berichtPfad);
     } catch (fehler) {

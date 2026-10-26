@@ -81,6 +81,8 @@ export function createHeartDestinationsInitialState() {
 // stand still und liess sich nicht mehr bedienen.
 export function createHeartLifeskinInitialState() {
   return {
+    fast: { enabled: false, prices: { 2: 25, 3: 35, 4: 45 } },
+    fastSpeichert: false,
     status: DEFAULT_STATUS,
     fehler: "",
     loadedFrom: "",

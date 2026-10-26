@@ -1,3 +1,4 @@
+import { fastSeite } from "./terapia-fast.js";
 // DIE THERAPIESEITE - /terapia/<kennung>.
 //
 // Sie zeigt den freigegebenen Befund als das, was die Anzeige versprochen
@@ -257,6 +258,7 @@ export class Terapia {
   }
   // Das Wort auf jedem Kaufknopf.
   kaufWort(betrag = this.preis) {
+    if (this.daten?.fast?.version === 1) return `Porosit terapin — ${euro(betrag)}`;
     if (this.mitUrteil) return `Rezervo setin tim — ${euro(betrag)}`;
     if (this.analyse2) return `Porosit terapine time — ${euro(betrag)}`;
     return this.perputhja !== null ? `Filloj rutinën time — ${euro(betrag)}` : `Fillo terapinë — ${euro(betrag)}`;
@@ -586,6 +588,7 @@ export class Terapia {
     if (this.shop && !this.ohneFoto) schreibe($("#t-analizasyri"), "Vlerësimi i plotë");
     if (this.analyse2) persoenlicheSeite({ daten: d, raport: r, produkte: this.produkte,
       bilderVon: (p) => this.#bilderVon(p), shop: this.shop });
+    fastSeite(document, this.daten, this.produkte);
   }
 
   // DIE PËRPUTHJA (nur Laden, nur mit Zahl): der Ring mit der Zahl von

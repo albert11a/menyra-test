@@ -503,7 +503,7 @@ test("erst Korb und Kasse, dann die Kontrolle: der neue Fall steht unter Offen, 
 test("stille Links: kein Sprung auf einen Fall, den es im stillen Modus nicht gibt", () => {
   const app = lies("apps/lifeskin/lifeskin-app.js");
   // Seit SkinReact zeigt der Laden sein Ergebnis selbst, statt zu springen.
-  assert.match(app, /if \(this\.sitzung\.fortsetzbar\(\) && globalThis\.__mnyraStill !== true\) \{\s*(?:if \(this\.skinreact\) \{ this\.#skinreactZeigen\(\); return; \}\s*)?globalThis\.location\.replace\(this\.sitzung\.berichtPfad\);/);
+  assert.match(app, /if \(this\.sitzung\.fortsetzbar\(\) && globalThis\.__mnyraStill !== true\) \{\s*(?:if \(this\.fast\?\.active\) \{ this\.#uebergeben\(\); return; \}\s*)?(?:if \(this\.skinreact\) \{ this\.#skinreactZeigen\(\); return; \}\s*)?globalThis\.location\.replace\(this\.sitzung\.berichtPfad\);/);
   assert.match(lies("apps/lifeskin-astra/astra.js"), /globalThis\.__mnyraStill === true\s*\? "Stiller Modus: Es wird kein Fall angelegt/);
 });
 

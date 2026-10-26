@@ -1,3 +1,4 @@
+import { FAST_DOK, fastKonfig } from "../../shared/lifeskin-fast.js";
 import { vergleichLesen } from "../../shared/lifeskin-vergleich.js";
 import { SHOP_NACHRICHTEN_DOK, nachrichtenNormalisieren, SHOP_REVIEW_MEDIUM, reviewBilderNormalisieren, reviewFotoUrl } from "../../shared/lifeskin-shop-bewertungen.js";
 import { skinreactFreigabe, skinreactErgebnis } from "../../shared/lifeskin-skinreact.js";
@@ -227,6 +228,7 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     .filter((d) => d.id !== SETET_DOK && d.id !== SHOP_HERO_DOK && !String(d.id).startsWith(SET_FOTO_PRAEFIX))
     .filter((d) => !String(d.id).startsWith(`${SHOP_HERO_DOK}-`))
     .filter((d) => !String(d.id).startsWith(SHOP_PRODUKT_FOTO_PRAEFIX))
+    .filter((d) => d.id !== FAST_DOK)
     .filter((d) => d.id !== ANTWORTZEIT_DOK)
     .filter((d) => d.id !== PERPUTHJA_DOK)
     .filter((d) => d.id !== AKTION_DOK)
@@ -284,6 +286,7 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     shopSetet: Array.isArray(setetDok?.lista) ? setetDok.lista : null,
     shopNachrichten: nachrichtenNormalisieren(konfigDocs.find((d) => d.id === SHOP_NACHRICHTEN_DOK)?.data()?.lista),
     // Ohne Dokument zeigt der Laden die Voreinstellung - Heart auch.
+    fast: fastKonfig(konfigDocs.find(d => d.id === FAST_DOK)?.data()),
     shopAktion: { ...aktionNormalisieren(aktionDok || AKTION_STANDARD), standard: !aktionDok },
     // Das Titelbild des Ladens: "" = das Bild der Seite.
     shopHero: typeof heroDok?.foto === "string" && heroDok.foto.startsWith("data:image/") ? heroDok.foto : "",
@@ -1009,4 +1012,15 @@ export async function speichereGewinnAds({ tag, weg, cent }) {
   const wert = { tag, weg, cent, updatedAt: new Date().toISOString() };
   await setDoc(doc(db, "landingArchive", `lifeskin__ads__${weg || "lifeskin"}__${tag}`), wert);
   return wert;
+}
+
+export async function speichereFast(patch) {
+  const ref = doc(db, "lifeskin", TENANT, "config", FAST_DOK);
+  return runTransaction(db, async transaction => {
+    const snap = await transaction.get(ref);
+    const previous = fastKonfig(snap.exists() ? snap.data() : {});
+    const updated = fastKonfig({ ...previous, ...patch });
+    transaction.set(ref, { ...updated, updatedAt: new Date().toISOString() });
+    return updated;
+  });
 }

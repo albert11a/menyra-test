@@ -1,3 +1,4 @@
+import { renderFastPreise } from "./heart-lifeskin-fast.js";
 import { renderGewinn, GEWINN_WEGE } from "./heart-lifeskin-gewinn.js";
 import { SHOP_CATEGORIES, safeProductImage } from "../../shared/lifeskin-storefront.js";
 import { baueRutina, renderRutina } from "./heart-lifeskin-rutina.js";
@@ -1244,6 +1245,7 @@ export function renderPushSchalter() {
 //               nicht geloescht.
 const FAECHER = Object.freeze([
   { id: "alle", label: "Offen" },
+  { id: "fast", label: "Fast" },
   { id: "ready", label: "Ready" },
   { id: "seen", label: "Seen" },
   { id: "kasse", label: "Kasse" },
@@ -1659,6 +1661,7 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
   // "archivieren klappt nicht").
   const passt = (s, f) => f === "skinreact"
     ? istSkinreact(s) && !["archiviert", "spaeter"].includes(fachVon(s, berichte[s.id]))
+    : f === "fast" ? (s.source?.fast === true || berichte[s.id]?.fast?.version === 1) && !["archiviert", "spaeter"].includes(fachVon(s, berichte[s.id]))
     : imFach(s, berichte[s.id], f);
 
   const zaehler = Object.fromEntries(faecher.map((f) => [f.id,
@@ -3943,6 +3946,7 @@ function renderWegUebersicht(zustand, weg, offenerWeg = weg) {
         <summary>Mehr anzeigen</summary>
         <!-- Jede Karte hier ist zugeklappt, bis jemand sie aufmacht. -->
         <div class="heart-lifeskin-mehr__karten">
+          ${!weg ? renderFastPreise(zustand) : ""}
           ${renderStillLinks(zustandWeg)}
           ${alsKlapp(renderHerkunft(baueHerkunft(imBlick)), "herkunft", { standard: false })}
           ${alsKlapp(renderProdukte(produkte), "produkte", { standard: false })}

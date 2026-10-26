@@ -1,3 +1,5 @@
+import { fastKonfig } from "../../shared/lifeskin-fast.js";
+import { speichereFast } from "./heart-lifeskin-adapter.js";
 import { baueGewinn } from "./heart-lifeskin-gewinn.js";
 import { oeffneGewinnAds, oeffneGewinnKalender, oeffneGewinnInfo, oeffneGewinnStats } from "./heart-lifeskin-gewinn-dialog.js";
 import { vergleichHochladen, vergleichVorschau } from "./heart-lifeskin-vergleich.js";
@@ -4347,6 +4349,43 @@ const operations = {
           ?.scrollIntoView?.({ block: "nearest", inline: "center" });
       });
     }
+  },
+  async lifeskinFastToggle() {
+    const state = store.getState().lifeskin || {};
+    if (state.fastSpeichert || state.status !== "ready") return;
+    actions.patchLifeskin({ fastSpeichert: true });
+    try {
+      if (!fastKonfig(state.fast).enabled) {
+        const response = await fetch('/api/lifeskin-fast', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'check' }), signal: AbortSignal.timeout(15000) });
+        if (!response.ok || !(await response.json()).ok) throw new Error('Fast-Server nicht erreichbar. Fast bleibt ausgeschaltet.');
+      }
+      const fast = await speichereFast({ enabled: !fastKonfig(state.fast).enabled });
+      actions.patchLifeskin({ fast });
+      setToast("Fast", fast.enabled ? "Ein: Neue LifeSkin-Fotoanalysen erhalten automatisch ihr Set." : "Aus: Neue Analysen nutzen den bisherigen Weg.", "success");
+    } catch (error) { setToast("Fast", error?.message || "Speichern fehlgeschlagen.", "danger"); }
+    finally { actions.patchLifeskin({ fastSpeichert: false }); }
+  },
+  async lifeskinFastPreise() {
+    if (store.getState().lifeskin?.fastSpeichert) return;
+    const prices = {};
+    for (const n of [2, 3, 4]) {
+      const input = document.querySelector(`#lifeskin-fast-preis-${n}`);
+      const value = Number(String(input?.value || "").replace(",", "."));
+      if (!Number.isFinite(value) || value < 0.01 || value > 1000) {
+        setToast("Fast", "Bitte für jedes Set einen Preis von 0,01 bis 1.000 € eingeben.", "danger");
+        input?.focus();
+        return;
+      }
+      prices[n] = Math.round(value * 100) / 100;
+    }
+    actions.patchLifeskin({ fastSpeichert: true });
+    try {
+      const fast = await speichereFast({ prices });
+      actions.patchLifeskin({ fast });
+      setToast("Fast", "Setpreise gespeichert. Gilt für neu erstellte Fast-Seiten.", "success");
+    } catch (error) { setToast("Fast", error?.message || "Speichern fehlgeschlagen.", "danger"); }
+    finally { actions.patchLifeskin({ fastSpeichert: false }); }
   },
   async setLifeskinAntwortzeit(id) {
     const wahl = String(id || "").trim();

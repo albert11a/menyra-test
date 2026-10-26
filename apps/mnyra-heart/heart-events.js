@@ -647,6 +647,14 @@ export function bindHeartEvents({
       return;
     }
     // Die Antwortzeit (Uhr-Knopf im Kopf) - wie der Zeitraum daneben.
+    if (action === "lifeskin-fast-toggle") {
+      await operations.lifeskinFastToggle?.();
+      return;
+    }
+    if (action === "lifeskin-fast-preise") {
+      await operations.lifeskinFastPreise?.();
+      return;
+    }
     if (action === "lifeskin-uhrwahl") {
       operations.lifeskinUhrwahl?.();
       return;
