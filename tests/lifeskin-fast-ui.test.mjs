@@ -39,6 +39,8 @@ test('Four-product Fast page preserves exact summary and short answer-based expl
   assert.equal(document.querySelector('#t-mjeku').hidden,true);
   assert.equal(document.querySelector('#t-diagnoza').hidden,true);
   assert.equal(document.querySelector('#t-parametratblock').hidden,true);
+  assert.equal(document.querySelector('#t-vleresimi').hidden,true);
+  assert.equal(document.querySelector('#t-vleresimi').textContent,'');
   assert.doesNotMatch(document.querySelector('#t-faq1').textContent,/Dr\. Gashi|sipas fotove/);
 });
 test('Existing non-Fast therapy DOM remains byte-for-byte untouched by Fast presentation',()=>{
@@ -52,6 +54,26 @@ test('Fast case chip shows only Fast cases and leaves archived cases in the arch
   const {document}=parseHTML(html);
   const caseRows=[...document.querySelectorAll('.heart-lifeskin-fall')];
   assert.equal(caseRows.length,1);assert.match(caseRows[0].textContent,/Fast client/);
+});
+
+test('Fast cases are exclusive to Fast across pending, ready, seen, checkout and order states',()=>{
+  const variants = [
+    {status:'wartet'}, {status:'fertig'}, {status:'fertig',berichtGeoeffnet:true},
+    {status:'fertig',kasseGeoeffnet:true}, {status:'bestellt',hatBestellt:true,order:{orderId:'fast-order',total:35}}
+  ];
+  for (const [index,variant] of variants.entries()) {
+    const fast=normalisiere('fast',{name:'Fast client',step:'result',typ:'foto',createdAt:'2026-10-26T12:00:00Z',source:{fast:true},...variant});
+    const regular=normalisiere('normal',{name:'Normal client',step:'result',typ:'foto',createdAt:'2026-10-26T12:00:00Z'});
+    const sessions=[fast,regular];
+    const reports={fast:{status:variant.status,fast:{version:1}},normal:{status:'wartet'}};
+    const rows=fach=>{
+      const html=renderLifeskin({status:'ready',kennzahlen:baueKennzahlen(sessions),trichter:baueTrichter(sessions),sitzungen:sessions,tests:[],berichte:reports,produkte:[],fach,zeitraum:'max'});
+      return [...parseHTML(html).document.querySelectorAll('.heart-lifeskin-fall')].map(row=>row.getAttribute('data-id'));
+    };
+    assert.deepEqual(rows('fast'),['fast'],`Fast state ${index}`);
+    assert.deepEqual(rows('alle'),['normal'],`Open state ${index}`);
+    for (const fach of ['ready','seen','kasse','bestellt']) assert.ok(!rows(fach).includes('fast'),`${fach}: ${index}`);
+  }
 });
 
 test('Reload after report creation resumes interrupted automatic publication before starting a new funnel',()=>{

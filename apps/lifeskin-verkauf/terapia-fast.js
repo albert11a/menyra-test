@@ -14,7 +14,8 @@ export function fastSeite(root, data, products) {
   text('#t-permbledhja', data.raport?.gjetjet || '');
   text('#t-keshillablock strong', 'Kujdesi i përditshëm');
   text('#t-psetitulli', 'Pse këto produkte për ju');
-  text('#t-vleresimi', 'Përzgjedhje automatike sipas përgjigjeve tuaja.');
+  text('#t-vleresimi', '');
+  hide('#t-vleresimi');
   const reasons = get('#t-gjetjet');
   if (reasons) {
     const doc = reasons.ownerDocument;

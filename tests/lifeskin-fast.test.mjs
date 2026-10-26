@@ -37,10 +37,21 @@ test('Every concern combination is bounded, deterministic and includes moistur',
     assert.deepEqual(r,fastEmpfehlung(a({anliegen:selected}),{},catalog));
   }
 });
-test('Sensitivity, dry skin, pregnancy and existing treatment do not get active bundles', () => {
-  for (const change of [{kujdesi:['shtatzeni']},{kujdesi:['izotretinoin']},{kujdesi:['trajtim']},{perdorimi:['mjek']},{anliegen:['skuqja','pucrrat']},{lekura:'thate'}]) {
+test('Current pregnancy and treatment safety answers retain the basic-care exception', () => {
+  for (const change of [{kujdesi:['shtatzeni']},{kujdesi:['izotretinoin']},{kujdesi:['trajtim']}]) {
     assert.deepEqual(ids(fastEmpfehlung(a(change),{},catalog)), ['lf-clean','lf-moistur']);
   }
+});
+test('Dry skin, redness and historical treatments preserve the selected acne/pores set', () => {
+  for (const change of [{lekura:'thate'}, {perdorimi:['mjek']}, {anliegen:['pucrrat','poret','skuqja']}, {lekura:'thate',perdorimi:['mjek']}]) {
+    const result = fastEmpfehlung(a({anliegen:['pucrrat','poret'],...change}),{},catalog);
+    assert.deepEqual(ids(result), ['lf-acne','lf-pore','lf-moistur']);
+    assert.equal(result.preis,35);
+    assert.equal(result.raport.shitja.shqetesimi,'');
+  }
+  const result = fastEmpfehlung(a({anliegen:['pucrrat','poret','njollat'],lekura:'thate',perdorimi:['mjek']}),{},catalog);
+  assert.deepEqual(ids(result),['lf-acne','lf-pore','lf-pigment','lf-moistur']);
+  assert.equal(result.preis,45);
 });
 test('Incomplete, fabricated, duplicate and contradictory answers are rejected', () => {
   for(const bad of [{},{...a(),anliegen:[]},a({anliegen:['pucrrat','pucrrat']}),a({kujdesi:['asnjera','shtatzeni']}),a({anliegen:['nukEdi','pucrrat']}),a({perdorimi:['anything']})]) {

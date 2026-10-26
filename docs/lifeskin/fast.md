@@ -25,8 +25,7 @@ answers stay in the private session. Contraindication answers select basic care.
   collects its existing delivery details.
 - Acne -> ACNE + MOISTUR. Pores/shine -> PORE + MOISTUR. Spots -> PIGMENT +
   MOISTUR. These combine and deduplicate to at most four products. Moisture /
-  elasticity / uncertainty alone -> CLEAN + MOISTUR. Dry or sensitive skin,
-  pregnancy/breastfeeding or current medical treatment uses basic care rather
+  elasticity / uncertainty alone -> CLEAN + MOISTUR. Pregnancy/breastfeeding or current medical treatment uses basic care rather
   than automatically adding actives. No claim to treat scars or wrinkles.
 - Hidden/missing selected products stop publication; no fabricated catalog or
   ingredients are substituted. The service-account key already used by the
@@ -53,3 +52,41 @@ answers stay in the private session. Contraindication answers select basic care.
 Before release, manually check a 375px phone viewport: Fast on/off, four questions,
 name/age -> therapy -> existing checkout, 2/3/4-set prices, reload after interruption,
 Fast case chip, price editing, and an unchanged normal/Shop/SkinReact path.
+
+## Follow-up: concern selection and redundant label
+
+Removed the overly broad basic-care triggers for dry skin, redness as a selected
+concern and a historical doctor treatment in `perdorimi`. Only explicit safety
+answers in `kujdesi` retain the basic-care exception. Acne + pores now keeps
+ACNE + PORE + MOISTUR even with dry skin or previously tried treatments; adding
+spots gives PIGMENT as the fourth product. No previous medical treatment is
+assumed to be current merely because it was tried.
+
+Removed the repeated “Përzgjedhje automatike sipas përgjigjeve tuaja.” line from
+Fast pages. The method explanation still accurately identifies the recommendation
+as answer-based and does not claim an unperformed physician review. Previously
+generated reports/prices are not rewritten; new analyses use the corrected rules.
+
+Validation: 1,706 LifeSkin/Heart tests passed including the updated regression
+cases and Pixel lock; build passed, no tracked bundle changes. No mobile browser
+visual run or live patient-data changes.
+
+## Follow-up: all public galleries and exclusive Fast case category
+
+Fast pages now load every active customer-gallery photo/video in Heart order,
+including pagination beyond twelve entries. No private session photographs are
+queried. Disabled media remain disabled. The existing media viewer, comments,
+crop and video handling are reused. All published before/after cases are shown,
+regardless of the products in the customer's set; cases disabled on every public
+surface and incomplete image pairs stay hidden. This applies to existing Fast
+pages too, without rewriting stored reports. Other analysis pages retain their
+per-report media/case selection.
+
+Fast cases now belong only to the Fast case category, never Open/Ready/Seen/
+Checkout/Ordered case categories. Manual Later/Archive status still takes
+precedence; the separate order overview and revenue calculations retain orders.
+
+Validation: 30 focused Fast tests and 1,712 LifeSkin/Heart tests passed, including
+real gallery DOM rendering beyond twelve pictures, pagination, hidden content,
+all before/after product sets and category exclusivity through every case stage.
+Build passed; no tracked bundle changes. No mobile browser visual run.

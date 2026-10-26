@@ -1279,6 +1279,7 @@ const FAECHER = Object.freeze([
 function fachVon(sitzung, bericht) {
   const zustand = zustandVon(sitzung, bericht);
   if (zustand === "archiviert" || zustand === "spaeter") return zustand;
+  if (sitzung?.source?.fast === true || bericht?.fast?.version === 1) return "fast";
   // NOCH NICHT BEANTWORTET HEISST OFFEN - auch mit Korb, Kasse oder
   // Bestellung davor.
   //
@@ -1660,8 +1661,7 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
   // sonst blieb ein archivierter Fall hier stehen (05.10., Inhaber:
   // "archivieren klappt nicht").
   const passt = (s, f) => f === "skinreact"
-    ? istSkinreact(s) && !["archiviert", "spaeter"].includes(fachVon(s, berichte[s.id]))
-    : f === "fast" ? (s.source?.fast === true || berichte[s.id]?.fast?.version === 1) && !["archiviert", "spaeter"].includes(fachVon(s, berichte[s.id]))
+    ? istSkinreact(s) && !["archiviert", "spaeter", "fast"].includes(fachVon(s, berichte[s.id]))
     : imFach(s, berichte[s.id], f);
 
   const zaehler = Object.fromEntries(faecher.map((f) => [f.id,

@@ -16,6 +16,7 @@
 //   angestossen) und nur einmal je Medium.
 // Jeder Fehler endet leise: Die Seite verkauft auch ohne diese Reihe.
 import { ansichtOeffnen, ansichtSchliessen } from "./ansicht.js";
+import { fastMedienLaden } from "./terapia-fast-galerie.js";
 import {
   MEDIEN_STANDARD, medienAuswahl, medienLaden, ausschnittStil, kommentareLaden, kommentarPruefen, kommentarSchreiben, viewZaehlen
 } from "../../shared/lifeskin-medien.js";
@@ -75,6 +76,19 @@ export class KundenMedien {
     this.kommentare = new Map();
     this.gezaehlt = new Set();
     this.offen = -1;
+  }
+
+  // Fast has no manual per-report selection or twelve-item truncation.
+  async zeigeAlle() {
+    if (!this.abschnitt || !this.reihe) return [];
+    const medien = await fastMedienLaden(this.optionen);
+    this.medien = medien;
+    this.abschnitt.hidden = !medien.length;
+    if (!medien.length) return medien;
+    this.#kacheln(medien);
+    this.#ereignisse();
+    this.#schleifen();
+    return medien;
   }
 
   // Zeigt die Reihe fuer die Auswahl des Befunds. Nichts gewaehlt: nichts.

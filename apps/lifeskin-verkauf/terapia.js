@@ -1,4 +1,5 @@
 import { fastSeite } from "./terapia-fast.js";
+import { fastRasteAuswahl } from "./terapia-fast-galerie.js";
 // DIE THERAPIESEITE - /terapia/<kennung>.
 //
 // Sie zeigt den freigegebenen Befund als das, was die Anzeige versprochen
@@ -349,7 +350,8 @@ export class Terapia {
     try {
       const liste = (await rasteLaden(basis, holen)) || rasteNormalisieren(RASTE_STANDARD);
       const ids = (this.daten?.produkte || []).map((p) => String(p?.id || ""));
-      faelle = await rasteMitBildern(rasteFuerBericht(liste, this.daten?.raste, ids), basis, holen);
+      const auswahl = this.daten?.fast?.version === 1 ? fastRasteAuswahl(liste) : rasteFuerBericht(liste, this.daten?.raste, ids);
+      faelle = await rasteMitBildern(auswahl, basis, holen);
     } catch {
       return;
     }
@@ -437,7 +439,8 @@ export class Terapia {
       // Auch aus dem Medienfenster erst in den Warenkorb, wie jeder Kaufknopf.
       kaufen: this.mitAngebot ? { text: this.kaufWort(), tun: () => { this.#kauf("knopf"); this.#korb(true); }, gilt: () => this.mitAngebot } : null
     });
-    this.kundenMedien.zeige(this.daten?.klientet);
+    if (this.daten?.fast?.version === 1) this.kundenMedien.zeigeAlle();
+    else this.kundenMedien.zeige(this.daten?.klientet);
   }
 
   #weg() {

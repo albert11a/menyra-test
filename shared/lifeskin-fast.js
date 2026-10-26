@@ -37,10 +37,9 @@ export function fastAntwortenOk(a) {
 export function fastEmpfehlung(answers, config, catalog) {
   if (!fastAntwortenOk(answers)) throw new Error('answers');
   const concerns = list(answers.anliegen);
-  // Conservative basic-care branch; never add actives to existing treatment.
-  const basic = list(answers.kujdesi).some(x => x !== 'asnjera')
-    || list(answers.perdorimi).includes('mjek') || concerns.includes('skuqja')
-    || answers.lekura === 'thate';
+  // Current safety answers govern this exception. Dry skin, redness and a
+  // previously tried treatment must not erase the selected concerns.
+  const basic = list(answers.kujdesi).some(x => x !== 'asnjera');
   const ids = basic ? ['lf-clean', 'lf-moistur']
     : [...new Set([...concerns.map(x => CONCERNS[x][1]), 'lf-moistur'])];
   if (ids.length === 1) ids.unshift('lf-clean');
