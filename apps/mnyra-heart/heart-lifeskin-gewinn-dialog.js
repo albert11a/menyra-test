@@ -136,6 +136,29 @@ export function oeffneGewinnInfo({ rechnung, adsBereit }) {
   return dialogOeffnen("Abzüge prüfen", renderGewinnAbzuege(rechnung, adsBereit));
 }
 
+// A cent-based running balance; cancellations are already excluded from Umsatz.
+export function renderGewinnVerlauf(rechnung, adsBereit) {
+  if (rechnung.fehler) return "";
+  const s = rechnung.summe;
+  const euro = (n) => n == null ? "—" : `${(n / 100).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+  const zeile = (titel, wert, klasse, abzug = false) => `<div class="${klasse}"><dt>${escapeHtml(titel)}</dt><dd>${wert == null ? "—" : `${abzug && wert > 0 ? "− " : ""}${euro(wert)}`}</dd></div>`;
+  let rest = s.fehlt ? null : s.umsatz;
+  let zeilen = zeile("Umsatz", s.umsatz, "ist-summe");
+  const posten = [["Posta", s.transport], ["Riba", s.riba], ["Produktkosten", s.produkt], ["Verpackung", s.verpackung], ["Sonstiges", s.sonstiges], ["Ads", adsBereit ? s.ads : null]];
+  for (const [titel, kosten] of posten) {
+    const bekannt = !s.fehlt && kosten != null;
+    zeilen += zeile(titel, bekannt ? kosten : null, "ist-abzug", true);
+    rest = rest != null && bekannt ? rest - kosten : null;
+    if (titel !== "Ads") zeilen += zeile(`Nach ${titel}`, rest, "ist-zwischenstand");
+  }
+  const klasse = rest == null || rest === 0 ? "" : rest > 0 ? "ist-positiv" : "ist-negativ";
+  zeilen += zeile("Reingewinn", rest, `ist-summe ist-reingewinn ${klasse}`);
+  return `<section class="heart-gewinn-verlauf"><h3>Gewinnrechnung</h3><dl class="heart-gewinn-abzuege">${zeilen}</dl>
+    ${s.fehlt ? '<p class="heart-gewinn-dialog__hilfe">Kostendaten sind unvollständig; die Zwischenstände bleiben offen.</p>' : ""}
+    ${!adsBereit ? '<p class="heart-gewinn-dialog__hilfe">Ads-Daten noch nicht verfügbar; Reingewinn bleibt offen.</p>' : ""}
+    ${adsBereit && rechnung.vorlaeufig ? '<p class="heart-gewinn-dialog__hilfe">Vorläufig: Ads-Einträge sind noch offen.</p>' : ""}</section>`;
+}
+
 export function renderGewinnStats(rechnung, adsBereit) {
   if (rechnung.fehler) return `<p>${escapeHtml(rechnung.fehler)}</p>`;
   const euro = (n) => n == null ? "—" : `${(n / 100).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
@@ -149,7 +172,8 @@ export function renderGewinnStats(rechnung, adsBereit) {
     <details class="heart-gewinn-stats-block"><summary><span>Ads<small>Tageskosten und Bestellungen</small></span><b>${adsBereit ? euro(s.ads) : "—"}</b><i aria-hidden="true">+</i></summary>
     ${adsBereit ? `<div class="heart-gewinn-stats-tabelle"><table><thead><tr><th>Datum</th><th>Ads</th><th>Best.</th></tr></thead><tbody>${rechnung.reihen.map((z) => `<tr class="${z.bestellungen === 0 ? "ohne-bestellung" : ""}"><td>${escapeHtml(datum(z.tag))}${z.bestellungen === 0 ? '<small>Keine Bestellung</small>' : ""}${z.anulime ? `<small>${z.anulime} Anulime</small>` : ""}</td><td>${z.adsErfasst ? euro(z.ads) : "—"}</td><td>${z.bestellungen}</td></tr>`).join("") || '<tr><td colspan="3">Keine Daten im Zeitraum.</td></tr>'}</tbody></table></div>
     <p class="heart-gewinn-dialog__hilfe">${rechnung.tageOhneBestellung} ${rechnung.tageOhneBestellung === 1 ? "Tag" : "Tage"} mit Ads-Kosten ohne Bestellung · ${euro(rechnung.adsOhneBestellung)}</p>` : '<p class="heart-gewinn-dialog__hilfe">Ads-Daten noch nicht verfügbar.</p>'}</details>
-    <details class="heart-gewinn-stats-block"><summary><span>Anulime<small>Aus Umsatz ausgeschlossen</small></span><b>${s.anulime} · ${euro(s.anulimeWert)}</b><i aria-hidden="true">+</i></summary>${liste(rechnung.anulimeListe || [])}</details>`;
+    <details class="heart-gewinn-stats-block"><summary><span>Anulime<small>Aus Umsatz ausgeschlossen</small></span><b>${s.anulime} · ${euro(s.anulimeWert)}</b><i aria-hidden="true">+</i></summary>${liste(rechnung.anulimeListe || [])}</details>
+    ${renderGewinnVerlauf(rechnung, adsBereit)}`;
 }
 export function oeffneGewinnStats({ rechnung, adsBereit }) {
   return dialogOeffnen("Stats", renderGewinnStats(rechnung, adsBereit));

@@ -62,3 +62,9 @@ Nur Best.- und Gewinnzellen farbig: Bestellungen >= 1 gruen, 0 rot; Gewinn > 0 g
 ## Stabile Karte beim Nachladen
 
 Wechselnde Lade-, Ads-Luecken-, Kosten- und Altbestandshinweise aus der Hauptkarte entfernt, insbesondere `Ads werden geladen` und die aelteren Seen-Analysen ohne Datum. Berechnung und unbekannte Werte bleiben unveraendert; Kostenstatus bleibt im vorhandenen Info-Dialog kontrollierbar. Die Tagesuebersicht hat nun einen eigenen stabilen Morph-Schluessel und gemerkten Klappzustand, damit Live-Render sie nicht automatisch schliessen. 60 gezielte Tests einschliesslich Strukturvergleich in Lade-/Fehler-/Fertig-Zustaenden und erhaltenem Tagesklappzustand gruen. Build erfolgreich, keine getrackten Bundle-Aenderungen; kein echter iPhone-Browsercheck.
+
+## Schrittweise Gewinnrechnung im Stats-Dialog
+
+Unter Anulime steht nun die laufende Rechnung: Umsatz, minus Posta/Transport, Zwischenstand, minus Riba, Zwischenstand, minus Produktkosten, Verpackung, Sonstiges und Ads bis zum Reingewinn. Jeder Posten genau einmal in Cent; Anulime sind bereits aus dem Ausgangsumsatz ausgeschlossen und werden nicht erneut abgezogen. Positive/negative Reingewinne gruen/rot, fehlende Kosten oder Ads lassen die betroffenen Zwischenstaende offen. Dialog bleibt bei langen Listen scrollbar.
+
+33 gezielte Tests inklusive Zwischenstaenden, Endsumme, fehlenden Kosten/Ads, Verlustfarbe, Position unter Anulime und Pixel-Sperre bestanden. ESLint ohne Fehler/Warnungen in den geaenderten JS-Dateien. Build erfolgreich; keine getrackten Bundle-Aenderungen. Kein echter iPhone-Browsercheck.

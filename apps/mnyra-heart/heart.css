@@ -10894,3 +10894,12 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 
 .heart-gewinn__tabelle td.heart-gewinn__positiv { color: var(--heart-success, #23c483); }
 .heart-gewinn__tabelle td.heart-gewinn__negativ { color: var(--heart-danger, #ff6b57); }
+
+.heart-gewinn-verlauf { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--heart-border, #36363c); }
+.heart-gewinn-verlauf h3 { margin: 0; font-size: 15px; font-weight: 650; }
+.heart-gewinn-verlauf .heart-gewinn-abzuege { margin-top: 8px; }
+.heart-gewinn-verlauf .ist-abzug { color: var(--heart-text-muted, #929297); padding-bottom: 6px; border-bottom: 0; }
+.heart-gewinn-verlauf .ist-zwischenstand { padding-top: 0; padding-bottom: 12px; font-weight: 600; }
+.heart-gewinn-verlauf .ist-reingewinn { margin-top: 6px; padding-block: 14px; font-size: 16px; }
+.heart-gewinn-verlauf .ist-positiv dd { color: var(--heart-success, #23c483); }
+.heart-gewinn-verlauf .ist-negativ dd { color: var(--heart-danger, #ff6b57); }

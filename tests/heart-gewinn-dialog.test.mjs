@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseHTML } from 'linkedom';
-import { oeffneGewinnAds, oeffneGewinnKalender, kalenderKlick, kalenderTage, oeffneGewinnInfo, renderGewinnAbzuege, oeffneGewinnStats } from '../apps/mnyra-heart/heart-lifeskin-gewinn-dialog.js';
+import { oeffneGewinnAds, oeffneGewinnKalender, kalenderKlick, kalenderTage, oeffneGewinnInfo, renderGewinnAbzuege, oeffneGewinnStats, renderGewinnVerlauf } from '../apps/mnyra-heart/heart-lifeskin-gewinn-dialog.js';
 import { morphInhalt } from '../apps/mnyra-heart/heart-morph.js';
 import { renderGewinn, baueGewinn } from '../apps/mnyra-heart/heart-lifeskin-gewinn.js';
 
@@ -149,6 +149,7 @@ test('Stats opens expandable order and ads lists for the same dates, with red ze
     ], { gewinnStatus: 'bereit', gewinnFilter: { zeit: 'woche' }, gewinnAds: [{ weg: '', tag: '2026-10-24', cent: 2000 }, { weg: '', tag: '2026-10-25', cent: 1000 }] }, ['', 'lifeskinshop'], '2026-10-26T12:00:00Z');
     const el = oeffneGewinnStats({ rechnung, adsBereit: true });
     assert.equal(el.querySelectorAll('details').length, 3);
+    assert.match(el.querySelector('.heart-gewinn-verlauf').previousElementSibling.querySelector('summary').textContent, /Anulime/);
     const orderList = el.querySelector('details .heart-gewinn-bestellliste');
     assert.equal(orderList.querySelectorAll('li').length, 1);
     assert.match(orderList.textContent, /A1/); assert.doesNotMatch(orderList.textContent, /B1/);
@@ -199,4 +200,27 @@ test('profit card keeps the same blocks across loading, errors and legacy-data n
       assert.equal(root.querySelector('[data-klapp="gewinn-tage:"]').hasAttribute('open'), true);
     }
   } finally { klappSetzen('gewinn-tage:', false); env.restore(); }
+});
+
+
+test('Stats running balance subtracts each expense once and leaves cancellations out of the net calculation', () => {
+  const env = dom();
+  const rechnung = { summe: { umsatz: 10000, transport: 1000, riba: 500, produkt: 2000, verpackung: 100, sonstiges: 50, ads: 3000, gewinn: 3350, fehlt: 0, anulimeWert: 5000 }, vorlaeufig: false };
+  try {
+    const root = env.document.getElementById('root'); root.innerHTML = renderGewinnVerlauf(rechnung, true);
+    const rows = Object.fromEntries([...root.querySelectorAll('dl > div')].map((r) => [r.querySelector('dt').textContent, r.querySelector('dd').textContent]));
+    assert.equal(rows.Umsatz, '100,00 €'); assert.equal(rows.Posta, '− 10,00 €'); assert.equal(rows['Nach Posta'], '90,00 €');
+    assert.equal(rows['Nach Riba'], '85,00 €'); assert.equal(rows['Nach Produktkosten'], '65,00 €');
+    assert.equal(rows['Nach Verpackung'], '64,00 €'); assert.equal(rows['Nach Sonstiges'], '63,50 €');
+    assert.equal(rows.Ads, '− 30,00 €'); assert.equal(rows.Reingewinn, '33,50 €');
+    assert.equal(root.querySelector('.ist-reingewinn').classList.contains('ist-positiv'), true);
+    root.innerHTML = renderGewinnVerlauf(rechnung, false);
+    assert.equal(root.querySelector('.ist-reingewinn dd').textContent, '—');
+    assert.doesNotMatch(root.querySelector('.ist-reingewinn').className, /ist-positiv|ist-negativ/);
+    root.innerHTML = renderGewinnVerlauf({ ...rechnung, summe: { ...rechnung.summe, fehlt: 1 } }, true);
+    assert.equal(root.querySelector('.ist-zwischenstand dd').textContent, '—');
+    root.innerHTML = renderGewinnVerlauf({ ...rechnung, summe: { ...rechnung.summe, ads: 7000 } }, true);
+    assert.equal(root.querySelector('.ist-reingewinn dd').textContent, '-6,50 €');
+    assert.equal(root.querySelector('.ist-reingewinn').classList.contains('ist-negativ'), true);
+  } finally { env.restore(); }
 });
