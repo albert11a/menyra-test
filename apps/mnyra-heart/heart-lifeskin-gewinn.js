@@ -3,7 +3,7 @@ import { statistikTag } from "../../shared/lifeskin-statistik.js";
 import { DERGESA, tarifaPosta, statusiNeHeart } from "../../shared/lifeskin-dergesat.js";
 import { istTest } from "./heart-lifeskin-berechnung.js";
 import { produktRechnung, kostenNormalisieren } from "./heart-lifeskin-kosten.js";
-import { alsKlapp } from "./heart-lifeskin-klapp.js";
+import { alsKlapp, klappAttr } from "./heart-lifeskin-klapp.js";
 import { escapeHtml } from "./heart-ui-utils.js";
 
 export const GEWINN_WEGE = Object.freeze(["", "lifeskinshop"]);
@@ -161,9 +161,7 @@ export function renderGewinn(sitzungen, zustand, wege) {
   let inhalt = r.fehler ? `<p>${r.fehler}</p>` : (() => {
     const s = r.summe;
     const adsBereit = zustand.gewinnStatus === "bereit";
-    return `${zustand.gewinnStatus !== "bereit" ? `<p class="heart-gewinn__status" role="status">${zustand.gewinnStatus === "fehler" ? 'Ads konnten nicht geladen werden. <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-gewinn-laden">Erneut laden</button>' : "Ads werden geladen …"}</p>` : ""}
-      ${adsBereit && r.adsOffeneTage ? `<p class="heart-gewinn__status">Ads für ${r.adsOffeneTage} ${r.adsOffeneTage === 1 ? "Tag noch offen" : "Tage noch offen"}.</p>` : ""}
-      <div class="heart-lifeskin-kacheln heart-gewinn__kacheln">
+    return `<div class="heart-lifeskin-kacheln heart-gewinn__kacheln">
       ${kachel("Umsatz", euro(s.umsatz), `${s.bestellungen} Bestellungen · ${s.zugestellt} zugestellt`)}
       ${kachel("Gewinn nach Kosten", !adsBereit || s.gewinn == null ? "—" : euro(s.gewinn), r.vorlaeufig ? "vorläufig" : "Kalkulation")}
       ${kachel("Ads-Kosten", adsBereit ? euro(s.ads) : "—")}${kachel("Seen-Analysen", zahl(s.seen), "einmal pro Fall")}
@@ -175,10 +173,7 @@ export function renderGewinn(sitzungen, zustand, wege) {
       ${kachel("Tage ohne Bestellung", adsBereit ? zahl(r.tageOhneBestellung) : "—", "mit Ads-Kosten")}
       ${kachel("Anulime", zahl(s.anulime), "aus Umsatz ausgeschlossen")}
       ${kachel("Wert Anulime", euro(s.anulimeWert))}</div>
-      ${s.fehlt ? `<p class="heart-gewinn__status">${s.fehlt} Bestellung(en) mit fehlenden Produktkosten, Produktmengen, Bestellwert oder Beki-Nr. Kosten sind unvollständig; Gewinn bleibt offen.</p>` : ""}
-      ${r.ohneSeenDatum ? `<p>${r.ohneSeenDatum} ältere Seen-Analysen ohne Öffnungsdatum: nur in Max enthalten.</p>` : ""}
-      ${r.ohneBestellDatum ? `<p>${r.ohneBestellDatum} Bestellungen ohne Bestelldatum ausgeschlossen.</p>` : ""}
-      <details><summary>Tagesübersicht</summary><div class="heart-gewinn__tabelle"><table><thead><tr><th>Tag</th><th>Seen</th><th>Best.</th><th>Umsatz</th><th>Ads</th><th>Gewinn</th></tr></thead><tbody>${r.reihen.map((z) => `<tr><td>${escapeHtml(z.tag)}</td><td>${z.seen}</td><td class="${z.bestellungen > 0 ? "heart-gewinn__positiv" : "heart-gewinn__negativ"}">${z.bestellungen}</td><td>${euro(z.umsatz)}</td><td>${euro(z.ads)}${z.adsFehlt ? " *" : ""}</td><td class="${z.gewinn == null || z.gewinn === 0 ? "" : z.gewinn > 0 ? "heart-gewinn__positiv" : "heart-gewinn__negativ"}">${z.gewinn == null ? "—" : euro(z.gewinn)}${z.adsFehlt ? " *" : ""}</td></tr>`).join("") || '<tr><td colspan="6">Keine Daten im Zeitraum.</td></tr>'}</tbody></table></div></details>`;
+      <details data-morph-key="gewinn-tage:${escapeHtml(scope)}" ${klappAttr(`gewinn-tage:${scope}`)}><summary>Tagesübersicht</summary><div class="heart-gewinn__tabelle"><table><thead><tr><th>Tag</th><th>Seen</th><th>Best.</th><th>Umsatz</th><th>Ads</th><th>Gewinn</th></tr></thead><tbody>${r.reihen.map((z) => `<tr><td>${escapeHtml(z.tag)}</td><td>${z.seen}</td><td class="${z.bestellungen > 0 ? "heart-gewinn__positiv" : "heart-gewinn__negativ"}">${z.bestellungen}</td><td>${euro(z.umsatz)}</td><td>${euro(z.ads)}${z.adsFehlt ? " *" : ""}</td><td class="${z.gewinn == null || z.gewinn === 0 ? "" : z.gewinn > 0 ? "heart-gewinn__positiv" : "heart-gewinn__negativ"}">${z.gewinn == null ? "—" : euro(z.gewinn)}${z.adsFehlt ? " *" : ""}</td></tr>`).join("") || '<tr><td colspan="6">Keine Daten im Zeitraum.</td></tr>'}</tbody></table></div></details>`;
   })();
   return alsKlapp(`<section class="heart-lifeskin-block heart-gewinn" data-morph-key="gewinn-karte:${escapeHtml(scope)}">${kopf}<div class="heart-gewinn__inhalt" data-morph-key="gewinn-inhalt:${escapeHtml(scope)}">${auswahl}${inhalt}</div></section>`, `gewinn:${scope}`, { standard: false, zahl: r.summe ? `${r.summe.bestellungen} Best. · ${r.summe.gewinn == null ? "Kosten offen" : euro(r.summe.gewinn)}${r.vorlaeufig ? " *" : ""}` : "", kopfExtra: stats + info + plus });
 }

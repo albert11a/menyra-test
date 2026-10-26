@@ -180,3 +180,23 @@ test('daily table colors positive orders and profit green, zero orders and losse
     assert.equal(rows['2026-10-28'][5].className, 'heart-gewinn__negativ');
   } finally { env.restore(); }
 });
+
+test('profit card keeps the same blocks across loading, errors and legacy-data notes; daily expansion survives updates', async () => {
+  const { klappSetzen } = await import('../apps/mnyra-heart/heart-lifeskin-klapp.js');
+  const env = dom();
+  try {
+    const root = env.document.getElementById('root');
+    const sessions = [{ id: 'legacy', source: { weg: '' }, berichtGeoeffnet: true }];
+    let structure;
+    klappSetzen('gewinn-tage:', true);
+    for (const gewinnStatus of ['laedt', 'bereit', 'fehler', 'bereit']) {
+      morphInhalt(root, renderGewinn(sessions, { gewinnStatus, gewinnFilter: { zeit: 'max' } }, ['']));
+      const content = root.querySelector('.heart-gewinn__inhalt');
+      const blocks = [...content.children].map((e) => e.tagName);
+      structure ??= blocks; assert.deepEqual(blocks, structure);
+      assert.equal(content.querySelectorAll(':scope > p').length, 0);
+      assert.doesNotMatch(content.textContent, /Ads werden geladen|ältere Seen-Analysen|Bestellungen ohne Bestelldatum/);
+      assert.equal(root.querySelector('[data-klapp="gewinn-tage:"]').hasAttribute('open'), true);
+    }
+  } finally { klappSetzen('gewinn-tage:', false); env.restore(); }
+});

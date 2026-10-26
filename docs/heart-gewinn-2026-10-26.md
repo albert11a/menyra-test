@@ -58,3 +58,7 @@ Validierung: 100 gezielte Node-/DOM-Pruefungen bestanden, einschliesslich gemein
 ## Farben in der Tagesuebersicht
 
 Nur Best.- und Gewinnzellen farbig: Bestellungen >= 1 gruen, 0 rot; Gewinn > 0 gruen, < 0 rot; Nullgewinn und unbekannter Gewinn neutral. Gemeinsame Heart-Farbvariablen, keine Rechenaenderung. 31 gezielte Pruefungen einschliesslich DOM-Grenzfaellen und Pixel-Sperre bestanden. Build erfolgreich; getrackte Bundles unveraendert. Kein echter iPhone-Browsercheck.
+
+## Stabile Karte beim Nachladen
+
+Wechselnde Lade-, Ads-Luecken-, Kosten- und Altbestandshinweise aus der Hauptkarte entfernt, insbesondere `Ads werden geladen` und die aelteren Seen-Analysen ohne Datum. Berechnung und unbekannte Werte bleiben unveraendert; Kostenstatus bleibt im vorhandenen Info-Dialog kontrollierbar. Die Tagesuebersicht hat nun einen eigenen stabilen Morph-Schluessel und gemerkten Klappzustand, damit Live-Render sie nicht automatisch schliessen. 60 gezielte Tests einschliesslich Strukturvergleich in Lade-/Fehler-/Fertig-Zustaenden und erhaltenem Tagesklappzustand gruen. Build erfolgreich, keine getrackten Bundle-Aenderungen; kein echter iPhone-Browsercheck.
