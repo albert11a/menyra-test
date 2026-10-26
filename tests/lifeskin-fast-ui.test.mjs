@@ -33,8 +33,12 @@ test('Four-product Fast page preserves exact summary and short answer-based expl
   const {document}=parseHTML(readFileSync(new URL('../apps/lifeskin-verkauf/terapia.html',import.meta.url),'utf8'));
   const recommendation=fastEmpfehlung(answers,{},catalog);
   fastSeite(document,recommendation,catalog.filter(p=>recommendation.produkte.some(x=>x.id===p.id)));
+  assert.match(document.querySelector('#t-hyrja').textContent,/^Seti juaj për lëkurën tuaj: Aknet/);
+  assert.doesNotMatch(document.querySelector('#t-hyrja').textContent,/Bazuar në përgjigjet/);
   assert.match(document.querySelector('#t-hyrja').textContent,/4 produkte/);
-  assert.equal(document.querySelectorAll('#t-gjetjet li').length,4);
+  assert.equal(document.querySelector('#pse').hidden,true);
+  assert.equal(document.querySelector('#vendimi').hidden,true);
+  assert.equal(document.querySelector('#t-seti').nextElementSibling.id,'pyetjet');
   assert.equal(document.querySelector('#t-metodablock').hidden,true);
   assert.equal(document.querySelector('#t-metoda').textContent,'');
   assert.equal(document.querySelector('#t-mjeku').hidden,true);
@@ -45,7 +49,7 @@ test('Four-product Fast page preserves exact summary and short answer-based expl
   assert.doesNotMatch(document.querySelector('#t-faq1').textContent,/Dr\. Gashi|sipas fotove/);
 });
 test('Existing non-Fast therapy DOM remains byte-for-byte untouched by Fast presentation',()=>{
-  const {document}=parseHTML('<html><body><p id="t-hyrja">Existing</p></body></html>');
+  const {document}=parseHTML(readFileSync(new URL('../apps/lifeskin-verkauf/terapia.html',import.meta.url),'utf8'));
   const before=document.toString();fastSeite(document,{},[]);assert.equal(document.toString(),before);
 });
 test('Fast case chip shows only Fast cases and leaves archived cases in the archive',()=>{
@@ -91,4 +95,67 @@ test('Every Fast buy button uses Porosit terapin with the frozen set price',asyn
   assert.match(page.kaufWort(),/^Porosit terapin — 35/);
   page.daten={preis:53};
   assert.match(page.kaufWort(),/^Fillo terapinë/);
+});
+
+test('Fast photos remain visible outside the hidden author row and FAQ movement is idempotent',()=>{
+  const {document}=parseHTML(readFileSync(new URL('../apps/lifeskin-verkauf/terapia.html',import.meta.url),'utf8'));
+  const recommendation=fastEmpfehlung(answers,{},catalog);
+  const photos=document.querySelector('#t-fotot');photos.hidden=false;
+  const stack=document.querySelector('#t-fototstapel');stack.dataset.zeige='1';
+  stack.innerHTML='<img src="/one.jpg"><img src="/two.jpg"><img src="/three.jpg">';
+  const faq=document.querySelector('#pyetjet');
+  fastSeite(document,recommendation,catalog);
+  fastSeite(document,recommendation,catalog);
+  assert.equal(photos.parentNode,document.querySelector('.hero__karte'));
+  assert.equal(photos.hidden,false);assert.equal(photos.closest('#t-mjeku'),null);
+  assert.equal(stack.hasAttribute('data-zeige'),false);assert.equal(stack.children.length,3);
+  assert.equal(faq,document.querySelector('#t-seti').nextElementSibling);
+  assert.equal(document.querySelectorAll('#pyetjet').length,1);
+  assert.equal(document.querySelectorAll('#t-fotot').length,1);
+});
+
+// Run the real async UI-boundary methods with isolated document/network seams.
+function asyncTherapyMethod(name,bindings) {
+  const source=readFileSync(new URL('../apps/lifeskin-verkauf/terapia.js',import.meta.url),'utf8');
+  const start=source.indexOf(`  async #${name}()`);assert.ok(start>=0);
+  const body=source.slice(source.indexOf('{',start)+1,source.indexOf('\n  }\n',start)).replaceAll('this.#','this.');
+  const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
+  const fn=new AsyncFunction(...Object.keys(bindings),body);
+  return state=>fn.call(state,...Object.values(bindings));
+}
+
+test('Actual thumbnail loading displays Fast photos and retains the existing normal-page fitting path',async()=>{
+  for(const fast of [true,false]) {
+    const {document}=parseHTML(readFileSync(new URL('../apps/lifeskin-verkauf/terapia.html',import.meta.url),'utf8'));
+    const data=fast?fastEmpfehlung(answers,{},catalog):{};
+    fastSeite(document,data,catalog);
+    let fitted=0,resized=0;
+    const state={ohneFoto:false,daten:data,quelle:{miniaturen:async()=>[{jpeg:'data:image/jpeg;base64,AAAA'},{jpeg:'data:image/jpeg;base64,BBBB'}]},stapelEinpassen:()=>fitted++};
+    await asyncTherapyMethod('analyseFotos',{
+      $:selector=>document.querySelector(selector),element:tag=>document.createElement(tag),
+      schreibe:(el,value)=>{if(el)el.textContent=value;},zeigen:(el,on)=>{if(el)el.hidden=!on;},
+      window:{addEventListener:()=>resized++}
+    })(state);
+    assert.equal(document.querySelector('#t-fotot').hidden,false);
+    assert.equal(document.querySelectorAll('#t-fototstapel img').length,2);
+    assert.equal(fitted,fast?0:1);assert.equal(resized,fast?0:1);
+    assert.equal(document.querySelector('#t-fotot').parentNode,document.querySelector(fast?'.hero__karte':'#t-mjeku'));
+  }
+});
+
+test('Late product photo repaint preserves Fast package copy and FAQ order',async()=>{
+  const {document}=parseHTML(readFileSync(new URL('../apps/lifeskin-verkauf/terapia.html',import.meta.url),'utf8'));
+  const data=fastEmpfehlung(answers,{},catalog);
+  fastSeite(document,data,catalog);
+  const state={daten:data,produkte:[],quelle:{fetchFn:async()=>({ok:false})},seti:()=>{
+    document.querySelector('#t-setinen').textContent='E zgjodhi Dr. Gashi sipas fotove tuaja';
+  }};
+  await asyncTherapyMethod('mjetetFotot',{
+    LIFESKIN_FIRESTORE_BASE:'https://test.invalid/documents',LIFESKIN_TENANT:'lifeskin',
+    document,fastSeite,setTimeout:()=>0
+  })(state);
+  assert.equal(document.querySelector('#t-setinen').textContent,'Set i përzgjedhur automatikisht sipas përgjigjeve tuaja');
+  assert.equal(document.querySelector('#t-seti').nextElementSibling.id,'pyetjet');
+  assert.equal(document.querySelector('#pse').hidden,true);
+  assert.equal(document.querySelector('#vendimi').hidden,true);
 });

@@ -78,6 +78,12 @@ a { color: var(--green); }
 /* Der Name bricht nie um. */
 .mjeku strong, .mjeku span { white-space: nowrap; }
 .hero__karte .hero__pse { font-size: .95rem; }
+/* Applied only by fastSeite: patient photos without an author row. */
+.hero__karte .fast-hero-fotos { width: fit-content; margin: 0 14px 12px 0; }
+.fast-hero-fotos .mjeku__stapel { gap: 6px; }
+.fast-hero-fotos .mjeku__stapel img { width: 54px; height: 68px; object-fit: cover; border-radius: 9px; border: 1px solid var(--line); }
+.fast-hero-fotos .mjeku__zahl { position: absolute; right: -12px; bottom: -3px; min-width: 24px; height: 24px; padding: 0 5px; border-radius: 999px; display: flex; align-items: center; justify-content: center; background: var(--green); color: #fff; border: 2px solid #fff; font-size: 11px; font-weight: 700; }
+.hero > .fast-paket-faq { padding: 28px 0 0; border-bottom: 0; }
 /* Rechts Platz fuer die halbe Breite des Kreises - er ragt ueber den
    Stapel hinaus und soll trotzdem mitgemessen werden. */
 .mjeku__fotot {

@@ -5,7 +5,15 @@ export function fastSeite(root, data, products) {
   const text = (selector, value) => { const el = get(selector); if (el) el.textContent = value; };
   const hide = selector => { const el = get(selector); if (el) el.hidden = true; };
   text('#t-setinen', 'Set i përzgjedhur automatikisht sipas përgjigjeve tuaja');
-  text('#t-hyrja', data.raport?.shitja?.hyrja || data.raport?.gjetjet || '');
+  const intro = String(data.raport?.shitja?.hyrja || data.raport?.gjetjet || '').trim();
+  text('#t-hyrja', intro.replace(/^Bazuar në përgjigjet tuaja(?:,\s*përmendët)?:\s*/i, 'Seti juaj për lëkurën tuaj: '));
+  // Show the customer's own thumbnails independently of the hidden author row.
+  const photos = get('#t-fotot');
+  const hero = get('.hero__karte');
+  const heading = get('#t-hyrja');
+  if (photos && hero && heading && photos.parentNode !== hero) hero.insertBefore(photos, heading);
+  photos?.classList.add('fast-hero-fotos');
+  get('#t-fototstapel')?.removeAttribute('data-zeige');
   text('#t-faq1', 'Seti është përzgjedhur sipas shqetësimeve, tipit të lëkurës dhe kujdesit që na treguat. Nuk është diagnozë mjekësore.');
   text('#t-faq2', 'Reagimi i lëkurës ndryshon nga personi në person. Nisni gradualisht dhe ndiqni udhëzimet e produkteve.');
   text('#t-analizasyri', 'Analiza e plotë');
@@ -15,23 +23,16 @@ export function fastSeite(root, data, products) {
   get('#t-metodablock')?.removeAttribute('open');
   text('#t-permbledhja', data.raport?.gjetjet || '');
   text('#t-keshillablock strong', 'Kujdesi i përditshëm');
-  text('#t-psetitulli', 'Pse këto produkte për ju');
   text('#t-vleresimi', '');
   hide('#t-vleresimi');
-  const reasons = get('#t-gjetjet');
-  if (reasons) {
-    const doc = reasons.ownerDocument;
-    reasons.replaceChildren(...products.map(p => {
-      const li = doc.createElement('li');
-      const heading = doc.createElement('h3');
-      heading.textContent = p.name;
-      const line = doc.createElement('p');
-      line.textContent = (data.produkte || []).find(x => x.id === p.id)?.satz || '';
-      li.append(heading, line);
-      return li;
-    }));
-    const block = get('#pse');
-    if (block) block.hidden = false;
+  hide('#pse');
+  hide('#vendimi');
+  // Reuse the original FAQ nodes so their controls and answers stay wired.
+  const faq = get('#pyetjet');
+  const packet = get('#t-seti');
+  if (faq && packet?.parentNode) {
+    faq.classList.add('fast-paket-faq');
+    if (packet.nextElementSibling !== faq) packet.parentNode.insertBefore(faq, packet.nextSibling);
   }
   const chips = get('#t-seticipa');
   if (chips) {

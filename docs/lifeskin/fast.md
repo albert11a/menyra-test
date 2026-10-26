@@ -98,3 +98,22 @@ close any open state. This includes already-created Fast reports; normal reports
 retain their existing method section. The separate answer-based set description
 remains. Focused Fast/Pixel tests and build passed; no tracked bundle changes.
 No mobile browser visual run.
+
+## Follow-up: compact Fast-only therapy layout
+
+Only Fast reports hide the repeated Why this therapy and lower decision/price
+sections. The full existing FAQ nodes move immediately after the top package
+card. The top copy starts “Seti juaj për lëkurën tuaj:” for both existing and new
+Fast reports. The customer's uploaded thumbnails move out of the hidden author
+row, with a dedicated compact photo layout; normal report photo fitting remains
+unchanged. The late product-photo repaint reapplies Fast overrides, preventing
+package copy from reverting and keeping FAQ placement stable. No checkout,
+pricing, Pixel/CAPI calls, standard report layout or stored report data changes.
+
+Validation for compact layout: 36 focused Fast/Pixel tests passed; build passed.
+The full LifeSkin/Heart run had 1,713 passes, one existing conditional skip and
+one time-dependent failure (`lifeskin-zaehlung.test.mjs`, “sieben Tage sind sieben
+Tage, nicht acht”). The same 8-versus-7 result was reproduced in a separate,
+unmodified worktree at main commit ad9700b, so no counting logic or test was
+changed for this layout task. No tracked bundle changes. Mobile checks are DOM
+and async UI-boundary tests; no actual mobile browser visual check was run.

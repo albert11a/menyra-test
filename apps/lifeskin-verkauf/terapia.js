@@ -935,6 +935,7 @@ export class Terapia {
     await Promise.race([Promise.all(this.produkte.map((p) => einzeln(p.id))), frist]);
     this.landingFotot = karte;
     this.#seti();
+    if (this.daten?.fast?.version === 1) fastSeite(document, this.daten, this.produkte);
   }
 
   #mjetetPunkte() {
@@ -979,6 +980,7 @@ export class Terapia {
     schreibe($("#t-fototzahl"), n === 1 ? "1" : `+${n}`);
     knopf.setAttribute("aria-label", n === 1 ? "1 foto nga analiza juaj" : `${n} foto nga analiza juaj`);
     zeigen(knopf, true);
+    if (this.daten?.fast?.version === 1) return;
     this.#stapelEinpassen();
     if (!this.stapelGebunden) {
       this.stapelGebunden = true;
