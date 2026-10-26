@@ -68,3 +68,7 @@ Wechselnde Lade-, Ads-Luecken-, Kosten- und Altbestandshinweise aus der Hauptkar
 Unter Anulime steht nun die laufende Rechnung: Umsatz, minus Posta/Transport, Zwischenstand, minus Riba, Zwischenstand, minus Produktkosten, Verpackung, Sonstiges und Ads bis zum Reingewinn. Jeder Posten genau einmal in Cent; Anulime sind bereits aus dem Ausgangsumsatz ausgeschlossen und werden nicht erneut abgezogen. Positive/negative Reingewinne gruen/rot, fehlende Kosten oder Ads lassen die betroffenen Zwischenstaende offen. Dialog bleibt bei langen Listen scrollbar.
 
 33 gezielte Tests inklusive Zwischenstaenden, Endsumme, fehlenden Kosten/Ads, Verlustfarbe, Position unter Anulime und Pixel-Sperre bestanden. ESLint ohne Fehler/Warnungen in den geaenderten JS-Dateien. Build erfolgreich; keine getrackten Bundle-Aenderungen. Kein echter iPhone-Browsercheck.
+
+## Fokusrahmen vollstaendig entfernt
+
+Der graue summary-Rahmen stammte aus dem zuvor ergaenzten Tastaturfokus. Diese Regel sowie die neu eingefuehrten Profit-Fokusrahmen entfernt. Abschliessende Heart-weite Regel deaktiviert Fokus-outline/box-shadow und Tap-Highlights auch fuer Dialoge und alle anderen Controls. Dauerhafte Layout-Raender bleiben. Expliziter Inhaberwunsch fuer zukuenftige Projekt-UI in AGENTS.md festgehalten. Nur CSS und Dokumentation, keine Rechen-/Datenlogik. Build erfolgreich, keine getrackten Bundle-Aenderungen. Kein echter iPhone-Browsercheck.

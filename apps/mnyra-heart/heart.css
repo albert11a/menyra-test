@@ -10818,7 +10818,6 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 .heart-gewinn-dialog [role="alert"] { color: var(--heart-danger, #f48484); }
 .heart-gewinn-dialog__aktionen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
 .heart-gewinn-dialog button.ist-haupt { background: var(--heart-text, #f5f5f7); color: var(--heart-surface, #18181d); font-weight: 650; }
-.heart-gewinn-dialog button:focus-visible { outline: 2px solid var(--heart-accent, #3fbf9b); outline-offset: 2px; }
 .heart-gewinn-kalender__monat { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; text-align: center; gap: 8px; margin: 16px 0 12px; }
 .heart-gewinn-kalender__monat button { font-size: 24px; padding: 0; }
 .heart-gewinn-kalender__raster { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
@@ -10830,7 +10829,7 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 .heart-gewinn-dialog__auswahl { margin-top: 16px !important; text-align: center; font-weight: 650; }
 [data-heart-theme="tag"] .heart-gewinn-dialog input, [data-heart-theme="tag"] .heart-gewinn-dialog select { color-scheme: light; }
 
-/* Align the controls and keep focus neutral, without the native blue ring. */
+/* Align the profit controls. */
 .heart-gewinn__filter .heart-lifeskin-eingabe,
 .heart-gewinn__filter .heart-gewinn__waehlen { height: 44px; min-height: 44px; max-height: 44px; box-sizing: border-box; margin: 0; padding-block: 8px; line-height: 24px; }
 .heart-gewinn__status { font-size: 12px; line-height: 1.5; color: var(--heart-text-muted, #929297); }
@@ -10838,8 +10837,6 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 .heart-gewinn .heart-lifeskin-eingabe:focus,
 .heart-gewinn button:focus, .heart-gewinn select:focus,
 .heart-gewinn-dialog button:focus, .heart-gewinn-dialog input:focus, .heart-gewinn-dialog select:focus { outline: none; box-shadow: none; }
-.heart-gewinn button:focus-visible, .heart-gewinn select:focus-visible,
-.heart-gewinn-dialog button:focus-visible, .heart-gewinn-dialog input:focus-visible, .heart-gewinn-dialog select:focus-visible { outline: 2px solid var(--heart-border-strong, #777); outline-offset: 2px; }
 
 
 .heart-gewinn:not([open]) > summary .heart-gewinn__info { display: none; }
@@ -10863,11 +10860,6 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 /* Safari can focus the summary itself, including its nested action buttons. */
 .heart-gewinn summary { -webkit-tap-highlight-color: transparent; }
 .heart-gewinn summary:focus { outline: none; box-shadow: none; }
-.heart-gewinn summary:focus-visible {
-  outline: none;
-  box-shadow: inset 0 0 0 1px var(--heart-border-strong, #777);
-  border-radius: 6px;
-}
 
 .heart-gewinn:not([open]) > summary .heart-gewinn__stats { display: none; }
 .heart-gewinn-stats-block { margin-top: 16px; border-top: 1px solid var(--heart-border, #36363c); padding-top: 8px; }
@@ -10890,7 +10882,6 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 .heart-gewinn-stats-tabelle .ohne-bestellung, .heart-gewinn-stats-tabelle .ohne-bestellung small { color: var(--heart-danger, #ff6b57); }
 .heart-gewinn-dialog summary { -webkit-tap-highlight-color: transparent; }
 .heart-gewinn-dialog summary:focus { outline: none; }
-.heart-gewinn-dialog summary:focus-visible { outline: 1px solid var(--heart-border-strong, #777); outline-offset: 2px; border-radius: 6px; }
 
 .heart-gewinn__tabelle td.heart-gewinn__positiv { color: var(--heart-success, #23c483); }
 .heart-gewinn__tabelle td.heart-gewinn__negativ { color: var(--heart-danger, #ff6b57); }
@@ -10903,3 +10894,14 @@ html.heart-wischt--gleitet .heart-bereiche__band {
 .heart-gewinn-verlauf .ist-reingewinn { margin-top: 6px; padding-block: 14px; font-size: 16px; }
 .heart-gewinn-verlauf .ist-positiv dd { color: var(--heart-success, #23c483); }
 .heart-gewinn-verlauf .ist-negativ dd { color: var(--heart-danger, #ff6b57); }
+
+
+/* Owner preference: no extra focus/click/tap frames anywhere in Heart.
+   Keep this last so component styles cannot reintroduce a focus ring. */
+* { -webkit-tap-highlight-color: transparent; }
+*:focus,
+*:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+}

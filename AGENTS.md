@@ -145,6 +145,15 @@ Ausnahme:
   Werte darin neu eingetragen, mit dem Vermerk im Commit:
   "Pixel-Aenderung erlaubt von <Name> am <Datum>: <was>".
 
+## UI-Vorgabe: keine Klick- oder Fokusrahmen
+
+Ausdruecklicher Inhaberwunsch vom 26.10.2026: Keine zusaetzlichen sichtbaren
+Umrandungen beim Klicken, Tippen oder Fokussieren, auch nicht als grauen
+Ersatz fuer den blauen Browserrahmen. Das gilt fuer zukuenftige UI-Aenderungen
+im Projekt. Keine outline-/box-shadow-Fokusringe neu einfuehren, auch nicht
+auf summary, Plus/Info/Stats, Dialog-Schliessen oder bei focus-visible.
+Bestehende dauerhafte Card-/Feldraender sind Layout und bleiben erhalten.
+
 ## Definition Of Done
 
 - Scope is documented before implementation.
