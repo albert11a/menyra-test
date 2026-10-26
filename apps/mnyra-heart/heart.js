@@ -1,3 +1,4 @@
+import { adsCent, datumGueltig } from "./heart-lifeskin-gewinn.js";
 import { vergleichHochladen, vergleichVorschau } from "./heart-lifeskin-vergleich.js";
 import { reviewGalerie } from "../../shared/lifeskin-review-gallery.js";
 import { SHOP_REVIEW_MEDIUM } from "../../shared/lifeskin-shop-bewertungen.js";
@@ -72,7 +73,7 @@ import { ladeLifeskin, ladeLifeskinSeit, ladeLifeskinSitzung, horcheLive, ladeFo
   speichereShopSetet, ladeShopSetFoto, speichereShopSetFoto, loescheShopSetFoto, speichereShopHero, loescheShopHero, speichereShopHeroListe, speichereShopProduktFoto, speichereShopAktion, loescheShopNachricht,
   speichereAntwortzeit, speicherePerputhjaModus,
   ladeMedien, speichereMedien, speichereMedium, loescheMedium, ladeKommentare, setzeKommentarVerborgen, loescheKommentar, schreibeKommentare, ladeReviewFoto,
-  ladeProduktkosten, speichereProduktkosten } from "./heart-lifeskin-adapter.js";
+  ladeProduktkosten, speichereProduktkosten, ladeGewinnAds, speichereGewinnAds } from "./heart-lifeskin-adapter.js";
 import { medienListe, mediumNormalisieren, neueMediumId } from "../../shared/lifeskin-medien.js";
 import { kommentarMedien, kommentarVorschauSetzen, ausschnittGriff, ausschnittZoom, ausschnittLesen } from "./heart-lifeskin-medien.js";
 import { rasteListe, klappSetzen, klappOffen, rastiDom } from "./heart-lifeskin-raste.js";
@@ -1169,6 +1170,7 @@ async function ladeLifeskinBereich({ force = false, voll = false } = {}) {
     // "Reaktionen" war beim letzten Mal offen: gleich die Kommentare dazu.
     if (klappOffen("reaktionen")) medienKommentareLaden();
     if (klappOffen("produktkosten")) produktkostenLaden();
+    if (["", "lifeskinshop", "lifeskin2", "|lifeskinshop"].some((w) => klappOffen(`gewinn:${w}`))) gewinnLaden();
   } catch (fehler) {
     // Ein gescheiterter Abgleich darf nicht loeschen, was schon dasteht.
     if (store.getState().lifeskin?.status === "ready") return;
@@ -3048,6 +3050,53 @@ async function lifeskinMediumSchieben(id, richtung) {
   }
 }
 
+// Profit reads are independent of customer analytics and never write sessions.
+async function gewinnLaden() {
+  const stand = store.getState().lifeskin || {};
+  if (stand.gewinnStatus === "laedt" || stand.gewinnSpeichert) return;
+  actions.patchLifeskin({ gewinnStatus: "laedt" });
+  try {
+    const ads = await ladeGewinnAds();
+    actions.patchLifeskin({ gewinnAds: ads, gewinnStatus: "bereit" });
+    requestAnimationFrame(gewinnAdsVorhanden);
+  } catch {
+    actions.patchLifeskin({ gewinnStatus: "fehler" });
+  }
+  if (!store.getState().lifeskin?.produktkosten) await produktkostenLaden();
+}
+function gewinnAdsVorhanden() {
+  const root = document.querySelector(".heart-gewinn__editor");
+  if (!root) return;
+  const tag = root.querySelector("[data-gewinn-datum]").value;
+  const weg = root.querySelector("[data-gewinn-weg]").value;
+  const bisher = (store.getState().lifeskin?.gewinnAds || []).find((a) => a.tag === tag && a.weg === weg);
+  root.querySelector("[data-gewinn-vorhanden]").textContent = bisher
+    ? `Gespeichert: ${(bisher.cent / 100).toLocaleString("de-DE")} €. Neuer Betrag ersetzt diesen Tageswert.`
+    : "Für diesen Tag/Bereich noch kein Ads-Betrag gespeichert.";
+}
+async function gewinnSpeichern(knopf) {
+  if (store.getState().lifeskin?.gewinnSpeichert) return;
+  const root = knopf.closest(".heart-gewinn");
+  const tag = root.querySelector("[data-gewinn-datum]")?.value || "";
+  const weg = root.querySelector("[data-gewinn-weg]")?.value || "";
+  const cent = adsCent(root.querySelector("[data-gewinn-betrag]")?.value);
+  if (!datumGueltig(tag) || cent == null) {
+    setToast("Ads", "Bitte Datum und Betrag mit höchstens zwei Nachkommastellen eingeben.", "danger"); return;
+  }
+  knopf.disabled = true;
+  actions.patchLifeskin({ gewinnSpeichert: true });
+  try {
+    const wert = await speichereGewinnAds({ tag, weg, cent });
+    const liste = store.getState().lifeskin?.gewinnAds || [];
+    actions.patchLifeskin({ gewinnAds: [...liste.filter((a) => a.tag !== tag || a.weg !== weg), wert], gewinnSpeichert: false, gewinnEditor: false });
+    setToast("Ads", "Tagesbetrag gespeichert.", "success");
+  } catch (fehler) {
+    actions.patchLifeskin({ gewinnSpeichert: false });
+    knopf.disabled = false;
+    setToast("Ads", fehler?.message || "Nicht gespeichert. Bitte erneut versuchen.", "danger");
+  }
+}
+
 // PRODUKTKOSTEN - erst, wenn die Karte aufgeht (heart-lifeskin-kosten.js).
 async function produktkostenLaden() {
   const stand = store.getState().lifeskin || {};
@@ -4446,6 +4495,22 @@ const operations = {
     if (name === "shopsetet" && offen) shopSetBilderLaden();
     if (name === "reaktionen" && offen) medienKommentareLaden();
     if (name === "produktkosten" && offen) produktkostenLaden();
+    if (name.startsWith("gewinn:") && offen) gewinnLaden();
+  },
+  gewinnPlus(knopf) {
+    const karte = knopf.closest("[data-klapp]");
+    if (karte) klappSetzen(karte.getAttribute("data-klapp"), true);
+    actions.patchLifeskin({ gewinnEditor: (karte?.getAttribute("data-klapp") || "gewinn:").slice("gewinn:".length) });
+    gewinnLaden();
+  },
+  gewinnSchliessen() { actions.patchLifeskin({ gewinnEditor: false }); },
+  gewinnLaden() { return gewinnLaden(); },
+  gewinnSpeichern(knopf) { return gewinnSpeichern(knopf); },
+  gewinnAdsVorhanden() { gewinnAdsVorhanden(); },
+  gewinnFilter(name, wert) {
+    if (!["zeit", "von", "bis"].includes(name)) return;
+    const vorher = store.getState().lifeskin?.gewinnFilter || { zeit: "heute" };
+    actions.patchLifeskin({ gewinnFilter: { ...vorher, [name]: wert } });
   },
   produktkostenSpeichern() { return produktkostenSpeichern(); },
   // "+ Krem": eine leere Zeile aus der Vorlage - nur im DOM, bis gespeichert

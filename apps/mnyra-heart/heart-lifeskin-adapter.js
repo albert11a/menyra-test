@@ -41,6 +41,7 @@ import {
   getDoc,
   getDocFromServer,
   getDocs,
+  getDocsFromServer,
   getDocsFromCache,
   documentId,
   startAfter,
@@ -993,4 +994,19 @@ export async function loescheShopNachricht(id) {
     transaction.set(ref, { lista: liste, updatedAt: new Date().toISOString() });
     return liste;
   });
+}
+
+// CEO-only daily totals, separate document per day/way: no shared ledger overwrite.
+export async function ladeGewinnAds() {
+  const snap = await getDocsFromServer(query(collection(db, "landingArchive"),
+    where(documentId(), ">=", "lifeskin__ads__"), where(documentId(), "<=", "lifeskin__ads__\uf8ff")));
+  return snap.docs.map((d) => d.data());
+}
+export async function speichereGewinnAds({ tag, weg, cent }) {
+  const { datumGueltig } = await import("./heart-lifeskin-gewinn.js");
+  if (!datumGueltig(tag) || !["", "lifeskinshop", "lifeskin2"].includes(weg)
+      || !Number.isSafeInteger(cent) || cent < 0 || cent > 999999999) throw new Error("Ungültiger Tagesbetrag.");
+  const wert = { tag, weg, cent, updatedAt: new Date().toISOString() };
+  await setDoc(doc(db, "landingArchive", `lifeskin__ads__${weg || "lifeskin"}__${tag}`), wert);
+  return wert;
 }

@@ -87,10 +87,10 @@ test("die Chips stehen oben - in der Form der Faelle-Chips", () => {
 const HEUTE = new Date().toISOString();
 const fall = (id, weg, extra = {}) => normalisiere(id, { createdAt: HEUTE, updatedAt: HEUTE, step: "opened", source: weg ? { weg } : {}, ...extra });
 
-test("Lifeskin: Live Both, Live Shop, Live Analyse, Zahlen, Bestellungen - in dieser Reihenfolge", () => {
+test("Lifeskin: Live, Zahlen, Gewinn, Bestellungen - in dieser Reihenfolge", () => {
   const mitte = bereichHtml(renderLifeskin({ ...GELADEN, bereich: "lifeskin" }), "lifeskin");
   const titel = [...mitte.matchAll(/heart-lifeskin-block__titel">([^<]+)</g)].map((m) => m[1]);
-  assert.deepEqual(titel, ["Live · Both", "Live · Shop", "Live · Analyse", "Bestellungen"]);
+  assert.deepEqual(titel, ["Live · Both", "Live · Shop", "Live · Analyse", "Ads · Umsatz · Gewinn", "Bestellungen"]);
   assert.ok(mitte.indexOf("Live · Analyse") < mitte.indexOf("heart-lifeskin-kacheln"), "die Zahlen stehen unter den Live-Karten");
   assert.ok(mitte.indexOf("heart-lifeskin-kacheln") < mitte.indexOf(">Bestellungen<"), "die Bestellungen stehen unter den Zahlen");
   // Keine Faelle, kein Trichter, kein "Mehr anzeigen" - das bleibt in den Wegen.
