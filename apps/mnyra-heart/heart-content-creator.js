@@ -1,5 +1,5 @@
 import { db } from "/shared/firebase-config.js";
-import { collection, doc, onSnapshot, setDoc, updateDoc, writeBatch, serverTimestamp } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
+import { collection, doc, getDoc, onSnapshot, setDoc, updateDoc, writeBatch, serverTimestamp } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import { CC_PAGES, CC_VISITS, contentLink } from "../../shared/content-creator.js";
 
 export async function prepareContentImage(file, avatar = false) {
@@ -26,6 +26,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
   const patch = fields => store.actions.patchContentCreator(fields);
   let subscriptions = [], pendingId = "", avatarFile = null, photoFiles = [], draftAvatar = "", draftName = "";
   let busy = false, stopped = true, createdMs = 0;
+  let captions = {}, mediaBusy = false, imageEpoch = 0;
   function stop() { subscriptions.forEach(unsubscribe => unsubscribe()); subscriptions = []; stopped = true; }
   function load() {
     if (!stopped) return;
@@ -46,22 +47,62 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       else if(!event.shiftKey && event.target===last){event.preventDefault();first?.focus();}
     }
   });
-  root.addEventListener("input", event => { if(event.target.matches('#cc-create-form [name="name"]')) { draftName=event.target.value; patch({draftName}); } });
+  async function detail(id) {
+    const epoch=++imageEpoch;
+    const previous=store.getState().contentCreator;
+    patch({selectedId:id,images:{},captionDrafts:previous.selectedId===id ? previous.captionDrafts : {},mediaError:""});
+    const page=store.getState().contentCreator.pages.find(p=>p.id===id);
+    if(!page)return;
+    const result=await Promise.all((page.photoIds || []).map(async key=>{
+      const snap=await getDoc(doc(db,CC_PAGES,id,"images",key));return [key,snap.data() || {}];
+    }));
+    if(epoch===imageEpoch)patch({images:Object.fromEntries(result)});
+  }
+  async function mediaTask(task) {
+    if(mediaBusy)return;
+    mediaBusy=true;patch({mediaBusy:true,mediaError:""});
+    try{await task();}catch(error){patch({mediaError:error.message || "Änderung nicht gespeichert."});}
+    finally{mediaBusy=false;patch({mediaBusy:false});}
+  }
+  root.addEventListener("input", event => {
+    if(event.target.hasAttribute("data-upload-caption")){
+      captions[event.target.dataset.uploadCaption]=event.target.value;
+      patch({pendingCaptions:{...captions}});return;
+    }
+    if(event.target.hasAttribute("data-edit-caption")){
+      const state=store.getState().contentCreator;
+      patch({captionDrafts:{...state.captionDrafts,[event.target.dataset.editCaption]:event.target.value}});return;
+    }
+ if(event.target.matches('#cc-create-form [name="name"]')) { draftName=event.target.value; patch({draftName}); } });
   root.addEventListener("change", event => {
     const input=event.target;
+    if(input.hasAttribute("data-cc-add")){
+      const files=Array.from(input.files || []),id=input.dataset.ccAdd;
+      mediaTask(async()=>{
+        const pageRef=doc(db,CC_PAGES,id),snap=await getDoc(pageRef),page=snap.data();
+        if(!page)throw new Error("Lokal wurde nicht gefunden.");
+        if((page.photoIds?.length || 0)+files.length>30)throw new Error("Maximal 30 Bilder pro Seite.");
+        const keys=[];
+        for(const file of files){const key=crypto.randomUUID().replaceAll("-","");await setDoc(doc(pageRef,"images",key),{data:await prepareImage(file),caption:""});keys.push(key);}
+        await updateDoc(pageRef,{photoIds:[...(page.photoIds || []),...keys],updatedAt:serverTimestamp()});
+        const state=store.getState().contentCreator;
+        patch({pages:state.pages.map(p=>p.id===id?{...p,photoIds:[...(page.photoIds || []),...keys]}:p)});
+        await detail(id);
+      });return;
+    }
     if(!input.closest("#cc-create-form"))return;
     capture();
     if(input.name === "avatar") avatarFile=input.files[0] || avatarFile;
-    if(input.name === "photos") photoFiles=Array.from(input.files);
-    patch({draftName,avatarName:avatarFile?.name || (draftAvatar ? "Profilbild gespeichert" : ""),photoNames:photoFiles.map(f=>f.name).join(", "),editorError:""});
+    if(input.name === "photos") { photoFiles=Array.from(input.files); captions={}; }
+    patch({pendingPhotos:photoFiles.map(f=>f.name),pendingCaptions:{...captions},draftName,avatarName:avatarFile?.name || (draftAvatar ? "Profilbild gespeichert" : ""),photoNames:photoFiles.map(f=>f.name).join(", "),editorError:""});
   });
   root.addEventListener("submit", async event => {
     if(event.target.id!=="cc-create-form")return;
     event.preventDefault(); if(busy)return; capture();
-    if(!draftName.trim() || !(avatarFile || draftAvatar) || !photoFiles.length || photoFiles.length>30){patch({editorError:"Bitte Lokalname, Profilbild und 1 bis 30 Bilder auswählen."});return;}
+    if(!draftName.trim() || !photoFiles.length || photoFiles.length>30){patch({editorError:"Bitte Lokalname und 1 bis 30 Bilder auswählen."});return;}
     busy=true; patch({saving:true,draftName,editorError:"",progress:"Bilder vorbereiten …"});
     try {
-      const avatar=avatarFile ? await prepareImage(avatarFile,true) : draftAvatar;
+      const avatar=avatarFile ? await prepareImage(avatarFile,true) : (draftAvatar || "");
       pendingId ||= crypto.randomUUID().replaceAll("-","");
       const page=doc(db,CC_PAGES,pendingId);
       createdMs ||= Date.now();
@@ -71,7 +112,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       for(let i=0;i<photoFiles.length;i++) {
         patch({progress:`Bild ${i+1} von ${photoFiles.length} …`});
         const data=await prepareImage(photoFiles[i]); const imageId=String(i).padStart(3,"0");
-        await setDoc(doc(page,"images",imageId),{data}); photoIds.push(imageId);
+        await setDoc(doc(page,"images",imageId),{data,caption:String(captions[i] || "").slice(0,1000)}); photoIds.push(imageId);
       }
       const batch=writeBatch(db);batch.update(page,{photoIds,published:true,workflow:"ready",updatedAt:serverTimestamp()});await batch.commit();
       pendingId="";photoFiles=[];avatarFile=null;draftAvatar="";draftName="";
@@ -83,9 +124,38 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     const button=event.target.closest("[data-cc-action]"); if(!button)return;
     const action=button.dataset.ccAction,id=button.dataset.id;
     try {
-      if(action==="new") {if(busy)return;createdMs=0;pendingId="";avatarFile=null;photoFiles=[];draftAvatar="";draftName="";patch({editor:true,draftName:"",avatarName:"",photoNames:"",editorError:""});queueMicrotask(()=>root.querySelector('#cc-create-form [name="name"]')?.focus());}
+      if(action==="new") {if(busy)return;captions={};patch({pendingPhotos:[],pendingCaptions:{}});createdMs=0;pendingId="";avatarFile=null;photoFiles=[];draftAvatar="";draftName="";patch({editor:true,draftName:"",avatarName:"",photoNames:"",editorError:""});queueMicrotask(()=>root.querySelector('#cc-create-form [name="name"]')?.focus());}
       if(action==="close" && !busy) patch({editor:false});
       if(action==="filter") patch({filter:button.dataset.key});
+      if(action==="detail") await detail(id);
+      if(action==="back") {imageEpoch++;patch({selectedId:"",images:{},captionDrafts:{}});}
+      if(action==="preview") {
+        const url=contentLink(id,true);
+        // Keep Heart in its tab/PWA and avoid iOS standalone navigation replacing it.
+        const link=document.createElement("a");link.href=url;link.target="_blank";link.rel="noopener noreferrer external";document.body.appendChild(link);link.click();link.remove();
+      }
+      if(action==="still") {await navigator.clipboard.writeText(contentLink(id,true));notice("Still-Link kopiert · auch im externen Browser ohne Stats.");}
+      if(["caption","move","delete"].includes(action)) await mediaTask(async()=>{
+        const pageRef=doc(db,CC_PAGES,id),snapshot=await getDoc(pageRef),page=snapshot.data();
+        if(!page)throw new Error("Lokal wurde nicht gefunden.");
+        const image=button.dataset.image,ids=[...(page.photoIds || [])],index=ids.indexOf(image);
+        if(index<0)throw new Error("Bild wurde bereits entfernt. Bitte neu öffnen.");
+        if(action==="caption"){
+          const caption=store.getState().contentCreator.captionDrafts?.[image] ?? store.getState().contentCreator.images?.[image]?.caption ?? "";
+          await updateDoc(doc(pageRef,"images",image),{caption:String(caption).slice(0,1000)});
+          const state=store.getState().contentCreator;
+          patch({images:{...state.images,[image]:{...state.images[image],caption}},notice:"Bildunterschrift gespeichert."});
+        }else{
+          if(action==="move") {const next=index+Number(button.dataset.direction);if(next<0||next>=ids.length)return;[ids[index],ids[next]]=[ids[next],ids[index]];}
+          if(action==="delete") ids.splice(index,1);
+          const batch=writeBatch(db);batch.update(pageRef,{photoIds:ids,updatedAt:serverTimestamp()});
+          if(action==="delete")batch.delete(doc(pageRef,"images",image));
+          await batch.commit();
+          const state=store.getState().contentCreator;
+          patch({pages:state.pages.map(p=>p.id===id?{...p,photoIds:ids}:p)});
+          await detail(id);
+        }
+      });
       if(action==="copy") {await navigator.clipboard.writeText(contentLink(id));notice("Link kopiert.");}
       if(action==="sent") {await updateDoc(doc(db,CC_PAGES,id),{workflow:"sent",sentAt:serverTimestamp()});notice("Als verschickt markiert.");}
       if(action==="resume" && !busy){const page=store.getState().contentCreator.pages.find(p=>p.id===id);if(!page)return;pendingId=id;createdMs=page.createdMs;draftName=page.name;draftAvatar=page.avatar;avatarFile=null;photoFiles=[];patch({editor:true,draftName,avatarName:"Profilbild gespeichert",photoNames:"Bitte Beispielbilder erneut auswählen.",editorError:""});}

@@ -26,7 +26,7 @@ export function contentStats(rows = []) {
   return Object.fromEntries(["opened", "scrolled", "yes", "no"].map(key => [key, rows.filter(r => r[key]).length]));
 }
 export function contentLink(id, preview = false, origin = globalThis.location?.origin || "https://www.mnyra.com") {
-  return `${origin}/content-creator/${encodeURIComponent(id)}${preview ? "?preview=1" : ""}`;
+  return `${origin}/content-creator/${encodeURIComponent(id)}${preview ? "?still=1" : ""}`;
 }
 export function ccEscape(value = "") {
   return String(value).replace(/[&<>"']/g, c => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"})[c]);

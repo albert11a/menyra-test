@@ -1,17 +1,25 @@
 /* global scrollY, innerHeight, addEventListener */
-import { db } from "/shared/firebase-config.js";
+import { db } from "./firebase.js";
 import { doc, getDoc, setDoc, serverTimestamp } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import { CC_PAGES, CC_VISITS, ccEscape as esc, ccImage } from "../../shared/content-creator.js";
 const root=document.getElementById("content-app");
 const id=location.pathname.split("/").filter(Boolean).at(-1);
-const preview=new URLSearchParams(location.search).get("preview")==="1";
+const params = new URLSearchParams(location.search);
+let still = params.get("still") === "1";
+try {
+  if(params.get("still")==="1") localStorage.setItem("mnyra:content:still","1");
+  if(params.get("still")==="0") localStorage.removeItem("mnyra:content:still");
+  if(params.get("still")!=="0") still ||= (localStorage.getItem("mnyra:content:still")==="1" || localStorage.getItem("mnyra:still")==="1");
+} catch { /* explicit link also works without storage */ }
+const preview=params.get("preview")==="1" || still;
 let visitorId="", visitRef=null, current={opened:true,scrolled:false,answer:""}, saved=false, queue=Promise.resolve();
 const memoryKey=`mnyra.content.${id}`;
 function readLocal(){try{return JSON.parse(localStorage.getItem(memoryKey)||"null");}catch{return null;}}
 function remember(){try{localStorage.setItem(memoryKey,JSON.stringify({visitorId,scrolled:current.scrolled,answer:current.answer}));}catch{}}
 function persist(fields={}){
-  Object.assign(current,fields);remember();
+  Object.assign(current,fields);
   if(preview)return Promise.resolve();
+  remember();
   // Serialize writes: an earlier scroll/open must never clear a later answer.
   const snapshot={...current};
   queue=queue.catch(()=>{}).then(async()=>{
@@ -28,8 +36,8 @@ async function start(){
     const snap=await getDoc(doc(db,CC_PAGES,id));
     if(!snap.exists() || !snap.data().published)throw new Error("Kjo faqe nuk është ende e disponueshme.");
     const page=snap.data();document.title=`Për ${page.name} · MNYRA`;
-    root.innerHTML=`${preview?'<p class="preview">Vorschau · Dieser Besuch wird nicht gezählt.</p>':""}<div class="brand">MNYRA</div>
-      <header class="greeting"><h1><span>Përshëndetje,</span>${esc(page.name)}.</h1><img class="avatar" src="${ccImage(page.avatar)}" alt="${esc(page.name)}"></header>
+    root.innerHTML=`${preview?'<p class="preview">Still · Besuche und Antworten werden nicht gezählt.</p>':""}<div class="brand">MNYRA</div>
+      <header class="greeting"><h1><span>Përshëndetje,</span>${esc(page.name)}.</h1>${ccImage(page.avatar) ? `<img class="avatar" src="${ccImage(page.avatar)}" alt="${esc(page.name)}">` : ""}</header>
       <section class="intro"><p class="eyebrow">Pak vëmendje për lokalin tuaj</p><h2>Lokali juaj. Në një dritë të re.</h2><p>Ne jemi MNYRA. Krijojmë përmbajtje për rrjetet tuaja sociale dhe kujdesemi për praninë tuaj digjitale — në Instagram, Facebook, TikTok dhe në faqen tuaj të internetit.</p><p>Kemi përgatitur disa foto shembull posaçërisht për <strong>${esc(page.name)}</strong>, që të shihni si mund të duket përmbajtja e lokalit tuaj.</p><div class="free">Këto foto mund t’i shkarkoni dhe t’i përdorni falas në rrjetet tuaja sociale. Janë një dhuratë nga ne, pa asnjë detyrim.</div></section>
       <section class="gallery" aria-label="Fotot për lokalin tuaj">${page.photoIds.map((key,i)=>`<figure class="photo" data-image="${esc(key)}"><p class="loading">Duke ngarkuar foton ${i+1}…</p></figure>`).join("")}</section>
       <section class="faq"><p class="eyebrow">Mirë të dini</p><h2>Pyetje dhe përgjigje</h2>
@@ -44,7 +52,7 @@ async function start(){
       const figure=root.querySelector(`[data-image="${CSS.escape(key)}"]`);
       getDoc(doc(db,CC_PAGES,id,"images",key)).then(photo=>{
         const data=ccImage(photo.data()?.data);if(!data)throw new Error();
-        figure.innerHTML=`<img src="${data}" alt="Foto shembull ${i+1} për ${esc(page.name)}" ${i? 'loading="lazy"':''}><a class="download" download="${esc(page.name.replace(/[^a-zA-Z0-9_-]/g,'_'))}-${i+1}.jpg" href="${data}">Shkarko foton ↓</a>`;
+        figure.innerHTML=`<img src="${data}" alt="Foto shembull ${i+1} për ${esc(page.name)}" ${i? 'loading="lazy"':''}>${photo.data()?.caption ? `<figcaption>${esc(photo.data().caption)}</figcaption>` : ""}`;
       }).catch(()=>{figure.innerHTML='<p class="loading">Fotoja nuk u ngarkua. Rifreskoni faqen për ta provuar përsëri.</p>';});
     }
     const local=readLocal();visitorId=/^[a-f0-9]{32}$/.test(local?.visitorId||"")?local.visitorId:crypto.randomUUID().replaceAll("-","");
@@ -62,7 +70,7 @@ async function start(){
     addEventListener("scroll",onScroll,{passive:true});
     root.addEventListener("click",async event=>{
       const button=event.target.closest("[data-answer]");if(!button)return;
-      if(preview){root.querySelector("#answer-error").textContent="Vorschau: Antworten werden nicht gespeichert.";return;}
+      if(preview){responseMessage(button.dataset.answer);return;}
       const buttons=root.querySelectorAll("[data-answer]");buttons.forEach(b=>b.disabled=true);
       try{await persist({answer:button.dataset.answer});responseMessage(current.answer);}
       catch{current.answer="";remember();buttons.forEach(b=>b.disabled=false);root.querySelector("#answer-error").textContent="Përgjigjja nuk u ruajt. Ju lutemi, provoni përsëri.";}

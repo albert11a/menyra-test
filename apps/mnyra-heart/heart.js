@@ -5598,7 +5598,6 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-window.addEventListener("beforeunload", () => {
-  authController.destroy();
-  destroyTimers();
+window.addEventListener("pagehide", (event) => {
+  if (!event.persisted) { authController.destroy(); destroyTimers(); }
 });

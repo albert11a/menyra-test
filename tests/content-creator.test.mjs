@@ -48,5 +48,5 @@ test('Namen werden escaped, fremde Bild-URLs ausgeschlossen, Upload erlaubt Mehr
  const html=renderContentCreator({editor:true,draftName:'"><script>alert(1)</script>',pages:[],visits:[]});
  assert.doesNotMatch(html,/<script>/);assert.match(html,/&lt;script&gt;/);assert.match(html,/multiple accept="image\/jpeg/);
  assert.equal(ccImage('javascript:alert(1)'),'');
- assert.equal(contentLink('id',true,'https://mnyra.com'),'https://mnyra.com/content-creator/id?preview=1');
+ assert.equal(contentLink('id',true,'https://mnyra.com'),'https://mnyra.com/content-creator/id?still=1');
 });
