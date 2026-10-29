@@ -16,7 +16,7 @@ async function setup(still=false,price=2900,options={}){
  const repo={read:async key=>docs.get(key),write:async(key,data)=>{docs.set(key,{...docs.get(key),...structuredClone(data)});return true;},notify:async()=>true};
  const fetch=async(url,requestOptions)=>{
   const payload=requestOptions.method==='POST'?JSON.parse(requestOptions.body):Object.fromEntries(new URL(url,'https://www.mnyra.com').searchParams);calls.push(payload);
-  try{if(payload.op==='free-preview'&&options.preview){const result=await options.preview(payload);if(result)return result;}return {ok:true,json:async()=>await shopAction(payload,repo)};}catch(error){return {ok:false,json:async()=>({error:error.message})};}
+  try{if(payload.op==='free-download'&&options.download)await options.download(payload);if(payload.op==='free-preview'&&options.preview){const result=await options.preview(payload);if(result)return result;}return {ok:true,json:async()=>await shopAction(payload,repo)};}catch(error){return {ok:false,json:async()=>({error:error.message})};}
  };
  const mount=factory({},(...args)=>args.filter(x=>typeof x==='string').join('/'),async()=>({data:()=>({data:'data:image/jpeg;base64,YWJj'})}),ccEscape,ccImage,'contentCreatorPages',euro,shopQuote,validShopId,files=>{zipFiles.push(files);return new Blob(['zip']);}, {getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)}, {origin:'https://www.mnyra.com',search:''},fetch,document,{setInterval:()=>0,addEventListener:()=>{}},()=>0,options.navigator||{});
  await mount({root,page,still});
@@ -106,4 +106,11 @@ test('Fotos speichern übergibt echte Bilddateien beim zweiten Fingertipp an das
 });
 test('Ohne Datei-Teilen bleiben einzelne Bildlinks statt ausschließlich ZIP verfügbar',async()=>{
  const ctx=await setup(false,0);await ctx.click('[data-shop="free-save"]');await ctx.click('[data-shop="save-ready"]');assert.equal(ctx.root.querySelectorAll('.shop-save-files a[target="_blank"]').length,4);assert.match(ctx.root.textContent,/Hapni fotot veçmas/);
+});
+
+test('Speichern zeigt sofort den Dialog und Fortschritt bevor große Originale fertig sind',async()=>{
+ let release;const slow=new Promise(resolve=>{release=resolve;});
+ const ctx=await setup(false,0,{download:async payload=>{if(payload.file==='two')await slow;}});
+ await ctx.click('[data-shop="free-save"]');assert.ok(ctx.root.querySelector('.shop-save-overlay'));assert.match(ctx.root.querySelector('.shop-save-overlay').textContent,/1 \/ 4/);assert.equal(ctx.root.querySelector('[data-shop="save-ready"]').disabled,false);
+ release();await ctx.settle();assert.equal(ctx.root.querySelectorAll('.shop-save-files a').length,4);
 });

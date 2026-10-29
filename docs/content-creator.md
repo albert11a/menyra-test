@@ -1,3 +1,16 @@
+## Fortschritt beim Speichern und randlose Karten (29.10.2026)
+
+Der Album-Dialog öffnet sofort, zeigt die Zahl geladener Originale und erlaubt
+das Teilen bereits fertiger Fotos. Originalbytes werden auf Vollständigkeit
+geprüft. Schließen bricht nach den laufenden Anfragen weitere Downloads ab.
+Anzeigebilder werden pro Seite, Bild, Preisart und Seitenversion im Session-Cache
+gehalten; ein erneuter Seitenaufruf lädt vorhandene Anzeigebilder daraus.
+Karten verwenden cover, die Großansicht weiterhin contain.
+
+Gezielte UI-Tests und npm run build bestanden. Kein echter iPhone-Test und
+keine Messung am konkreten Kundenlink; sofortige erste Netzwerkladezeiten sind
+damit nicht belegt. Getrackte Social-Bundles unverändert.
+
 ## Schnelle, vollständige Anzeige und Speichern ins Fotoalbum (29.10.2026)
 
 Ursache der langsamen Anzeige: Gratisfotos wurden bei jedem Bildaufruf aus

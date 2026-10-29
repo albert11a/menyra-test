@@ -9,7 +9,7 @@ export async function mountCreatorShop({root,page,still=false}){
  let ids=Array.isArray(saved.ids)?saved.ids.filter(id=>(page.products||[]).some(p=>p.id===id&&p.priceCents!==0)):[];
  let cartId=validShopId(saved.cartId)?saved.cartId:crypto.randomUUID().replaceAll('-','');
  let orderId='',panel='',error='',notice='',submitting=false,downloadBusy='';
- let viewer=null,backgroundLock=null,photoSave=null;
+ let viewer=null,backgroundLock=null,photoSave=null,downloadCancelled=false;
  const prepared=new Map(),imageErrors={},imagePending=new Set();
  const images={},positions={},orders=new Map(),customer={name:'',address:'',country:'Kosovë',phone:''};
  const tokens=still?[]:(Array.isArray(saved.orders)?saved.orders:[]).filter(validShopId).slice(-10);
@@ -49,12 +49,16 @@ export async function mountCreatorShop({root,page,still=false}){
   if(imagePending.has(key)||images[key])return;imagePending.add(key);delete imageErrors[key];
   try{
    const free=(page.products||[]).find(p=>p.active!==false&&p.priceCents===0&&p.imageIds.includes(key));
+   const cacheKey=`mnyra:cc:image:${page.id}:${key}:${free?'free':'paid'}:${JSON.stringify(page.updatedAt||'')}`;
    let data;
+   try{data=ccImage(sessionStorage.getItem(cacheKey));}catch{}
+   if(data){images[key]=data;return;}
    for(let attempt=0;attempt<2;attempt++){
     try{data=free?ccImage((await api('free-preview',{productId:free.id,file:key})).data):ccImage((await getDoc(doc(db,CC_PAGES,page.id,'previews',key))).data()?.data);if(!data)throw Error('Fotoja nuk u ngarkua.');break;}
     catch(error){if(attempt||error.status===400)throw error;}
    }
    images[key]=data;
+   try{sessionStorage.setItem(cacheKey,data);}catch{}
   }catch{imageErrors[key]=true;}finally{imagePending.delete(key);paintImage(key);}
  }
  async function loadImages(keys){
@@ -68,7 +72,7 @@ export async function mountCreatorShop({root,page,still=false}){
  }
  function photoSaveMarkup(){
   if(!photoSave)return '';
-  return `<div class="shop-save-overlay"><section class="shop-drawer" role="dialog" aria-modal="true" aria-labelledby="shop-save-title"><div class="shop-drawer-head"><h2 id="shop-save-title">Ruani fotot</h2><button type="button" data-shop="save-close" aria-label="Mbyll">×</button></div><p>${photoSave.files.length} foto origjinale janë gati.</p><p>Në iPhone: hapni menynë më poshtë dhe zgjidhni “Save Images” / “Bilder sichern”.</p><button type="button" class="shop-buy" data-shop="save-ready">Hap menynë e ruajtjes / ndarjes</button>${photoSave.message?`<p role="status">${esc(photoSave.message)}</p>`:''}<p>Ose hapni e ruani fotot veçmas:</p><div class="shop-save-files">${photoSave.files.map((file,i)=>`<a href="${photoSave.urls[i]}" target="_blank" rel="noopener">Foto ${i+1}</a>`).join('')}</div><button type="button" class="shop-zip" data-shop="save-zip">Shkarko të gjitha si ZIP</button></section></div>`;
+  return `<div class="shop-save-overlay"><section class="shop-drawer" role="dialog" aria-modal="true" aria-labelledby="shop-save-title"><div class="shop-drawer-head"><h2 id="shop-save-title">Ruani fotot</h2><button type="button" data-shop="save-close" aria-label="Mbyll">×</button></div><p>${photoSave.loading?`Duke ngarkuar: ${photoSave.files.length} / ${photoSave.total} foto`:`${photoSave.files.length} foto origjinale janë gati.`}</p><p>Në iPhone: hapni menynë më poshtë dhe zgjidhni “Save Images” / “Bilder sichern”.</p><button type="button" class="shop-buy" data-shop="save-ready" ${!photoSave.files.length?'disabled':''}>Hap menynë e ruajtjes / ndarjes</button>${photoSave.message?`<p role="status">${esc(photoSave.message)}</p>`:''}<p>Ose hapni e ruani fotot veçmas:</p><div class="shop-save-files">${photoSave.files.map((file,i)=>`<a href="${photoSave.urls[i]}" target="_blank" rel="noopener">Foto ${i+1}</a>`).join('')}</div><button type="button" class="shop-zip" data-shop="save-zip" ${photoSave.loading?'disabled':''}>Shkarko të gjitha si ZIP</button></section></div>`;
  }
  function packFiles(product){return page.photoIds.filter(id=>(page.products.find(p=>p.id===product)?.imageIds||[]).includes(id));}
  function viewerMarkup(){
@@ -156,7 +160,7 @@ export async function mountCreatorShop({root,page,still=false}){
   const action=button.dataset.shop,product=button.dataset.product;
   try{
    if(action==='retry-images'){void loadImages(Object.keys(imageErrors));return;}
-   if(action==='save-close'){photoSave=null;render();return;}
+   if(action==='save-close'){downloadCancelled=true;photoSave=null;render();return;}
    if(action==='save-ready'){
     if(!photoSave)return;
     if(typeof navigator!=='undefined'&&navigator.share&&navigator.canShare?.({files:photoSave.files})){try{await navigator.share({files:photoSave.files});}catch(error){if(error.name!=='AbortError'){photoSave.message='Prekni fotot veçmas më poshtë për t’i ruajtur.';render();}}}
@@ -228,32 +232,39 @@ export async function mountCreatorShop({root,page,still=false}){
  async function download(receipt,product,mode='zip'){
   const order=orders.get(receipt),line=receipt?order?.lines.find(p=>p.id===product):page.products.find(p=>p.id===product&&p.active!==false&&p.priceCents===0);if(!line||(receipt&&!order?.approved)||downloadBusy)return;
   const operation=receipt?'download':'free-download',access=receipt?{orderId:receipt}:{productId:product};
-  downloadBusy=product;render();
+  downloadBusy=product;downloadCancelled=false;
+  if(mode==='photos')photoSave={receipt,product,files:[],urls:[],loading:true,total:line.imageIds.length};
+  render();
   try{
    const cacheKey=`${receipt}:${product}`;
    let files=prepared.get(cacheKey)?.files;
    if(!files){files=[];let bytesTotal=0;
    for(const [index,file] of (receipt?line.imageIds:packFiles(product)).entries()){
-    const meta=await api(operation,{...access,file},true);bytesTotal+=meta.size;
+    if(downloadCancelled)return;
+    const meta=await api(operation,{...access,file},true);if(downloadCancelled)return;bytesTotal+=meta.size;
     if(bytesTotal>150*1024*1024)throw Error('Pakoja është shumë e madhe për këtë pajisje. Kontaktoni MNYRA për dorëzimin e skedarëve.');
     const parts=[];
     for(let start=0;start<meta.parts;start+=4){
      const chunks=await Promise.all(Array.from({length:Math.min(4,meta.parts-start)},(_,i)=>api(operation,{...access,file,part:start+i},true)));
+     if(downloadCancelled)return;
      for(const data of chunks){const binary=atob(data.data),bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);parts.push(bytes);}
     }
     const bytes=new Uint8Array(parts.reduce((n,p)=>n+p.length,0));let offset=0;for(const part of parts){bytes.set(part,offset);offset+=part.length;}
-    files.push({name:`${index+1}-${meta.name}`,bytes,mime:meta.mime||'image/jpeg'});
+    if(bytes.length!==meta.size)throw Error('Fotoja nuk u shkarkua plotësisht. Provoni përsëri.');
+    const asset={name:`${index+1}-${meta.name}`,bytes,mime:meta.mime||'image/jpeg'};files.push(asset);
+    if(mode==='photos'&&photoSave){const ready=new File([bytes],asset.name,{type:asset.mime});photoSave.files.push(ready);photoSave.urls.push(URL.createObjectURL(ready));render();}
    }
    }
    if(!prepared.has(cacheKey)){for(const entry of prepared.values())for(const url of entry.urls||[])URL.revokeObjectURL(url);prepared.clear();prepared.set(cacheKey,{files});}
    if(mode==='photos'){
     const entry=prepared.get(cacheKey);
+    if(photoSave?.files.length===files.length){entry.shareFiles=photoSave.files;entry.urls=photoSave.urls;}
     entry.shareFiles ||= files.map(file=>new File([file.bytes],file.name,{type:file.mime}));
     entry.urls ||= entry.shareFiles.map(file=>URL.createObjectURL(file));
     photoSave={receipt,product,files:entry.shareFiles,urls:entry.urls};return;
    }
    const url=URL.createObjectURL(zipBlob(files)),link=document.createElement('a');link.href=url;link.download=`MNYRA-${line.title.replace(/[^\p{L}\p{N}_-]/gu,'_')}.zip`;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
-  }finally{downloadBusy='';render();}
+  }catch(error){if(photoSave){photoSave.loading=false;photoSave.message=error.message;}throw error;}finally{downloadBusy='';render();}
  }
  render();remember();
  const first=(page.products||[]).filter(p=>p.active!==false).map(p=>p.imageIds.find(key=>page.photoIds.includes(key))).filter(Boolean);
