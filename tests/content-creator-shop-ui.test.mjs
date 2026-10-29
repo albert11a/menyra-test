@@ -6,25 +6,26 @@ import {ccEscape,ccImage} from '../shared/content-creator.js';
 import {euro,shopQuote,validShopId} from '../shared/content-creator-shop.js';
 import {shopAction} from '../server/content-creator-shop.js';
 const source=(await readFile(new URL('../apps/content-creator/shop.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace('export async function mountCreatorShop','async function mountCreatorShop');
-const factory=new Function('db','doc','getDoc','esc','ccImage','CC_PAGES','euro','shopQuote','validShopId','zipBlob','localStorage','location','fetch','document','globalThis','setTimeout',`${source}\nreturn mountCreatorShop;`);
+const factory=new Function('db','doc','getDoc','esc','ccImage','CC_PAGES','euro','shopQuote','validShopId','zipBlob','localStorage','location','fetch','document','globalThis','setTimeout','navigator',`${source}\nreturn mountCreatorShop;`);
 const pageId='a'.repeat(32);
-async function setup(still=false,price=2900){
+async function setup(still=false,price=2900,options={}){
  const {document,window}=parseHTML('<html><body><main id="app"></main></body></html>'),root=document.getElementById('app');window.HTMLElement.prototype.scrollIntoView=()=>{};window.HTMLElement.prototype.scrollTo=function(options){this.scrollLeft=options.left;this.dispatchEvent(new window.Event('scroll'));};
  const storage=new Map(),calls=[],zipFiles=[],page={id:pageId,published:true,kind:'shop',name:'Bistro',photoIds:['one','two','three','four'],products:[{id:'pack',title:'Social Set',priceCents:price,imageIds:['one','two','three','four']}]};
  const docs=new Map([[`contentCreatorPages/${pageId}`,structuredClone(page)]]);
- for(const key of page.photoIds){docs.set(`contentCreatorPages/${pageId}/originals/${key}`,{parts:1,size:3,name:key+'.jpg',mime:'image/jpeg'});docs.set(`contentCreatorPages/${pageId}/originals/${key}/chunks/000`,{data:'YWJj'});}
+ for(const key of page.photoIds){docs.set(`contentCreatorPages/${pageId}/originals/${key}`,{parts:1,size:3,name:key+'.jpg',mime:'image/jpeg',cleanPreview:{version:1,data:'data:image/jpeg;base64,YWJj'}});docs.set(`contentCreatorPages/${pageId}/originals/${key}/chunks/000`,{data:'YWJj'});}
  const repo={read:async key=>docs.get(key),write:async(key,data)=>{docs.set(key,{...docs.get(key),...structuredClone(data)});return true;},notify:async()=>true};
- const fetch=async(url,options)=>{
-  const payload=options.method==='POST'?JSON.parse(options.body):Object.fromEntries(new URL(url,'https://www.mnyra.com').searchParams);calls.push(payload);
-  try{return {ok:true,json:async()=>await shopAction(payload,repo)};}catch(error){return {ok:false,json:async()=>({error:error.message})};}
+ const fetch=async(url,requestOptions)=>{
+  const payload=requestOptions.method==='POST'?JSON.parse(requestOptions.body):Object.fromEntries(new URL(url,'https://www.mnyra.com').searchParams);calls.push(payload);
+  try{if(payload.op==='free-preview'&&options.preview){const result=await options.preview(payload);if(result)return result;}return {ok:true,json:async()=>await shopAction(payload,repo)};}catch(error){return {ok:false,json:async()=>({error:error.message})};}
  };
- const mount=factory({},(...args)=>args.filter(x=>typeof x==='string').join('/'),async()=>({data:()=>({data:'data:image/jpeg;base64,YWJj'})}),ccEscape,ccImage,'contentCreatorPages',euro,shopQuote,validShopId,files=>{zipFiles.push(files);return new Blob(['zip']);}, {getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)}, {origin:'https://www.mnyra.com',search:''},fetch,document,{setInterval:()=>0,addEventListener:()=>{}},()=>0);
+ const mount=factory({},(...args)=>args.filter(x=>typeof x==='string').join('/'),async()=>({data:()=>({data:'data:image/jpeg;base64,YWJj'})}),ccEscape,ccImage,'contentCreatorPages',euro,shopQuote,validShopId,files=>{zipFiles.push(files);return new Blob(['zip']);}, {getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)}, {origin:'https://www.mnyra.com',search:''},fetch,document,{setInterval:()=>0,addEventListener:()=>{}},()=>0,options.navigator||{});
  await mount({root,page,still});
  async function settle(){for(let i=0;i<15;i++)await new Promise(r=>setImmediate(r));}
  async function click(selector){const button=root.querySelector(selector);assert.ok(button,selector);button.dispatchEvent(new window.Event('click',{bubbles:true}));await settle();}
  async function checkout(){await click('[data-shop="cart"]');await click('[data-shop="checkout"]');for(const [name,value] of Object.entries({name:'Test User',address:'Test Street 12',phone:'+38344123456'})){const field=root.querySelector(`[name="${name}"]`);field.value=value;field.dispatchEvent(new window.Event('input',{bubbles:true}));}}
  async function submit(){root.querySelector('form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));await settle();}
- return {root,docs,calls,zipFiles,click,checkout,submit,document,window};
+ await settle();
+ return {root,docs,calls,zipFiles,click,checkout,submit,document,window,settle};
 }
 test('Shop bündelt vier Fotos, zeigt Dots, Warenkorb, COD und gesperrte Bestellung',async()=>{
  const ctx=await setup();assert.equal(ctx.root.querySelectorAll('.shop-product').length,1);assert.equal(ctx.root.querySelectorAll('.shop-slide').length,4);assert.equal(ctx.root.querySelectorAll('.shop-dots button').length,4);
@@ -76,11 +77,33 @@ test('Bildflächen sind in beiden Ansichten fest begrenzt und erlauben kein vert
 
 test('Kostenlose Fotos sind ohne Wasserzeichen sofort als Originalpaket herunterladbar',async()=>{
  const ctx=await setup(false,0);assert.match(ctx.root.querySelector('.shop-price-row').textContent,/Falas/);assert.equal(ctx.root.querySelector('.shop-watermark'),null);
- assert.match(ctx.root.querySelector('.shop-slide img').getAttribute('src'),/op=free-image/);assert.equal(ctx.root.querySelector('[data-shop="add"]'),null);
+ assert.match(ctx.root.querySelector('.shop-slide img').getAttribute('src'),/^data:image\/jpeg;base64,/);assert.equal(ctx.root.querySelector('[data-shop="add"]'),null);
  await ctx.click('[data-shop="free-download"]');assert.equal(ctx.root.querySelector('form'),null);assert.equal([...ctx.docs.keys()].some(k=>k.startsWith('contentCreatorOrders/')),false);
- assert.equal(ctx.calls.length,8);assert.ok(ctx.calls.every(c=>c.op==='free-download'));assert.equal(ctx.zipFiles[0].length,4);assert.equal(new TextDecoder().decode(ctx.zipFiles[0][0].bytes),'abc');
+ assert.equal(ctx.calls.filter(c=>c.op==='free-download').length,8);assert.ok(ctx.calls.every(c=>['free-download','free-preview'].includes(c.op)));assert.equal(ctx.zipFiles[0].length,4);assert.equal(new TextDecoder().decode(ctx.zipFiles[0][0].bytes),'abc');
  await ctx.click('[data-shop="view"][data-index="0"]');assert.ok(ctx.root.querySelector('.shop-viewer [data-shop="free-download"]'));
 });
 test('Kostenloser Download im Still-Modus schreibt keine Statistik, Bestellung oder Meldung',async()=>{
- const ctx=await setup(true,0);await ctx.click('[data-shop="free-download"]');assert.equal(ctx.zipFiles.length,1);assert.ok(ctx.calls.every(c=>c.op==='free-download'));
+ const ctx=await setup(true,0);await ctx.click('[data-shop="free-download"]');assert.equal(ctx.zipFiles.length,1);assert.ok(ctx.calls.every(c=>['free-download','free-preview'].includes(c.op)));
+});
+
+test('Langsames Foto blockiert die anderen nicht; Anzeige lädt keine Original-Chunks',async()=>{
+ let release;const delayed=new Promise(resolve=>{release=resolve;});
+ const ctx=await setup(false,0,{preview:async payload=>{if(payload.file==='one'){await delayed;}return null;}});
+ assert.ok(ctx.root.querySelector('[data-photo="two"][src]'));assert.ok(!ctx.root.querySelector('[data-photo="one"][src]'));
+ assert.ok(ctx.calls.every(c=>c.op==='free-preview'));release();await ctx.settle();assert.ok(ctx.root.querySelector('[data-photo="one"][src]'));
+});
+test('Fehlerhafte Fotos werden sichtbar gemeldet und können nachgeladen werden',async()=>{
+ let fail=true;const ctx=await setup(false,0,{preview:async payload=>payload.file==='one'&&fail?{ok:false,status:503,json:async()=>({error:'Temporary'})}:null});
+ assert.match(ctx.root.querySelector('#shop-image-errors').textContent,/1 foto/);assert.ok(ctx.root.querySelector('[data-photo="two"][src]'));
+ fail=false;await ctx.click('[data-shop="retry-images"]');assert.ok(ctx.root.querySelector('[data-photo="one"][src]'));assert.equal(ctx.root.querySelector('#shop-image-errors').textContent,'');
+});
+test('Fotos speichern übergibt echte Bilddateien beim zweiten Fingertipp an das Teilen-Menü',async()=>{
+ const shares=[];const ctx=await setup(false,0,{navigator:{canShare:({files})=>files.every(f=>f.type==='image/jpeg'),share:async payload=>shares.push(payload)}});
+ await ctx.click('[data-shop="free-save"]');assert.ok(ctx.root.querySelector('[data-shop="save-ready"]'));assert.equal(shares.length,0);
+ assert.equal(ctx.root.querySelectorAll('.shop-save-files a').length,4);const count=ctx.calls.length;
+ await ctx.click('[data-shop="save-ready"]');assert.equal(shares.length,1);assert.equal(shares[0].files.length,4);assert.equal(shares[0].files[0].type,'image/jpeg');assert.equal(await shares[0].files[0].text(),'abc');assert.equal(ctx.calls.length,count);
+ await ctx.click('[data-shop="save-zip"]');assert.equal(ctx.zipFiles.length,1);assert.equal(ctx.calls.length,count);
+});
+test('Ohne Datei-Teilen bleiben einzelne Bildlinks statt ausschließlich ZIP verfügbar',async()=>{
+ const ctx=await setup(false,0);await ctx.click('[data-shop="free-save"]');await ctx.click('[data-shop="save-ready"]');assert.equal(ctx.root.querySelectorAll('.shop-save-files a[target="_blank"]').length,4);assert.match(ctx.root.textContent,/Hapni fotot veçmas/);
 });

@@ -1,3 +1,35 @@
+## Schnelle, vollständige Anzeige und Speichern ins Fotoalbum (29.10.2026)
+
+Ursache der langsamen Anzeige: Gratisfotos wurden bei jedem Bildaufruf aus
+Original-Chunks zusammengesetzt und in voller Dateigröße ausgeliefert.
+Aktueller Ladeweg verwendet kleine JPEG-Anzeigebilder ohne Wasserzeichen. Neue
+Uploads speichern diese direkt privat beim Original; bestehende Bilder werden
+beim expliziten Vorbereitungs-POST einmal aus den Originalen erzeugt und privat
+zwischengespeichert. Spätere Aufrufe lesen nur die fertige Anzeige. GET bleibt
+schreibfrei. Jede öffentliche Anfrage prüft weiterhin Veröffentlichung, aktives
+Gratispaket und Fotozugehörigkeit; kostenpflichtige Originale bleiben geschützt.
+
+Galerie priorisiert das erste Foto jedes Pakets, lädt höchstens drei Bilder
+gleichzeitig und setzt fertige Bilder einzeln ein, ohne die ganze Galerie neu
+aufzubauen. Ein langsames Foto blockiert andere nicht. Fehler werden angezeigt
+und können erneut geladen werden. Karten und Großansicht zeigen vollständige
+Bilder mit contain. Bereitschaft der Besuchserfassung hängt nicht mehr vom
+Abschluss aller Bildladevorgänge ab.
+
+„Ruaj fotot“ lädt die originalen Bilddateien (vier Chunk-Anfragen parallel) und
+zeigt anschließend einen eigenen Knopf für die native Datei-Teilen-Funktion.
+Dieser zweite Fingertipp erhält die von iOS benötigte Benutzeraktivierung.
+Im iPhone-Menü wählt man „Bilder sichern“ / „Save Images“. Eine Webseite kann
+nicht ohne OS-Bestätigung direkt ins Fotoalbum schreiben. Geräte ohne Datei-
+Teilen können einzelne Originalbilder öffnen und speichern; ZIP bleibt separat.
+Es wird höchstens ein vorbereitetes Paket gehalten, Blob-URLs werden freigegeben.
+
+Prüfung: Bildverkleinerung mit echten JPEGs, Größen-/Formatgrenzen, Cache ohne
+erneutes Lesen der Original-Chunks, Fehlerbehebung, unabhängige Bildanzeige,
+Wiederholen und Übergabe echter File-Objekte ans Teilen-Menü. Keine gemessene
+Ladezeit im Mobilfunk und kein manueller iPhone-Test. ESLint und npm run build;
+getrackte Social-Bundles unverändert.
+
 ## Gratispakete direkt herunterladen, ohne Wasserzeichen (29.10.2026)
 
 Aktuelles Verhalten: Aktive, veröffentlichte Pakete mit Preis 0 zeigen Originale

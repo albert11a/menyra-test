@@ -20,6 +20,12 @@ export async function saveShopPreview(pageId,imageId,display){
  const canvas=document.createElement('canvas'),ratio=Math.min(1,720/Math.max(image.width,image.height));
  canvas.width=Math.max(1,Math.round(image.width*ratio));canvas.height=Math.max(1,Math.round(image.height*ratio));
  const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0,canvas.width,canvas.height);
+ // Keep the lightweight clean image private alongside the original metadata.
+ const clean=document.createElement('canvas'),cleanRatio=Math.min(1,1200/Math.max(image.width,image.height));
+ clean.width=Math.max(1,Math.round(image.width*cleanRatio));clean.height=Math.max(1,Math.round(image.height*cleanRatio));
+ clean.getContext('2d').drawImage(image,0,0,clean.width,clean.height);
+ let cleanData=clean.toDataURL('image/jpeg',.78);if(cleanData.length>=500000)cleanData=canvas.toDataURL('image/jpeg',.72);
+ await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId),{cleanPreview:{version:1,data:cleanData}},{merge:true});
  drawShopWatermark(ctx,canvas.width,canvas.height);
  const preview=canvas.toDataURL('image/jpeg',.8);
  await setDoc(doc(db,CC_PAGES,pageId,'previews',imageId),{data:preview});

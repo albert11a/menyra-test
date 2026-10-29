@@ -9,7 +9,7 @@ const product={id:'pack',title:'4 Fotos',priceCents:2900,imageIds:['one','two','
 function fixture(){
  const page={published:true,kind:'shop',name:'Bistro',photoIds:product.imageIds,products:[{...product}]};
  const docs=new Map([[`contentCreatorPages/${pageId}`,page]]),notifications=[];
- for(const id of product.imageIds){docs.set(`contentCreatorPages/${pageId}/originals/${id}`,{name:id+'.jpg',mime:'image/jpeg',size:3,parts:1});docs.set(`contentCreatorPages/${pageId}/originals/${id}/chunks/000`,{data:'YWJj'});}
+ for(const id of product.imageIds){docs.set(`contentCreatorPages/${pageId}/originals/${id}`,{name:id+'.jpg',mime:'image/jpeg',size:3,parts:1,cleanPreview:{version:1,data:'data:image/jpeg;base64,YWJj'}});docs.set(`contentCreatorPages/${pageId}/originals/${id}/chunks/000`,{data:'YWJj'});}
  const repo={read:async key=>docs.get(key)||null,write:async(key,value,create=false)=>{if(create&&docs.has(key))return false;docs.set(key,{...docs.get(key),...structuredClone(value)});return true;},notify:async(kind,id,record)=>{notifications.push({kind,id,total:record.totalCents});return true;}};
  return {page,docs,notifications,repo};
 }

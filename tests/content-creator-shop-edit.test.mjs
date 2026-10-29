@@ -66,6 +66,6 @@ test('Vorhandene Vorschauen werden aus Originalen erneuert, Bildunterschriften b
  const document={createElement:()=>({getContext:()=>ctx,toDataURL:()=> 'new-preview'})};
  class Image{constructor(){this.width=720;this.height=900;}async decode(){}}
  const refresh=new Function('db','doc','getDoc','setDoc','CC_PAGES','Image','document','URL',`${assetSource}\nreturn refreshShopPreviews;`)({},doc,async path=>({data:()=>docs.get(path)}),async(...args)=>writes.push(args),'contentCreatorPages',Image,document,{createObjectURL:()=> 'blob:original',revokeObjectURL:url=>urls.push(url)});
- await refresh('s',['a']);assert.equal(writes.length,2);assert.deepEqual(writes[1],['contentCreatorPages/s/images/a',{data:'new-preview'},{merge:true}]);assert.deepEqual(urls,['blob:original']);
- await assert.rejects(refresh('s',['missing']),/Originaldatei fehlt/);assert.equal(writes.length,2);
+ await refresh('s',['a']);assert.equal(writes.length,3);assert.deepEqual(writes[2],['contentCreatorPages/s/images/a',{data:'new-preview'},{merge:true}]);assert.deepEqual(urls,['blob:original']);
+ await assert.rejects(refresh('s',['missing']),/Originaldatei fehlt/);assert.equal(writes.length,3);
 });
