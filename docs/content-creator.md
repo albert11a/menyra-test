@@ -49,3 +49,27 @@ Shop-Bildflächen sind auf ein festes Seitenverhältnis begrenzt. Tracks scrolle
 
 Gezielte DOM-Tests: Start bei angetipptem Bild, Pfeile/Punkte/Scroll-Ereignisse, Bildgrenzen, Escape/Schließen, Hintergrund-Wiederherstellung und Warenkorb aus der Großansicht. CSS-Regressionscheck für feste Höhen und fehlendes vertikales Innenscrollen. Reales iOS-Gestenverhalten bleibt zusätzlich manuell zu prüfen.
 
+## Pakete löschen und dezente Wasserzeichen (29.10.2026)
+
+Umfang: In Heart ganze Shop-Pakete nach zweitem Bestätigungsklick entfernen,
+einzelne Fotos direkt im Paket löschen und die Wasserzeichen luftiger setzen.
+Paketlöschung aktualisiert Produkte und öffentliche Bildlisten atomar. Nur Fotos,
+die kein anderes Paket benötigt, werden aus Bildern/Vorschauen entfernt.
+Private Originale und vorhandene Bestellungen bleiben erhalten. Wird das letzte
+Foto gelöscht, verschwindet auch das leere Paket. Sortieren aktualisiert jetzt
+ebenfalls die Bildreihenfolge der betroffenen Pakete.
+
+Neue Vorschauen verwenden 32 % weiße Textdeckkraft, einen schwächeren Schatten
+und gemessene Textbreite plus Abstand statt fester, überlappender Textkacheln.
+Für bereits eingebrannte Wasserzeichen gibt es im Shop-Detail den Knopf
+„Wasserzeichen vorhandener Fotos aktualisieren“. Dieser baut Vorschauen aus den
+privaten Originalen neu auf und erhält vorhandene Bildunterschriften. Bei einem
+Fehler können die bereits erneuerten Vorschauen stehen bleiben; erneuter Aufruf
+ist sicher. Es werden keine echten Kundenbestellungen zu Testzwecken angelegt.
+
+Validierung: 22 gezielte Node-Tests inklusive Bestell-/Downloadschutz, atomarem
+Löschen, gemeinsam verwendeten Bildern, Sortierung und Vorschau-Erneuerung;
+ESLint der geänderten JS-Dateien; npm run build erfolgreich. Die erzeugten
+getrackten Social-Bundles sind identisch mit main, daher keine Bundle-Änderungen
+im Commit. Reale Handy-/iPhone-Bedienung wurde nicht manuell geprüft.
+

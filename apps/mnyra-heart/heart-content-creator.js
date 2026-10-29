@@ -1,4 +1,4 @@
-import {saveShopAsset,initialShopProduct,releaseShopOrder} from "./heart-content-creator-shop.js";
+import {saveShopAsset,initialShopProduct,releaseShopOrder,refreshShopPreviews} from "./heart-content-creator-shop.js";
 import {CC_CARTS,CC_ORDERS,priceCents} from "../../shared/content-creator-shop.js";
 import { db } from "/shared/firebase-config.js";
 import { collection, doc, getDoc, onSnapshot, setDoc, updateDoc, writeBatch, serverTimestamp } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
@@ -54,7 +54,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
   async function detail(id) {
     const epoch=++imageEpoch;
     const previous=store.getState().contentCreator;
-    patch({selectedId:id,images:{},captionDrafts:previous.selectedId===id ? previous.captionDrafts : {},mediaError:""});
+    patch({selectedId:id,images:{},captionDrafts:previous.selectedId===id ? previous.captionDrafts : {},mediaError:"",deletePackageConfirm:""});
     const page=store.getState().contentCreator.pages.find(p=>p.id===id);
     if(!page)return;
     const result=await Promise.all((page.photoIds || []).map(async key=>{
@@ -162,6 +162,32 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       if(action==="new") {if(busy)return;captions={};patch({pendingPhotos:[],pendingCaptions:{},pageKind:"promo",shopTitle:"",shopPrice:"",selectedId:""});createdMs=0;pendingId="";avatarFile=null;photoFiles=[];draftAvatar="";draftName="";patch({editor:true,draftName:"",avatarName:"",photoNames:"",editorError:""});queueMicrotask(()=>root.querySelector('#cc-create-form [name="name"]')?.focus());}
       if(action==="close" && !busy) patch({editor:false});
       if(action==="filter") patch({filter:button.dataset.key});
+      if(action==='cancel-package-delete')patch({deletePackageConfirm:''});
+      if(action==='refresh-previews')await mediaTask(async()=>{
+        const snap=await getDoc(doc(db,CC_PAGES,id)),page=snap.data();
+        if(page?.kind!=='shop')throw Error('Shop wurde nicht gefunden.');
+        await refreshShopPreviews(id,page.photoIds||[]);await detail(id);notice('Vorschauen mit dezentem Wasserzeichen aktualisiert.');
+      });
+      if(action==='delete-package'){
+        if(mediaBusy)return;
+        const productId=button.dataset.product;
+        if(store.getState().contentCreator.deletePackageConfirm!==productId){patch({deletePackageConfirm:productId});return;}
+        await mediaTask(async()=>{
+          const pageRef=doc(db,CC_PAGES,id),snap=await getDoc(pageRef),page=snap.data();
+          if(page?.kind!=='shop')throw Error('Shop wurde nicht gefunden.');
+          const product=(page.products||[]).find(p=>p.id===productId);
+          if(!product)throw Error('Paket wurde bereits entfernt.');
+          const products=page.products.filter(p=>p.id!==productId);
+          const retained=new Set(products.flatMap(p=>p.imageIds||[]));
+          const removed=(product.imageIds||[]).filter(key=>!retained.has(key));
+          const photoIds=(page.photoIds||[]).filter(key=>!removed.includes(key));
+          const batch=writeBatch(db);batch.update(pageRef,{products,photoIds,updatedAt:serverTimestamp()});
+          for(const key of removed){batch.delete(doc(pageRef,'images',key));batch.delete(doc(pageRef,'previews',key));}
+          await batch.commit();
+          patch({pages:store.getState().contentCreator.pages.map(p=>p.id===id?{...p,products,photoIds}:p)});
+          await detail(id);notice('Paket gelöscht. Bestehende Bestellungen bleiben erhalten.');
+        });
+      }
       if(action==='release'){
         const order=button.dataset.order;
         if(store.getState().contentCreator.releaseConfirm!==order){patch({releaseConfirm:order});return;}
@@ -188,11 +214,13 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         }else{
           if(action==="move") {const next=index+Number(button.dataset.direction);if(next<0||next>=ids.length)return;[ids[index],ids[next]]=[ids[next],ids[index]];}
           if(action==="delete") ids.splice(index,1);
-          const batch=writeBatch(db);batch.update(pageRef,{...(page.kind==='shop'?{products:(page.products||[]).map(p=>({...p,imageIds:p.imageIds.filter(key=>ids.includes(key))}))}:{}),photoIds:ids,updatedAt:serverTimestamp()});
+          const products=page.kind==='shop'?(page.products||[]).map(p=>({...p,imageIds:action==='move'?ids.filter(key=>p.imageIds.includes(key)):p.imageIds.filter(key=>ids.includes(key))})).filter(p=>p.imageIds.length):undefined;
+          const updated={...(products?{products}:{}),photoIds:ids};
+          const batch=writeBatch(db);batch.update(pageRef,{...updated,updatedAt:serverTimestamp()});
           if(action==="delete"){batch.delete(doc(pageRef,"images",image));if(page.kind==='shop')batch.delete(doc(pageRef,'previews',image));}
           await batch.commit();
           const state=store.getState().contentCreator;
-          patch({pages:state.pages.map(p=>p.id===id?{...p,photoIds:ids}:p)});
+          patch({pages:state.pages.map(p=>p.id===id?{...p,...updated}:p)});
           await detail(id);
         }
       });
@@ -204,3 +232,4 @@ export function createContentCreator({root, store, prepareImage = prepareContent
   store.subscribe(state=>{if(state.auth.status!=="authenticated" || !state.auth.access?.allowed)stop();});
   return {load,stop};
 }
+
