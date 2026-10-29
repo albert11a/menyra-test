@@ -41,3 +41,11 @@ Push-Meldungen laufen über die bestehende Heart-Zustellung mit Sperre/Deduplizi
 Validierung: gezielte Geschäftslogik-/DOM-Tests für Paket-Upload, Warenkorb, COD, Still-Modus, Preiswechsel, Idempotenz, Berechtigungen beim Download, ZIP-Originalbytes und vorhandene LifeSkin-Meldungen. Neue Emulatorfälle decken private Originale, öffentliche Vorschauen und eingeschränkte CEO-Freigabe ab. Produktionsbuild und ESLint der neuen Module. Live-Regeln werden vom bestehenden Deploy-Workflow nur nach bestandenem Emulatorlauf veröffentlicht. Echte iOS-/Push-Geräteprüfung bleibt eine separate Prüfung; keine Testbestellungen in Produktionsdaten erzeugen.
 
 Abschluss der Gesamtprüfung: Die Menütests berücksichtigen jetzt den neuen Content-Creator-Eintrag. Ein bereits vorher vorhandener ungeschützter LifeSkin-Getter im gemeinsamen Header wird abgefangen, damit ein defekter Bereich die Heart-Navigation nicht mitreißt. Die drei zuvor roten Menü-/Fehlerabsicherungsfälle bestehen; keine fachliche Änderung am LifeSkin-Kaufweg.
+
+
+## Paket-Großansicht und stabile Bildhöhe (29.10.2026)
+
+Shop-Bildflächen sind auf ein festes Seitenverhältnis begrenzt. Tracks scrollen ausschließlich horizontal; Slide-Bilder tragen nicht mehr mit ihrer intrinsischen Höhe zum Track-Layout bei. Ein Tipp öffnet das gewählte Foto in einer bildschirmfüllenden Paket-Galerie: vollständige, unbeschnittene Vorschauen, native horizontale Swipe-Navigation, Pfeile, Punkte und Bildzähler. Hintergrund wird währenddessen fixiert und inert gesetzt; Schließen stellt Scrollposition und Fokus wieder her. Großansicht nutzt ausschließlich bereits geladene Wasserzeichen-Vorschauen und berührt weder Originalfreigabe noch Bestell-/Statistikdaten.
+
+Gezielte DOM-Tests: Start bei angetipptem Bild, Pfeile/Punkte/Scroll-Ereignisse, Bildgrenzen, Escape/Schließen, Hintergrund-Wiederherstellung und Warenkorb aus der Großansicht. CSS-Regressionscheck für feste Höhen und fehlendes vertikales Innenscrollen. Reales iOS-Gestenverhalten bleibt zusätzlich manuell zu prüfen.
+
