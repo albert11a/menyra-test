@@ -1,3 +1,25 @@
+## Gratispakete direkt herunterladen, ohne Wasserzeichen (29.10.2026)
+
+Aktuelles Verhalten: Aktive, veröffentlichte Pakete mit Preis 0 zeigen Originale
+ohne Wasserzeichen und einen direkten „Shkarko falas“-Button in Karte und
+Großansicht. ZIP-Download ohne Warenkorb, Bestellformular oder manuelle Freigabe.
+Das gilt auch für bereits bestehende Pakete; die Originale müssen nicht neu
+hochgeladen und Wasserzeichen-Vorschauen nicht erneuert werden. Linkbilder
+verwenden für Gratisfotos ebenfalls den geprüften Original-Endpunkt.
+
+Server prüft bei jeder Bild-/Dateianfrage Seite, aktive Paketzuordnung, Preis
+genau 0 und Fotozugehörigkeit. Ein Wechsel auf einen bezahlten Preis sperrt
+weitere Gratisanfragen. Unveröffentlichte, deaktivierte und fremde Fotos bleiben
+gesperrt. Bezahlte Pakete und deren Bestellungen behalten den Zahlungsschutz.
+Es gibt keine zusätzlichen Firestore-Leserechte auf Originale; ausschließlich
+der Server liefert ausdrücklich kostenlose Dateien. Antworten haben no-store.
+Bildantworten werden gestreamt, Datei-ZIP nutzt bestehende kleine Chunk-Anfragen.
+Still-Modus erlaubt diese reinen Downloads, erzeugt aber keine Statistik,
+Bestellung oder Benachrichtigung.
+
+Validierung: gezielte Server-, HTTP-, Galerie-, ZIP- und Linkvorschau-Tests;
+ESLint und npm run build. Kein manueller Test auf einem echten Handy.
+
 ## Kostenlose Pakete (29.10.2026)
 
 Preis 0 wird beim Anlegen/Bearbeiten und in der serverseitigen Preisberechnung

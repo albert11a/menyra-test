@@ -6,8 +6,15 @@ export async function serveCreatorShop(req,res,repository=shopRepository){
   const url=new URL(req.url||'/','https://www.mnyra.com');
   let input=req.method==='GET'?Object.fromEntries(url.searchParams):req.body;
   if(typeof input==='string')input=JSON.parse(input);if(!input||typeof input!=='object')throw Error('Kërkesa mungon.');
-  if(req.method==='GET'&&!['receipt','download'].includes(input.op))throw Error('Kërkesa nuk lejohet.');
-  const result=await shopAction(input,await repository());res.statusCode=200;res.end(JSON.stringify(result));
+  if(req.method==='GET'&&!['receipt','download','free-download','free-image'].includes(input.op))throw Error('Kërkesa nuk lejohet.');
+  const result=await shopAction(input,await repository());res.statusCode=200;
+  if(input.op==='free-image'){
+   res.setHeader('Content-Type',result.mime);
+   for(let offset=0;offset<result.bytes.length;offset+=1024*1024)res.write(result.bytes.subarray(offset,offset+1024*1024));
+   res.end();return;
+  }
+  res.end(JSON.stringify(result));
  }catch(error){res.statusCode=400;res.end(JSON.stringify({error:String(error.message||'Ju lutemi, provoni përsëri.')}));}
 }
 export default function handler(req,res){return serveCreatorShop(req,res);}
+

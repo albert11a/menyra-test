@@ -21,3 +21,9 @@ test('Shop-Link-Vorschau liefert ausschließlich das Wasserzeichenbild',async()=
  await serveContentCreator({method:'GET',url:`/api/content-creator?id=${id}&image=1`},res,{read:async path=>{paths.push(path);return path.includes('/previews/')?{data:'data:image/jpeg;base64,YWJj'}:{published:true,kind:'shop',photoIds:['last']};}});
  assert.equal(res.statusCode,200);assert.match(paths[1],/previews\/last$/);assert.equal(paths.some(path=>path.includes('/originals/')||path.includes('/images/')),false);
 });
+
+
+test('Gratis-Linkbild verweist ohne Wasserzeichen auf den erneut geprüften Original-Endpunkt',async()=>{
+ const res=response();await serveContentCreator({method:'GET',url:`/api/content-creator?id=${id}&image=1`},res,{read:async()=>({published:true,kind:'shop',photoIds:['last'],products:[{id:'free',priceCents:0,imageIds:['last']}]})});
+ assert.equal(res.statusCode,307);assert.match(res.headers.Location,/op=free-image/);assert.match(res.headers.Location,/file=last/);assert.equal(res.headers['Cache-Control'],'no-store');
+});

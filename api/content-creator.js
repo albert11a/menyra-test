@@ -20,6 +20,8 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell}={}
     const last=(page.photoIds || []).at(-1);
     if(imageMode){
       if(!last || !/^[a-zA-Z0-9_-]{1,64}$/.test(last)){res.statusCode=404;res.end();return;}
+      const free=page.kind==='shop'&&(page.products||[]).find(p=>p.active!==false&&p.priceCents===0&&p.imageIds?.includes(last));
+      if(free){res.statusCode=307;res.setHeader('Cache-Control','no-store');res.setHeader('Location',`/api/content-creator-shop?${new URLSearchParams({op:'free-image',pageId:id,productId:free.id,file:last})}`);res.end();return;}
       const image=await read(`contentCreatorPages/${id}/${page.kind==='shop'?'previews':'images'}/${last}`),data=ccImage(image?.data);
       if(!data){res.statusCode=404;res.end();return;}
       res.setHeader('Content-Type','image/jpeg');res.setHeader('Cache-Control','public, max-age=60');
@@ -34,3 +36,4 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell}={}
   }catch{res.statusCode=503;res.setHeader('Cache-Control','no-store');res.end('Faqja nuk është e disponueshme për momentin.');}
 }
 export default function handler(req,res){return serveContentCreator(req,res);}
+

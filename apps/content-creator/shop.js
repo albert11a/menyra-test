@@ -6,7 +6,7 @@ import {zipBlob} from '../../shared/content-creator-zip.js';
 export async function mountCreatorShop({root,page,still=false}){
  const storageKey=`mnyra:cc:shop:${page.id}${still?':still':''}`;
  let saved={};try{saved=JSON.parse(localStorage.getItem(storageKey)||'{}');}catch{saved={};}
- let ids=Array.isArray(saved.ids)?saved.ids.filter(id=>(page.products||[]).some(p=>p.id===id)):[];
+ let ids=Array.isArray(saved.ids)?saved.ids.filter(id=>(page.products||[]).some(p=>p.id===id&&p.priceCents!==0)):[];
  let cartId=validShopId(saved.cartId)?saved.cartId:crypto.randomUUID().replaceAll('-','');
  let orderId='',panel='',error='',notice='',submitting=false,downloadBusy='';
  let viewer=null,backgroundLock=null;
@@ -19,7 +19,7 @@ export async function mountCreatorShop({root,page,still=false}){
  function quote(){if(!ids.length)return {lines:[],totalCents:0,currency:'EUR'};try{return shopQuote(page,ids);}catch{return {lines:[],totalCents:0,currency:'EUR'};}}
  async function api(op,data={},get=false){
   const payload={op,pageId:page.id,cartId,...data};
-  if(still)throw Error('Still-Modus: keine echten Bestellungen.');
+  if(still&&!['free-download','free-image'].includes(op))throw Error('Still-Modus: keine echten Bestellungen.');
   const r=await fetch(`/api/content-creator-shop${get?'?'+new URLSearchParams(payload):''}`,{method:get?'GET':'POST',...(!get?{headers:{'content-type':'application/json'},body:JSON.stringify(payload)}:{}),signal:AbortSignal.timeout(20000)});
   const result=await r.json();if(!r.ok||result.error)throw Error(result.error||'Ju lutemi, provoni përsëri.');return result;
  }
@@ -34,6 +34,10 @@ export async function mountCreatorShop({root,page,still=false}){
   }).catch(()=>{notice='Shporta u ruajt në këtë pajisje. Kontrolloni lidhjen për të vazhduar.';render();});
  }
  function img(id,alt,extra=''){return images[id]?`<img src="${images[id]}" alt="${esc(alt)}" ${extra}>`:'<span class="shop-image-loading">MNYRA</span>';}
+ function offerButton(product){
+  const free=product.priceCents===0;
+  return `<button type="button" class="shop-buy" data-shop="${free?'free-download':'add'}" data-product="${product.id}" ${(free?downloadBusy:ids.includes(product.id))?'disabled':''}>${free?(downloadBusy===product.id?'Duke përgatitur…':'Shkarko falas ↓'):(ids.includes(product.id)?'Në shportë ✓':'Shto në shportë')}</button>`;
+ }
  function packFiles(product){return page.photoIds.filter(id=>(page.products.find(p=>p.id===product)?.imageIds||[]).includes(id));}
  function viewerMarkup(){
   if(!viewer)return '';
@@ -42,7 +46,7 @@ export async function mountCreatorShop({root,page,still=false}){
    <header class="shop-viewer-header"><div><h2 id="shop-viewer-title">${esc(product.title)}</h2><span data-view-count aria-live="polite">${viewer.index+1} / ${files.length}</span></div><button type="button" data-shop="viewer-close" id="shop-viewer-close" aria-label="Mbyll pamjen e madhe">×</button></header>
    <div class="shop-viewer-stage"><div class="shop-viewer-track" data-view-track>${files.map((id,i)=>`<div class="shop-viewer-slide">${img(id,`${product.title} · ${i+1}`,'draggable="false"')}</div>`).join('')}</div>
    ${files.length>1?`<button type="button" class="shop-viewer-arrow shop-viewer-prev" data-shop="viewer-step" data-step="-1" aria-label="Fotoja paraprake">‹</button><button type="button" class="shop-viewer-arrow shop-viewer-next" data-shop="viewer-step" data-step="1" aria-label="Fotoja tjetër">›</button>`:''}</div>
-   <footer class="shop-viewer-footer"><div class="shop-viewer-dots">${files.map((_,i)=>`<button type="button" data-shop="viewer-dot" data-index="${i}" aria-label="Foto ${i+1}" aria-pressed="${viewer.index===i}"></button>`).join('')}</div><div class="shop-viewer-buy"><strong>${product.priceCents===0?'Falas':euro(product.priceCents)}</strong><button type="button" class="shop-buy" data-shop="add" data-product="${product.id}" ${ids.includes(product.id)?'disabled':''}>${ids.includes(product.id)?'Në shportë ✓':'Shto në shportë'}</button></div></footer>
+   <footer class="shop-viewer-footer"><div class="shop-viewer-dots">${files.map((_,i)=>`<button type="button" data-shop="viewer-dot" data-index="${i}" aria-label="Foto ${i+1}" aria-pressed="${viewer.index===i}"></button>`).join('')}</div><div class="shop-viewer-buy"><strong>${product.priceCents===0?'Falas':euro(product.priceCents)}</strong>${offerButton(product)}</div></footer>
   </section>`;
  }
  function openViewer(product,index){
@@ -84,10 +88,10 @@ export async function mountCreatorShop({root,page,still=false}){
    <div class="shop-section-title"><h2>Zgjidhni pakon tuaj</h2><span>Foto digjitale · EUR</span></div>
    <section class="shop-products">${(page.products||[]).filter(p=>p.active!==false).map(product=>{
     const files=page.photoIds.filter(id=>product.imageIds.includes(id));if(!files.length)return '';
-    return `<article class="shop-product"><div class="shop-carousel"><div class="shop-track" data-track="${product.id}">${files.map((id,i)=>`<button type="button" class="shop-slide" data-shop="view" data-product="${product.id}" data-index="${i}" aria-label="Shiko foton ${i+1} të pakos ${esc(product.title)}">${img(id,`${product.title} · ${i+1}`,'draggable="false"')}<span class="shop-watermark">Pamje paraprake</span></button>`).join('')}</div>${files.length>1?`<button class="shop-arrow shop-prev" data-shop="slide" data-product="${product.id}" data-step="-1" aria-label="Fotoja paraprake">‹</button><button class="shop-arrow shop-next" data-shop="slide" data-product="${product.id}" data-step="1" aria-label="Fotoja tjetër">›</button><div class="shop-dots">${files.map((_,i)=>`<button data-shop="dot" data-product="${product.id}" data-index="${i}" aria-label="Foto ${i+1}" aria-pressed="${(positions[product.id]||0)===i}"></button>`).join('')}</div>`:''}<span class="shop-photo-count">${files.length} foto</span></div>
-    <div class="shop-product-info"><h3>${esc(product.title)}</h3><p>Paketa e plotë · ${files.length} foto origjinale</p><div class="shop-price-row"><strong>${product.priceCents===0?'Falas':euro(product.priceCents)}</strong></div><button class="shop-buy" data-shop="add" data-product="${product.id}" ${ids.includes(product.id)?'disabled':''}>${ids.includes(product.id)?'Në shportë ✓':'Shto në shportë'}</button></div></article>`;
+    return `<article class="shop-product"><div class="shop-carousel"><div class="shop-track" data-track="${product.id}">${files.map((id,i)=>`<button type="button" class="shop-slide" data-shop="view" data-product="${product.id}" data-index="${i}" aria-label="Shiko foton ${i+1} të pakos ${esc(product.title)}">${img(id,`${product.title} · ${i+1}`,'draggable="false"')}${product.priceCents===0?'':'<span class="shop-watermark">Pamje paraprake</span>'}</button>`).join('')}</div>${files.length>1?`<button class="shop-arrow shop-prev" data-shop="slide" data-product="${product.id}" data-step="-1" aria-label="Fotoja paraprake">‹</button><button class="shop-arrow shop-next" data-shop="slide" data-product="${product.id}" data-step="1" aria-label="Fotoja tjetër">›</button><div class="shop-dots">${files.map((_,i)=>`<button data-shop="dot" data-product="${product.id}" data-index="${i}" aria-label="Foto ${i+1}" aria-pressed="${(positions[product.id]||0)===i}"></button>`).join('')}</div>`:''}<span class="shop-photo-count">${files.length} foto</span></div>
+    <div class="shop-product-info"><h3>${esc(product.title)}</h3><p>Paketa e plotë · ${files.length} foto origjinale</p><div class="shop-price-row"><strong>${product.priceCents===0?'Falas':euro(product.priceCents)}</strong></div>${offerButton(product)}</div></article>`;
    }).join('')}</section>
-   <section class="shop-how"><h2>Si funksionon?</h2><div><p><b>01 · Zgjidhni</b>Pakot që ju pëlqejnë.</p><p><b>02 · Pagesa te postieri</b>Plotësoni të dhënat tuaja.</p><p><b>03 · Shkarkoni</b>Pas konfirmimit të pagesës nga MNYRA.</p></div><p class="shop-fine">Produkte digjitale. Fotot e paraqitura janë pamje paraprake me shenjë uji. Origjinalet pa shenjë uji hapen vetëm pas pagesës dhe miratimit.</p></section>
+   <section class="shop-how"><h2>Si funksionon?</h2>${page.products.some(p=>p.active!==false&&p.priceCents===0)?'<p><b>Pakot falas</b> · Fotot shfaqen pa shenjë uji. Shtypni “Shkarko falas” për origjinalet menjëherë, pa porosi dhe pa miratim.</p>':''}${page.products.some(p=>p.active!==false&&p.priceCents>0)?'<div><p><b>01 · Zgjidhni</b>Pakot që ju pëlqejnë.</p><p><b>02 · Pagesa te postieri</b>Plotësoni të dhënat tuaja.</p><p><b>03 · Shkarkoni</b>Pas konfirmimit të pagesës nga MNYRA.</p></div><p class="shop-fine">Pakot me pagesë shfaqen me shenjë uji. Origjinalet e tyre hapen pas pagesës dhe miratimit.</p>':''}</section>
    <section class="shop-purchases" id="shop-purchases"><h2>Blerjet tuaja</h2>${[...orders.values()].map(order=>`<article class="shop-order"><div class="shop-order-title"><b>Porosia #${esc(order.id.slice(0,8).toUpperCase())}</b><strong>${euro(order.totalCents)}</strong></div><p class="shop-order-state">${order.approved?(order.totalCents===0?'✓ Pako falas · Shkarkimet janë gati':'✓ Pagesa u konfirmua · Shkarkimet janë gati'):(order.totalCents===0?'Në pritje të miratimit':'Në pritje të pagesës / miratimit')}</p>${order.lines.map(line=>`<div class="shop-purchased-item">${img(line.imageIds[0],line.title)}<div><h3>${esc(line.title)}</h3><p>${line.imageIds.length} foto · ${euro(line.priceCents)}</p><button data-shop="download" data-order="${order.id}" data-product="${line.id}" ${!order.approved||downloadBusy?'disabled':''}>${downloadBusy===line.id?'Duke përgatitur…':order.approved?'Shkarko pakon ZIP':'Shkarkimi i kyçur'}</button></div></div>`).join('')}<div class="shop-order-actions"><button data-shop="refresh" data-order="${order.id}">Kontrollo statusin</button>${still?'':`<button data-shop="receipt-link" data-order="${order.id}">Kopjo linkun e porosisë</button>`}</div></article>`).join('')||'<p>Pas porosisë, artikujt tuaj do të shfaqen këtu.</p>'}</section>
    <footer class="shop-footer">MNYRA · Krijuar për biznesin tuaj</footer>
    ${notice?`<p class="shop-notice" role="status">${esc(notice)}</p>`:''}
@@ -128,7 +132,8 @@ export async function mountCreatorShop({root,page,still=false}){
     positions[product]=target;track.scrollTo({left:target*track.clientWidth,behavior:'smooth'});return;
    }
    error='';
-   if(action==='add'){if(!ids.includes(product)){ids.push(product);flash('Pakoja u shtua në shportë.');render();saveCart();}}
+   if(action==='free-download'){await download('',product);return;}
+   if(action==='add'){if(page.products.find(p=>p.id===product)?.priceCents===0){await download('',product);return;}if(!ids.includes(product)){ids.push(product);flash('Pakoja u shtua në shportë.');render();saveCart();}}
    if(action==='cart'){panel='cart';render();}
    if(action==='close'&&!submitting){panel='';render();}
    if(action==='checkout'){panel='checkout';render();root.querySelector('#shop-name')?.focus();}
@@ -173,16 +178,17 @@ export async function mountCreatorShop({root,page,still=false}){
   }catch(e){error=e.message;}finally{submitting=false;render();}
  });
  async function download(receipt,product){
-  const order=orders.get(receipt),line=order?.lines.find(p=>p.id===product);if(!order?.approved||!line)return;
+  const order=orders.get(receipt),line=receipt?order?.lines.find(p=>p.id===product):page.products.find(p=>p.id===product&&p.active!==false&&p.priceCents===0);if(!line||(receipt&&!order?.approved)||downloadBusy)return;
+  const operation=receipt?'download':'free-download',access=receipt?{orderId:receipt}:{productId:product};
   downloadBusy=product;render();
   try{
    const files=[];let bytesTotal=0;
-   for(const [index,file] of line.imageIds.entries()){
-    const meta=await api('download',{orderId:receipt,file},true);bytesTotal+=meta.size;
+   for(const [index,file] of (receipt?line.imageIds:packFiles(product)).entries()){
+    const meta=await api(operation,{...access,file},true);bytesTotal+=meta.size;
     if(bytesTotal>150*1024*1024)throw Error('Pakoja është shumë e madhe për këtë pajisje. Kontaktoni MNYRA për dorëzimin e skedarëve.');
     const parts=[];
     for(let part=0;part<meta.parts;part++){
-     const data=await api('download',{orderId:receipt,file,part},true),binary=atob(data.data),bytes=new Uint8Array(binary.length);
+     const data=await api(operation,{...access,file,part},true),binary=atob(data.data),bytes=new Uint8Array(binary.length);
      for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);parts.push(bytes);
     }
     const bytes=new Uint8Array(parts.reduce((n,p)=>n+p.length,0));let offset=0;for(const part of parts){bytes.set(part,offset);offset+=part.length;}
@@ -193,6 +199,8 @@ export async function mountCreatorShop({root,page,still=false}){
  }
  render();remember();
  await Promise.all(page.photoIds.map(async key=>{
+  const free=(page.products||[]).find(p=>p.active!==false&&p.priceCents===0&&p.imageIds.includes(key));
+  if(free){images[key]=`/api/content-creator-shop?${new URLSearchParams({op:'free-image',pageId:page.id,productId:free.id,file:key})}`;return;}
   try{const snap=await getDoc(doc(db,CC_PAGES,page.id,'previews',key)),data=ccImage(snap.data()?.data);if(data)images[key]=data;}catch{ /* cards remain usable */ }
  }));render();
  await Promise.all(tokens.map(id=>refreshOrder(id).catch(()=>{})));

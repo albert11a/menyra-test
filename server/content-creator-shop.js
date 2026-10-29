@@ -30,6 +30,26 @@ export async function shopRepository(){
 function publicOrder(order,id){return {id,pageId:order.pageId,lines:order.lines,totalCents:order.totalCents,currency:'EUR',status:order.status,approved:order.approved===true,paymentMethod:'cod',createdAt:order.createdAt};}
 export async function shopAction(input,repo){
  const {op,pageId,cartId,orderId}=input;
+ if(op==='free-download'||op==='free-image'){
+  if(!validShopId(pageId))throw Error('Pakoja nuk është e disponueshme.');
+  const page=await repo.read(`contentCreatorPages/${pageId}`),quote=shopQuote(page,[input.productId]),line=quote.lines[0];
+  const file=String(input.file||'');
+  if(line.priceCents!==0||!line.imageIds.includes(file)||!/^[a-zA-Z0-9_-]{1,64}$/.test(file))throw Error('Ky skedar nuk është falas.');
+  const path=`contentCreatorPages/${pageId}/originals/${file}`,metadata=await repo.read(path);
+  if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>30*1024*1024||!['image/jpeg','image/png','image/webp'].includes(metadata.mime))throw Error('Skedari nuk është i disponueshëm.');
+  if(op==='free-image'){
+   const parts=[];let size=0;
+   for(let start=0;start<metadata.parts;start+=8){
+    const chunks=await Promise.all(Array.from({length:Math.min(8,metadata.parts-start)},(_,i)=>repo.read(`${path}/chunks/${String(start+i).padStart(3,'0')}`)));
+    for(const chunk of chunks){if(!chunk?.data)throw Error('Skedari nuk është i plotë.');const bytes=Buffer.from(chunk.data,'base64');size+=bytes.length;if(size>30*1024*1024)throw Error('Skedari është shumë i madh.');parts.push(bytes);}
+   }
+   if(size!==metadata.size)throw Error('Skedari nuk është i plotë.');
+   return {bytes:Buffer.concat(parts),mime:metadata.mime};
+  }
+  if(input.part===undefined)return {name:metadata.name,mime:metadata.mime,parts:metadata.parts,size:metadata.size};
+  const part=Number(input.part);if(!Number.isInteger(part)||part<0||part>=metadata.parts)throw Error('Skedari nuk është i vlefshëm.');
+  const chunk=await repo.read(`${path}/chunks/${String(part).padStart(3,'0')}`);if(!chunk?.data)throw Error('Shkarkimi u ndërpre. Provoni përsëri.');return {data:chunk.data};
+ }
  if(op==='receipt'||op==='download'){
   if(!validShopId(orderId))throw Error('Porosia nuk u gjet.');
   const order=await repo.read(`${CC_ORDERS}/${orderId}`);if(!order)throw Error('Porosia nuk u gjet.');
@@ -87,3 +107,4 @@ export async function shopAction(input,repo){
  const notified=await repo.notify('order',orderId,persisted).catch(()=>false);
  return {...publicOrder(persisted,orderId),notified};
 }
+

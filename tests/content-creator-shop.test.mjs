@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {shopAction,encodeValue} from '../server/content-creator-shop.js';
+import {serveCreatorShop} from '../api/content-creator-shop.js';
 import {shopQuote,priceCents} from '../shared/content-creator-shop.js';
 import {zipBlob,crc32} from '../shared/content-creator-zip.js';
 const pageId='a'.repeat(32),cartId='b'.repeat(32),orderId='c'.repeat(32),other='d'.repeat(32);
@@ -67,4 +68,34 @@ test('Kostenlose Bestellung hat Warenwert null und behält die manuelle Download
  const cart=await shopAction({op:'cart',pageId,cartId,ids:['pack']},f.repo);assert.equal(cart.totalCents,0);
  const order=await shopAction({...request,expectedTotalCents:0},f.repo);assert.equal(order.totalCents,0);assert.equal(order.approved,false);assert.ok(f.notifications.every(n=>n.total===0));
  await assert.rejects(shopAction({op:'download',orderId,file:'one'},f.repo));
+});
+
+test('Gratis-Dateien und Bilder brauchen keine Bestellung und schreiben keine Daten',async()=>{
+ const f=fixture();f.page.products[0].priceCents=0;const count=f.docs.size;
+ const input={op:'free-download',pageId,productId:'pack',file:'one'};
+ assert.equal((await shopAction(input,f.repo)).parts,1);assert.equal((await shopAction({...input,part:0},f.repo)).data,'YWJj');
+ const image=await shopAction({...input,op:'free-image'},f.repo);assert.equal(image.mime,'image/jpeg');assert.equal(image.bytes.toString(),'abc');
+ assert.equal(f.docs.size,count);assert.equal(f.notifications.length,0);
+});
+test('Gratis-Endpunkt verweigert bezahlte, fremde, deaktivierte und unveröffentlichte Bilder',async()=>{
+ const f=fixture(),input={op:'free-download',pageId,productId:'pack',file:'one'};
+ await assert.rejects(shopAction(input,f.repo));f.page.products[0].priceCents=0;
+ for(const change of [{file:'foreign'},{file:'../one'},{part:99},{productId:'foreign'},{pageId:'../page'}])await assert.rejects(shopAction({...input,...change},f.repo));
+ f.page.products[0].active=false;await assert.rejects(shopAction(input,f.repo));f.page.products[0].active=true;
+ f.page.published=false;await assert.rejects(shopAction(input,f.repo));f.page.published=true;
+ f.page.products[0].priceCents=100;await assert.rejects(shopAction({...input,part:0},f.repo));await assert.rejects(shopAction({...input,op:'free-image'},f.repo));
+});
+test('Gemischter Shop veröffentlicht ausschließlich Dateien aus dem Gratispaket',async()=>{
+ const f=fixture();f.page.products.push({id:'free',priceCents:0,imageIds:['one']});
+ assert.equal((await shopAction({op:'free-download',pageId,productId:'free',file:'one'},f.repo)).size,3);
+ await assert.rejects(shopAction({op:'free-download',pageId,productId:'free',file:'two'},f.repo));
+ await assert.rejects(shopAction({op:'free-download',pageId,productId:'pack',file:'one'},f.repo));
+});
+
+test('HTTP-Endpunkt streamt Gratisbilder ohne Cache und verweigert bezahlte Originale',async()=>{
+ const f=fixture();f.page.products[0].priceCents=0;
+ function response(){return {headers:{},chunks:[],setHeader(k,v){this.headers[k]=v;},write(bytes){this.chunks.push(bytes);},end(body){if(body)this.chunks.push(Buffer.from(body));}};}
+ const url=`/api/content-creator-shop?${new URLSearchParams({op:'free-image',pageId,productId:'pack',file:'one'})}`;
+ const res=response();await serveCreatorShop({method:'GET',url},res,async()=>f.repo);assert.equal(res.statusCode,200);assert.equal(res.headers['Content-Type'],'image/jpeg');assert.equal(res.headers['Cache-Control'],'no-store');assert.equal(Buffer.concat(res.chunks).toString(),'abc');
+ f.page.products[0].priceCents=100;const denied=response();await serveCreatorShop({method:'GET',url},denied,async()=>f.repo);assert.equal(denied.statusCode,400);assert.equal(denied.headers['Content-Type'],'application/json');assert.match(Buffer.concat(denied.chunks).toString(),/error/);
 });
