@@ -1,3 +1,12 @@
+## Kostenlose Pakete (29.10.2026)
+
+Preis 0 wird beim Anlegen/Bearbeiten und in der serverseitigen Preisberechnung
+als kostenlos akzeptiert. Leere, negative und ungültige Preise bleiben gesperrt.
+Der Shop zeigt „Falas“ und bei einem Warenkorbwert von null keine Nachnahme-
+Zahlungsaufforderung. Bestellung und Benachrichtigungen behalten Warenwert 0;
+Downloads benötigen weiterhin die Freigabe in Heart. Bezahlte und gemischte
+Warenkörbe verwenden die bestehende Zahlungslogik.
+
 # Content Creator — 29.10.2026
 
 Scope: eigener Heart-Menübereich, Plus-Dialog, Lokalname/Profilbild/Mehrfach-Fotoupload, persönliche albanische Seite, FAQ und Ja/Nein. Heart zeigt eindeutige Seitenzahlen (geöffnet, mindestens 50 % gescrollt, Ja, Nein) und exklusive Filter wie Fälle. Antwort überschreibt Öffnen und Arbeitsstatus im Filter; Daten bleiben erhalten.

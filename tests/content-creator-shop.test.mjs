@@ -54,3 +54,17 @@ test('ZIP enthält Originalbytes, richtige CRC32 und UTF-8-Dateinamen',async()=>
  assert.equal(view.getUint32(0,true),0x04034b50);assert.equal(view.getUint16(6,true),0x800);assert.equal(view.getUint32(14,true),0xcbf43926);assert.equal(view.getUint32(all.length-22,true),0x06054b50);
  const offset=30+view.getUint16(26,true);assert.deepEqual(all.slice(offset,offset+bytes.length),bytes);
 });
+
+
+test('Nullpreis wird ausdrücklich akzeptiert, negative oder fehlende Preise bleiben ungültig',()=>{
+ for(const value of [0,'0','0,00','0.00'])assert.equal(priceCents(value),0);
+ for(const value of [-1,'-0,01','',null,undefined,'abc',10001])assert.throws(()=>priceCents(value));
+ const f=fixture();f.page.products[0].priceCents=0;assert.equal(shopQuote(f.page,['pack']).totalCents,0);
+ f.page.products[0].priceCents=-1;assert.throws(()=>shopQuote(f.page,['pack']));
+});
+test('Kostenlose Bestellung hat Warenwert null und behält die manuelle Downloadfreigabe',async()=>{
+ const f=fixture();f.page.products[0].priceCents=0;
+ const cart=await shopAction({op:'cart',pageId,cartId,ids:['pack']},f.repo);assert.equal(cart.totalCents,0);
+ const order=await shopAction({...request,expectedTotalCents:0},f.repo);assert.equal(order.totalCents,0);assert.equal(order.approved,false);assert.ok(f.notifications.every(n=>n.total===0));
+ await assert.rejects(shopAction({op:'download',orderId,file:'one'},f.repo));
+});

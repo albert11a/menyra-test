@@ -8,9 +8,9 @@ import {shopAction} from '../server/content-creator-shop.js';
 const source=(await readFile(new URL('../apps/content-creator/shop.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace('export async function mountCreatorShop','async function mountCreatorShop');
 const factory=new Function('db','doc','getDoc','esc','ccImage','CC_PAGES','euro','shopQuote','validShopId','zipBlob','localStorage','location','fetch','document','globalThis',`${source}\nreturn mountCreatorShop;`);
 const pageId='a'.repeat(32);
-async function setup(still=false){
+async function setup(still=false,price=2900){
  const {document,window}=parseHTML('<html><body><main id="app"></main></body></html>'),root=document.getElementById('app');window.HTMLElement.prototype.scrollIntoView=()=>{};window.HTMLElement.prototype.scrollTo=function(options){this.scrollLeft=options.left;this.dispatchEvent(new window.Event('scroll'));};
- const storage=new Map(),calls=[],page={id:pageId,published:true,kind:'shop',name:'Bistro',photoIds:['one','two','three','four'],products:[{id:'pack',title:'Social Set',priceCents:2900,imageIds:['one','two','three','four']}]};
+ const storage=new Map(),calls=[],page={id:pageId,published:true,kind:'shop',name:'Bistro',photoIds:['one','two','three','four'],products:[{id:'pack',title:'Social Set',priceCents:price,imageIds:['one','two','three','four']}]};
  const docs=new Map([[`contentCreatorPages/${pageId}`,structuredClone(page)]]);
  for(const key of page.photoIds)docs.set(`contentCreatorPages/${pageId}/originals/${key}`,{parts:1,size:3,name:key+'.jpg'});
  const repo={read:async key=>docs.get(key),write:async(key,data)=>{docs.set(key,{...docs.get(key),...structuredClone(data)});return true;},notify:async()=>true};
@@ -72,4 +72,10 @@ test('Bildflächen sind in beiden Ansichten fest begrenzt und erlauben kein vert
  assert.match(css,/\.shop-slide\{flex:0 0 100%;[^}]*height:100%/);
  assert.match(css,/\.shop-viewer-track\{[^}]*overflow-y:hidden/);
  assert.match(css,/\.shop-viewer-slide img\{[^}]*object-fit:contain/);
+});
+
+test('Kostenloses Paket zeigt Falas und bestellt mit 0 Euro ohne Zahlungsaufforderung',async()=>{
+ const ctx=await setup(false,0);assert.match(ctx.root.querySelector('.shop-price-row').textContent,/Falas/);
+ await ctx.click('[data-shop="add"]');await ctx.checkout();assert.match(ctx.root.querySelector('.shop-payment').textContent,/Nuk kërkohet pagesë/);assert.doesNotMatch(ctx.root.querySelector('.shop-payment').textContent,/Pagesa te postieri/);
+ await ctx.submit();const order=[...ctx.docs.entries()].find(([key])=>key.startsWith('contentCreatorOrders/'))[1];assert.equal(order.totalCents,0);assert.equal(order.approved,false);assert.match(ctx.root.querySelector('.shop-order-state').textContent,/Në pritje të miratimit/);
 });
