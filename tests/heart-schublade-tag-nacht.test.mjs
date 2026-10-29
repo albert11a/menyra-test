@@ -49,7 +49,7 @@ test("die Schublade bietet die neue lifeskinshop-Verwaltung direkt neben Lifeski
   const gruppeEnde = nav.indexOf("</div>\n    </div>", gruppeAnfang);
   const aussen = nav.slice(0, gruppeAnfang) + nav.slice(gruppeEnde);
   const oben = [...aussen.matchAll(/data-nav-key="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(oben, ["lifeskin", "lifeskinshop", "connections"]);
+  assert.deepEqual(oben, ["contentCreator", "lifeskin", "lifeskinshop", "connections"]);
   assert.match(nav, /data-action="nav-gruppe"/);
   assert.match(nav, /<span class="heart-nav-link__label">Mnyra<\/span>/);
 });
@@ -58,7 +58,7 @@ test("alles andere steht unter Mnyra - kein Bereich geht verloren", () => {
   const nav = schublade(zeichne("lifeskin", { navGruppe: true }));
   const alle = HEART_NAV_ITEMS.map((item) => item.key);
   for (const key of alle) assert.match(nav, new RegExp(`data-nav-key="${key}"`), `${key} fehlt in der Schublade`);
-  assert.deepEqual([...NAV_MNYRA, "lifeskin", "connections"].sort(), [...alle].sort(),
+  assert.deepEqual([...NAV_MNYRA, "contentCreator", "lifeskin", "connections"].sort(), [...alle].sort(),
     "Jeder Bereich steht genau einmal: unter Mnyra, oder als Lifeskin/Einrichtung");
 });
 

@@ -506,6 +506,9 @@ function renderShell(state, runtime = {}) {
   // neben "Aktualisieren". Angetippt tritt die Chipreihe an die Stelle von
   // Menue, Marke und Aktualisieren; eine Wahl (oder ×) bringt den Kopf zurueck.
   const zeitKnopf = activeView === "lifeskin" && !isLifeskinDetail;
+  let fastKnopf = "";
+  try { if (zeitKnopf && !lifeskinWeg(state)) fastKnopf = renderFastKnopf(state.lifeskin); }
+  catch { /* A failed view must not break the shared header/navigation. */ }
   const zeitWahl = zeitKnopf && zeitWahlOffen;
   // DIE ANTWORTZEIT (29.09.): ein Uhr-Knopf links neben dem Datum, derselbe
   // Aufbau - angetippt tritt ihre Chipreihe an die Stelle des Kopfes.
@@ -559,7 +562,7 @@ function renderShell(state, runtime = {}) {
                   <span>Analysen</span>
                 </button>
               ` : ""}
-              ${zeitKnopf && !lifeskinWeg(state) ? renderFastKnopf(state.lifeskin) : ""}
+              ${fastKnopf}
               ${zeitKnopf ? `
                 <button class="heart-icon-button heart-icon-button--uhr" data-action="lifeskin-uhrwahl"
                         aria-label="Antwortzeit: ${escapeHtml(antwortzeitName(antwortzeit))}">${renderHeartIcon("clock")}</button>
