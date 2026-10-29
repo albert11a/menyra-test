@@ -26,15 +26,17 @@ export async function saveShopPreview(pageId,imageId,display){
  clean.getContext('2d').drawImage(image,0,0,clean.width,clean.height);
  let cleanData=clean.toDataURL('image/jpeg',.78);if(cleanData.length>=500000)cleanData=canvas.toDataURL('image/jpeg',.72);
  // Tiny cards and larger views are ready before the page is published.
- const displayPreview={version:2};
- for(const [size,edge,quality] of [['thumb',360,.58],['medium',720,.70],['large',1080,.78]]){
+ for(const [size,edge,quality] of [['thumb',640,.82],['medium',1280,.84],['large',1600,.88]]){
   const frame=document.createElement('canvas'),scale=Math.min(1,edge/image.width,edge*1.5/image.height);
   frame.width=Math.max(1,Math.round(image.width*scale));frame.height=Math.max(1,Math.round(image.height*scale));
   const context=frame.getContext('2d');context.drawImage(image,0,0,frame.width,frame.height);
-  const clean=frame.toDataURL('image/webp',quality);drawShopWatermark(context,frame.width,frame.height);
-  displayPreview[size]={clean,marked:frame.toDataURL('image/webp',quality)};
+  const encode=()=>{const webp=frame.toDataURL('image/webp',quality);return webp.startsWith('data:image/webp')?webp:frame.toDataURL('image/jpeg',quality);};
+  const clean=encode();drawShopWatermark(context,frame.width,frame.height);
+  const record={version:3,width:frame.width,height:frame.height,clean,marked:encode()};
+  if(JSON.stringify(record).length>950000)throw Error('Die hochwertige Vorschau ist zu gross. Bitte ein kleineres Original verwenden.');
+  await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId,'displays',size),record);
  }
- await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId),{cleanPreview:{version:1,data:cleanData},displayPreview:JSON.stringify(displayPreview).length<400000?displayPreview:null},{merge:true});
+ await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId),{cleanPreview:{version:1,data:cleanData},displayPreview:null},{merge:true});
  drawShopWatermark(ctx,canvas.width,canvas.height);
  const preview=canvas.toDataURL('image/jpeg',.8);
  await setDoc(doc(db,CC_PAGES,pageId,'previews',imageId),{data:preview});
@@ -43,7 +45,6 @@ export async function saveShopPreview(pageId,imageId,display){
 export async function refreshShopPreviews(pageId,imageIds){
  for(const imageId of imageIds){
   const snap=await getDoc(doc(db,CC_PAGES,pageId,'originals',imageId)),meta=snap.data();
-  if(meta?.cleanPreview?.version===1&&/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(meta.cleanPreview.data||'')){await saveShopPreview(pageId,imageId,meta.cleanPreview.data);continue;}
   if(!meta?.parts)throw Error('Originaldatei fehlt. Vorschau konnte nicht aktualisiert werden.');
   const parts=[];
   for(let i=0;i<meta.parts;i++){
@@ -66,7 +67,8 @@ export async function saveShopAsset(pageId,imageId,file,display){
   await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId,'chunks',String(i).padStart(3,'0')),{data:btoa(binary)});
  }
  await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId),{name:file.name.slice(0,180),mime:file.type,size:bytes.length,parts});
- await saveShopPreview(pageId,imageId,display);
+ const source=URL.createObjectURL(file);
+ try{await saveShopPreview(pageId,imageId,source);}finally{URL.revokeObjectURL(source);}
 }
 export {initialShopProduct} from "../../shared/content-creator-shop.js";
 export async function releaseShopOrder(id){await updateDoc(doc(db,CC_ORDERS,id),{approved:true,paymentConfirmed:true,status:'released',releasedAt:serverTimestamp()});}

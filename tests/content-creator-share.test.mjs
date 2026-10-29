@@ -19,7 +19,7 @@ test('Drafts cannot be shared or read through the image endpoint',async()=>{
 test('Shop-Link-Vorschau liefert ausschließlich das Wasserzeichenbild',async()=>{
  const paths=[],res=response();
  await serveContentCreator({method:'GET',url:`/api/content-creator?id=${id}&image=1`},res,{read:async path=>{paths.push(path);return path.includes('/previews/')?{data:'data:image/jpeg;base64,YWJj'}:{published:true,kind:'shop',photoIds:['last']};}});
- assert.equal(res.statusCode,307);assert.match(res.headers.Location,/op=image/);assert.match(res.headers.Location,/display=2/);assert.equal(paths.length,1);
+ assert.equal(res.statusCode,307);assert.match(res.headers.Location,/op=image/);assert.match(res.headers.Location,/display=3/);assert.equal(paths.length,1);
 });
 
 

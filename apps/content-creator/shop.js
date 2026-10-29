@@ -10,6 +10,7 @@ export async function mountCreatorShop({root,page,still=false}){
  let viewer=null,backgroundLock=null,sheetLock=null,photoSave=null,downloadCancelled=false,fileAbort=null;
  const originalTheme=document.querySelector('meta[name="theme-color"]')?.getAttribute('content')||'#f7f6f2';
  const prepared=new Map(),imageErrors={};
+ let neighbourObserver=null;
  const images={},positions={},orders=new Map(),customer={name:'',address:'',country:'Kosovë',phone:''};
  const tokens=still?[]:(Array.isArray(saved.orders)?saved.orders:[]).filter(validShopId).slice(-10);
  const fromLink=new URLSearchParams(location.search).get('order');if(!still&&validShopId(fromLink)&&!tokens.includes(fromLink))tokens.push(fromLink);
@@ -45,11 +46,28 @@ export async function mountCreatorShop({root,page,still=false}){
   const status=root.querySelector('#shop-image-errors');if(status)status.innerHTML=imageStatus();
   watchImages();
  }
- function watchImages(){for(const node of root.querySelectorAll('img[data-photo]'))node.onerror=()=>{if(node.dataset.size==='medium'){node.style.opacity='0';return;}imageErrors[node.dataset.photo]=true;paintImage(node.dataset.photo);};}
+ function warmNextImage(node){
+  const track=node.closest('[data-track]');if(!track)return;
+  const rect=track.getBoundingClientRect?.(),height=globalThis.innerHeight||document.documentElement.clientHeight;
+  if(rect&&height>0&&(rect.bottom<=0||rect.top>height+100))return;
+  const index=positions[track.dataset.track]||0,slide=track.children[index];
+  if(!slide?.contains(node))return;
+  // The current photo has arrived: fetch and decode the adjacent photograph
+  // now, at low priority, rather than waiting for the swipe to begin.
+  const next=track.children[index+1]?.querySelector('img[data-deferred-src]');
+  if(next){next.loading='eager';next.fetchPriority='low';next.src=next.dataset.deferredSrc;next.removeAttribute('data-deferred-src');next.decode?.().catch(()=>{});}
+ }
+ function watchImages(){
+  for(const node of root.querySelectorAll('img[data-photo]')){
+   node.onerror=()=>{if(node.dataset.size==='medium'){node.style.opacity='0';return;}imageErrors[node.dataset.photo]=true;paintImage(node.dataset.photo);};
+   node.onload=()=>warmNextImage(node);
+   if(node.complete&&node.naturalWidth>0)warmNextImage(node);
+  }
+ }
  function imageUrl(key,size='thumb'){return creatorImageUrl(page,key,size);}
  function loadImages(keys){for(const key of keys){delete imageErrors[key];images[key]=`${imageUrl(key)}&retry=${Date.now()}`;paintImage(key);}}
  function activateImages(track,index){
-  for(const [i,slide] of [...track.children].entries())if(Math.abs(i-index)<=1)for(const img of slide.querySelectorAll('img[data-deferred-src]')){img.src=img.dataset.deferredSrc;img.removeAttribute('data-deferred-src');}
+  for(const [i,slide] of [...track.children].entries())if(Math.abs(i-index)<=1)for(const img of slide.querySelectorAll('img[data-deferred-src]')){img.loading='eager';img.fetchPriority=i===index?'high':'low';img.src=img.dataset.deferredSrc;img.removeAttribute('data-deferred-src');img.decode?.().catch(()=>{});}
  }
  function offerButton(product){return creatorOfferButton(product,{busy:downloadBusy,selected:product.priceCents!==0&&ids.includes(product.id)});}
  function discardSave(){
@@ -143,6 +161,13 @@ export async function mountCreatorShop({root,page,still=false}){
   for(const track of root.querySelectorAll('[data-track]')){
    track.scrollLeft=(positions[track.dataset.track]||0)*track.clientWidth;
    track.addEventListener('scroll',()=>{const index=Math.round(track.scrollLeft/(track.clientWidth||1));positions[track.dataset.track]=index;activateImages(track,index);for(const dot of track.parentElement.querySelectorAll('[data-index]'))dot.setAttribute('aria-pressed',String(Number(dot.dataset.index)===index));},{passive:true});
+  }
+  neighbourObserver?.disconnect();
+  if(typeof globalThis.IntersectionObserver==='function'){
+   neighbourObserver=new globalThis.IntersectionObserver(entries=>{
+    for(const entry of entries)if(entry.isIntersecting){const track=entry.target,current=track.children[positions[track.dataset.track]||0]?.querySelector('img');if(current?.complete&&current.naturalWidth>0)warmNextImage(current);}
+   },{rootMargin:'100px 0px'});
+   for(const track of root.querySelectorAll('[data-track]'))neighbourObserver.observe(track);
   }
   const viewerTrack=root.querySelector('[data-view-track]');
   if(viewerTrack&&viewer){
@@ -272,6 +297,6 @@ export async function mountCreatorShop({root,page,still=false}){
  render();remember();
  await Promise.all(tokens.map(id=>refreshOrder(id).catch(()=>{})));
  const poll=globalThis.setInterval(()=>{if(still||document.visibilityState==='hidden')return;for(const order of orders.values())if(!order.approved)refreshOrder(order.id).catch(()=>{});},20000);
- globalThis.addEventListener?.('pagehide',event=>{if(!event.persisted){globalThis.clearInterval(poll);fileAbort?.abort();discardSave();for(const entry of prepared.values())for(const url of entry.urls||[])URL.revokeObjectURL(url);}});
+ globalThis.addEventListener?.('pagehide',event=>{if(!event.persisted){neighbourObserver?.disconnect();globalThis.clearInterval(poll);fileAbort?.abort();discardSave();for(const entry of prepared.values())for(const url of entry.urls||[])URL.revokeObjectURL(url);}});
 }
 

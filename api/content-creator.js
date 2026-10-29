@@ -21,7 +21,7 @@ async function readCreatorCovers(safePage,page){
   const seeded={...repo,read:(path,fields)=>path===pagePath?Promise.resolve(page):repo.read(path,fields)};
   await Promise.all(safePage.products.slice(0,2).map(async p=>{
     const file=p.imageIds[0];if(!file)return;
-    try{const image=await shopAction({op:'image',pageId:safePage.id,file,display:'2',size:'thumb'},seeded);covers[file]=`data:${image.mime};base64,${image.bytes.toString('base64')}`;}catch{}
+    try{const image=await shopAction({op:'image',pageId:safePage.id,file,display:'3',size:'thumb'},seeded);covers[file]=`data:${image.mime};base64,${image.bytes.toString('base64')}`;}catch{}
   }));
   return covers;
 }
@@ -59,7 +59,7 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
     const last=safePage.photoIds.at(-1);
     if(imageMode){
       if(!last || !/^[a-zA-Z0-9_-]{1,64}$/.test(last)){res.statusCode=404;res.end();return;}
-      if(page.kind==='shop'){res.statusCode=307;res.setHeader('Cache-Control','no-store');res.setHeader('Location',`/api/content-creator-shop?${new URLSearchParams({op:'image',pageId:id,file:last,display:'2',size:'medium',v:safePage.updatedAt||String(safePage.createdMs)})}`);res.end();return;}
+      if(page.kind==='shop'){res.statusCode=307;res.setHeader('Cache-Control','no-store');res.setHeader('Location',`/api/content-creator-shop?${new URLSearchParams({op:'image',pageId:id,file:last,display:'3',size:'medium',v:safePage.updatedAt||String(safePage.createdMs)})}`);res.end();return;}
       const image=await read(`contentCreatorPages/${id}/${page.kind==='shop'?'previews':'images'}/${last}`),data=ccImage(image?.data);
       if(!data){res.statusCode=404;res.end();return;}
       res.setHeader('Content-Type','image/jpeg');res.setHeader('Cache-Control','public, max-age=60');
@@ -68,7 +68,7 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
     let html=shell;
     if(!html){try{html=await readFile(new URL('../dist/apps/content-creator/index.html',import.meta.url),'utf8');}catch{html=await readFile(new URL('../apps/content-creator/index.html',import.meta.url),'utf8');}}
     const title=`Për ${page.name} · MNYRA`,description=`Foto të përgatitura posaçërisht për ${page.name}. Përmbajtje për rrjetet tuaja sociale nga MNYRA.`;
-    const origin='https://www.mnyra.com',image=`${origin}/api/content-creator?id=${id}&image=1&display=2&photo=${encodeURIComponent(last || '')}&v=${encodeURIComponent(safePage.updatedAt || String(safePage.createdMs))}`;
+    const origin='https://www.mnyra.com',image=`${origin}/api/content-creator?id=${id}&image=1&display=3&photo=${encodeURIComponent(last || '')}&v=${encodeURIComponent(safePage.updatedAt || String(safePage.createdMs))}`;
     html=html.replace(/<title>[^<]*<\/title>/,()=>`<title>${esc(title)}</title>`).replace('</head>',()=>`<meta property="og:type" content="website"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><meta property="og:url" content="${origin}/content-creator/${id}"><meta name="twitter:card" content="summary_large_image">${last?`<meta property="og:image" content="${esc(image)}"><meta name="twitter:image" content="${esc(image)}">`:''}</head>`);
     // The first screen is useful without JavaScript. Already-prepared covers
     // are embedded in HTML; cold preparation is bounded so it cannot stall it.

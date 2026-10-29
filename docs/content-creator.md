@@ -1,3 +1,71 @@
+# Qualitaet und rechtzeitiges Nachladen – 30.10.2026
+
+Aktueller Nutzerauftrag: schlechte Bildqualitaet beheben, das zweite Sliderfoto
+vor dem Wischen laden, Stern und „Në një dritë të re“ entfernen. Scope nur
+Creator-Bildpfad und die angeforderten Texte/Icons; keine Zahlungs-, Auth-,
+Firestore-Rules- oder Pixel-Aenderung.
+
+## Erneuter Befund
+
+Version 2 war fuer hochaufloesende Mobiltelefone zu aggressiv: 360 Pixel fuer
+Karten, WebP-Qualitaet 54. Auf dem Server kam teils erst ein komprimiertes
+1200-Pixel-JPEG, dann ein weiterer JPEG-Zwischenschritt, dann WebP. Neue
+Browser-Uploads verwendeten ebenfalls eine bereits komprimierte Zwischenansicht.
+Die naechste Kartenfolie wurde erst beim Scroll-Ereignis aktiviert. Das war ein
+sichtbarer Nachladefehler, kein Nachweis fuer einen defekten Server.
+
+## Korrektur Version 3
+
+- Varianten direkt aus den unveraenderten Original-Chunks bzw. dem Original-
+  Upload. Verlustfreies Raw-Zwischenbild auf dem Server; genau eine abschliessende
+  WebP-Kompression mit smartSubsample.
+- Karten 640 Pixel / Qualitaet 82, Grossansicht bis 1280 / 84, grosse Variante
+  bis 1600 / 88. Kleine Originale werden nicht kuenstlich vergroessert.
+- Drei getrennte private Dokumente `originals/{id}/displays/{size}` statt alle
+  Varianten in das alte kombinierte Metadaten-Budget zu pressen. Bestehende
+  Originale bleiben unangetastet. GET liest die fertige gewaehlte Variante,
+  ohne erst die Original-Metadaten samt alter Preview zu laden.
+- Aktuelle Veroeffentlichung, aktive Paketzugehoerigkeit und Preis bleiben bei
+  jeder Bild-Anfrage geprueft. Bezahlte saubere Varianten bleiben privat.
+- Nach dem Laden des aktuellen Kartenfotos wird das naechste Foto automatisch
+  niedrig priorisiert angefordert und decodiert. Kein Warten auf den Swipe,
+  kein automatisches Laden der gesamten Galerie. Weiter entfernte Slides
+  bleiben deferred. Grossansicht behaelt die geladene Vorschau als Unterlage.
+- Versionswechsel in Bild- und Einstieg-URLs vermeidet alte Browsercache-Bilder.
+- Stern komplett entfernt, auch in der Erklaerung. Die unerwuenschte Headline
+  wurde entfernt.
+
+## Recherche und Entscheidung
+
+Primaerquellen, am 30.10.2026 gelesen:
+- https://web.dev/articles/preload-responsive-images (Update 10.07.2026):
+  Aufloesung passend zu Bildschirm und Pixeldichte, fruehe Bilderkennung.
+- https://web.dev/articles/carousel-best-practices: Bildanfragen erst durch
+  spaetes JavaScript starten zu lassen ist ein typischer Carousel-Fehler.
+- https://developer.mozilla.org/en-US/docs/Web/API/HTMLImageElement/decode:
+  Bilder vor dem benoetigten Darstellungszeitpunkt laden und decodieren.
+- https://sharp.pixelplumbing.com/api-output/: WebP-Qualitaet und
+  smartSubsample fuer bessere Farbkanten.
+
+Keine Behauptung eines komplett latenzfreien Netzes: mehr Bildqualitaet braucht
+mehr Bytes. Reales Kundenfoto: Original 2.082.614 Bytes bei 1111 x 1416 Pixeln;
+neue Karte 44.390 Bytes bei 640 x 816, Grossansicht 120.342 Bytes bei voller
+Originalaufloesung. Das sind bewusst keine 9-KB-Matsch-Vorschauen mehr.
+
+Validierung: 72 gezielte Tests inklusive Pixel-Sperre; Originalquelle trotz
+vorhandener niedrigaufgeloester Vorschau, getrennte Persistenz, Downloadschutz,
+Vorladen/Decodieren vor dem Swipe und unveraenderte Originalbytes geprueft.
+Produktionsbuild und Live-Vorbereitung werden im Abschluss bestaetigt.
+Keine Playwright-/Smoke-Laeufe und keine echte Handy-/3G-Messung.
+
+Manuell: Kundenlink frisch oeffnen, feine Stoffdetails in Karte und Grossansicht
+vergleichen, nach kurzem Betrachten wischen, Gratis-Speichern sowie bezahltes
+Wasserzeichen pruefen. Kein Stern und kein unerwuenschter Untertitel.
+
+---
+
+Historische Staende; Qualitaets-/Aufloesungsangaben oben haben Vorrang:
+
 # Mobile Creator-Storefront – 30.10.2026
 
 Aktueller Umfang: konkrete Kundenroute `/content-creator/:id`, nicht die

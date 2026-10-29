@@ -131,3 +131,14 @@ test('Viewer displays the already loaded thumbnail while the larger image arrive
  const slide=ctx.root.querySelector('.shop-viewer-slide');assert.equal(slide.querySelector('.shop-viewer-preview').getAttribute('src'),src);assert.match(slide.querySelector('img[data-size="medium"]').getAttribute('src'),/size=medium/);
  slide.querySelector('img[data-size="medium"]').onerror();assert.equal(slide.querySelector('img[data-size="medium"]').style.opacity,'0');assert.ok(slide.querySelector('.shop-viewer-preview'));
 });
+
+test('The next card image is fetched and decoded after the current photo loads, before any swipe',async()=>{
+ const ctx=await setup(true),first=ctx.root.querySelector('.shop-slide img'),next=ctx.root.querySelector('[data-shop="view"][data-index="1"] img');
+ assert.equal(next.hasAttribute('src'),false);let decoded=0;next.decode=async()=>{decoded++;};
+ first.onload();await ctx.settle();assert.match(next.getAttribute('src'),/display=3/);assert.equal(next.loading,'eager');assert.equal(next.fetchPriority,'low');assert.equal(decoded,1);
+ const third=ctx.root.querySelector('[data-shop="view"][data-index="2"] img');assert.equal(third.hasAttribute('src'),false);
+ next.onload();assert.equal(third.hasAttribute('src'),false);
+});
+test('Header and explanation have neither a star icon nor the unwanted headline',async()=>{
+ const ctx=await setup(true);assert.doesNotMatch(ctx.root.textContent,/Në një dritë të re/);assert.doesNotMatch(ctx.root.innerHTML,/m12 3 2.5 6.5/);
+});

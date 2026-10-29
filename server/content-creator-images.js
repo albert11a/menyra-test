@@ -46,11 +46,20 @@ async function displayLimited(task){
  try{return await task();}finally{if(displayWaiting.length)displayWaiting.shift()();else displayActive--;}
 }
 const displayCache = new Map();
-export const DISPLAY_IMAGE_VERSION = 2;
+export const DISPLAY_IMAGE_VERSION = 3;
 export function displaySize(value) { return ['thumb','medium','large'].includes(value) ? value : 'thumb'; }
-export function displayReadFields(size) { return ['displayPreview.version',`displayPreview.${displaySize(size)}`,'name','mime','size','parts']; }
-function validDisplay(set, size) {
-  return set?.version === DISPLAY_IMAGE_VERSION && ['clean','marked'].every(mode => /^data:image\/(?:webp|jpeg);base64,[A-Za-z0-9+/=]+$/.test(set[size]?.[mode] || ''));
+function validDisplay(record, mode) {
+  return record?.version === DISPLAY_IMAGE_VERSION && (mode ? [mode] : ['clean','marked']).every(mode => /^data:image\/(?:webp|jpeg);base64,[A-Za-z0-9+/=]+$/.test(record[mode] || ''));
+}
+async function originalDisplaySource(path,metadata,repo){
+ if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>30*1024*1024)throw Error('Fotoja nuk u gjet.');
+ const chunks=[];let total=0;
+ for(let start=0;start<metadata.parts;start+=8){
+  const rows=await Promise.all(Array.from({length:Math.min(8,metadata.parts-start)},(_,i)=>repo.read(`${path}/chunks/${String(start+i).padStart(3,'0')}`)));
+  for(const row of rows){if(!row?.data)throw Error('Skedari nuk është i plotë.');const bytes=Buffer.from(row.data,'base64');total+=bytes.length;if(total>metadata.size)throw Error('Skedari nuk është i plotë.');chunks.push(bytes);}
+ }
+ if(total!==metadata.size)throw Error('Skedari nuk është i plotë.');
+ return Buffer.concat(chunks);
 }
 function watermarkSvg(width,height) {
   const font=Math.max(7,width/42),stepX=font*13.5,stepY=font*4.7,radius=Math.ceil(Math.hypot(width,height));
@@ -59,39 +68,47 @@ function watermarkSvg(width,height) {
   return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><g transform="translate(${width/2} ${height/2}) rotate(-20)" font-family="Arial,sans-serif" font-size="${font}" font-weight="400" fill="white" fill-opacity=".12">${words}</g></svg>`);
 }
 export async function creatorDisplayImage(path, metadata, repo, {size='thumb', free=false, persist=false}={}) {
-  size=displaySize(size);
-  let set=metadata?.displayPreview;
-  if(!validDisplay(set,size)) {
-    const cached=displayCache.get(path);
-    if(cached && Date.now()-cached.at<120000) set=cached.set;
-    else {
-      let task=displayTasks.get(path);
-      if(!task){
-        task=displayLimited(async()=>{
-          const full=metadata?.cleanPreview ? metadata : await repo.read(path,['cleanPreview','name','mime','size','parts']);
-          if(!full)throw Error('Fotoja nuk u gjet.');
-          const clean=await optimizedShopImage(path,full,repo);
-          const source=Buffer.from(clean.data.split(',')[1],'base64');
-          const {default:sharp}=await import('sharp');
-          const result={version:DISPLAY_IMAGE_VERSION};
-          for(const [label,edge,quality] of [['thumb',360,54],['medium',720,66],['large',1080,76]]){
-            const resized=await sharp(source,{limitInputPixels:50000000}).rotate().resize({width:edge,height:Math.round(edge*1.5),fit:'inside',withoutEnlargement:true}).flatten({background:'#f1f2ed'}).toBuffer({resolveWithObject:true});
-            const cleanBytes=await sharp(resized.data).webp({quality,effort:3}).toBuffer();
-            const markedBytes=await sharp(resized.data).composite([{input:watermarkSvg(resized.info.width,resized.info.height)}]).webp({quality,effort:3}).toBuffer();
-            result[label]={clean:`data:image/webp;base64,${cleanBytes.toString('base64')}`,marked:`data:image/webp;base64,${markedBytes.toString('base64')}`};
-          }
-          if(JSON.stringify(result).length>400000)throw Error('Fotoja është tepër e madhe për pamjen paraprake.');
-          displayCache.set(path,{set:result,at:Date.now()});
-          if(displayCache.size>48)displayCache.delete(displayCache.keys().next().value);
-          return result;
-        });
-        displayTasks.set(path,task);
-        task.finally(()=>{if(displayTasks.get(path)===task)displayTasks.delete(path);}).catch(()=>{});
-      }
-      set=await task;
-    }
+ size=displaySize(size);
+ const recordPath=label=>`${path}/displays/${label}`;
+ const mode=free?'clean':'marked';
+ let record=await repo.read(recordPath(size),persist?undefined:['version',mode]);
+ if(persist&&validDisplay(record)){
+  const siblings=await Promise.all(['thumb','medium','large'].filter(label=>label!==size).map(label=>repo.read(recordPath(label))));
+  if(!siblings.every(row=>validDisplay(row)))record=null;
+ }
+ if(!validDisplay(record,persist?undefined:mode)){
+  const cached=displayCache.get(path);
+  let set=cached&&Date.now()-cached.at<120000?cached.set:null;
+  if(!set){
+   let task=displayTasks.get(path);
+   if(!task){
+    task=displayLimited(async()=>{
+     const meta=metadata||await repo.read(path,['name','mime','size','parts']);
+     // Never derive new display images from an already compressed JPEG preview.
+     const source=await originalDisplaySource(path,meta,repo);
+     const {default:sharp}=await import('sharp');const result={};
+     for(const [label,edge,quality] of [['thumb',640,82],['medium',1280,84],['large',1600,88]]){
+      // Lossless intermediate; one final WebP encoding, preserving fine texture.
+      const resized=await sharp(source,{limitInputPixels:50000000}).rotate().resize({width:edge,height:Math.round(edge*1.5),fit:'inside',withoutEnlargement:true}).flatten({background:'#f1f2ed'}).raw().toBuffer({resolveWithObject:true});
+      const image=()=>sharp(resized.data,{raw:{width:resized.info.width,height:resized.info.height,channels:resized.info.channels}});
+      const clean=await image().webp({quality,smartSubsample:true,effort:5}).toBuffer();
+      const marked=await image().composite([{input:watermarkSvg(resized.info.width,resized.info.height)}]).webp({quality,smartSubsample:true,effort:5}).toBuffer();
+      const entry={version:DISPLAY_IMAGE_VERSION,width:resized.info.width,height:resized.info.height,clean:`data:image/webp;base64,${clean.toString('base64')}`,marked:`data:image/webp;base64,${marked.toString('base64')}`};
+      // Independent private documents avoid squeezing every resolution into one
+      // metadata document and lowering quality just to fit its combined budget.
+      if(JSON.stringify(entry).length>950000)throw Error('Fotoja është shumë e madhe për këtë format.');
+      result[label]=entry;
+     }
+     displayCache.set(path,{set:result,at:Date.now()});if(displayCache.size>16)displayCache.delete(displayCache.keys().next().value);
+     return result;
+    });
+    displayTasks.set(path,task);task.finally(()=>{if(displayTasks.get(path)===task)displayTasks.delete(path);}).catch(()=>{});
+   }
+   set=await task;
   }
-  if(persist&&!validDisplay(metadata?.displayPreview,size))await repo.write(path,{displayPreview:set});
-  const data=set[size][free?'clean':'marked'];
-  return {data,bytes:Buffer.from(data.split(',')[1],'base64'),mime:data.startsWith('data:image/webp')?'image/webp':'image/jpeg'};
+  if(persist)for(const label of ['thumb','medium','large'])await repo.write(recordPath(label),set[label]);
+  record=set[size];
+ }
+ const data=record[free?'clean':'marked'];
+ return {data,bytes:Buffer.from(data.split(',')[1],'base64'),mime:data.startsWith('data:image/webp')?'image/webp':'image/jpeg'};
 }
