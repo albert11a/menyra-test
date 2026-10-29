@@ -516,6 +516,10 @@
         const entry = findManifestEntry(manifest, selectedEntryKey);
         if (entry?.file) {
           preloadManifestEntry(manifest, entry);
+          // Fetch the app in parallel; public entry still owns execution order.
+          if (isPublicWebsiteStartup) {
+            preloadManifestEntry(manifest, findManifestEntry(manifest, BUNDLE_ENTRY_KEYS.app));
+          }
           return;
         }
         preloadRawEntry();
