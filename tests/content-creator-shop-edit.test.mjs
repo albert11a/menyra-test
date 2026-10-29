@@ -55,7 +55,7 @@ test('Wasserzeichen ist dezenter und verwendet gemessene Wortabstände in allen 
  const draw=new Function(`${assetSource}\nreturn drawShopWatermark;`)();
  for(const [width,height] of [[720,900],[720,150],[100,720],[32,32]]){
   const rows=new Map();let textWidth=0;const ctx={save(){},restore(){},translate(){},rotate(){},measureText(){textWidth=parseFloat(this.font.split(' ')[1])*9;return {width:textWidth};},fillText(text,x,y){assert.equal(text,'MNYRA · PREVIEW');const xs=rows.get(y)||[];xs.push(x);rows.set(y,xs);}};
-  draw(ctx,width,height);assert.equal(ctx.fillStyle,'rgba(255,255,255,.32)');assert.ok(rows.size>1);
+  draw(ctx,width,height);assert.equal(ctx.fillStyle,'rgba(255,255,255,.20)');assert.ok(rows.size>1);
   for(const xs of rows.values())for(let i=1;i<xs.length;i++)assert.ok(xs[i]-xs[i-1]>textWidth+30);
  }
 });
@@ -65,7 +65,7 @@ test('Vorhandene Vorschauen werden aus Originalen erneuert, Bildunterschriften b
  const ctx={save(){},restore(){},translate(){},rotate(){},measureText:()=>({width:200}),fillText(){},drawImage(){}};
  const document={createElement:()=>({getContext:()=>ctx,toDataURL:()=> 'new-preview'})};
  class Image{constructor(){this.width=720;this.height=900;}async decode(){}}
- const refresh=new Function('db','doc','getDoc','setDoc','CC_PAGES','Image','document','URL',`${assetSource}\nreturn refreshShopPreviews;`)({},doc,async path=>({data:()=>docs.get(path)}),async(...args)=>writes.push(args),'contentCreatorPages',Image,document,{createObjectURL:()=> 'blob:original',revokeObjectURL:url=>urls.push(url)});
+ const refresh=new Function('db','doc','getDoc','setDoc','CC_PAGES','Image','document','URL','updateDoc','serverTimestamp',`${assetSource}\nreturn refreshShopPreviews;`)({},doc,async path=>({data:()=>docs.get(path)}),async(...args)=>writes.push(args),'contentCreatorPages',Image,document,{createObjectURL:()=> 'blob:original',revokeObjectURL:url=>urls.push(url)},async()=>{},()=>0);
  await refresh('s',['a']);assert.equal(writes.length,3);assert.deepEqual(writes[2],['contentCreatorPages/s/images/a',{data:'new-preview'},{merge:true}]);assert.deepEqual(urls,['blob:original']);
  await assert.rejects(refresh('s',['missing']),/Originaldatei fehlt/);assert.equal(writes.length,3);
 });

@@ -1,3 +1,16 @@
+## Feinere Wasserzeichen und kürzerer Aktualisierungspfad
+
+Wasserzeichen: 20 % statt 32 % Deckkraft, normale statt halbfette Schrift,
+Schriftgröße ungefähr ein Drittel kleiner, häufigere Wiederholung und gemessene
+Wortabstände. Bei vorhandenen Fotos den Heart-Knopf zur Aktualisierung nutzen.
+Die Aktualisierung verwendet jetzt zuerst das vorhandene saubere Anzeigebild
+und liest Original-Chunks nur als Rückfall. Danach wird die Seitenversion
+aktualisiert, damit Browser keine veraltete Vorschau aus dem Session-Cache zeigen.
+
+Prüfung des Aufbaus: Die Speicherung großer Originale in Firestore-Chunks bleibt
+der aufwendige Teil. Eine vollständige Umstellung auf Datei-Storage wäre eine
+Migration und ist mit dieser Wasserzeichenkorrektur nicht erledigt.
+
 ## Fortschritt beim Speichern und randlose Karten (29.10.2026)
 
 Der Album-Dialog öffnet sofort, zeigt die Zahl geladener Originale und erlaubt
