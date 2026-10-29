@@ -1,3 +1,5 @@
+import {saveShopAsset,initialShopProduct,releaseShopOrder} from "./heart-content-creator-shop.js";
+import {CC_CARTS,CC_ORDERS,priceCents} from "../../shared/content-creator-shop.js";
 import { db } from "/shared/firebase-config.js";
 import { collection, doc, getDoc, onSnapshot, setDoc, updateDoc, writeBatch, serverTimestamp } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import { CC_PAGES, CC_VISITS, contentLink } from "../../shared/content-creator.js";
@@ -22,7 +24,7 @@ export async function prepareContentImage(file, avatar = false) {
   } finally { URL.revokeObjectURL(url); }
 }
 
-export function createContentCreator({root, store, prepareImage = prepareContentImage}) {
+export function createContentCreator({root, store, prepareImage = prepareContentImage, saveAsset}) {
   const patch = fields => store.actions.patchContentCreator(fields);
   let subscriptions = [], pendingId = "", avatarFile = null, photoFiles = [], draftAvatar = "", draftName = "";
   let busy = false, stopped = true, createdMs = 0;
@@ -33,6 +35,8 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     stopped = false; patch({status:"loading",error:""});
     const fail = error => { stop(); patch({status:"error",error:`Lokale konnten nicht geladen werden: ${error.message}`}); };
     subscriptions.push(onSnapshot(collection(db,CC_PAGES), snap => patch({pages:snap.docs.map(d=>({id:d.id,...d.data()})),status:"ready",error:""}), fail));
+    subscriptions.push(onSnapshot(collection(db,CC_CARTS), snap => patch({carts:snap.docs.map(d=>({id:d.id,...d.data()}))}), fail));
+    subscriptions.push(onSnapshot(collection(db,CC_ORDERS), snap => patch({orders:snap.docs.map(d=>({id:d.id,...d.data()}))}), fail));
     subscriptions.push(onSnapshot(collection(db,CC_VISITS), snap => patch({visits:snap.docs.map(d=>d.data())}), fail));
   }
   function capture() { const input = root.querySelector('#cc-create-form [name="name"]'); if(input) draftName=input.value; }
@@ -65,6 +69,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     finally{mediaBusy=false;patch({mediaBusy:false});}
   }
   root.addEventListener("input", event => {
+    if(['shopTitle','shopPrice'].includes(event.target.name)){patch({[event.target.name]:event.target.value});return;}
     if(event.target.hasAttribute("data-upload-caption")){
       captions[event.target.dataset.uploadCaption]=event.target.value;
       patch({pendingCaptions:{...captions}});return;
@@ -76,6 +81,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
  if(event.target.matches('#cc-create-form [name="name"]')) { draftName=event.target.value; patch({draftName}); } });
   root.addEventListener("change", event => {
     const input=event.target;
+    if(input.name==='kind'){capture();patch({pageKind:input.value,draftName});return;}
     if(input.hasAttribute("data-cc-add")){
       const files=Array.from(input.files || []),id=input.dataset.ccAdd;
       mediaTask(async()=>{
@@ -97,9 +103,34 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     patch({pendingPhotos:photoFiles.map(f=>f.name),pendingCaptions:{...captions},draftName,avatarName:avatarFile?.name || (draftAvatar ? "Profilbild gespeichert" : ""),photoNames:photoFiles.map(f=>f.name).join(", "),editorError:""});
   });
   root.addEventListener("submit", async event => {
+    const form=event.target;
+    if(form.id==='cc-add-package' || form.hasAttribute('data-cc-package')){
+      event.preventDefault();
+      // Read before state changes rebuild the form.
+      const id=form.dataset.page,title=form.querySelector('[name="title"]').value.trim(),price=form.querySelector('[name="price"]').value;
+      const files=Array.from(form.querySelector('[name="files"]')?.files || []),productId=form.dataset.ccPackage;
+      mediaTask(async()=>{
+        const cents=priceCents(price),pageRef=doc(db,CC_PAGES,id),snapshot=await getDoc(pageRef),page=snapshot.data();
+        if(!title)throw Error('Bitte einen Paketnamen eingeben.');
+        if(productId){await updateDoc(pageRef,{products:(page.products||[]).map(p=>p.id===productId?{...p,title,priceCents:cents}:p),updatedAt:serverTimestamp()});return;}
+        if(!files.length || page.photoIds.length+files.length>30 || (page.products||[]).length>=10)throw Error('Fotos auswählen: maximal 30 Bilder und 10 Pakete pro Shop.');
+        const keys=[];
+        for(const file of files){
+          const key=crypto.randomUUID().replaceAll('-',''),data=await prepareImage(file);
+          await (saveAsset||saveShopAsset)(id,key,file,data);keys.push(key);
+        }
+        const product={id:crypto.randomUUID().replaceAll('-',''),title,priceCents:cents,imageIds:keys,active:true};
+        const updated={photoIds:[...page.photoIds,...keys],products:[...(page.products||[]),product]};
+        await updateDoc(pageRef,{...updated,updatedAt:serverTimestamp()});
+        patch({pages:store.getState().contentCreator.pages.map(p=>p.id===id?{...p,...updated}:p)});await detail(id);
+      });return;
+    }
     if(event.target.id!=="cc-create-form")return;
     event.preventDefault(); if(busy)return; capture();
     if(!draftName.trim() || !photoFiles.length || photoFiles.length>30){patch({editorError:"Bitte Lokalname und 1 bis 30 Bilder auswählen."});return;}
+    const kind=store.getState().contentCreator.pageKind==='shop'?'shop':'promo';
+    let product;
+    if(kind==='shop'){try{product=initialShopProduct(store.getState().contentCreator,[]);}catch(error){patch({editorError:error.message});return;}}
     busy=true; patch({saving:true,draftName,editorError:"",progress:"Bilder vorbereiten …"});
     try {
       const avatar=avatarFile ? await prepareImage(avatarFile,true) : (draftAvatar || "");
@@ -107,16 +138,20 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       const page=doc(db,CC_PAGES,pendingId);
       createdMs ||= Date.now();
       // The draft is durable; only the final atomic write exposes a complete page.
-      await setDoc(page,{name:draftName.trim(),avatar,photoIds:[],workflow:"working",published:false,createdMs,updatedAt:serverTimestamp()});
+      await setDoc(page,{kind,name:draftName.trim(),avatar,photoIds:[],workflow:"working",published:false,createdMs,updatedAt:serverTimestamp()});
       const photoIds=[];
       for(let i=0;i<photoFiles.length;i++) {
         patch({progress:`Bild ${i+1} von ${photoFiles.length} …`});
         const data=await prepareImage(photoFiles[i]); const imageId=String(i).padStart(3,"0");
-        await setDoc(doc(page,"images",imageId),{data,caption:String(captions[i] || "").slice(0,1000)}); photoIds.push(imageId);
+        if(kind==='shop'){
+          await (saveAsset||saveShopAsset)(pendingId,imageId,photoFiles[i],data);
+          await updateDoc(doc(page,'images',imageId),{caption:String(captions[i] || '').slice(0,1000)});
+        }else await setDoc(doc(page,"images",imageId),{data,caption:String(captions[i] || "").slice(0,1000)});
+        photoIds.push(imageId);
       }
-      const batch=writeBatch(db);batch.update(page,{photoIds,published:true,workflow:"ready",updatedAt:serverTimestamp()});await batch.commit();
+      const batch=writeBatch(db);batch.update(page,{...(kind==='shop'?{products:[{...product,imageIds:photoIds}]}:{}),photoIds,published:true,workflow:"ready",updatedAt:serverTimestamp()});await batch.commit();
       pendingId="";photoFiles=[];avatarFile=null;draftAvatar="";draftName="";
-      patch({editor:false,saving:false,filter:"ready"});notice("Seite erstellt. Der Link ist bereit.");
+      patch({editor:false,saving:false,selectedId:"",filter:"ready"});notice("Seite erstellt. Der Link ist bereit.");
     } catch(error){patch({saving:false,editorError:`Nicht abgeschlossen: ${error.message}. Du kannst es erneut versuchen.`});}
     finally{busy=false;}
   });
@@ -124,9 +159,14 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     const button=event.target.closest("[data-cc-action]"); if(!button)return;
     const action=button.dataset.ccAction,id=button.dataset.id;
     try {
-      if(action==="new") {if(busy)return;captions={};patch({pendingPhotos:[],pendingCaptions:{}});createdMs=0;pendingId="";avatarFile=null;photoFiles=[];draftAvatar="";draftName="";patch({editor:true,draftName:"",avatarName:"",photoNames:"",editorError:""});queueMicrotask(()=>root.querySelector('#cc-create-form [name="name"]')?.focus());}
+      if(action==="new") {if(busy)return;captions={};patch({pendingPhotos:[],pendingCaptions:{},pageKind:"promo",shopTitle:"",shopPrice:"",selectedId:""});createdMs=0;pendingId="";avatarFile=null;photoFiles=[];draftAvatar="";draftName="";patch({editor:true,draftName:"",avatarName:"",photoNames:"",editorError:""});queueMicrotask(()=>root.querySelector('#cc-create-form [name="name"]')?.focus());}
       if(action==="close" && !busy) patch({editor:false});
       if(action==="filter") patch({filter:button.dataset.key});
+      if(action==='release'){
+        const order=button.dataset.order;
+        if(store.getState().contentCreator.releaseConfirm!==order){patch({releaseConfirm:order});return;}
+        await mediaTask(async()=>{await releaseShopOrder(order);patch({releaseConfirm:''});notice('Zahlung bestätigt. Downloads freigegeben.');});
+      }
       if(action==="detail") await detail(id);
       if(action==="back") {imageEpoch++;patch({selectedId:"",images:{},captionDrafts:{}});}
       if(action==="preview") {
@@ -148,8 +188,8 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         }else{
           if(action==="move") {const next=index+Number(button.dataset.direction);if(next<0||next>=ids.length)return;[ids[index],ids[next]]=[ids[next],ids[index]];}
           if(action==="delete") ids.splice(index,1);
-          const batch=writeBatch(db);batch.update(pageRef,{photoIds:ids,updatedAt:serverTimestamp()});
-          if(action==="delete")batch.delete(doc(pageRef,"images",image));
+          const batch=writeBatch(db);batch.update(pageRef,{...(page.kind==='shop'?{products:(page.products||[]).map(p=>({...p,imageIds:p.imageIds.filter(key=>ids.includes(key))}))}:{}),photoIds:ids,updatedAt:serverTimestamp()});
+          if(action==="delete"){batch.delete(doc(pageRef,"images",image));if(page.kind==='shop')batch.delete(doc(pageRef,'previews',image));}
           await batch.commit();
           const state=store.getState().contentCreator;
           patch({pages:state.pages.map(p=>p.id===id?{...p,photoIds:ids}:p)});
@@ -158,7 +198,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       });
       if(action==="copy") {await navigator.clipboard.writeText(contentLink(id));notice("Link kopiert.");}
       if(action==="sent") {await updateDoc(doc(db,CC_PAGES,id),{workflow:"sent",sentAt:serverTimestamp()});notice("Als verschickt markiert.");}
-      if(action==="resume" && !busy){const page=store.getState().contentCreator.pages.find(p=>p.id===id);if(!page)return;pendingId=id;createdMs=page.createdMs;draftName=page.name;draftAvatar=page.avatar;avatarFile=null;photoFiles=[];patch({editor:true,draftName,avatarName:"Profilbild gespeichert",photoNames:"Bitte Beispielbilder erneut auswählen.",editorError:""});}
+      if(action==="resume" && !busy){const page=store.getState().contentCreator.pages.find(p=>p.id===id);if(!page)return;pendingId=id;createdMs=page.createdMs;draftName=page.name;draftAvatar=page.avatar;avatarFile=null;photoFiles=[];patch({editor:true,pageKind:page.kind||"promo",draftName,avatarName:"Profilbild gespeichert",photoNames:"Bitte Beispielbilder erneut auswählen.",editorError:""});}
     }catch(error){notice(`Nicht möglich: ${error.message}`);}
   });
   store.subscribe(state=>{if(state.auth.status!=="authenticated" || !state.auth.access?.allowed)stop();});

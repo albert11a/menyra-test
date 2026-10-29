@@ -42,3 +42,24 @@ test('Falsche Seitenkennung und ungültige Antworten werden abgelehnt',async()=>
  await assertFails(guest().doc(`contentCreatorVisits/${visitor}`).set({...data(),pageId:'c'.repeat(32)}));
  await assertFails(guest().doc(`contentCreatorVisits/${visitor}`).set({...data(),answer:'maybe'}));
 });
+
+test('Shop: Originale und Bestellungen bleiben privat; nur Vorschauen sind öffentlich',async()=>{
+ await env.withSecurityRulesDisabled(async ctx=>{
+  const db=ctx.firestore();await db.doc(`contentCreatorPages/${id}`).update({kind:'shop'});
+  await db.doc(`contentCreatorPages/${id}/previews/000`).set({data:'preview'});
+  await db.doc(`contentCreatorPages/${id}/originals/000`).set({name:'original.jpg',parts:1});
+  await db.doc(`contentCreatorPages/${id}/originals/000/chunks/000`).set({data:'original'});
+  await db.doc(`contentCreatorOrders/${id}`).set({approved:false,status:'pending',paymentConfirmed:false,totalCents:2900});
+ });
+ const db=guest();await assertFails(db.doc(`contentCreatorPages/${id}/images/000`).get());
+ await assertSucceeds(db.doc(`contentCreatorPages/${id}/previews/000`).get());
+ await assertFails(db.doc(`contentCreatorPages/${id}/originals/000`).get());
+ await assertFails(db.doc(`contentCreatorPages/${id}/originals/000/chunks/000`).get());
+ await assertFails(db.doc(`contentCreatorOrders/${id}`).get());
+ await assertFails(db.doc(`contentCreatorOrders/${id}`).set({approved:true,status:'released'}));
+ await assertFails(db.doc(`contentCreatorCarts/${id}`).set({totalCents:1}));
+ const ceo=env.authenticatedContext('ceo-test').firestore();
+ await assertFails(ceo.doc(`contentCreatorOrders/${id}`).update({approved:true,status:'released'}));
+ await assertSucceeds(ceo.doc(`contentCreatorOrders/${id}`).update({approved:true,status:'released',paymentConfirmed:true}));
+ await assertFails(ceo.doc(`contentCreatorOrders/${id}`).update({totalCents:1}));
+});

@@ -16,3 +16,8 @@ test('Social image endpoint serves the last photo, never the profile logo',async
 test('Drafts cannot be shared or read through the image endpoint',async()=>{
  for(const image of ['', '&image=1']){const res=response();await serveContentCreator({method:'GET',url:`/api/content-creator?id=${id}${image}`},res,{read:async()=>({published:false})});assert.equal(res.statusCode,404);}
 });
+test('Shop-Link-Vorschau liefert ausschließlich das Wasserzeichenbild',async()=>{
+ const paths=[],res=response();
+ await serveContentCreator({method:'GET',url:`/api/content-creator?id=${id}&image=1`},res,{read:async path=>{paths.push(path);return path.includes('/previews/')?{data:'data:image/jpeg;base64,YWJj'}:{published:true,kind:'shop',photoIds:['last']};}});
+ assert.equal(res.statusCode,200);assert.match(paths[1],/previews\/last$/);assert.equal(paths.some(path=>path.includes('/originals/')||path.includes('/images/')),false);
+});

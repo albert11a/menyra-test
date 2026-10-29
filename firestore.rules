@@ -939,9 +939,29 @@ service cloud.firestore {
       allow get: if isCeoActor() || resource.data.published == true;
       allow list, create, update, delete: if isCeoActor();
       match /images/{imageId} {
-        allow get: if isCeoActor() || get(/databases/$(database)/documents/contentCreatorPages/$(pageId)).data.published == true;
+        allow get: if isCeoActor() || (get(/databases/$(database)/documents/contentCreatorPages/$(pageId)).data.published == true && get(/databases/$(database)/documents/contentCreatorPages/$(pageId)).data.get('kind', 'promo') != 'shop');
         allow list, create, update, delete: if isCeoActor();
       }
+    }
+    match /contentCreatorPages/{pageId}/previews/{imageId} {
+      allow get: if isCeoActor() || get(/databases/$(database)/documents/contentCreatorPages/$(pageId)).data.published == true;
+      allow list, write: if isCeoActor();
+    }
+    match /contentCreatorPages/{pageId}/originals/{document=**} {
+      allow read, write: if isCeoActor();
+    }
+    match /contentCreatorCarts/{cartId} {
+      allow read: if isCeoActor();
+      allow write: if false;
+    }
+    match /contentCreatorOrders/{orderId} {
+      allow read: if isCeoActor();
+      allow create, delete: if false;
+      allow update: if isCeoActor()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['approved', 'paymentConfirmed', 'status', 'releasedAt'])
+        && request.resource.data.approved == true
+        && request.resource.data.paymentConfirmed == true
+        && request.resource.data.status == 'released';
     }
     match /contentCreatorVisits/{visitId} {
       function validVisit() {

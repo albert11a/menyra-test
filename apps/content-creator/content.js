@@ -30,12 +30,29 @@ function persist(fields={}){
 function responseMessage(answer){
   root.querySelector(".answer-content").innerHTML=`<p class="answer-message">${answer==="yes" ? "Faleminderit për interesimin! E morëm përgjigjen tuaj. Mund të vazhdoni bisedën me ne aty ku ju dërguam linkun, që të flasim për përmbajtjen e radhës për lokalin tuaj." : "Faleminderit për përgjigjen tuaj! Fotot shembull mbeten tuajat për t’i përdorur kur të dëshironi."}</p>`;
 }
+async function installVisitTracking(){
+    const local=readLocal();visitorId=/^[a-f0-9]{32}$/.test(local?.visitorId||"")?local.visitorId:crypto.randomUUID().replaceAll("-","");
+    visitRef=doc(db,CC_VISITS,`${id}_${visitorId}`);
+    // Exact opaque ID is readable; listing any visitor data is CEO-only.
+    if(!preview){const previous=await getDoc(visitRef);if(previous.exists()){current={opened:true,scrolled:previous.data().scrolled===true,answer:previous.data().answer||""};saved=true;}}
+    if(current.answer)responseMessage(current.answer);
+    persist().catch(()=>{});
+    let scrollBusy=false;
+    const onScroll=()=>{
+      if(current.scrolled||scrollBusy||preview||scrollY<10)return;
+      const available=document.documentElement.scrollHeight-innerHeight;
+      if(available>0 && scrollY/available>=.5){scrollBusy=true;persist({scrolled:true}).catch(()=>{current.scrolled=false;}).finally(()=>{scrollBusy=false;});}
+    };
+    addEventListener("scroll",onScroll,{passive:true});
+}
 async function start(){
   try{
     if(!/^[a-f0-9]{32}$/.test(id))throw new Error("Kjo faqe nuk u gjet.");
     const snap=await getDoc(doc(db,CC_PAGES,id));
     if(!snap.exists() || !snap.data().published)throw new Error("Kjo faqe nuk është ende e disponueshme.");
-    const page=snap.data();document.title=`Për ${page.name} · MNYRA`;
+    const page=snap.data();
+    if(page.kind==="shop"){const {mountCreatorShop}=await import("./shop.js");await mountCreatorShop({root,page:{...page,id},still:preview});await installVisitTracking();return;}
+    document.title=`Për ${page.name} · MNYRA`;
     root.innerHTML=`${preview?'<p class="preview">Still · Besuche und Antworten werden nicht gezählt.</p>':""}<div class="brand">MNYRA</div>
       <header class="greeting"><h1><span>Përshëndetje,</span>${esc(page.name)}.</h1>${ccImage(page.avatar) ? `<img class="avatar" src="${ccImage(page.avatar)}" alt="${esc(page.name)}">` : ""}</header>
       <section class="intro"><p class="eyebrow">Pak vëmendje për lokalin tuaj</p><h2>Lokali juaj. Në një dritë të re.</h2><p>Ne jemi MNYRA. Krijojmë përmbajtje për rrjetet tuaja sociale dhe kujdesemi për praninë tuaj digjitale — në Instagram, Facebook, TikTok dhe në faqen tuaj të internetit.</p><p>Kemi përgatitur disa foto shembull posaçërisht për <strong>${esc(page.name)}</strong>, që të shihni si mund të duket përmbajtja e lokalit tuaj.</p><div class="free">Këto foto mund t’i shkarkoni dhe t’i përdorni falas në rrjetet tuaja sociale. Janë një dhuratë nga ne, pa asnjë detyrim.</div></section>
@@ -55,19 +72,7 @@ async function start(){
         figure.innerHTML=`<img src="${data}" alt="Foto shembull ${i+1} për ${esc(page.name)}" ${i? 'loading="lazy"':''}>${photo.data()?.caption ? `<figcaption>${esc(photo.data().caption)}</figcaption>` : ""}`;
       }).catch(()=>{figure.innerHTML='<p class="loading">Fotoja nuk u ngarkua. Rifreskoni faqen për ta provuar përsëri.</p>';});
     }
-    const local=readLocal();visitorId=/^[a-f0-9]{32}$/.test(local?.visitorId||"")?local.visitorId:crypto.randomUUID().replaceAll("-","");
-    visitRef=doc(db,CC_VISITS,`${id}_${visitorId}`);
-    // Exact opaque ID is readable; listing any visitor data is CEO-only.
-    if(!preview){const previous=await getDoc(visitRef);if(previous.exists()){current={opened:true,scrolled:previous.data().scrolled===true,answer:previous.data().answer||""};saved=true;}}
-    if(current.answer)responseMessage(current.answer);
-    persist().catch(()=>{});
-    let scrollBusy=false;
-    const onScroll=()=>{
-      if(current.scrolled||scrollBusy||preview||scrollY<10)return;
-      const available=document.documentElement.scrollHeight-innerHeight;
-      if(available>0 && scrollY/available>=.5){scrollBusy=true;persist({scrolled:true}).catch(()=>{current.scrolled=false;}).finally(()=>{scrollBusy=false;});}
-    };
-    addEventListener("scroll",onScroll,{passive:true});
+    await installVisitTracking();
     root.addEventListener("click",async event=>{
       const button=event.target.closest("[data-answer]");if(!button)return;
       if(preview){responseMessage(button.dataset.answer);return;}

@@ -204,12 +204,12 @@ async function schicken(uid, kennung, nutzlast, token, zustellung) {
       headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
       body: JSON.stringify({ message: {
         token: g.token,
-        notification: { title: "LifeSkin", body: nutzlast.text },
+        notification: { title: nutzlast.title || "LifeSkin", body: nutzlast.text },
         data: { notificationId: kennung, userId: uid, type: nutzlast.type, link: nutzlast.link },
         webpush: {
           fcm_options: { link: `${START}${nutzlast.link}` },
           notification: {
-            title: "LifeSkin", body: nutzlast.text, icon: ICON, badge: ICON,
+            title: nutzlast.title || "LifeSkin", body: nutzlast.text, icon: ICON, badge: ICON,
             renotify: true, vibrate: [180, 90, 180],
             // Dieselbe Marke wie Waechter und Cloud Function: kommt es
             // doch zweimal, legt das Telefon die Meldungen uebereinander.

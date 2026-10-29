@@ -1,3 +1,4 @@
+import {shopAdmin} from "./heart-content-creator-shop-render.js";
 import { CC_FILTERS, contentRows, contentStats, ccEscape as esc, ccImage } from "../../shared/content-creator.js";
 export function renderContentCreator(state = {}) {
   const rows = contentRows(state.pages, state.visits).sort((a,b) => (b.createdMs || 0) - (a.createdMs || 0));
@@ -23,7 +24,9 @@ export function renderContentCreator(state = {}) {
     </article>`).join("") || `<div class="cc-empty">${state.status === "loading" ? "Lokale werden geladen …" : filter === "all" ? "Noch keine Lokale. Erstelle die erste Seite über +." : "Keine Lokale in diesem Filter."}</div>`}</div>
     ${state.editor ? `<div class="cc-overlay"><section class="cc-dialog" role="dialog" aria-modal="true" aria-labelledby="cc-dialog-title">
       <div class="cc-dialog-head"><h2 id="cc-dialog-title">Neue Lokal-Seite</h2><button data-cc-action="close" aria-label="Schließen" ${state.saving ? "disabled" : ""}>×</button></div>
-      <form id="cc-create-form"><label>Lokalname<input id="cc-local-name" name="name" maxlength="120" required value="${esc(state.draftName)}" ${state.saving ? "disabled" : ""}></label>
+      <form id="cc-create-form"><label>Seitenart<select name="kind" id="cc-page-kind" ${state.saving?'disabled':''}><option value="promo" ${state.pageKind!=='shop'?'selected':''}>Content Creator · Vorschau</option><option value="shop" ${state.pageKind==='shop'?'selected':''}>Shop · Fotopakete verkaufen</option></select></label>
+      ${state.pageKind==='shop'?`<label>Paketname<input id="cc-shop-title" ${state.saving?'disabled':''} name="shopTitle" value="${esc(state.shopTitle||'Pako fotosh')}" maxlength="120" required></label><label>Paketpreis in €<input id="cc-shop-price" ${state.saving?'disabled':''} name="shopPrice" value="${esc(state.shopPrice||'')}" inputmode="decimal" placeholder="29,00" required></label><p class="cc-muted">Alle unten ausgewählten Fotos bilden ein verkäufliches Paket. Weitere Pakete kannst du danach hinzufügen.</p>`:''}
+      <label>Lokalname<input id="cc-local-name" name="name" maxlength="120" required value="${esc(state.draftName)}" ${state.saving ? "disabled" : ""}></label>
       <label>Profilbild (optional)<input name="avatar" type="file" accept="image/jpeg,image/png,image/webp" ${state.saving ? "disabled" : ""}></label><p class="cc-muted">${esc(state.avatarName || "Optional – ohne Profilbild wird kein Logo angezeigt.")}</p>
       <label>Beispielbilder<input name="photos" type="file" multiple accept="image/jpeg,image/png,image/webp" ${state.saving ? "disabled" : ""}></label><p class="cc-muted">${esc(state.photoNames || "Mehrere Bilder gleichzeitig · maximal 30")}</p>
       ${(state.pendingPhotos || []).map((name,i) => `<label>${esc(name)}<textarea id="cc-caption-${i}" data-upload-caption="${i}" maxlength="1000" placeholder="Bildunterschrift">${esc(state.pendingCaptions?.[i] || "")}</textarea></label>`).join("")}
@@ -41,7 +44,8 @@ function renderDetail(page,state) {
   <div class="cc-stats">${values.map(([label,n])=>`<div class="cc-stat"><strong>${n}</strong><span>${label}</span></div>`).join("")}</div>
   <p class="cc-muted">Eindeutige Browserbesuche · eigene Tests mit Still-Link zählen nicht.</p>
   <div class="cc-row-actions"><button data-cc-action="preview" data-id="${esc(page.id)}">Vorschau öffnen</button><button data-cc-action="still" data-id="${esc(page.id)}">Still-Link kopieren</button><button data-cc-action="copy" data-id="${esc(page.id)}">Kundenlink kopieren</button></div>
-  <label class="cc-add">Fotos hinzufügen<input type="file" multiple accept="image/jpeg,image/png,image/webp" data-cc-add="${esc(page.id)}" ${state.mediaBusy?'disabled':''}></label>
+  ${shopAdmin(page,state)}
+  <label class="cc-add" ${page.kind==='shop'?'hidden':''}>Fotos hinzufügen<input type="file" multiple accept="image/jpeg,image/png,image/webp" data-cc-add="${esc(page.id)}" ${state.mediaBusy?'disabled':''}></label>
   ${state.mediaError ? `<p class="cc-error" role="alert">${esc(state.mediaError)}</p>` : ""}
   ${state.mediaBusy ? '<p role="status">Bilder werden gespeichert …</p>' : ""}
   <div class="cc-edit-grid">${(page.photoIds || []).map((key,i)=>{

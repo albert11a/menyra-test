@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { ccEscape as esc, ccImage } from '../shared/content-creator.js';
 const BASE='https://firestore.googleapis.com/v1/projects/menyra-c0e68/databases/(default)/documents';
-function decode(v){if(!v)return null;if('stringValue'in v)return v.stringValue;if('booleanValue'in v)return v.booleanValue;if(v.arrayValue)return (v.arrayValue.values||[]).map(decode);return null;}
+function decode(v){if(!v)return null;if('stringValue'in v)return v.stringValue;if('booleanValue'in v)return v.booleanValue;if('integerValue'in v)return Number(v.integerValue);if(v.mapValue)return Object.fromEntries(Object.entries(v.mapValue.fields||{}).map(([k,x])=>[k,decode(x)]));if(v.arrayValue)return (v.arrayValue.values||[]).map(decode);return null;}
 export async function publicDocument(path,fetchFn=fetch){
   const response=await fetchFn(`${BASE}/${path}`,{signal:AbortSignal.timeout(4000)});
   if(response.status===404)return null;if(!response.ok)throw Error('Public page unavailable');
@@ -20,7 +20,7 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell}={}
     const last=(page.photoIds || []).at(-1);
     if(imageMode){
       if(!last || !/^[a-zA-Z0-9_-]{1,64}$/.test(last)){res.statusCode=404;res.end();return;}
-      const image=await read(`contentCreatorPages/${id}/images/${last}`),data=ccImage(image?.data);
+      const image=await read(`contentCreatorPages/${id}/${page.kind==='shop'?'previews':'images'}/${last}`),data=ccImage(image?.data);
       if(!data){res.statusCode=404;res.end();return;}
       res.setHeader('Content-Type','image/jpeg');res.setHeader('Cache-Control','public, max-age=60');
       res.statusCode=200;res.end(req.method==='HEAD'?undefined:Buffer.from(data.split(',')[1],'base64'));return;
