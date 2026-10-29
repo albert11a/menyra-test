@@ -176,3 +176,6 @@ ESLint der geänderten JS-Dateien; npm run build erfolgreich. Die erzeugten
 getrackten Social-Bundles sind identisch mit main, daher keine Bundle-Änderungen
 im Commit. Reale Handy-/iPhone-Bedienung wurde nicht manuell geprüft.
 
+
+### Original file request consolidation
+The storefront requests each original once with `format=file`. The server checks access once, reads legacy chunks in bounded groups of eight and validates the exact length before returning binary bytes. No base64 chunk requests or reconstruction remain in the browser. Prepared photo files are shared directly on a subsequent Save tap. First-time sharing still requires the complete files to arrive; this is not an instant cold-download guarantee. Original storage remains Firestore, unlike the social media CDN.

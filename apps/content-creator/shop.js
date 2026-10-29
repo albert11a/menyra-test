@@ -148,7 +148,7 @@ export async function mountCreatorShop({root,page,still=false}){
     return;
    }
    if(action==='save-zip'){if(photoSave)await download(photoSave.receipt,photoSave.product);return;}
-   if(action==='free-save'||action==='save-photos'){if(viewer)closeViewer();await download(button.dataset.order||'',product,'photos');return;}
+   if(action==='free-save'||action==='save-photos'){const ready=prepared.get(`${button.dataset.order||''}:${product}`)?.shareFiles;if(ready?.length&&navigator.canShare?.({files:ready})){await navigator.share({files:ready});return;}if(viewer)closeViewer();await download(button.dataset.order||'',product,'photos');return;}
    if(action==='view'){openViewer(product,button.dataset.index);return;}
    if(action==='viewer-close'){closeViewer();return;}
    if(action==='viewer-step'){moveViewer((viewer?.index||0)+Number(button.dataset.step));return;}
@@ -221,17 +221,13 @@ export async function mountCreatorShop({root,page,still=false}){
    if(!files){files=[];let bytesTotal=0;
    for(const [index,file] of (receipt?line.imageIds:packFiles(product)).entries()){
     if(downloadCancelled)return;
-    const meta=await api(operation,{...access,file},true);if(downloadCancelled)return;bytesTotal+=meta.size;
-    if(bytesTotal>150*1024*1024)throw Error('Pakoja është shumë e madhe për këtë pajisje. Kontaktoni MNYRA për dorëzimin e skedarëve.');
-    const parts=[];
-    for(let start=0;start<meta.parts;start+=4){
-     const chunks=await Promise.all(Array.from({length:Math.min(4,meta.parts-start)},(_,i)=>api(operation,{...access,file,part:start+i},true)));
-     if(downloadCancelled)return;
-     for(const data of chunks){const binary=atob(data.data),bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);parts.push(bytes);}
-    }
-    const bytes=new Uint8Array(parts.reduce((n,p)=>n+p.length,0));let offset=0;for(const part of parts){bytes.set(part,offset);offset+=part.length;}
-    if(bytes.length!==meta.size)throw Error('Fotoja nuk u shkarkua plotësisht. Provoni përsëri.');
-    const asset={name:`${index+1}-${meta.name}`,bytes,mime:meta.mime||'image/jpeg'};files.push(asset);
+    const response=await fetch(`/api/content-creator-shop?${new URLSearchParams({op:operation,pageId:page.id,...access,file,format:'file'})}`,{method:'GET',signal:AbortSignal.timeout(60000)});
+    if(!response.ok){const result=await response.json();throw Error(result.error||'Shkarkimi u ndërpre.');}
+    const bytes=new Uint8Array(await response.arrayBuffer());if(downloadCancelled)return;
+    bytesTotal+=bytes.length;if(bytesTotal>150*1024*1024)throw Error('Pakoja është shumë e madhe për këtë pajisje.');
+    const mime=response.headers.get('Content-Type')||'image/jpeg';
+    const name=decodeURIComponent(response.headers.get('X-File-Name')||`${file}.jpg`);
+    const asset={name:`${index+1}-${name}`,bytes,mime};files.push(asset);
     if(mode==='photos'&&photoSave){const ready=new File([bytes],asset.name,{type:asset.mime});photoSave.files.push(ready);photoSave.urls.push(URL.createObjectURL(ready));render();}
    }
    }

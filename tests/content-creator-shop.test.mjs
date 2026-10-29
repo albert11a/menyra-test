@@ -106,3 +106,11 @@ test('Ein Bild-Endpunkt entscheidet serverseitig über kostenlose und geschützt
  f.page.products[0].priceCents=0;assert.equal((await shopAction(input,f.repo)).bytes.toString(),'abc');
  f.page.published=false;await assert.rejects(shopAction(input,f.repo));
 });
+
+ test('Binary original downloads validate access and completeness before returning exact bytes',async()=>{
+ const f=fixture();const input={op:'free-download',pageId,productId:'pack',file:'one',format:'file'};
+ await assert.rejects(shopAction(input,f.repo));f.page.products[0].priceCents=0;
+ assert.equal((await shopAction(input,f.repo)).bytes.toString(),'abc');
+ f.docs.get(`contentCreatorPages/${pageId}/originals/one`).size=4;
+ await assert.rejects(shopAction(input,f.repo));
+ });

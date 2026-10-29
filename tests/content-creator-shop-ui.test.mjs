@@ -16,7 +16,7 @@ async function setup(still=false,price=2900,options={}){
  const repo={read:async key=>docs.get(key),write:async(key,data)=>{docs.set(key,{...docs.get(key),...structuredClone(data)});return true;},notify:async()=>true};
  const fetch=async(url,requestOptions)=>{
   const payload=requestOptions.method==='POST'?JSON.parse(requestOptions.body):Object.fromEntries(new URL(url,'https://www.mnyra.com').searchParams);calls.push(payload);
-  try{if(payload.op==='free-download'&&options.download)await options.download(payload);if(payload.op==='free-preview'&&options.preview){const result=await options.preview(payload);if(result)return result;}return {ok:true,json:async()=>await shopAction(payload,repo)};}catch(error){return {ok:false,json:async()=>({error:error.message})};}
+  try{if(payload.op==='free-download'&&options.download)await options.download(payload);if(payload.op==='free-preview'&&options.preview){const result=await options.preview(payload);if(result)return result;}const result=await shopAction(payload,repo);return {ok:true,json:async()=>result,arrayBuffer:async()=>result.bytes,headers:{get:key=>key==='Content-Type'?result.mime:key==='X-File-Name'?encodeURIComponent(result.name):null}};}catch(error){return {ok:false,json:async()=>({error:error.message})};}
  };
  const mount=factory({},(...args)=>args.filter(x=>typeof x==='string').join('/'),async()=>({data:()=>({data:'data:image/jpeg;base64,YWJj'})}),ccEscape,ccImage,'contentCreatorPages',euro,shopQuote,validShopId,files=>{zipFiles.push(files);return new Blob(['zip']);}, {getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)}, {origin:'https://www.mnyra.com',search:''},fetch,document,{setInterval:()=>0,addEventListener:()=>{}},()=>0,options.navigator||{});
  await mount({root,page,still});
@@ -79,7 +79,7 @@ test('Kostenlose Fotos sind ohne Wasserzeichen sofort als Originalpaket herunter
  const ctx=await setup(false,0);assert.match(ctx.root.querySelector('.shop-price-row').textContent,/Falas/);assert.equal(ctx.root.querySelector('.shop-watermark'),null);
  assert.match(ctx.root.querySelector('.shop-slide img').getAttribute('src'),/op=image/);assert.equal(ctx.root.querySelector('[data-shop="add"]'),null);
  await ctx.click('[data-shop="free-download"]');assert.equal(ctx.root.querySelector('form'),null);assert.equal([...ctx.docs.keys()].some(k=>k.startsWith('contentCreatorOrders/')),false);
- assert.equal(ctx.calls.filter(c=>c.op==='free-download').length,8);assert.ok(ctx.calls.every(c=>['free-download','free-preview'].includes(c.op)));assert.equal(ctx.zipFiles[0].length,4);assert.equal(new TextDecoder().decode(ctx.zipFiles[0][0].bytes),'abc');
+ assert.equal(ctx.calls.filter(c=>c.op==='free-download').length,4);assert.ok(ctx.calls.every(c=>['free-download','free-preview'].includes(c.op)));assert.equal(ctx.zipFiles[0].length,4);assert.equal(new TextDecoder().decode(ctx.zipFiles[0][0].bytes),'abc');
  await ctx.click('[data-shop="view"][data-index="0"]');assert.ok(ctx.root.querySelector('.shop-viewer [data-shop="free-download"]'));
 });
 test('Kostenloser Download im Still-Modus schreibt keine Statistik, Bestellung oder Meldung',async()=>{
