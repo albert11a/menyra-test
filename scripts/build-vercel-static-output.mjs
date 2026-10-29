@@ -1,4 +1,4 @@
-import { cp, mkdir, rm, stat } from "node:fs/promises";
+import { cp, mkdir, rm, stat, readFile, writeFile } from "node:fs/promises";
 import { dirname, extname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -91,3 +91,24 @@ for (const pathFromRoot of [...deployablePaths, ...optionalRootFiles]) {
 
 console.log(`Prepared Vercel static output in ${relative(repoRoot, distRoot) || "dist"}`);
 console.log(`Copied: ${copied.join(", ")}`);
+
+// Ship startup metadata with the HTML from the same build. The browser can
+// preload the entry graph without waiting for a separate manifest request.
+const manifest = JSON.parse(await readFile(resolve(distRoot, "apps/menyra-social/bundled/manifest.json"), "utf8"));
+const htmlPath = resolve(distRoot, "apps/menyra-social/index.html");
+const html = await readFile(htmlPath, "utf8");
+const marker = "<!-- mnyra-build-manifest -->";
+if (!html.includes(marker)) throw new Error("Missing social build manifest marker");
+const startupManifest = {};
+function includeStartupEntry(key) {
+  if (startupManifest[key]) return;
+  const entry = manifest[key];
+  if (!entry?.file) throw new Error(`Missing startup bundle: ${key}`);
+  startupManifest[key] = { file: entry.file, imports: entry.imports || [] };
+  for (const dependency of entry.imports || []) includeStartupEntry(dependency);
+}
+includeStartupEntry("apps/menyra-social/social-public-bundled-entry.js");
+includeStartupEntry("apps/menyra-social/social-app.js");
+const safeManifest = JSON.stringify(startupManifest).replace(/</g, "\\u003c");
+await writeFile(htmlPath, html.replace(marker,
+  `<script>window.__MENYRA_SOCIAL_INLINE_BUNDLE_MANIFEST__=${safeManifest};</script>`));

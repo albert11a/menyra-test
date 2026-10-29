@@ -360,6 +360,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
   <link rel="preload" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01" as="style">
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
+  <!-- mnyra-build-manifest -->
   <script>
     (() => {
       const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-06-25-profile-info-overlay-bundle-01").trim();
@@ -427,6 +428,10 @@
       };
       const loadBundleManifest = async () => {
         if (shouldForceRawEntry()) return null;
+        const inlineManifest = window.__MENYRA_SOCIAL_INLINE_BUNDLE_MANIFEST__;
+        if (inlineManifest && findManifestEntry(inlineManifest, selectedEntryKey)?.file) {
+          return inlineManifest;
+        }
         const controller = typeof AbortController === "function" ? new AbortController() : null;
         const timeoutId = controller
           ? window.setTimeout(() => controller.abort(), BUNDLE_MANIFEST_TIMEOUT_MS)
@@ -457,6 +462,11 @@
         const entry = findManifestEntry(manifest, selectedEntryKey);
         if (entry?.file) {
           preloadManifestEntry(manifest, entry);
+          // Public entry always imports the app after publishing route context.
+          // Fetch it now, but leave execution order with the public entry.
+          if (isPublicWebsiteStartup) {
+            preloadManifestEntry(manifest, findManifestEntry(manifest, BUNDLE_ENTRY_KEYS.app));
+          }
           return;
         }
         preloadRawEntry();

@@ -1,4 +1,5 @@
 import { normalizeMenuCardStyleCore } from "../menu/menu-card-style-utils.js";
+import { buildProfilePostImage } from "./profile-post-image-utils.js";
 import {
   isSettlingProfileSurfaceStatus,
   resolveVisibleProfileSurface
@@ -226,7 +227,7 @@ function isSpecialMenuItem(item = {}) {
   return String(item?.category || "").trim().toLowerCase() === "special";
 }
 
-function renderProfilePostCardFancy(item, isGrid, allowMenu = true, { includeImageKey = true } = {}) {
+function renderProfilePostCardFancy(item, isGrid, allowMenu = true, { includeImageKey = true, priorityIndex = -1 } = {}) {
   const counts = resolvePostCounts(item);
   const postId = item.id ? String(item.id) : "";
   const postAttr = postId ? `data-open-post="${escapeHtml(postId)}"` : "";
@@ -238,16 +239,24 @@ function renderProfilePostCardFancy(item, isGrid, allowMenu = true, { includeIma
   const aspectClass = isGrid
     ? (isWide ? "aspect-[1.8/1]" : "aspect-[4/5]")
     : "aspect-[4/5]";
-  const imageUrl = getOptimizedImageUrl(item.url, isWide ? "large" : "medium", {
-    stableKey: postId ? `profile-post:${postId}` : "",
-    variantGroup: "post-detail"
+  const image = buildProfilePostImage({
+    rawImage: item.url,
+    isGrid,
+    isWide,
+    priorityIndex,
+    resolveImage: (rawImage, size) => getOptimizedImageUrl(rawImage, size, {
+      stableKey: postId ? `profile-post:${postId}:${size}` : ""
+    })
   });
+  const responsiveAttrs = image.srcset
+    ? `srcset="${escapeHtml(image.srcset)}" sizes="${escapeHtml(image.sizes)}"`
+    : "";
   const width = isWide ? 800 : 400;
   const height = isWide ? 400 : 500;
   return `
     <div ${postAttr} role="button" tabindex="0" class="${colClass} relative ${aspectClass} rounded-[2rem] overflow-hidden bg-white shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] cursor-pointer transition-transform">
       <div class="absolute inset-0 rounded-[2rem] overflow-hidden active:scale-[0.98] transition-transform">
-        <img src="${escapeHtml(imageUrl)}" loading="lazy" decoding="async" width="${width}" height="${height}" ${imgKeyAttr} class="w-full h-full object-cover" />
+        <img ${responsiveAttrs} src="${escapeHtml(image.src)}" loading="${image.loading}" fetchpriority="${image.fetchPriority}" decoding="async" width="${width}" height="${height}" ${imgKeyAttr} class="w-full h-full object-cover" />
         ${item.isVideo ? `<div class="absolute top-3 left-3 text-white drop-shadow-md bg-black/20 backdrop-blur-sm rounded-full p-1">${icon("play", "w-3 h-3 fill-white")}</div>` : ""}
         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-3 pb-4 pointer-events-none">
           <div class="w-full flex items-end justify-center">
@@ -298,7 +307,7 @@ function renderProfilePostsFancy(posts, viewMode, allowMenu = true, { includeIma
       </div>
     `;
   }
-  const cards = posts.map((post) => renderProfilePostCardFancy(post, isGrid, allowMenu, { includeImageKey: includeImageKeys }));
+  const cards = posts.map((post, priorityIndex) => renderProfilePostCardFancy(post, isGrid, allowMenu, { includeImageKey: includeImageKeys, priorityIndex }));
   const slotCount = posts.reduce((total, post) => {
     const isWide = post?.type === "wide" || post?.type === "hero";
     return total + (isWide ? 2 : 1);
