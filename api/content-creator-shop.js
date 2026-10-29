@@ -6,9 +6,10 @@ export async function serveCreatorShop(req,res,repository=shopRepository){
   const url=new URL(req.url||'/','https://www.mnyra.com');
   let input=req.method==='GET'?Object.fromEntries(url.searchParams):req.body;
   if(typeof input==='string')input=JSON.parse(input);if(!input||typeof input!=='object')throw Error('Kërkesa mungon.');
-  if(req.method==='GET'&&!['receipt','download','free-download','free-image'].includes(input.op))throw Error('Kërkesa nuk lejohet.');
+  if(req.method==='GET'&&!['receipt','download','free-download','free-image','image'].includes(input.op))throw Error('Kërkesa nuk lejohet.');
   const result=await shopAction(input,await repository());res.statusCode=200;
-  if(input.op==='free-image'){
+  if(input.op==='free-image'||input.op==='image'){
+   if(input.op==='image')res.setHeader('Cache-Control','private, max-age=300');
    res.setHeader('Content-Type',result.mime);
    for(let offset=0;offset<result.bytes.length;offset+=1024*1024)res.write(result.bytes.subarray(offset,offset+1024*1024));
    res.end();return;

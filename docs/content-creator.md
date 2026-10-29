@@ -1,3 +1,17 @@
+## Ein gemeinsamer Bildabruf
+
+Shop-Karten und Großansicht verwenden native img-URLs über op=image. Keine
+POST-Vorbereitung und keine Firebase-Bildabfragen mehr im Shop-Client; native
+Browser-Priorisierung, Lazy Loading und fünf Minuten privater Browsercache.
+Der Server entscheidet anhand der aktuellen Seite/Pakete über Wasserzeichen.
+Die vorherige zusätzliche Session-Cache-/Worker-Ladeschleife wurde entfernt.
+
+Neue Uploads besitzen fertige kleine Anzeigen. Bei älteren Dateien ohne diese
+Anzeige bleibt ein serverseitiger Rückfall auf die Original-Chunks erforderlich.
+Die Originalspeicherung selbst wurde nicht migriert. Ein garantierter sofortiger
+Erstaufruf ist deshalb nicht belegt. Tests und Build prüfen Funktion, nicht echte
+Mobilfunkzeiten. Keine manuelle iPhone-Prüfung; Social-Bundles unverändert.
+
 ## Feinere Wasserzeichen und kürzerer Aktualisierungspfad
 
 Wasserzeichen: 20 % statt 32 % Deckkraft, normale statt halbfette Schrift,

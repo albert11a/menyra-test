@@ -77,7 +77,7 @@ test('Bildflächen sind in beiden Ansichten fest begrenzt und erlauben kein vert
 
 test('Kostenlose Fotos sind ohne Wasserzeichen sofort als Originalpaket herunterladbar',async()=>{
  const ctx=await setup(false,0);assert.match(ctx.root.querySelector('.shop-price-row').textContent,/Falas/);assert.equal(ctx.root.querySelector('.shop-watermark'),null);
- assert.match(ctx.root.querySelector('.shop-slide img').getAttribute('src'),/^data:image\/jpeg;base64,/);assert.equal(ctx.root.querySelector('[data-shop="add"]'),null);
+ assert.match(ctx.root.querySelector('.shop-slide img').getAttribute('src'),/op=image/);assert.equal(ctx.root.querySelector('[data-shop="add"]'),null);
  await ctx.click('[data-shop="free-download"]');assert.equal(ctx.root.querySelector('form'),null);assert.equal([...ctx.docs.keys()].some(k=>k.startsWith('contentCreatorOrders/')),false);
  assert.equal(ctx.calls.filter(c=>c.op==='free-download').length,8);assert.ok(ctx.calls.every(c=>['free-download','free-preview'].includes(c.op)));assert.equal(ctx.zipFiles[0].length,4);assert.equal(new TextDecoder().decode(ctx.zipFiles[0][0].bytes),'abc');
  await ctx.click('[data-shop="view"][data-index="0"]');assert.ok(ctx.root.querySelector('.shop-viewer [data-shop="free-download"]'));
@@ -86,16 +86,11 @@ test('Kostenloser Download im Still-Modus schreibt keine Statistik, Bestellung o
  const ctx=await setup(true,0);await ctx.click('[data-shop="free-download"]');assert.equal(ctx.zipFiles.length,1);assert.ok(ctx.calls.every(c=>['free-download','free-preview'].includes(c.op)));
 });
 
-test('Langsames Foto blockiert die anderen nicht; Anzeige lädt keine Original-Chunks',async()=>{
- let release;const delayed=new Promise(resolve=>{release=resolve;});
- const ctx=await setup(false,0,{preview:async payload=>{if(payload.file==='one'){await delayed;}return null;}});
- assert.ok(ctx.root.querySelector('[data-photo="two"][src]'));assert.ok(!ctx.root.querySelector('[data-photo="one"][src]'));
- assert.ok(ctx.calls.every(c=>c.op==='free-preview'));release();await ctx.settle();assert.ok(ctx.root.querySelector('[data-photo="one"][src]'));
-});
-test('Fehlerhafte Fotos werden sichtbar gemeldet und können nachgeladen werden',async()=>{
- let fail=true;const ctx=await setup(false,0,{preview:async payload=>payload.file==='one'&&fail?{ok:false,status:503,json:async()=>({error:'Temporary'})}:null});
- assert.match(ctx.root.querySelector('#shop-image-errors').textContent,/1 foto/);assert.ok(ctx.root.querySelector('[data-photo="two"][src]'));
- fail=false;await ctx.click('[data-shop="retry-images"]');assert.ok(ctx.root.querySelector('[data-photo="one"][src]'));assert.equal(ctx.root.querySelector('#shop-image-errors').textContent,'');
+test('Galerie verwendet sofort normale Bild-URLs ohne JavaScript-Bildanfragen',async()=>{
+ const ctx=await setup(false,0);assert.equal(ctx.calls.length,0);assert.equal(ctx.root.querySelectorAll('.shop-slide img').length,4);
+ for(const img of ctx.root.querySelectorAll('.shop-slide img'))assert.match(img.getAttribute('src'),/op=image/);
+ const image=ctx.root.querySelector('.shop-slide img');image.onerror();assert.ok(ctx.root.querySelector('[data-shop="retry-images"]'));
+ await ctx.click('[data-shop="retry-images"]');assert.match(ctx.root.querySelector('.shop-slide img').getAttribute('src'),/retry=/);assert.equal(ctx.calls.length,0);
 });
 test('Fotos speichern übergibt echte Bilddateien beim zweiten Fingertipp an das Teilen-Menü',async()=>{
  const shares=[];const ctx=await setup(false,0,{navigator:{canShare:({files})=>files.every(f=>f.type==='image/jpeg'),share:async payload=>shares.push(payload)}});

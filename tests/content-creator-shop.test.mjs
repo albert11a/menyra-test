@@ -99,3 +99,10 @@ test('HTTP-Endpunkt streamt Gratisbilder ohne Cache und verweigert bezahlte Orig
  const res=response();await serveCreatorShop({method:'GET',url},res,async()=>f.repo);assert.equal(res.statusCode,200);assert.equal(res.headers['Content-Type'],'image/jpeg');assert.equal(res.headers['Cache-Control'],'no-store');assert.equal(Buffer.concat(res.chunks).toString(),'abc');
  f.page.products[0].priceCents=100;const denied=response();await serveCreatorShop({method:'GET',url},denied,async()=>f.repo);assert.equal(denied.statusCode,400);assert.equal(denied.headers['Content-Type'],'application/json');assert.match(Buffer.concat(denied.chunks).toString(),/error/);
 });
+
+test('Ein Bild-Endpunkt entscheidet serverseitig über kostenlose und geschützte Vorschauen',async()=>{
+ const f=fixture();f.docs.set(`contentCreatorPages/${pageId}/previews/one`,{data:'data:image/jpeg;base64,d2F0ZXJtYXJr'});
+ const input={op:'image',pageId,file:'one'};assert.equal((await shopAction(input,f.repo)).bytes.toString(),'watermark');
+ f.page.products[0].priceCents=0;assert.equal((await shopAction(input,f.repo)).bytes.toString(),'abc');
+ f.page.published=false;await assert.rejects(shopAction(input,f.repo));
+});

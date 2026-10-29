@@ -32,6 +32,19 @@ export async function shopRepository(){
 function publicOrder(order,id){return {id,pageId:order.pageId,lines:order.lines,totalCents:order.totalCents,currency:'EUR',status:order.status,approved:order.approved===true,paymentMethod:'cod',createdAt:order.createdAt};}
 export async function shopAction(input,repo){
  const {op,pageId,cartId,orderId}=input;
+ if(op==='image'){
+  if(!validShopId(pageId)||!/^[a-zA-Z0-9_-]{1,64}$/.test(String(input.file||'')))throw Error('Fotoja nuk u gjet.');
+  const page=await repo.read(`contentCreatorPages/${pageId}`);
+  if(!page?.published||page.kind!=='shop'||!page.photoIds?.includes(input.file))throw Error('Fotoja nuk u gjet.');
+  const products=(page.products||[]).filter(p=>p.active!==false&&p.imageIds?.includes(input.file));
+  if(!products.length)throw Error('Fotoja nuk u gjet.');
+  const free=products.find(p=>p.priceCents===0);
+  if(free)return shopAction({...input,op:'free-image',productId:free.id},repo);
+  const preview=await repo.read(`contentCreatorPages/${pageId}/previews/${input.file}`);
+  if(!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(preview?.data||''))throw Error('Fotoja nuk u gjet.');
+  return {bytes:Buffer.from(preview.data.split(',')[1],'base64'),mime:'image/jpeg'};
+ }
+
  if(op==='free-download'||op==='free-image'||op==='free-preview'){
   if(!validShopId(pageId))throw Error('Pakoja nuk është e disponueshme.');
   const page=await repo.read(`contentCreatorPages/${pageId}`),quote=shopQuote(page,[input.productId]),line=quote.lines[0];

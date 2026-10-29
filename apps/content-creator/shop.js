@@ -1,6 +1,4 @@
-import {db} from './firebase.js';
-import {doc,getDoc} from '/shared/vendor/firebase/11.0.0/firebase-firestore.js';
-import {ccEscape as esc,ccImage,CC_PAGES} from '../../shared/content-creator.js';
+import {ccEscape as esc,ccImage} from '../../shared/content-creator.js';
 import {euro,shopQuote,validShopId} from '../../shared/content-creator-shop.js';
 import {zipBlob} from '../../shared/content-creator-zip.js';
 export async function mountCreatorShop({root,page,still=false}){
@@ -10,7 +8,7 @@ export async function mountCreatorShop({root,page,still=false}){
  let cartId=validShopId(saved.cartId)?saved.cartId:crypto.randomUUID().replaceAll('-','');
  let orderId='',panel='',error='',notice='',submitting=false,downloadBusy='';
  let viewer=null,backgroundLock=null,photoSave=null,downloadCancelled=false;
- const prepared=new Map(),imageErrors={},imagePending=new Set();
+ const prepared=new Map(),imageErrors={};
  const images={},positions={},orders=new Map(),customer={name:'',address:'',country:'Kosovë',phone:''};
  const tokens=still?[]:(Array.isArray(saved.orders)?saved.orders:[]).filter(validShopId).slice(-10);
  const fromLink=new URLSearchParams(location.search).get('order');if(!still&&validShopId(fromLink)&&!tokens.includes(fromLink))tokens.push(fromLink);
@@ -20,8 +18,8 @@ export async function mountCreatorShop({root,page,still=false}){
  function quote(){if(!ids.length)return {lines:[],totalCents:0,currency:'EUR'};try{return shopQuote(page,ids);}catch{return {lines:[],totalCents:0,currency:'EUR'};}}
  async function api(op,data={},get=false){
   const payload={op,pageId:page.id,cartId,...data};
-  if(still&&!['free-download','free-image','free-preview'].includes(op))throw Error('Still-Modus: keine echten Bestellungen.');
-  const r=await fetch(`/api/content-creator-shop${get?'?'+new URLSearchParams(payload):''}`,{method:get?'GET':'POST',...(!get?{headers:{'content-type':'application/json'},body:JSON.stringify(payload)}:{}),signal:AbortSignal.timeout(op==='free-preview'?60000:20000)});
+  if(still&&op!=='free-download')throw Error('Still-Modus: keine echten Bestellungen.');
+  const r=await fetch(`/api/content-creator-shop${get?'?'+new URLSearchParams(payload):''}`,{method:get?'GET':'POST',...(!get?{headers:{'content-type':'application/json'},body:JSON.stringify(payload)}:{}),signal:AbortSignal.timeout(20000)});
   const result=await r.json();if(!r.ok||result.error)throw Object.assign(Error(result.error||'Ju lutemi, provoni përsëri.'),{status:r.status});return result;
  }
  function applyQuote(result){for(const line of result.lines||[]){const product=page.products.find(p=>p.id===line.id);if(product){product.priceCents=line.priceCents;product.title=line.title;}}}
@@ -36,7 +34,7 @@ export async function mountCreatorShop({root,page,still=false}){
  }
  function img(id,alt,extra=''){
   const attrs=`data-photo="${esc(id)}" data-alt="${esc(alt)}"`;
-  return images[id]?`<img src="${images[id]}" alt="${esc(alt)}" ${attrs} decoding="async" draggable="false" ${extra}>`:`<span ${attrs} class="shop-image-loading">${imageErrors[id]?'Fotoja nuk u ngarkua':'Duke ngarkuar…'}</span>`;
+  return images[id]?`<img src="${images[id]}" alt="${esc(alt)}" ${attrs} decoding="async" loading="${page.photoIds.indexOf(id)<2?'eager':'lazy'}" fetchpriority="${page.photoIds.indexOf(id)<2?'high':'auto'}" draggable="false" ${extra}>`:`<span ${attrs} class="shop-image-loading">${imageErrors[id]?'Fotoja nuk u ngarkua':'Duke ngarkuar…'}</span>`;
  }
  function imageStatus(){const count=Object.keys(imageErrors).length;return count?`<p role="alert">${count} foto nuk u ngarkuan. <button type="button" data-shop="retry-images">Provo përsëri</button></p>`:'';}
  function paintImage(key){
@@ -45,26 +43,8 @@ export async function mountCreatorShop({root,page,still=false}){
   watchImages();
  }
  function watchImages(){for(const node of root.querySelectorAll('img[data-photo]'))node.onerror=()=>{const key=node.dataset.photo;delete images[key];imageErrors[key]=true;paintImage(key);};}
- async function loadImage(key){
-  if(imagePending.has(key)||images[key])return;imagePending.add(key);delete imageErrors[key];
-  try{
-   const free=(page.products||[]).find(p=>p.active!==false&&p.priceCents===0&&p.imageIds.includes(key));
-   const cacheKey=`mnyra:cc:image:${page.id}:${key}:${free?'free':'paid'}:${JSON.stringify(page.updatedAt||'')}`;
-   let data;
-   try{data=ccImage(sessionStorage.getItem(cacheKey));}catch{}
-   if(data){images[key]=data;return;}
-   for(let attempt=0;attempt<2;attempt++){
-    try{data=free?ccImage((await api('free-preview',{productId:free.id,file:key})).data):ccImage((await getDoc(doc(db,CC_PAGES,page.id,'previews',key))).data()?.data);if(!data)throw Error('Fotoja nuk u ngarkua.');break;}
-    catch(error){if(attempt||error.status===400)throw error;}
-   }
-   images[key]=data;
-   try{sessionStorage.setItem(cacheKey,data);}catch{}
-  }catch{imageErrors[key]=true;}finally{imagePending.delete(key);paintImage(key);}
- }
- async function loadImages(keys){
-  const queue=[...new Set(keys)];
-  await Promise.all(Array.from({length:Math.min(3,queue.length)},async()=>{while(queue.length)await loadImage(queue.shift());}));
- }
+ function imageUrl(key){return `/api/content-creator-shop?${new URLSearchParams({op:'image',pageId:page.id,file:key,v:JSON.stringify(page.updatedAt||'')})}`;}
+ function loadImages(keys){for(const key of keys){delete imageErrors[key];images[key]=`${imageUrl(key)}&retry=${Date.now()}`;paintImage(key);}}
  function offerButton(product){
   const free=product.priceCents===0,disabled=free?downloadBusy:ids.includes(product.id);
   if(free)return `<div class="shop-offer"><button type="button" class="shop-buy" data-shop="free-save" data-product="${product.id}" ${disabled?'disabled':''}>${downloadBusy===product.id?'Duke përgatitur…':'Ruaj fotot'}</button><button type="button" class="shop-zip" data-shop="free-download" data-product="${product.id}" ${disabled?'disabled':''}>Shkarko ZIP</button></div>`;
@@ -266,9 +246,8 @@ export async function mountCreatorShop({root,page,still=false}){
    const url=URL.createObjectURL(zipBlob(files)),link=document.createElement('a');link.href=url;link.download=`MNYRA-${line.title.replace(/[^\p{L}\p{N}_-]/gu,'_')}.zip`;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
   }catch(error){if(photoSave){photoSave.loading=false;photoSave.message=error.message;}throw error;}finally{downloadBusy='';render();}
  }
+ for(const key of page.photoIds)images[key]=imageUrl(key);
  render();remember();
- const first=(page.products||[]).filter(p=>p.active!==false).map(p=>p.imageIds.find(key=>page.photoIds.includes(key))).filter(Boolean);
- void loadImages([...first,...page.photoIds]);
  await Promise.all(tokens.map(id=>refreshOrder(id).catch(()=>{})));
  const poll=globalThis.setInterval(()=>{if(still||document.visibilityState==='hidden')return;for(const order of orders.values())if(!order.approved)refreshOrder(order.id).catch(()=>{});},20000);
  globalThis.addEventListener?.('pagehide',event=>{if(!event.persisted){globalThis.clearInterval(poll);for(const entry of prepared.values())for(const url of entry.urls||[])URL.revokeObjectURL(url);}});
