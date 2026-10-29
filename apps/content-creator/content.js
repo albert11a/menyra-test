@@ -1,3 +1,4 @@
+/* global scrollY, innerHeight, addEventListener */
 import { db } from "/shared/firebase-config.js";
 import { doc, getDoc, setDoc, serverTimestamp } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import { CC_PAGES, CC_VISITS, ccEscape as esc, ccImage } from "../../shared/content-creator.js";
