@@ -30,3 +30,30 @@ test('Unvollständiges Original kann nach Behebung erneut geladen werden',async(
  await assert.rejects(optimizedShopImage(path,f.metadata,f.repo,true),/nicht|plotë/);assert.equal(f.stats().writes,0);
  f.docs.set(key,chunk);assert.match((await optimizedShopImage(path,f.metadata,f.repo,true)).data,/^data:image\/jpeg;base64,/);assert.equal(f.stats().writes,1);
 });
+
+const {creatorDisplayImage}=await import('../server/content-creator-images.js');
+const {shopAction}=await import('../server/content-creator-shop.js');
+test('Prepared mobile derivatives are small, persistent and read without original chunks',async()=>{
+ const bytes=await sharp({create:{width:1600,height:2200,channels:3,background:'#3a5544'}}).jpeg().toBuffer(),path='display-v2/original',f=fixture(bytes,path);
+ const thumb=await creatorDisplayImage(path,f.metadata,f.repo,{free:true,persist:true});
+ assert.equal(thumb.mime,'image/webp');const metadata=await sharp(thumb.bytes).metadata();assert.ok(metadata.width<=360&&metadata.height<=540);assert.ok(thumb.bytes.length<30000);assert.equal(f.stats().writes,1);
+ const saved=f.docs.get(path),before=f.stats().reads;
+ const marked=await creatorDisplayImage(path,saved,f.repo,{free:false,size:'medium'});
+ assert.equal(f.stats().reads,before);assert.equal(f.stats().writes,1);assert.ok(marked.bytes.length<60000);
+ assert.notDeepEqual(marked.bytes,Buffer.from(saved.displayPreview.medium.clean.split(',')[1],'base64'));
+ const again=await creatorDisplayImage(path,saved,f.repo,{free:true,persist:true});assert.deepEqual(again.bytes,thumb.bytes);assert.equal(f.stats().writes,1);
+});
+test('Display preparation cannot expose paid clean images or bypass publication and membership checks',async()=>{
+ const pageId='a'.repeat(32),file='sensitive',path=`contentCreatorPages/${pageId}/originals/${file}`;
+ const bytes=await sharp({create:{width:500,height:700,channels:3,background:'#cbbda8'}}).jpeg().toBuffer(),f=fixture(bytes,path);
+ const page={published:true,kind:'shop',photoIds:[file],products:[{id:'paid',priceCents:190,imageIds:[file]}]},baseRead=f.repo.read;
+ f.repo.read=async(key,fields)=>key===`contentCreatorPages/${pageId}`?page:baseRead(key,fields);
+ const result=await shopAction({op:'prepare-image',pageId,file},f.repo);assert.deepEqual(result,{ok:true});
+ const before=f.stats().reads;
+ const paid=await shopAction({op:'image',pageId,file,display:'2',size:'thumb'},f.repo);
+ assert.equal(f.stats().reads,before+1);assert.equal(paid.bytes.toString('base64'),f.docs.get(path).displayPreview.thumb.marked.split(',')[1]);
+ page.products[0].priceCents=0;
+ const free=await shopAction({op:'image',pageId,file,display:'2'},f.repo);assert.notDeepEqual(paid.bytes,free.bytes);
+ page.products[0].active=false;await assert.rejects(shopAction({op:'prepare-image',pageId,file},f.repo));
+ page.products[0].active=true;page.published=false;await assert.rejects(shopAction({op:'image',pageId,file,display:'2'},f.repo));
+});

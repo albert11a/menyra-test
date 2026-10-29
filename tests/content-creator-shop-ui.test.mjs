@@ -4,12 +4,13 @@ import {readFile} from 'node:fs/promises';
 import {parseHTML} from 'linkedom';
 import {ccEscape,ccImage} from '../shared/content-creator.js';
 import {euro,shopQuote,validShopId} from '../shared/content-creator-shop.js';
+import {creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,renderCreatorCatalog,creatorHowTo} from '../shared/content-creator-view.js';
 import {shopAction} from '../server/content-creator-shop.js';
 const source=(await readFile(new URL('../apps/content-creator/shop.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace('export async function mountCreatorShop','async function mountCreatorShop');
-const factory=new Function('db','doc','getDoc','esc','ccImage','CC_PAGES','euro','shopQuote','validShopId','zipBlob','localStorage','location','fetch','document','globalThis','setTimeout','navigator',`${source}\nreturn mountCreatorShop;`);
+const factory=new Function('db','doc','getDoc','esc','ccImage','CC_PAGES','euro','shopQuote','validShopId','zipBlob','localStorage','location','fetch','document','globalThis','setTimeout','navigator','creatorIcon','creatorImageUrl','creatorOfferButton','creatorPhoto','renderCreatorCatalog','creatorHowTo',`${source}\nreturn mountCreatorShop;`);
 const pageId='a'.repeat(32);
 async function setup(still=false,price=2900,options={}){
- const {document,window}=parseHTML('<html><body><main id="app"></main></body></html>'),root=document.getElementById('app');window.HTMLElement.prototype.scrollIntoView=()=>{};window.HTMLElement.prototype.scrollTo=function(options){this.scrollLeft=options.left;this.dispatchEvent(new window.Event('scroll'));};
+ const {document,window}=parseHTML('<html><head><meta name="theme-color" content="#f7f6f2"></head><body><main id="app"></main></body></html>'),root=document.getElementById('app');window.HTMLElement.prototype.scrollIntoView=()=>{};window.HTMLElement.prototype.scrollTo=function(options){this.scrollLeft=options.left;this.dispatchEvent(new window.Event('scroll'));};
  const storage=new Map(),calls=[],zipFiles=[],page={id:pageId,published:true,kind:'shop',name:'Bistro',photoIds:['one','two','three','four'],products:[{id:'pack',title:'Social Set',priceCents:price,imageIds:['one','two','three','four']}]};
  const docs=new Map([[`contentCreatorPages/${pageId}`,structuredClone(page)]]);
  for(const key of page.photoIds){docs.set(`contentCreatorPages/${pageId}/originals/${key}`,{parts:1,size:3,name:key+'.jpg',mime:'image/jpeg',cleanPreview:{version:1,data:'data:image/jpeg;base64,YWJj'}});docs.set(`contentCreatorPages/${pageId}/originals/${key}/chunks/000`,{data:'YWJj'});}
@@ -18,7 +19,7 @@ async function setup(still=false,price=2900,options={}){
   const payload=requestOptions.method==='POST'?JSON.parse(requestOptions.body):Object.fromEntries(new URL(url,'https://www.mnyra.com').searchParams);calls.push(payload);
   try{if(payload.op==='free-download'&&options.download)await options.download(payload);if(payload.op==='free-preview'&&options.preview){const result=await options.preview(payload);if(result)return result;}const result=await shopAction(payload,repo);return {ok:true,json:async()=>result,arrayBuffer:async()=>result.bytes,headers:{get:key=>key==='Content-Type'?result.mime:key==='X-File-Name'?encodeURIComponent(result.name):null}};}catch(error){return {ok:false,json:async()=>({error:error.message})};}
  };
- const mount=factory({},(...args)=>args.filter(x=>typeof x==='string').join('/'),async()=>({data:()=>({data:'data:image/jpeg;base64,YWJj'})}),ccEscape,ccImage,'contentCreatorPages',euro,shopQuote,validShopId,files=>{zipFiles.push(files);return new Blob(['zip']);}, {getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)}, {origin:'https://www.mnyra.com',search:''},fetch,document,{setInterval:()=>0,addEventListener:()=>{}},()=>0,options.navigator||{});
+ const mount=factory({},(...args)=>args.filter(x=>typeof x==='string').join('/'),async()=>({data:()=>({data:'data:image/jpeg;base64,YWJj'})}),ccEscape,ccImage,'contentCreatorPages',euro,shopQuote,validShopId,files=>{zipFiles.push(files);return new Blob(['zip']);}, {getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)}, {origin:'https://www.mnyra.com',search:''},fetch,document,{setInterval:()=>0,addEventListener:()=>{}},()=>0,options.navigator||{},creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,renderCreatorCatalog,creatorHowTo);
  await mount({root,page,still});
  async function settle(){for(let i=0;i<15;i++)await new Promise(r=>setImmediate(r));}
  async function click(selector){const button=root.querySelector(selector);assert.ok(button,selector);button.dispatchEvent(new window.Event('click',{bubbles:true}));await settle();}
@@ -31,13 +32,13 @@ test('Shop bündelt vier Fotos, zeigt Dots, Warenkorb, COD und gesperrte Bestell
  const ctx=await setup();assert.equal(ctx.root.querySelectorAll('.shop-product').length,1);assert.equal(ctx.root.querySelectorAll('.shop-slide').length,4);assert.equal(ctx.root.querySelectorAll('.shop-dots button').length,4);
  await ctx.click('[data-shop="add"]');assert.equal(ctx.calls[0].op,'cart');assert.deepEqual(ctx.calls[0].ids,['pack']);
  await ctx.checkout();assert.match(ctx.root.querySelector('.shop-payment').textContent,/Pagesa te postieri/);await ctx.submit();
- assert.equal(ctx.root.querySelectorAll('.shop-order').length,1);assert.equal(ctx.root.querySelector('[data-shop="download"]').disabled,true);
+ assert.equal(ctx.root.querySelectorAll('.shop-order').length,1);assert.equal(ctx.root.querySelector('[data-shop="save-photos"]').disabled,true);
  const [path,order]=[...ctx.docs.entries()].find(([key])=>key.startsWith('contentCreatorOrders/'));ctx.docs.set(path,{...order,approved:true,paymentConfirmed:true,status:'released'});
- await ctx.click('[data-shop="refresh"]');assert.equal(ctx.root.querySelector('[data-shop="download"]').disabled,false);
+ await ctx.click('[data-shop="refresh"]');assert.equal(ctx.root.querySelector('[data-shop="save-photos"]').disabled,false);
 });
 test('Still-Modus lässt Checkout durchspielen und sendet keine Warenkorb-/Bestell-Requests',async()=>{
  const ctx=await setup(true);await ctx.click('[data-shop="add"]');await ctx.checkout();await ctx.submit();
- assert.equal(ctx.calls.length,0);assert.equal(ctx.root.querySelectorAll('.shop-order').length,1);assert.equal(ctx.root.querySelector('[data-shop="download"]').disabled,true);
+ assert.equal(ctx.calls.length,0);assert.equal(ctx.root.querySelectorAll('.shop-order').length,1);assert.equal(ctx.root.querySelector('[data-shop="save-photos"]').disabled,true);
 });
 test('Preisänderung erfordert erneute Bestätigung; keine heimlich höhere Bestellung',async()=>{
  const ctx=await setup();await ctx.click('[data-shop="add"]');await ctx.checkout();ctx.docs.get(`contentCreatorPages/${pageId}`).products[0].priceCents=4000;
@@ -75,20 +76,20 @@ test('Bildflächen sind in beiden Ansichten fest begrenzt und erlauben kein vert
  assert.match(css,/\.shop-viewer-slide img\{[^}]*object-fit:contain/);
 });
 
-test('Kostenlose Fotos sind ohne Wasserzeichen sofort als Originalpaket herunterladbar',async()=>{
+test('Gratisfotos lassen sich ohne ZIP, Warenkorb oder Bestellung als Originale speichern',async()=>{
  const ctx=await setup(false,0);assert.match(ctx.root.querySelector('.shop-price-row').textContent,/Falas/);assert.equal(ctx.root.querySelector('.shop-watermark'),null);
  assert.match(ctx.root.querySelector('.shop-slide img').getAttribute('src'),/op=image/);assert.equal(ctx.root.querySelector('[data-shop="add"]'),null);
- await ctx.click('[data-shop="free-download"]');assert.equal(ctx.root.querySelector('form'),null);assert.equal([...ctx.docs.keys()].some(k=>k.startsWith('contentCreatorOrders/')),false);
- assert.equal(ctx.calls.filter(c=>c.op==='free-download').length,4);assert.ok(ctx.calls.every(c=>['free-download','free-preview'].includes(c.op)));assert.equal(ctx.zipFiles[0].length,4);assert.equal(new TextDecoder().decode(ctx.zipFiles[0][0].bytes),'abc');
- await ctx.click('[data-shop="view"][data-index="0"]');assert.ok(ctx.root.querySelector('.shop-viewer [data-shop="free-download"]'));
+ await ctx.click('[data-shop="free-save"]');assert.equal(ctx.root.querySelector('form'),null);assert.equal([...ctx.docs.keys()].some(k=>k.startsWith('contentCreatorOrders/')),false);
+ assert.equal(ctx.calls.filter(c=>c.op==='free-download').length,4);assert.ok(ctx.calls.every(c=>['free-download','free-preview'].includes(c.op)));assert.equal(ctx.root.querySelectorAll('.shop-save-files a[target="_blank"]').length,4);assert.equal(ctx.root.querySelector('[data-shop="free-download"]'),null);
+ await ctx.click('[data-shop="view"][data-index="0"]');assert.ok(ctx.root.querySelector('.shop-viewer [data-shop="free-save"]'));
 });
 test('Kostenloser Download im Still-Modus schreibt keine Statistik, Bestellung oder Meldung',async()=>{
- const ctx=await setup(true,0);await ctx.click('[data-shop="free-download"]');assert.equal(ctx.zipFiles.length,1);assert.ok(ctx.calls.every(c=>['free-download','free-preview'].includes(c.op)));
+ const ctx=await setup(true,0);await ctx.click('[data-shop="free-save"]');assert.equal(ctx.root.querySelectorAll('.shop-save-files a[target="_blank"]').length,4);assert.ok(ctx.calls.every(c=>['free-download','free-preview'].includes(c.op)));
 });
 
 test('Galerie verwendet sofort normale Bild-URLs ohne JavaScript-Bildanfragen',async()=>{
  const ctx=await setup(false,0);assert.equal(ctx.calls.length,0);assert.equal(ctx.root.querySelectorAll('.shop-slide img').length,4);
- for(const img of ctx.root.querySelectorAll('.shop-slide img'))assert.match(img.getAttribute('src'),/op=image/);
+ assert.equal(ctx.root.querySelectorAll('.shop-slide img[src]').length,1);assert.equal(ctx.root.querySelectorAll('.shop-slide img[data-deferred-src]').length,3);
  const image=ctx.root.querySelector('.shop-slide img');image.onerror();assert.ok(ctx.root.querySelector('[data-shop="retry-images"]'));
  await ctx.click('[data-shop="retry-images"]');assert.match(ctx.root.querySelector('.shop-slide img').getAttribute('src'),/retry=/);assert.equal(ctx.calls.length,0);
 });
@@ -97,7 +98,7 @@ test('Fotos speichern übergibt echte Bilddateien beim zweiten Fingertipp an das
  await ctx.click('[data-shop="free-save"]');assert.ok(ctx.root.querySelector('[data-shop="save-ready"]'));assert.equal(shares.length,0);
  assert.equal(ctx.root.querySelectorAll('.shop-save-files a').length,4);const count=ctx.calls.length;
  await ctx.click('[data-shop="save-ready"]');assert.equal(shares.length,1);assert.equal(shares[0].files.length,4);assert.equal(shares[0].files[0].type,'image/jpeg');assert.equal(await shares[0].files[0].text(),'abc');assert.equal(ctx.calls.length,count);
- await ctx.click('[data-shop="save-zip"]');assert.equal(ctx.zipFiles.length,1);assert.equal(ctx.calls.length,count);
+ assert.equal(ctx.root.querySelector('[data-shop="save-zip"]'),null);await ctx.click('[data-shop="save-close"]');await ctx.click('[data-shop="free-save"]');assert.equal(shares.length,2);assert.equal(ctx.calls.length,count);
 });
 test('Ohne Datei-Teilen bleiben einzelne Bildlinks statt ausschließlich ZIP verfügbar',async()=>{
  const ctx=await setup(false,0);await ctx.click('[data-shop="free-save"]');await ctx.click('[data-shop="save-ready"]');assert.equal(ctx.root.querySelectorAll('.shop-save-files a[target="_blank"]').length,4);assert.match(ctx.root.textContent,/Hapni fotot veçmas/);
@@ -106,6 +107,20 @@ test('Ohne Datei-Teilen bleiben einzelne Bildlinks statt ausschließlich ZIP ver
 test('Speichern zeigt sofort den Dialog und Fortschritt bevor große Originale fertig sind',async()=>{
  let release;const slow=new Promise(resolve=>{release=resolve;});
  const ctx=await setup(false,0,{download:async payload=>{if(payload.file==='two')await slow;}});
- await ctx.click('[data-shop="free-save"]');assert.ok(ctx.root.querySelector('.shop-save-overlay'));assert.match(ctx.root.querySelector('.shop-save-overlay').textContent,/1 \/ 4/);assert.equal(ctx.root.querySelector('[data-shop="save-ready"]').disabled,false);
+ await ctx.click('[data-shop="free-save"]');assert.ok(ctx.root.querySelector('.shop-save-overlay'));assert.match(ctx.root.querySelector('.shop-save-overlay').textContent,/3 \/ 4/);assert.equal(ctx.root.querySelector('[data-shop="save-ready"]').disabled,true);
  release();await ctx.settle();assert.equal(ctx.root.querySelectorAll('.shop-save-files a').length,4);
+});
+
+test('Demo has the real mobile header, only a cart icon and three explanation cards',async()=>{
+ const ctx=await setup(true);assert.equal(ctx.root.querySelector('.preview'),null);assert.doesNotMatch(ctx.root.textContent,/Still|Demo|ZIP/);assert.equal(ctx.root.querySelector('.shop-header').querySelectorAll('button').length,1);assert.ok(ctx.root.querySelector('.shop-cart svg'));assert.equal(ctx.root.querySelectorAll('.shop-how-steps article').length,3);
+});
+test('Viewer matches the document and browser theme, then restores the previous theme',async()=>{
+ const ctx=await setup(true);await ctx.click('[data-shop="view"]');assert.equal(ctx.document.documentElement.dataset.ccViewer,'1');assert.equal(ctx.document.querySelector('meta[name="theme-color"]').getAttribute('content'),'#101813');
+ await ctx.click('[data-shop="viewer-close"]');assert.equal(ctx.document.documentElement.dataset.ccViewer,'0');assert.equal(ctx.document.querySelector('meta[name="theme-color"]').getAttribute('content'),'#f7f6f2');
+});
+test('Cart changes retain decoded image nodes instead of resetting the gallery',async()=>{
+ const ctx=await setup(true),image=ctx.root.querySelector('.shop-slide img');await ctx.click('[data-shop="add"]');assert.equal(ctx.root.querySelector('.shop-slide img'),image);await ctx.click('[data-shop="cart"]');assert.equal(ctx.root.querySelector('.shop-slide img'),image);
+});
+test('Moving to a hidden carousel slide starts its image only when needed',async()=>{
+ const ctx=await setup(true);assert.equal(ctx.root.querySelectorAll('.shop-slide img[src]').length,1);await ctx.click('[data-shop="slide"][data-step="1"]');assert.ok(ctx.root.querySelectorAll('.shop-slide img[src]').length>=2);assert.match(ctx.root.querySelector('[data-shop="view"][data-index="1"] img').src,/size=thumb/);
 });

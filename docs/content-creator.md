@@ -1,3 +1,85 @@
+# Mobile Creator-Storefront – 30.10.2026
+
+Aktueller Umfang: konkrete Kundenroute `/content-creator/:id`, nicht die
+Social-Profilseiten. Der Nutzer hat mobile Gestaltung und Korrektur des gesamten
+Anzeige-/Speichern-Pfads ausdruecklich beauftragt; Mainline-Veröffentlichung ist
+im laufenden Auftrag autorisiert.
+
+## Befund
+
+- HTML enthielt nur Ladehinweis. Danach Firebase-SDK, erneuter Seiten-Read,
+  dynamischer Shop-Import und erst dann einzelne Bild-Requests.
+- Bei fehlender sauberer Vorschau wurden Originale aus Firestore-Chunks
+  waehrend eines Bild-GET zusammengesetzt; kein persistenter neuer Display-Satz.
+- Gleiche 80–105-KB-JPEGs fuer kleine Karten und Grossansicht, auch verdeckte
+  Slides wurden geladen. Wiederholtes innerHTML setzte Bildknoten zurueck.
+- Timestamp-Felder fehlten im REST-Decoder, dadurch fehlte die Seitenversion
+  fuer den Browsercache. Demo-Hinweise unterschieden Vorschau und echte Seite.
+
+## Umsetzung
+
+- Server rendert reale Shop-Karten mit sicheren, allowlist-basierten Seitendaten.
+  Erste zwei Cover werden mit maximal 1,2 s Zusatzbudget im HTML eingebettet.
+  Fehlende Cover blockieren den Fallback auf native Bild-URLs nicht.
+- Kleine Styles inline: keine zwei blockierenden CSS-Rundreisen auf 3G.
+  Ein gebuendelter Creator-Einstieg, Firebase nur spaeter fuer Besuchsmessung;
+  Vorschau initialisiert es ueberhaupt nicht. Kein zweiter Seiten-Read.
+- Separate 360/720/1080-Anzeigen, im privaten Original-Metadokument vorbereitet.
+  WebP, JPEG-Fallback fuer Browser-Uploads. Kartenvorschau und Grossansicht
+  bleiben von bytegetreuen Originaldateien getrennt.
+- Neue Uploads erzeugen die Display-Saetze vor Veroeffentlichung. Bestehende
+  Bilder lassen sich mit `node scripts/prepare-content-creator-displays.mjs
+  --page <ID> --origin https://mnyra.com` vorbereiten. Dieser explizite POST
+  schreibt nur deterministische private Bildableitungen fuer aktive,
+  veroeffentlichte Shop-Fotos. Keine Statistik, Bestellung oder Meldung.
+- GET bleibt schreibfrei. Jeder Bildabruf kontrolliert Publikation, aktive
+  Paketzuordnung und aktuellen Preis. Bezahlte Varianten sind wassergezeichnet;
+  saubere Varianten verlassen den Server nur bei einem aktiven Gratispaket.
+- Verdeckt liegende Slides erhalten zunaechst kein src. Bilder werden beim
+  Wechsel/nachbarschaftlich aktiviert. Decodierte Bildknoten bleiben bei
+  Warenkorb- und Statusaenderungen erhalten.
+- Mobiler MNYRA-Header mit nur Warenkorb rechts; lokale Lucide-SVGs, neue Karten
+  und drei Schritte fuer „Si funksionon?“. Kein Demo-/Still-Banner; Checkout
+  im Still-Modus bleibt rein lokal, mit identischer Darstellung.
+- Ruaj fotot ersetzt ZIP in der oeffentlichen Bedienung. Zwei Originaldateien
+  parallel, Fortschritt, Abbruch, Wiederverwendung eines vorbereiteten Pakets,
+  native File-Share-Funktion bei eigenem Fingertipp und einzelne Original-Links
+  als Alternative. Keine Behauptung, direkt ohne OS-Bestaetigung in Fotos zu
+  schreiben. Alte ZIP-/Original-API bleibt fuer Kompatibilitaet bestehen.
+- Kleinere, 12 % deckende wiederholte Wasserzeichen. Bereits eingebrannte
+  alte Vorschauen werden beim Vorbereiten aus privaten sauberen Quellen ersetzt.
+- Viewer: dunkler Hintergrund auf html/body, Safe Areas und dynamischem
+  theme-color. Native Leisten fremder iOS-In-App-Browser sind nicht vollstaendig
+  durch eine Webseite kontrollierbar.
+
+## Validierung und Grenzen
+
+Gezielte Node-/DOM-/Bildtests und Produktionsbuild. Konkretes sauberes Kundenfoto:
+alt 80.441 Bytes JPEG, neuer Thumb 8.934 Bytes WebP, Medium 29.952 Bytes.
+Dies ist ein Dateigroessenvergleich, keine Messung einer echten 3G-Funkzelle.
+Initiales Creator-JS ca. 12 KB gzip ohne Firebase-SDK. Social-Bundles unveraendert.
+Keine Pixel-/CAPI-, Rules-, Auth- oder Zahlungsfreigabe-Aenderungen.
+
+Browser-/Live-Pruefung, Deployment und Vorbereitung der konkreten Seite werden
+im Abschlussbericht bestaetigt. Echtes iOS-/Android-Speichern und native
+Browserleisten muessen auf dem Telefon abgenommen werden. Ein Netz mit hoher
+Latenz kann keine physikalisch sofortige Uebertragung garantieren.
+
+## Manuelle mobile Testliste
+
+1. Kundenlink im privaten Fenster und im Still-Modus direkt oeffnen: echte
+   erste Fotos, gleicher Header, kein Banner. Nachladen und Sliden pruefen.
+2. Paket gross oeffnen, swipen, schliessen: vollstaendige Fotos, dunkler
+   Viewer/Safe-Area/Theme und wiederhergestellte Scrollposition.
+3. Gratispaket speichern: Fortschritt, abbrechen, erneut oeffnen, native
+   Foto-Speicherung und einzelne Originalbilder. Kein ZIP-/Bestellformular.
+4. Bezahltes Paket: dezente Wasserzeichen, Warenkorb, serverseitige Preise;
+   keine Originalfreigabe ohne bestaetigte Zahlung.
+
+---
+
+Historische Schritte (aktueller Umfang oben hat Vorrang):
+
 ## Ein gemeinsamer Bildabruf
 
 Shop-Karten und Großansicht verwenden native img-URLs über op=image. Keine

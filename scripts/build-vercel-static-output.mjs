@@ -245,6 +245,7 @@ const inlinedManifest = await inlineSocialBundleManifest();
 // sind reine Werte/Funktionen), jedes Buendel darf also seine eigene Kopie
 // tragen.
 const EINZEL_EINSTIEGE = [
+  "apps/content-creator/content.js",
   "apps/lifeskin-astra/astra.js",
   "apps/lifeskin-verkauf/terapia.js",
   "apps/lifeskin/lifeskin-app.js",
@@ -267,6 +268,7 @@ for (const einstieg of EINZEL_EINSTIEGE) {
     const ergebnis = await build({
       entryPoints: [quelle],
       bundle: true,
+      ...(einstieg === "apps/content-creator/content.js" ? {external:["./visits.js"]} : {}),
       format: "esm",
       platform: "browser",
       target: "es2020",

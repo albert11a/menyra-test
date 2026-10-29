@@ -11,6 +11,7 @@ export async function serveCreatorShop(req,res,repository=shopRepository){
   if(result.bytes){
    if(input.op==='image')res.setHeader('Cache-Control','private, max-age=300');
    res.setHeader('Content-Type',result.mime);
+   res.setHeader('Content-Disposition','inline');
    if(result.name)res.setHeader('X-File-Name',encodeURIComponent(result.name));
    res.setHeader('Content-Length',String(result.bytes.length));
    for(let offset=0;offset<result.bytes.length;offset+=1024*1024)res.write(result.bytes.subarray(offset,offset+1024*1024));

@@ -1,5 +1,5 @@
 import {createHash} from 'node:crypto';
-import {optimizedShopImage} from './content-creator-images.js';
+import {optimizedShopImage,creatorDisplayImage,displayReadFields} from './content-creator-images.js';
 import {schluessel,zugangHolen,lies,wert,empfaenger,meldungAnlegen,schicken,zustellungAendern} from '../api/lifeskin-meldung.js';
 import {CC_CARTS,CC_ORDERS,validShopId,shopQuote,shopCustomer,purchasedFiles,euro} from '../shared/content-creator-shop.js';
 const BASE='https://firestore.googleapis.com/v1/projects/menyra-c0e68/databases/(default)/documents';
@@ -42,13 +42,21 @@ async function originalFile(path,metadata,repo){
 }
 export async function shopAction(input,repo){
  const {op,pageId,cartId,orderId}=input;
- if(op==='image'){
+ if(op==='image'||op==='prepare-image'){
   if(!validShopId(pageId)||!/^[a-zA-Z0-9_-]{1,64}$/.test(String(input.file||'')))throw Error('Fotoja nuk u gjet.');
   const page=await repo.read(`contentCreatorPages/${pageId}`);
   if(!page?.published||page.kind!=='shop'||!page.photoIds?.includes(input.file))throw Error('Fotoja nuk u gjet.');
   const products=(page.products||[]).filter(p=>p.active!==false&&p.imageIds?.includes(input.file));
   if(!products.length)throw Error('Fotoja nuk u gjet.');
   const free=products.find(p=>p.priceCents===0);
+  if(String(input.display)==='2'||op==='prepare-image'){
+   const path=`contentCreatorPages/${pageId}/originals/${input.file}`;
+   const metadata=await repo.read(path,op==='prepare-image'?undefined:displayReadFields(input.size));
+   if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>30*1024*1024)throw Error('Fotoja nuk u gjet.');
+   const display=await creatorDisplayImage(path,metadata,repo,{size:input.size,free:!!free,persist:op==='prepare-image'});
+   // Explicit cache preparation only; never returns private clean variants.
+   return op==='prepare-image'?{ok:true}:{bytes:display.bytes,mime:display.mime};
+  }
   if(free){
    const path=`contentCreatorPages/${pageId}/originals/${input.file}`,metadata=await repo.read(path);
    if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>30*1024*1024)throw Error('Fotoja nuk u gjet.');

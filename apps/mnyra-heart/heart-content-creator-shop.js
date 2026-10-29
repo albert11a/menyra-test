@@ -4,11 +4,11 @@ import {CC_PAGES} from '../../shared/content-creator.js';
 import {CC_ORDERS} from '../../shared/content-creator-shop.js';
 const PART=400000;
 export function drawShopWatermark(ctx,width,height){
- const text='MNYRA · PREVIEW',fontSize=Math.max(11,width/36);
+ const text='MNYRA · PREVIEW',fontSize=Math.max(7,width/42);
  ctx.save();ctx.translate(width/2,height/2);ctx.rotate(-.35);
  ctx.font=`400 ${fontSize}px Arial`;ctx.textAlign='center';ctx.textBaseline='middle';
- ctx.fillStyle='rgba(255,255,255,.20)';ctx.shadowColor='rgba(0,0,0,.08)';ctx.shadowBlur=.5;
- const stepX=Math.ceil(ctx.measureText(text).width+fontSize*3),stepY=Math.ceil(fontSize*3.5);
+ ctx.fillStyle='rgba(255,255,255,.12)';ctx.shadowColor='rgba(0,0,0,.04)';ctx.shadowBlur=.5;
+ const stepX=Math.ceil(ctx.measureText(text).width+fontSize*3),stepY=Math.ceil(fontSize*4.7);
  const radius=Math.hypot(width,height)/2;
  for(let row=-Math.ceil(radius/stepY);row<=Math.ceil(radius/stepY);row++){
   for(let col=-Math.ceil(radius/stepX)-1;col<=Math.ceil(radius/stepX)+1;col++)ctx.fillText(text,col*stepX+(row%2)*stepX/2,row*stepY);
@@ -25,7 +25,16 @@ export async function saveShopPreview(pageId,imageId,display){
  clean.width=Math.max(1,Math.round(image.width*cleanRatio));clean.height=Math.max(1,Math.round(image.height*cleanRatio));
  clean.getContext('2d').drawImage(image,0,0,clean.width,clean.height);
  let cleanData=clean.toDataURL('image/jpeg',.78);if(cleanData.length>=500000)cleanData=canvas.toDataURL('image/jpeg',.72);
- await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId),{cleanPreview:{version:1,data:cleanData}},{merge:true});
+ // Tiny cards and larger views are ready before the page is published.
+ const displayPreview={version:2};
+ for(const [size,edge,quality] of [['thumb',360,.58],['medium',720,.70],['large',1080,.78]]){
+  const frame=document.createElement('canvas'),scale=Math.min(1,edge/image.width,edge*1.5/image.height);
+  frame.width=Math.max(1,Math.round(image.width*scale));frame.height=Math.max(1,Math.round(image.height*scale));
+  const context=frame.getContext('2d');context.drawImage(image,0,0,frame.width,frame.height);
+  const clean=frame.toDataURL('image/webp',quality);drawShopWatermark(context,frame.width,frame.height);
+  displayPreview[size]={clean,marked:frame.toDataURL('image/webp',quality)};
+ }
+ await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId),{cleanPreview:{version:1,data:cleanData},displayPreview:JSON.stringify(displayPreview).length<400000?displayPreview:null},{merge:true});
  drawShopWatermark(ctx,canvas.width,canvas.height);
  const preview=canvas.toDataURL('image/jpeg',.8);
  await setDoc(doc(db,CC_PAGES,pageId,'previews',imageId),{data:preview});
