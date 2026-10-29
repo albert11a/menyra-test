@@ -22,6 +22,7 @@ function shouldPreloadPublicRouteCache() {
     const first = String(appSegments[0] || "").trim().toLowerCase();
     if (!first) return false;
     const reserved = new Set([
+      "content-creator",
       "feed", "search", "discover", "map", "location", "user", "waiter", "wr", "leads",
       "admin", "ceo", "owner", "staff", "kitchen", "profile", "menu", "orders", "notifications",
       "settings", "upload", "customers", "business-accounts", "businessaccounts", "chat", "social",

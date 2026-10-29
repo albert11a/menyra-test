@@ -8,6 +8,7 @@ import { SHOP_REVIEW_MEDIUM } from "../../shared/lifeskin-shop-bewertungen.js";
 import { skinreactWahlMerken, skinreactEntwuerfe, skinreactSendet } from "./heart-skinreact.js";
 import { autoStand, autoAnzeige, AUTO_BEREICH } from "./heart-skinreact-auto.js";
 import { istSkinreact } from "../../shared/lifeskin-skinreact.js";
+import { createContentCreator } from "./heart-content-creator.js";
 import { wegDerSitzung, zaehltImWeg } from "../../shared/lifeskin-weg.js";
 import { pruefeRaportV3, reportToWire } from "../../shared/lifeskin-raport-v3.js";
 import { shitjaLesen } from "../../shared/lifeskin-shitja.js";
@@ -142,6 +143,7 @@ import {
 const root = document.getElementById("heartApp");
 const store = createHeartStore(createHeartInitialState());
 const actions = store.actions;
+const contentCreator = createContentCreator({ root, store });
 // Die Begleitung nach dem Kauf (heart-lifeskin-ndjekja.js) - nur mit
 // Schalter (?ndjekja=1), solange sie nicht im Verkauf ist.
 const ndjekjaOps = createNdjekjaOperationen({
@@ -4040,6 +4042,7 @@ const VIEW_LOADERS = Object.freeze({
     loadCrmDomains(["leads", "customers"], options)
   ]),
   landing: (options) => refreshLanding(options),
+  contentCreator: () => contentCreator.load(),
   crmLeads: (options) => loadCrmDomain("leads", options),
   crmCustomers: (options) => loadCrmDomain("customers", options),
   crmAds: (options) => loadCrmDomain("ads", options),

@@ -240,6 +240,7 @@
     }
   ],
   "rewrites": [
+    { "source": "/content-creator/:id", "destination": "/apps/content-creator/index.html" },
     {
       "source": "/lifeskinshop/p/:id",
       "destination": "/api/lifeskin-shop?produkt=:id"

@@ -2,6 +2,8 @@ const EXPLICIT_VIEW_ALIASES = Object.freeze({
   // Jede Ansicht muss ihren eigenen Namen wiedererkennen. Sonst schreibt Heart
   // beim Wechseln "#modules" in die Adresse und findet nach dem Neuladen
   // nichts damit anzufangen - man landete wieder auf Start.
+  contentcreator: "contentCreator",
+  "content-creator": "contentCreator",
   dashboard: "dashboard",
   start: "dashboard",
   connections: "connections",

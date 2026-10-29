@@ -4,6 +4,7 @@ const CRM_ADMIN_DOMAIN_KEYS = Object.freeze(["leads", "customers", "ads", "staff
 export const HEART_NAV_ITEMS = Object.freeze([
   { key: "dashboard", label: "Start" },
   { key: "landing", label: "Landing" },
+  { key: "contentCreator", label: "Content Creator" },
   { key: "crmLeads", label: "Leads" },
   { key: "crmCustomers", label: "Kunden" },
   { key: "crmAds", label: "Ads" },
@@ -27,6 +28,7 @@ const STATE_SLICE_KEYS = Object.freeze([
   "mnyraGo",
   "analytics",
   "landing",
+  "contentCreator",
   "destinations",
   "lifeskin",
   "crmAdmin"
@@ -268,6 +270,7 @@ export function createHeartInitialState() {
       // sobald der echte Stand da ist. Daran haengt, ob noch nachgeladen wird.
       loadedFrom: ""
     },
+    contentCreator: { status: "idle", pages: [], visits: [], filter: "all", error: "", editor: false },
     destinations: createHeartDestinationsInitialState(),
     lifeskin: createHeartLifeskinInitialState(),
     crmAdmin: {
@@ -899,6 +902,10 @@ export function createHeartStore(initialState = createHeartInitialState()) {
   // Eine Aktion statt drei, weil es dieselbe Scheibe und dieselbe Regel ist -
   // ergaenzen, nie ersetzen. Genau daran ist der Bereich schon einmal
   // gescheitert.
+  function patchContentCreator(fields = {}) {
+    patch(draft => { draft.contentCreator = { ...draft.contentCreator, ...fields }; });
+  }
+
   function patchLifeskin(felder = {}) {
     patch((draft) => {
       const slice = ensureLifeskinSlice(draft);
@@ -1176,6 +1183,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setLifeskinData,
       setLifeskinError,
       patchLifeskin,
+      patchContentCreator,
       patchDestinationsPublished,
       openDestinationEditor,
       patchDestinationEditor,

@@ -934,6 +934,37 @@ service cloud.firestore {
     // und sieht es auch nicht. Es steht bewusst nicht im Restaurant-Dokument:
     // Dort darf der Wirt schreiben, und was hier steht, geht nur das
     // CEO-Konto an.
+    // Content Creator: public presentations; internal workflow writes stay CEO-only.
+    match /contentCreatorPages/{pageId} {
+      allow get: if isCeoActor() || resource.data.published == true;
+      allow list, create, update, delete: if isCeoActor();
+      match /images/{imageId} {
+        allow get: if isCeoActor() || get(/databases/$(database)/documents/contentCreatorPages/$(pageId)).data.published == true;
+        allow list, create, update, delete: if isCeoActor();
+      }
+    }
+    match /contentCreatorVisits/{visitId} {
+      function validVisit() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['pageId', 'opened', 'scrolled', 'answer', 'createdAt', 'updatedAt'])
+          && d.keys().hasAll(['pageId', 'opened', 'scrolled', 'answer', 'createdAt', 'updatedAt'])
+          && d.pageId is string && d.pageId.matches('^[a-f0-9]{32}$')
+          && visitId.matches('^' + d.pageId + '_[a-f0-9]{32}$')
+          && get(/databases/$(database)/documents/contentCreatorPages/$(d.pageId)).data.published == true
+          && d.opened == true && d.scrolled is bool && d.answer in ['', 'yes', 'no']
+          && d.updatedAt == request.time;
+      }
+      // An unguessable 128-bit visitor key supports reloads, without exposing a list.
+      allow get: if isCeoActor() || visitId.matches('^[a-f0-9]{32}_[a-f0-9]{32}$');
+      allow list, delete: if isCeoActor();
+      allow create: if validVisit() && request.resource.data.createdAt == request.time;
+      allow update: if validVisit()
+        && request.resource.data.pageId == resource.data.pageId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && (!resource.data.scrolled || request.resource.data.scrolled)
+        && (resource.data.answer == '' || request.resource.data.answer == resource.data.answer);
+    }
+
     match /landingArchive/{documentId} {
       allow read, write: if isCeoActor();
     }

@@ -104,6 +104,7 @@ test("Laeufe, Meldungen und Bereiche sind aus der Navigation verschwunden", () =
   assert.deepEqual(keys, [
     "dashboard",
     "landing",
+    "contentCreator",
     "crmLeads",
     "crmCustomers",
     "crmAds",

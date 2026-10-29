@@ -25,6 +25,7 @@ import {
   renderHeartAnalyticsView
 } from "./heart-analytics-render.js";
 import { renderHeartLandingView } from "./heart-landing-render.js";
+import { renderContentCreator } from "./heart-content-creator-render.js";
 import { renderLifeskin, renderZeitwahl, zeitraumName, renderUhrwahl, antwortzeitName } from "./heart-lifeskin-render.js";
 import {
   renderHeartDestinationsView
@@ -264,6 +265,7 @@ function renderViewBody(state, runtime = {}) {
 function renderViewBodyInner(state, runtime = {}) {
   const activeView = state.shell.activeView;
 
+  if (activeView === "contentCreator") return renderContentCreator(state.contentCreator);
   if (activeView === "analytics") {
     return renderHeartAnalyticsView(state.analytics || {});
   }
@@ -388,6 +390,7 @@ function renderDrawerNav(state) {
   const hier = inMnyra ? eintrag.get(aktiv)?.label || "" : "";
   const unter = NAV_MNYRA.map((key) => renderNavLink(eintrag.get(key), state, { unter: true })).join("");
   return `
+    ${renderNavLink(eintrag.get("contentCreator"), state)}
     ${renderNavLink(eintrag.get("lifeskin"), state)}
     ${renderNavLink({ ...LIFESKINSHOP_NAV, label: "lifeskinshop" }, state)}
     <div class="heart-nav-gruppe${offen ? " heart-nav-gruppe--offen" : ""}">
@@ -537,7 +540,7 @@ function renderShell(state, runtime = {}) {
               : activeView === "lifeskin" ? (MARKEN[lifeskinWeg(state)] ? lifeskinWeg(state) : "lifeskin") : "heart")}
           </div>
           <div class="heart-topbar__right">
-            ${isLeadsView ? `
+            ${activeView === "contentCreator" ? `<button class="heart-icon-button" data-cc-action="new" aria-label="Neue Lokal-Seite erstellen">${renderHeartIcon("plus")}</button>` : isLeadsView ? `
               <button id="leadSettingsBtn" class="heart-icon-button" data-action="open-crm-editor" data-crm-domain="leads" data-crm-mode="settings" aria-label="Lead Settings">${renderHeartIcon("settings")}</button>
               <button id="newLeadBtn" class="heart-icon-button heart-icon-button--lead-create" data-action="open-crm-editor" data-crm-domain="leads" data-crm-mode="create" aria-label="Lead erstellen">${renderHeartIcon("plus")}</button>
             ` : `
