@@ -124,3 +124,10 @@ test('Cart changes retain decoded image nodes instead of resetting the gallery',
 test('Moving to a hidden carousel slide starts its image only when needed',async()=>{
  const ctx=await setup(true);assert.equal(ctx.root.querySelectorAll('.shop-slide img[src]').length,1);await ctx.click('[data-shop="slide"][data-step="1"]');assert.ok(ctx.root.querySelectorAll('.shop-slide img[src]').length>=2);assert.match(ctx.root.querySelector('[data-shop="view"][data-index="1"] img').src,/size=thumb/);
 });
+
+
+test('Viewer displays the already loaded thumbnail while the larger image arrives',async()=>{
+ const ctx=await setup(true),src=ctx.root.querySelector('.shop-slide img').getAttribute('src');await ctx.click('[data-shop="view"]');
+ const slide=ctx.root.querySelector('.shop-viewer-slide');assert.equal(slide.querySelector('.shop-viewer-preview').getAttribute('src'),src);assert.match(slide.querySelector('img[data-size="medium"]').getAttribute('src'),/size=medium/);
+ slide.querySelector('img[data-size="medium"]').onerror();assert.equal(slide.querySelector('img[data-size="medium"]').style.opacity,'0');assert.ok(slide.querySelector('.shop-viewer-preview'));
+});

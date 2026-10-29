@@ -45,7 +45,7 @@ export async function mountCreatorShop({root,page,still=false}){
   const status=root.querySelector('#shop-image-errors');if(status)status.innerHTML=imageStatus();
   watchImages();
  }
- function watchImages(){for(const node of root.querySelectorAll('img[data-photo]'))node.onerror=()=>{imageErrors[node.dataset.photo]=true;paintImage(node.dataset.photo);};}
+ function watchImages(){for(const node of root.querySelectorAll('img[data-photo]'))node.onerror=()=>{if(node.dataset.size==='medium'){node.style.opacity='0';return;}imageErrors[node.dataset.photo]=true;paintImage(node.dataset.photo);};}
  function imageUrl(key,size='thumb'){return creatorImageUrl(page,key,size);}
  function loadImages(keys){for(const key of keys){delete imageErrors[key];images[key]=`${imageUrl(key)}&retry=${Date.now()}`;paintImage(key);}}
  function activateImages(track,index){
@@ -79,7 +79,7 @@ export async function mountCreatorShop({root,page,still=false}){
   const product=page.products.find(p=>p.id===viewer.product),files=packFiles(viewer.product);
   return `<section class="shop-viewer" role="dialog" aria-modal="true" aria-labelledby="shop-viewer-title">
    <header class="shop-viewer-header"><div><h2 id="shop-viewer-title">${esc(product.title)}</h2><span data-view-count aria-live="polite">${viewer.index+1} / ${files.length}</span></div><button type="button" data-shop="viewer-close" id="shop-viewer-close" aria-label="Mbyll pamjen e madhe">${creatorIcon('x')}</button></header>
-   <div class="shop-viewer-stage"><div class="shop-viewer-track" data-view-track>${files.map((id,i)=>`<div class="shop-viewer-slide">${img(id,`${product.title} · ${i+1}`,{size:'medium',active:Math.abs(i-viewer.index)<=1,eager:i===viewer.index})}</div>`).join('')}</div>
+   <div class="shop-viewer-stage"><div class="shop-viewer-track" data-view-track>${files.map((id,i)=>`<div class="shop-viewer-slide">${img(id,'',{size:'thumb',active:Math.abs(i-viewer.index)<=1,eager:i===viewer.index}).replace('<img ','<img class="shop-viewer-preview" aria-hidden="true" ')}${img(id,`${product.title} · ${i+1}`,{size:'medium',active:Math.abs(i-viewer.index)<=1,eager:i===viewer.index})}</div>`).join('')}</div>
    ${files.length>1?`<button type="button" class="shop-viewer-arrow shop-viewer-prev" data-shop="viewer-step" data-step="-1" aria-label="Fotoja paraprake">${creatorIcon('chevron-left')}</button><button type="button" class="shop-viewer-arrow shop-viewer-next" data-shop="viewer-step" data-step="1" aria-label="Fotoja tjetër">${creatorIcon('chevron-right')}</button>`:''}</div>
    <footer class="shop-viewer-footer"><div class="shop-viewer-dots">${files.map((_,i)=>`<button type="button" data-shop="viewer-dot" data-index="${i}" aria-label="Foto ${i+1}" aria-pressed="${viewer.index===i}"></button>`).join('')}</div><div class="shop-viewer-buy"><strong>${product.priceCents===0?'Falas':euro(product.priceCents)}</strong>${offerButton(product)}</div></footer>
   </section>`;

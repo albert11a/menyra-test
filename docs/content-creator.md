@@ -60,8 +60,17 @@ Dies ist ein Dateigroessenvergleich, keine Messung einer echten 3G-Funkzelle.
 Initiales Creator-JS ca. 12 KB gzip ohne Firebase-SDK. Social-Bundles unveraendert.
 Keine Pixel-/CAPI-, Rules-, Auth- oder Zahlungsfreigabe-Aenderungen.
 
-Browser-/Live-Pruefung, Deployment und Vorbereitung der konkreten Seite werden
-im Abschlussbericht bestaetigt. Echtes iOS-/Android-Speichern und native
+69 gezielte Tests inklusive Pixel-Sperre bestanden, Produktionsbuild erfolgreich.
+Deployment `6cf887e6` auf mnyra.com READY. Alle zehn Fotos von
+`2f1cbd75727746748cdd8dd8f627547c` per expliziter Vorbereitung erfolgreich
+persistiert. Live-HTTP: zwei eingebettete Cover, drei serverseitige Karten,
+sieben deferred Slides, null externe Stylesheets und kein Demo-Banner.
+Live-Thumbs: 8.934 / 12.324 / 15.338 Bytes statt 80.441 / 82.268 / 105.325.
+Browser-Sichtpruefung: reale Galerie, dezente bezahlte Vorschau, dunkler Viewer,
+Speicherdialog mit drei fertigen Originaldateien. Keine echte Bestellung und
+keine native Datei-Freigabe an ein fremdes Ziel ausgefuehrt.
+Zusaetzlich: Avatar im HTML auf 96 Pixel reduziert; Grossansicht behaelt die
+bereits geladene kleine Vorschau bis die groessere Datei fertig ist. Echtes iOS-/Android-Speichern und native
 Browserleisten muessen auf dem Telefon abgenommen werden. Ein Netz mit hoher
 Latenz kann keine physikalisch sofortige Uebertragung garantieren.
 

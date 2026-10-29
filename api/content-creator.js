@@ -37,6 +37,13 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
     const page=await read(`contentCreatorPages/${id}`);
     if(!page?.published){res.statusCode=404;res.setHeader('Cache-Control','no-store');res.end();return;}
     const safePage=publicCreatorPage(page,id);
+    if(!imageMode&&!assetMode&&safePage.avatar){
+      try{
+        const {default:sharp}=await import('sharp');
+        const bytes=await sharp(Buffer.from(safePage.avatar.split(',')[1],'base64'),{limitInputPixels:50000000}).rotate().resize({width:96,height:96,fit:'inside',withoutEnlargement:true}).jpeg({quality:64}).toBuffer();
+        safePage.avatar=`data:image/jpeg;base64,${bytes.toString('base64')}`;
+      }catch{}
+    }
     if(String(req.query?.format || url.searchParams.get('format') || '')==='json'){
       res.statusCode=200;res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');res.end(req.method==='HEAD'?undefined:JSON.stringify(safePage));return;
     }
