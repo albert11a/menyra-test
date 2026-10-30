@@ -10,7 +10,7 @@ export async function mountCreatorShop({root,page,still=false}){
  let viewer=null,backgroundLock=null,sheetLock=null,photoSave=null,downloadCancelled=false,fileAbort=null;
  const originalTheme=document.querySelector('meta[name="theme-color"]')?.getAttribute('content')||'#f7f6f2';
  const prepared=new Map(),imageErrors={},largeImages=new Map();
- let neighbourObserver=null;
+ let neighbourObserver=null,heroIndex=0,heroPaused=!!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
  const images={},positions={},orders=new Map(),customer={name:'',address:'',country:'Kosovë',phone:''};
  const tokens=still?[]:(Array.isArray(saved.orders)?saved.orders:[]).filter(validShopId).slice(-10);
  const fromLink=new URLSearchParams(location.search).get('order');if(!still&&validShopId(fromLink)&&!tokens.includes(fromLink))tokens.push(fromLink);
@@ -75,7 +75,22 @@ export async function mountCreatorShop({root,page,still=false}){
  function imageUrl(key,size='thumb'){return creatorImageUrl(page,key,size);}
  function loadImages(keys){for(const key of keys){delete imageErrors[key];images[key]=`${imageUrl(key)}&retry=${Date.now()}`;paintImage(key);}}
  function activateImages(track,index){
-  for(const [i,slide] of [...track.children].entries())if(Math.abs(i-index)<=1)for(const img of slide.querySelectorAll('img[data-deferred-src]')){img.loading='eager';img.fetchPriority=i===index?'high':'low';img.src=img.dataset.deferredSrc;img.removeAttribute('data-deferred-src');img.decode?.().catch(()=>{});}
+  for(const [i,slide] of [...track.children].entries())if(Math.abs(i-index)<=1)for(const img of slide.querySelectorAll('img[data-deferred-src]')){img.loading='eager';img.fetchPriority=i===index?'high':'low';img.src=img.dataset.size==='thumb'&&images[img.dataset.photo]?.startsWith('data:image/')?images[img.dataset.photo]:img.dataset.deferredSrc;img.removeAttribute('data-deferred-src');img.decode?.().catch(()=>{});}
+ }
+ function updateHeroControls(){
+  for(const dot of root.querySelectorAll('.shop-hero-dots [data-index]'))dot.setAttribute('aria-pressed',String(Number(dot.dataset.index)===heroIndex));
+  const toggle=root.querySelector('[data-shop="hero-toggle"]');if(toggle){toggle.setAttribute('aria-label',heroPaused?'Fillo nderrimin automatik':'Ndalo nderrimin automatik');toggle.innerHTML=creatorIcon(heroPaused?'play':'pause');}
+ }
+ function moveHero(index){
+  const track=root.querySelector('[data-hero-track]');if(!track)return;
+  heroIndex=(index+track.children.length)%track.children.length;activateImages(track,heroIndex);updateHeroControls();
+  track.scrollTo({left:heroIndex*track.clientWidth,behavior:globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+ }
+ function bindHero(){
+  const track=root.querySelector('[data-hero-track]');if(!track)return;
+  activateImages(track,heroIndex);updateHeroControls();if(track.dataset.bound)return;track.dataset.bound='1';
+  track.addEventListener('pointerdown',()=>{heroPaused=true;updateHeroControls();},{passive:true});
+  track.addEventListener('scroll',()=>{heroIndex=Math.round(track.scrollLeft/(track.clientWidth||1));activateImages(track,heroIndex);updateHeroControls();},{passive:true});
  }
  function offerButton(product){return creatorOfferButton(product,{busy:downloadBusy,selected:product.priceCents!==0&&ids.includes(product.id)});}
  function discardSave(){
@@ -172,10 +187,11 @@ export async function mountCreatorShop({root,page,still=false}){
   const cart=quote();
   // Retain decoded image nodes across cart/status changes; do not restart
   // image requests or show a blank frame every time the UI updates.
+  const heroGallery=root.querySelector('.shop-hero-gallery');
   const carousels=new Map([...root.querySelectorAll('[data-track]')].map(track=>[track.dataset.track,track.parentElement]));
   const retained=new Map();
   for(const image of root.querySelectorAll('img[data-photo]')){
-   if(image.closest('[data-track]'))continue;
+   if(image.closest('[data-track],[data-hero-track]'))continue;
    const key=`${image.dataset.photo}:${image.dataset.size||'thumb'}:${image.getAttribute('src')||image.dataset.deferredSrc||''}`;
    if(!retained.has(key))retained.set(key,[]);retained.get(key).push(image);
   }
@@ -190,12 +206,13 @@ export async function mountCreatorShop({root,page,still=false}){
     ${panel==='cart'?`<p class="shop-fine">${cart.totalCents===0?'Falas · Shkarkim pas miratimit':'Pagesa te postieri · Shkarkim pas miratimit'}</p><button class="shop-buy" data-shop="checkout" ${!cart.lines.length?'disabled':''}>Vazhdo te porosia →</button>`:`<form id="shop-checkout"><label>Emri dhe mbiemri<input id="shop-name" name="name" value="${esc(customer.name)}" autocomplete="name" required minlength="3" maxlength="120"></label><label>Adresa e plotë<textarea id="shop-address" name="address" autocomplete="street-address" required minlength="5" maxlength="300">${esc(customer.address)}</textarea></label><label>Shteti<select id="shop-country" name="country">${['Kosovë','Shqipëri','Austri','Gjermani','Zvicër','Maqedoni e Veriut','Mal i Zi','Itali','Francë','Serbi','Slloveni','Kroaci'].map(country=>`<option ${customer.country===country?'selected':''}>${country}</option>`).join('')}</select></label><label>Numri i telefonit<input id="shop-phone" type="tel" name="phone" value="${esc(customer.phone)}" autocomplete="tel" required minlength="6" maxlength="40"></label><div class="shop-payment">${cart.totalCents===0?'<strong>Falas · 0 €</strong><p>Nuk kërkohet pagesë. Shkarkimet hapen pas miratimit nga MNYRA.</p>':'<strong>Pagesa te postieri</strong><p>Pagesë në dorë (Cash on Delivery). Shkarkimet hapen pasi MNYRA të konfirmojë pagesën.</p>'}</div>${error?`<p role="alert" class="shop-inline-error">${esc(error)}</p>`:''}<button class="shop-buy" type="submit" ${submitting?'disabled':''}>${submitting?'Duke dërguar…':`Porosit · ${euro(cart.totalCents)}`}</button></form>`}
    </section></div>`:''}${viewerMarkup()}${photoSaveMarkup()}</div>`;
   for(const image of root.querySelectorAll('img[data-photo]')){
-   if(image.closest('[data-track]'))continue;
+   if(image.closest('[data-track],[data-hero-track]'))continue;
    const key=`${image.dataset.photo}:${image.dataset.size||'thumb'}:${image.getAttribute('src')||image.dataset.deferredSrc||''}`;
    const previous=retained.get(key)?.shift();if(previous)image.replaceWith(previous);
   }
   for(const track of root.querySelectorAll('[data-track]')){const old=carousels.get(track.dataset.track);if(old)track.parentElement.replaceWith(old);}
-  syncBrowserChrome();watchImages();
+  if(heroGallery)root.querySelector('.shop-hero-gallery')?.replaceWith(heroGallery);
+  bindHero();syncBrowserChrome();watchImages();
   for(const track of root.querySelectorAll('[data-track]')){
    track.scrollLeft=(positions[track.dataset.track]||0)*track.clientWidth;
    if(track.dataset.bound)continue;track.dataset.bound='1';
@@ -218,6 +235,8 @@ export async function mountCreatorShop({root,page,still=false}){
   const button=event.target.closest('[data-shop]');if(!button||button.disabled)return;
   const action=button.dataset.shop,product=button.dataset.product;
   try{
+   if(action==='hero-dot'){heroPaused=true;moveHero(Number(button.dataset.index));return;}
+   if(action==='hero-toggle'){heroPaused=!heroPaused;updateHeroControls();return;}
    if(action==='retry-images'){void loadImages(Object.keys(imageErrors));return;}
    if(action==='save-close'){downloadCancelled=true;fileAbort?.abort();discardSave();render();return;}
    if(action==='save-ready'){
@@ -328,7 +347,8 @@ export async function mountCreatorShop({root,page,still=false}){
  for(const key of page.photoIds)images[key] ||= imageUrl(key);
  render();remember();
  await Promise.all(tokens.map(id=>refreshOrder(id).catch(()=>{})));
+ const heroTimer=globalThis.setInterval(()=>{const track=root.querySelector('[data-hero-track]');if(!heroPaused&&!viewer&&!panel&&!photoSave&&document.visibilityState!=='hidden'&&track?.children.length>1)moveHero(heroIndex+1);},5500);
  const poll=globalThis.setInterval(()=>{if(still||document.visibilityState==='hidden')return;for(const order of orders.values())if(!order.approved)refreshOrder(order.id).catch(()=>{});},20000);
- globalThis.addEventListener?.('pagehide',event=>{if(!event.persisted){neighbourObserver?.disconnect();globalThis.clearInterval(poll);fileAbort?.abort();discardSave();for(const entry of prepared.values())for(const url of entry.urls||[])URL.revokeObjectURL(url);}});
+ globalThis.addEventListener?.('pagehide',event=>{if(!event.persisted){neighbourObserver?.disconnect();globalThis.clearInterval(poll);globalThis.clearInterval(heroTimer);fileAbort?.abort();discardSave();for(const entry of prepared.values())for(const url of entry.urls||[])URL.revokeObjectURL(url);}});
 }
 

@@ -352,3 +352,18 @@ Scroll-Position, Bilder und inert-Zustand nach Pfeil -> Viewer -> Schliessen;
 sowie dedupliziertes Vorladen beider Nachbaransichten. content-visibility wurde
 entfernt, um Safari-Paint-Skipping beim Scrollen/Fixieren zu vermeiden.
 Echte iOS-/Android-Geraete und schwaches 3G bleiben manuell zu pruefen.
+
+## Vorstellung und Heart-Start – 30.10.2026
+
+Scope: abgerundeter Hero mit aus vorhandenen erlaubten Fotos waehlbaren Slides,
+Swipe, automatischem Wechsel und Pause; einfache Kosovo-Albanisch-Texte pa ë,
+Leistungsueberblick. Kundenanzahl 8.700 und Sitz Austria sind Inhaberangaben;
+keine unbelegte europaeische Marktfuehrerschaft. Recherche-Fakt: Google/Ipsos,
+The Relevance Factor, 2024 (79 %: Vertrauen nach Recherche), Quellenlink im Text.
+Heart startet ohne explizite Route mit Content Creator, dessen Seitentitel entfällt.
+
+Validierung: 104 Tests (Creator, Heart-Routen/Store, Pixel-Sperre) bestanden;
+npm run build erfolgreich, keine getrackten Bundle-Dateien geaendert.
+Tests decken Autoplay/Pause/Swipe/Dots, reduzierte Bewegung, Gallery-DOM-Erhalt,
+Hero-Auswahl speichern und Ausschluss inaktiver Bilder ab. Kein Test mit echten
+Mobilgeraeten; Browser- und Produktionspruefung folgen nach Git-Deployment.

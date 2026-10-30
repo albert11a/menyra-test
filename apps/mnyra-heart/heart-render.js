@@ -104,7 +104,7 @@ const CRM_VIEW_DOMAIN_BY_ACTIVE_VIEW = Object.freeze({
 // erste Zahl kam - und wer die Analysen aufmacht, weiss, dass er in den
 // Analysen ist.
 const VIEWS_WITHOUT_PAGE_TITLE = new Set([
-  "dashboard", "crmLeads", "destinations", "landing", "lifeskin"
+  "dashboard", "crmLeads", "destinations", "landing", "lifeskin", "contentCreator"
 ]);
 
 // DER KOPF SAGT, WO MAN IST.

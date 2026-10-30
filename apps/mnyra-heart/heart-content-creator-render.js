@@ -45,6 +45,7 @@ function renderDetail(page,state) {
   <p class="cc-muted">Eindeutige Browserbesuche · eigene Tests mit Still-Link zählen nicht.</p>
   <div class="cc-row-actions"><button data-cc-action="preview" data-id="${esc(page.id)}">Vorschau öffnen</button><button data-cc-action="still" data-id="${esc(page.id)}">Still-Link kopieren</button><button data-cc-action="copy" data-id="${esc(page.id)}">Kundenlink kopieren</button></div>
   ${shopAdmin(page,state)}
+  ${page.kind==='shop'?`<details class="cc-hero-editor"><summary>Bilder unter dem Header</summary><p class="cc-muted">Bis zu 6 Bilder auswählen. Ohne Auswahl erscheint das erste Foto jeder aktiven Pako. Wischen und automatischer Wechsel sind inklusive.</p><div class="cc-hero-options">${(page.photoIds||[]).filter(id=>(page.products||[]).some(p=>p.active!==false&&p.imageIds?.includes(id))).map((key,i)=>`<label><input type="checkbox" data-cc-hero="${esc(page.id)}" value="${esc(key)}" ${(page.heroPhotoIds||[]).includes(key)?'checked':''} ${state.mediaBusy?'disabled':''}>Foto ${i+1}${ccImage(state.images?.[key]?.data)?`<img src="${ccImage(state.images[key].data)}" alt="">`:''}</label>`).join('')}</div></details>`:''}
   <label class="cc-add" ${page.kind==='shop'?'hidden':''}>Fotos hinzufügen<input type="file" multiple accept="image/jpeg,image/png,image/webp" data-cc-add="${esc(page.id)}" ${state.mediaBusy?'disabled':''}></label>
   ${state.mediaError ? `<p class="cc-error" role="alert">${esc(state.mediaError)}</p>` : ""}
   ${state.mediaBusy ? '<p role="status">Bilder werden gespeichert …</p>' : ""}

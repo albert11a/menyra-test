@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { ccEscape as esc, ccImage } from '../shared/content-creator.js';
-import {publicCreatorPage,renderCreatorCatalog,creatorPhoto,creatorHowTo} from '../shared/content-creator-view.js';
+import {publicCreatorPage,renderCreatorCatalog,creatorPhoto,creatorHowTo,creatorHeroFiles} from '../shared/content-creator-view.js';
 const BASE='https://firestore.googleapis.com/v1/projects/menyra-c0e68/databases/(default)/documents';
 function decode(v){if(!v)return null;if('stringValue'in v)return v.stringValue;if('booleanValue'in v)return v.booleanValue;if('integerValue'in v)return Number(v.integerValue);if('doubleValue'in v)return Number(v.doubleValue);if('timestampValue'in v)return v.timestampValue;if(v.mapValue)return Object.fromEntries(Object.entries(v.mapValue.fields||{}).map(([k,x])=>[k,decode(x)]));if(v.arrayValue)return (v.arrayValue.values||[]).map(decode);return null;}
 let creatorStyles;
@@ -19,8 +19,7 @@ async function readCreatorCovers(safePage,page){
   const {shopRepository,shopAction}=await import('../server/content-creator-shop.js');
   const repo=await shopRepository(),pagePath=`contentCreatorPages/${safePage.id}`,covers={};
   const seeded={...repo,read:(path,fields)=>path===pagePath?Promise.resolve(page):repo.read(path,fields)};
-  await Promise.all(safePage.products.slice(0,6).map(async p=>{
-    const file=p.imageIds[0];if(!file)return;
+  await Promise.all([...new Set([...creatorHeroFiles(safePage).slice(0,1),...safePage.products.slice(0,6).map(p=>p.imageIds[0])])].filter(Boolean).slice(0,10).map(async file=>{
     try{const image=await shopAction({op:'image',pageId:safePage.id,file,display:'3',size:'thumb'},seeded);covers[file]=`data:${image.mime};base64,${image.bytes.toString('base64')}`;}catch{}
   }));
   return covers;

@@ -81,6 +81,18 @@ export function createContentCreator({root, store, prepareImage = prepareContent
  if(event.target.matches('#cc-create-form [name="name"]')) { draftName=event.target.value; patch({draftName}); } });
   root.addEventListener("change", event => {
     const input=event.target;
+    if(input.hasAttribute('data-cc-hero')){
+      const id=input.dataset.ccHero;
+      const selected=[...root.querySelectorAll('[data-cc-hero]:checked')].map(node=>node.value);
+      if(selected.length>6){input.checked=false;notice('Maximal 6 Header-Bilder auswählen.');return;}
+      mediaTask(async()=>{
+        const pageRef=doc(db,CC_PAGES,id),snap=await getDoc(pageRef),page=snap.data();
+        const allowed=(page?.photoIds||[]).filter(key=>(page.products||[]).some(p=>p.active!==false&&p.imageIds?.includes(key)));
+        const heroPhotoIds=selected.filter(key=>allowed.includes(key));
+        await updateDoc(pageRef,{heroPhotoIds,updatedAt:serverTimestamp()});
+        patch({pages:store.getState().contentCreator.pages.map(p=>p.id===id?{...p,heroPhotoIds}:p)});
+      });return;
+    }
     if(input.name==='kind'){capture();patch({pageKind:input.value,draftName});return;}
     if(input.hasAttribute("data-cc-add")){
       const files=Array.from(input.files || []),id=input.dataset.ccAdd;

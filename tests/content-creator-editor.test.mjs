@@ -30,4 +30,10 @@ test('Lokal öffnen, Unterschrift speichern, Reihenfolge ändern, löschen und h
  await click('[data-cc-action="delete"][data-image="two"]');assert.deepEqual(docs.get('contentCreatorPages/a').photoIds,['one']);assert.equal(docs.has('contentCreatorPages/a/images/two'),false);
  const input=root.querySelector('[data-cc-add]');Object.defineProperty(input,'files',{value:[{name:'new.jpg'}]});input.dispatchEvent(new window.Event('change',{bubbles:true}));await settle();
  assert.equal(docs.get('contentCreatorPages/a').photoIds.length,2);assert.equal(store.getState().contentCreator.mediaBusy,false);
+ const updated={...docs.get('contentCreatorPages/a'),kind:'shop',products:[{id:'pack',title:'Pako',priceCents:0,active:true,imageIds:['one']}]};
+ docs.set('contentCreatorPages/a',updated);store.actions.patchContentCreator({pages:[updated]});
+ const hero=root.querySelector('[data-cc-hero][value="one"]');assert.ok(hero);hero.checked=true;hero.setAttribute('checked','');
+ hero.dispatchEvent(new window.Event('change',{bubbles:true}));await settle();
+ assert.deepEqual(docs.get('contentCreatorPages/a').heroPhotoIds,['one']);
+
 });

@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {contentRows,contentStats,contentStatus,contentLink,ccImage} from '../shared/content-creator.js';
 import {createHeartInitialState,createHeartStore} from '../apps/mnyra-heart/heart-state.js';
@@ -49,4 +50,11 @@ test('Namen werden escaped, fremde Bild-URLs ausgeschlossen, Upload erlaubt Mehr
  assert.doesNotMatch(html,/<script>/);assert.match(html,/&lt;script&gt;/);assert.match(html,/multiple accept="image\/jpeg/);
  assert.equal(ccImage('javascript:alert(1)'),'');
  assert.equal(contentLink('id',true,'https://mnyra.com'),'https://mnyra.com/content-creator/id?still=1');
+});
+
+test('Heart defaults to Content Creator while explicit routes stay available and its duplicate title is hidden',async()=>{
+ const boot=await readFile(new URL('../apps/mnyra-heart/heart.js',import.meta.url),'utf8');
+ const render=await readFile(new URL('../apps/mnyra-heart/heart-render.js',import.meta.url),'utf8');
+ assert.match(boot,/setActiveView\(initialRouteView \|\| "contentCreator"\)/);
+ assert.match(render,/VIEWS_WITHOUT_PAGE_TITLE = new Set\(\[[\s\S]*?"contentCreator"/);
 });

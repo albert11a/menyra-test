@@ -51,3 +51,9 @@ test('Silent mode persists without changing presentation',async()=>{
 test('Kein leeres Logo, keine ZIP-Oberfläche',async()=>{
  const ctx=await setup({avatar:false});assert.equal(ctx.document.querySelector('.avatar'),null);assert.equal(ctx.document.querySelector('.download'),null);
 });
+
+test('Hero selection cannot expose inactive or unknown photographs',async()=>{
+ const {creatorHeroFiles}=await import('../shared/content-creator-view.js');
+ const page={kind:'shop',photoIds:['a','b','c'],heroPhotoIds:['c','secret','a'],products:[{active:true,imageIds:['a','b']},{active:false,imageIds:['c']}]};
+ assert.deepEqual(creatorHeroFiles(page),['a']);
+});

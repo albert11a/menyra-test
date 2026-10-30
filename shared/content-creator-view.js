@@ -3,6 +3,10 @@ import { euro } from './content-creator-shop.js';
 
 // Lucide paths, rendered inline: no icon library/CDN request or hydration delay.
 const paths = {
+  'pause': '<path d="M9 5v14M15 5v14"/>',
+  'play': '<path d="m8 5 11 7-11 7Z"/>',
+  'calendar': '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 11h18"/>',
+  'message-circle': '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
   'shopping-bag': '<path d="M16 10V6a4 4 0 0 0-8 0v4"/><path d="M5 7h14l1 12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/>',
   'arrow-up-right': '<path d="M7 17 17 7M7 7h10v10"/>',
   'arrow-right': '<path d="M5 12h14m-6-6 6 6-6 6"/>',
@@ -27,7 +31,7 @@ export function creatorImageUrl(page, file, size = 'thumb') {
 export function publicCreatorPage(page, id) {
   const photoIds = [...new Set((page.photoIds || []).filter(key => /^[a-zA-Z0-9_-]{1,64}$/.test(key)))].slice(0,30);
   return {id, published:true, kind:page.kind === 'shop' ? 'shop' : 'promo', name:String(page.name || '').slice(0,160),
-    avatar:ccImage(page.avatar), updatedAt:typeof page.updatedAt === 'string' ? page.updatedAt : '', createdMs:Number(page.createdMs)||0, photoIds,
+    avatar:ccImage(page.avatar), heroPhotoIds:[...new Set((Array.isArray(page.heroPhotoIds)?page.heroPhotoIds:[]).filter(id=>photoIds.includes(id)))].slice(0,6), updatedAt:typeof page.updatedAt === 'string' ? page.updatedAt : '', createdMs:Number(page.createdMs)||0, photoIds,
     products:(page.products || []).filter(p => p.active !== false && /^[a-zA-Z0-9_-]{1,64}$/.test(p.id) && Number.isSafeInteger(p.priceCents) && p.priceCents >= 0).slice(0,10).map(p=>({id:p.id,title:String(p.title || 'Pako fotosh').slice(0,120),priceCents:p.priceCents,active:true,imageIds:photoIds.filter(key=>p.imageIds?.includes(key))}))};
 }
 export function creatorOfferButton(product, {busy = '', selected = false} = {}) {
@@ -35,15 +39,35 @@ export function creatorOfferButton(product, {busy = '', selected = false} = {}) 
   return `<button type="button" class="shop-buy${selected ? ' is-added' : ''}" data-shop="${free?'free-save':'add'}" data-product="${esc(product.id)}" ${busy || selected ? 'disabled' : ''}>${creatorIcon(busy ? 'refresh-cw' : free ? 'save' : selected ? 'check' : 'shopping-bag')}<span>${busy===product.id?'Duke përgatitur…':free?'Ruaj fotot':selected?'Në shportë':'Shto në shportë'}</span></button>`;
 }
 export function creatorPhoto(page, id, alt, {src, size='thumb', eager=false, active=true} = {}) {
-  const url = src || creatorImageUrl(page,id,size);
+  const url = (active ? src : undefined) || creatorImageUrl(page,id,size);
   return `<img ${active?`src="${esc(url)}"`:`data-deferred-src="${esc(url)}"`} data-photo="${esc(id)}" data-size="${size}" data-alt="${esc(alt)}" alt="${esc(alt)}" width="360" height="450" decoding="async" loading="${eager?'eager':'lazy'}" fetchpriority="${eager?'high':'auto'}" draggable="false">`;
+}
+export function creatorHeroFiles(page) {
+  const allowed=page.kind==='shop'?page.photoIds.filter(id=>page.products.some(p=>p.active!==false&&p.imageIds?.includes(id))):page.photoIds;
+  const chosen=(Array.isArray(page.heroPhotoIds)?page.heroPhotoIds:[]).filter(id=>allowed.includes(id));
+  const defaults=(page.products||[]).filter(p=>p.active!==false).map(p=>p.imageIds?.find(id=>allowed.includes(id))).filter(Boolean);
+  return [...new Set(chosen.length?chosen:defaults.length?defaults:allowed.slice(0,3))].slice(0,6);
+}
+export function creatorIntroduction(page, photo) {
+  const files=creatorHeroFiles(page);
+  return `<section class="shop-introduction">
+    ${files.length?`<div class="shop-hero-gallery" aria-label="Shembuj te punes sone" aria-roledescription="carousel"><div class="shop-hero-track" data-hero-track>${files.map((id,i)=>`<div class="shop-hero-slide">${photo(id,`Foto per ${page.name} · ${i+1}`,{size:'thumb',active:i===0,eager:i===0})}</div>`).join('')}</div>${files.length>1?`<div class="shop-hero-controls"><div class="shop-hero-dots">${files.map((_,i)=>`<button type="button" data-shop="hero-dot" data-index="${i}" aria-label="Foto e prezantimit ${i+1}" aria-pressed="${i===0}"></button>`).join('')}</div><button type="button" data-shop="hero-toggle" aria-label="Ndalo nderrimin automatik">${creatorIcon('pause')}</button></div>`:''}</div>`:''}
+    <div class="shop-intro-copy"><span class="shop-studio-tag">MNYRA · Per biznesin tend</span><h1>Biznesi yt meriton<br>me u pa.</h1>
+    <p>Ti kujdesesh per biznesin. Por nuk eshte lehte me gjet kohe edhe per foto, postime e mesazhe.</p>
+    <p>Sot, shume njerez te shohin ne telefon para se me ble ose me te vizitu. Shikojne fotot, produktet dhe cka thone klientet. Aty krijohet pershtypja e pare.</p>
+    <p>Ne krijojme foto e video qe tregojne bukur ate qe ofron. Per dyqanin, restorantin, kafene, butiken apo produktet qe shet online.</p>
+    <aside class="shop-intro-fact"><strong>79%</strong><p>e bleresve te pyetur ndihen me te sigurt pasi informohen para blerjes.<a href="https://business.google.com/ca-en/think/consumer-insights/build-confident-consumers-to-improve-metrics/" target="_blank" rel="noopener">Google / Ipsos · 2024</a></p></aside>
+    <h2>Me shume se foto.</h2><p>Nga nje postim i bukur, te krejt biznesi yt online. Ne te ndihmojme me:</p>
+    <ul class="shop-intro-services">${[['image','Foto e video'],['shopping-bag','Webfaqe e dyqan online'],['calendar','Rezervime tavolinash e terminesh'],['message-circle','Vleresime ne Google'],['images','Menaxhim te rrjeteve sociale']].map(([icon,label])=>`<li>${creatorIcon(icon)}<span>${label}</span></li>`).join('')}</ul>
+    <p class="shop-intro-close">Ti merresh me biznesin. Ne kujdesemi si duket ai online.</p><div class="shop-intro-trust"><span>Me seli ne Austri</span><span>Mbi 8.700 kliente</span></div></div>
+  </section>`;
 }
 export function renderCreatorCatalog(page, {ids=[], positions={}, offerButton, photo} = {}) {
   const products = (page.products || []).filter(p=>p.active!==false && p.imageIds?.some(id=>page.photoIds.includes(id)));
   const img = photo || ((id,alt,opts)=>creatorPhoto(page,id,alt,opts));
   const offer = offerButton || (product=>creatorOfferButton(product,{selected:ids.includes(product.id)}));
   return `<header class="shop-header"><a href="/" class="shop-logo" aria-label="MNYRA">MNYRA<span class="shop-logo-dot"></span></a><button type="button" data-shop="cart" class="shop-cart" aria-label="Hap shportën">${creatorIcon('shopping-bag')}<b ${ids.length?'':'hidden'}>${ids.length}</b></button></header>
-    <section class="shop-hero"><div class="shop-hero-meta"><span class="shop-studio-tag">Krijuar vetëm për ju</span>${ccImage(page.avatar)?`<img class="avatar" src="${ccImage(page.avatar)}" width="42" height="42" alt="${esc(page.name)}">`:''}</div><h1>${esc(page.name)}</h1><p>Foto të veçanta. Gati për t’u publikuar.</p><div class="shop-hero-line"><span></span>${creatorIcon('arrow-up-right')}</div></section>
+    ${creatorIntroduction(page,img)}
     ${[{title:'Falas për ty',items:products.filter(p=>p.priceCents===0)},{title:'Me çmim të arsyeshëm',items:products.filter(p=>p.priceCents>0)}].filter(group=>group.items.length).map(group=>`<section class="shop-collection"><div class="shop-section-title"><h2>${group.title}</h2><span>${group.items.length} pako ${creatorIcon('images')}</span></div>
     <div class="shop-products">${group.items.map((product)=>{
       const files=page.photoIds.filter(id=>product.imageIds.includes(id)),position=positions[product.id]||0;

@@ -11,7 +11,7 @@ const factory=new Function('db','doc','getDoc','esc','ccImage','CC_PAGES','euro'
 const pageId='a'.repeat(32);
 async function setup(still=false,price=2900,options={}){
  const {document,window}=parseHTML('<html><head><meta name="theme-color" content="#f7f6f2"></head><body><main id="app"></main></body></html>'),root=document.getElementById('app');window.HTMLElement.prototype.scrollIntoView=()=>{};window.HTMLElement.prototype.scrollTo=function(options){this.scrollLeft=options.left;this.dispatchEvent(new window.Event('scroll'));};
- const storage=new Map(),calls=[],zipFiles=[],page={id:pageId,published:true,kind:'shop',name:'Bistro',photoIds:['one','two','three','four'],products:[{id:'pack',title:'Social Set',priceCents:price,imageIds:['one','two','three','four']}]};
+ const storage=new Map(),calls=[],zipFiles=[],page={id:pageId,published:true,kind:'shop',name:'Bistro',heroPhotoIds:options.heroPhotoIds||[],photoIds:['one','two','three','four'],products:[{id:'pack',title:'Social Set',priceCents:price,imageIds:['one','two','three','four']}]};
  const docs=new Map([[`contentCreatorPages/${pageId}`,structuredClone(page)]]);
  for(const key of page.photoIds){docs.set(`contentCreatorPages/${pageId}/originals/${key}`,{parts:1,size:3,name:key+'.jpg',mime:'image/jpeg',cleanPreview:{version:1,data:'data:image/jpeg;base64,YWJj'}});docs.set(`contentCreatorPages/${pageId}/originals/${key}/chunks/000`,{data:'YWJj'});}
  const repo={read:async key=>docs.get(key),write:async(key,data)=>{docs.set(key,{...docs.get(key),...structuredClone(data)});return true;},notify:async()=>true};
@@ -19,7 +19,7 @@ async function setup(still=false,price=2900,options={}){
   const payload=requestOptions.method==='POST'?JSON.parse(requestOptions.body):Object.fromEntries(new URL(url,'https://www.mnyra.com').searchParams);calls.push(payload);
   try{if(payload.op==='free-download'&&options.download)await options.download(payload);if(payload.op==='free-preview'&&options.preview){const result=await options.preview(payload);if(result)return result;}const result=await shopAction(payload,repo);return {ok:true,json:async()=>result,arrayBuffer:async()=>result.bytes,headers:{get:key=>key==='Content-Type'?result.mime:key==='X-File-Name'?encodeURIComponent(result.name):null}};}catch(error){return {ok:false,json:async()=>({error:error.message})};}
  };
- const mount=factory({},(...args)=>args.filter(x=>typeof x==='string').join('/'),async()=>({data:()=>({data:'data:image/jpeg;base64,YWJj'})}),ccEscape,ccImage,'contentCreatorPages',euro,shopQuote,validShopId,files=>{zipFiles.push(files);return new Blob(['zip']);}, {getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)}, {origin:'https://www.mnyra.com',search:''},fetch,document,{setInterval:()=>0,addEventListener:()=>{},Image:options.Image},()=>0,options.navigator||{},creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,renderCreatorCatalog,creatorHowTo);
+ const mount=factory({},(...args)=>args.filter(x=>typeof x==='string').join('/'),async()=>({data:()=>({data:'data:image/jpeg;base64,YWJj'})}),ccEscape,ccImage,'contentCreatorPages',euro,shopQuote,validShopId,files=>{zipFiles.push(files);return new Blob(['zip']);}, {getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)}, {origin:'https://www.mnyra.com',search:''},fetch,document,{setInterval:(fn,ms)=>{options.intervals?.push({fn,ms});return 0;},addEventListener:()=>{},Image:options.Image,matchMedia:()=>({matches:!!options.reducedMotion})},()=>0,options.navigator||{},creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,renderCreatorCatalog,creatorHowTo);
  await mount({root,page,still});
  async function settle(){for(let i=0;i<15;i++)await new Promise(r=>setImmediate(r));}
  async function click(selector){const button=root.querySelector(selector);assert.ok(button,selector);button.dispatchEvent(new window.Event('click',{bubbles:true}));await settle();}
@@ -172,4 +172,22 @@ test('Visible current and adjacent photos warm decoded larger versions before op
  const photos=ctx.root.querySelectorAll('.shop-slide img');photos[0].onload();photos[1].onload();
  assert.equal(warmed.length,2);assert.ok(warmed.every(image=>image.decoded&&image.src.includes('size=medium')));
  photos[0].onload();assert.equal(warmed.length,2);
+});
+
+test('Hero autoplay, swipe, dots and pause preserve the gallery through cart changes',async()=>{
+ const intervals=[],ctx=await setup(true,2900,{heroPhotoIds:['one','two','three'],intervals});
+ const track=ctx.root.querySelector('[data-hero-track]');Object.defineProperty(track,'clientWidth',{value:390});
+ assert.equal(track.children.length,3);assert.equal(track.querySelectorAll('img[src]').length,2);
+ const timer=intervals.find(t=>t.ms===5500);assert.ok(timer);timer.fn();assert.equal(track.scrollLeft,390);
+ await ctx.click('[data-shop="hero-toggle"]');timer.fn();assert.equal(track.scrollLeft,390);
+ await ctx.click('[data-shop="hero-dot"][data-index="2"]');assert.equal(track.scrollLeft,780);
+ await ctx.click('[data-shop="add"]');assert.equal(ctx.root.querySelector('[data-hero-track]'),track);
+ track.scrollLeft=0;track.dispatchEvent(new ctx.window.Event('scroll'));
+ assert.equal(ctx.root.querySelector('[data-shop="hero-dot"][data-index="0"]').getAttribute('aria-pressed'),'true');
+});
+test('Hero respects reduced motion and keeps the introduction in simple Albanian pa ë',async()=>{
+ const intervals=[],ctx=await setup(true,2900,{heroPhotoIds:['one','two'],intervals,reducedMotion:true});
+ const track=ctx.root.querySelector('[data-hero-track]');intervals.find(t=>t.ms===5500).fn();assert.ok(!track.scrollLeft);
+ const intro=ctx.root.querySelector('.shop-intro-copy');assert.doesNotMatch(intro.textContent,/[ëË]/);
+ assert.match(intro.textContent,/8.700/);assert.match(intro.textContent,/Rezervime tavolinash/);assert.ok(intro.querySelector('a[href^="https://business.google.com/"]'));
 });

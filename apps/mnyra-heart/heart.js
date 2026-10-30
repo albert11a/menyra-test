@@ -158,9 +158,8 @@ const dergesatOps = createDergesatOperationen({
   sitzungAuffrischen: (id) => lifeskinSitzungAuffrischen(id)
 });
 const initialRouteView = resolveHeartRouteView();
-// Ohne ausdrueckliche Ansicht in der Adresse oeffnet Heart mit Lifeskin -
-// das ist der Bereich, der jeden Tag gebraucht wird.
-actions.setActiveView(initialRouteView || "lifeskin");
+// Ohne explizite Route ist Content Creator der Einstieg.
+actions.setActiveView(initialRouteView || "contentCreator");
 // #lifeskin2 in der Adresse: der Tab Lifeskin 2 (Faelle von /lifeskin2).
 if (/^#lifeskin2$/i.test(String(globalThis.location?.hash || ""))) actions.patchLifeskin({ weg: "lifeskin2" });
 // #lifeskinshop: der Tab Lifeskin Shop (Faelle von /lifeskinshop).
