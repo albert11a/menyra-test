@@ -10,6 +10,7 @@ export async function mountCreatorShop({root,page,still=false}){
  let viewer=null,backgroundLock=null,sheetLock=null,photoSave=null,downloadCancelled=false,fileAbort=null;
  const originalTheme=document.querySelector('meta[name="theme-color"]')?.getAttribute('content')||'#f7f6f2';
  const prepared=new Map(),imageErrors={},largeImages=new Map();
+ function canPrefetch(){const connection=navigator.connection;return !connection?.saveData&&!['slow-2g','2g','3g'].includes(connection?.effectiveType);}
  let neighbourObserver=null,heroIndex=0,heroPaused=!!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
  const images={},positions={},orders=new Map(),customer={name:'',address:'',country:'Kosovë',phone:''};
  const tokens=still?[]:(Array.isArray(saved.orders)?saved.orders:[]).filter(validShopId).slice(-10);
@@ -47,7 +48,7 @@ export async function mountCreatorShop({root,page,still=false}){
   watchImages();
  }
  function warmLargeImage(id){
-  if(!globalThis.Image||largeImages.has(id))return;
+  if(!canPrefetch()||!globalThis.Image||largeImages.has(id))return;
   const image=new globalThis.Image();largeImages.set(id,image);
   image.fetchPriority='low';image.decoding='async';image.src=imageUrl(id,'medium');
   image.decode?.().catch(()=>{largeImages.delete(id);});
@@ -61,7 +62,7 @@ export async function mountCreatorShop({root,page,still=false}){
   // The current photo has arrived: fetch and decode the adjacent photograph
   // now, at low priority, rather than waiting for the swipe to begin.
   const next=track.children[index+1]?.querySelector('img[data-deferred-src]');
-  if(next){next.loading='eager';next.fetchPriority='low';next.src=next.dataset.deferredSrc;next.removeAttribute('data-deferred-src');next.decode?.().catch(()=>{});}
+  if(next&&canPrefetch()){next.loading='eager';next.fetchPriority='low';next.src=next.dataset.deferredSrc;next.removeAttribute('data-deferred-src');next.decode?.().catch(()=>{});}
   warmLargeImage(node.dataset.photo);
  }
  function watchImages(){
@@ -73,9 +74,9 @@ export async function mountCreatorShop({root,page,still=false}){
   }
  }
  function imageUrl(key,size='thumb'){return creatorImageUrl(page,key,size);}
- function loadImages(keys){for(const key of keys){delete imageErrors[key];images[key]=`${imageUrl(key)}&retry=${Date.now()}`;paintImage(key);}}
+ function loadImages(keys){for(const key of keys){delete imageErrors[key];images[key]=`${imageUrl(key)}${imageUrl(key).includes('?')?'&':'?'}retry=${Date.now()}`;paintImage(key);}}
  function activateImages(track,index){
-  for(const [i,slide] of [...track.children].entries())if(Math.abs(i-index)<=1)for(const img of slide.querySelectorAll('img[data-deferred-src]')){img.loading='eager';img.fetchPriority=i===index?'high':'low';img.src=img.dataset.size==='thumb'&&images[img.dataset.photo]?.startsWith('data:image/')?images[img.dataset.photo]:img.dataset.deferredSrc;img.removeAttribute('data-deferred-src');img.decode?.().catch(()=>{});}
+  for(const [i,slide] of [...track.children].entries())if(Math.abs(i-index)<=(canPrefetch()?1:0))for(const img of slide.querySelectorAll('img[data-deferred-src]')){img.loading='eager';img.fetchPriority=i===index?'high':'low';img.src=img.dataset.size==='thumb'&&images[img.dataset.photo]?.startsWith('data:image/')?images[img.dataset.photo]:img.dataset.deferredSrc;img.removeAttribute('data-deferred-src');img.decode?.().catch(()=>{});}
  }
  function updateHeroControls(){
   for(const dot of root.querySelectorAll('.shop-hero-dots [data-index]'))dot.setAttribute('aria-pressed',String(Number(dot.dataset.index)===heroIndex));
@@ -225,7 +226,7 @@ export async function mountCreatorShop({root,page,still=false}){
    },{rootMargin:'100px 0px'});
    for(const track of root.querySelectorAll('[data-track]'))neighbourObserver.observe(track);
   }
-  bindViewer();syncInert();
+  bindViewer();syncInert();watchSaveButtons();
   if(focusId){const field=root.querySelector(`#${focusId}`);if(field){field.focus({preventScroll:true});try{field.setSelectionRange(selection,selection);}catch{ /* select/tel */ }}}
  }
  async function refreshOrder(id){if(still)return;const order=await api('receipt',{orderId:id},true);if(order.pageId!==page.id)return;orders.set(id,order);render();}
@@ -304,51 +305,96 @@ export async function mountCreatorShop({root,page,still=false}){
    render();root.querySelector('#shop-purchases')?.scrollIntoView({behavior:'smooth'});
   }catch(e){error=e.message;}finally{submitting=false;render();}
  });
- async function download(receipt,product){
+ let activePreparation=null;
+ function prepareFiles(receipt,product,progress=()=>{}){
+  const key=`${receipt}:${product}`,cached=prepared.get(key);
+  if(cached)return {promise:Promise.resolve(cached),controller:null};
+  if(activePreparation){
+   if(activePreparation.key!==key)return null;
+   activePreparation.listeners.add(progress);progress(activePreparation);return activePreparation;
+  }
   const order=orders.get(receipt),line=receipt?order?.lines.find(p=>p.id===product):page.products.find(p=>p.id===product&&p.active!==false&&p.priceCents===0);
-  if(!line||(receipt&&!order?.approved)||downloadBusy)return;
+  if(!line||(receipt&&!order?.approved))return null;
+  const keys=receipt?line.imageIds:packFiles(product),controller=new AbortController();
+  const task={key,controller,listeners:new Set([progress]),files:new Array(keys.length),urls:new Array(keys.length)};
+  activePreparation=task;
   const operation=receipt?'download':'free-download',access=receipt?{orderId:receipt}:{productId:product};
-  const cacheKey=`${receipt}:${product}`,keys=receipt?line.imageIds:packFiles(product);
-  discardSave();downloadBusy=product;downloadCancelled=false;fileAbort=new AbortController();
-  photoSave={receipt,product,files:[],urls:[],loading:true,total:keys.length};render();
-  let timer;const controller=fileAbort;
-  try{
-   let entry=prepared.get(cacheKey);
-   if(!entry){
-    for(const old of prepared.values())for(const url of old.urls||[])URL.revokeObjectURL(url);prepared.clear();
-    const files=new Array(keys.length);let cursor=0,bytesTotal=0;
-    timer=setTimeout(()=>controller.abort(),120000);
-    async function worker(){
-     while(cursor<keys.length&&!downloadCancelled){
-      const index=cursor++,file=keys[index];
-      const response=await fetch(`/api/content-creator-shop?${new URLSearchParams({op:operation,pageId:page.id,...access,file,format:'file'})}`,{method:'GET',signal:controller.signal});
-      if(!response.ok){const result=await response.json();throw Error(result.error||'Ruajtja u ndërpre. Provoni përsëri.');}
-      const bytes=new Uint8Array(await response.arrayBuffer());if(downloadCancelled||controller.signal.aborted)return;
-      bytesTotal+=bytes.length;if(bytesTotal>150*1024*1024)throw Error('Ruajini fotot veçmas në këtë pajisje.');
-      const expected=Number(response.headers.get('Content-Length'));if(expected>0&&expected!==bytes.length)throw Error('Fotoja nuk u ngarkua e plotë. Provoni përsëri.');
-      const mime=response.headers.get('Content-Type')||'image/jpeg';
-      const name=decodeURIComponent(response.headers.get('X-File-Name')||`${file}.jpg`);
-      const ready=new File([bytes],`${index+1}-${name}`,{type:mime});files[index]=ready;
-      if(photoSave){photoSave.files.push(ready);photoSave.urls.push(URL.createObjectURL(ready));render();}
-     }
+  const timer=setTimeout(()=>controller.abort(),120000);
+  task.promise=(async()=>{
+   let cursor=0,bytesTotal=0;
+   async function worker(){
+    while(cursor<keys.length){
+     const index=cursor++,file=keys[index];
+     const display=creatorImageUrl(page,file);
+     const target=page.media?.[file]?.bytes&&display.startsWith('https://')
+      ? `${new URL(display).origin}/creator/download?${new URLSearchParams({pageId:page.id,...access,file})}`
+      : `/api/content-creator-shop?${new URLSearchParams({op:operation,pageId:page.id,...access,file,format:'file'})}`;
+     const response=await fetch(target,{method:'GET',signal:controller.signal});
+     if(!response.ok){const result=await response.json();throw Error(result.error||'Ruajtja u ndërpre. Provoni përsëri.');}
+     const bytes=new Uint8Array(await response.arrayBuffer());if(controller.signal.aborted)throw Error('Ruajtja u ndërpre.');
+     bytesTotal+=bytes.length;if(bytesTotal>150*1024*1024)throw Error('Ruajini fotot veçmas në këtë pajisje.');
+     const expected=Number(response.headers.get('Content-Length'));if(expected>0&&expected!==bytes.length)throw Error('Fotoja nuk u ngarkua e plotë. Provoni përsëri.');
+     const mime=response.headers.get('Content-Type')||'image/jpeg',name=decodeURIComponent(response.headers.get('X-File-Name')||`${file}.jpg`);
+     task.files[index]=new File([bytes],`${index+1}-${name}`,{type:mime});task.urls[index]=URL.createObjectURL(task.files[index]);
+     for(const listener of task.listeners)listener(task);
     }
-    await Promise.all([worker(),worker()]);if(downloadCancelled)return;
-    entry={shareFiles:files,urls:files.map(file=>{const index=photoSave?.files.indexOf(file);return index>=0?photoSave.urls[index]:URL.createObjectURL(file);})};
-    prepared.set(cacheKey,entry);
    }
-   photoSave={receipt,product,files:entry.shareFiles,urls:entry.urls,total:keys.length};
+   try{
+    await Promise.all([worker(),worker()]);
+    const entry={shareFiles:task.files,urls:task.urls};
+    for(const old of prepared.values())for(const url of old.urls||[])URL.revokeObjectURL(url);
+    prepared.clear();prepared.set(key,entry);return entry;
+   }catch(error){controller.abort();for(const url of task.urls)if(url)URL.revokeObjectURL(url);throw error;}
+   finally{clearTimeout(timer);if(activePreparation===task)activePreparation=null;}
+  })();
+  return task;
+ }
+ function warmSave(button,intent=false){
+  if(!button||photoSave||panel||downloadBusy||document.visibilityState==='hidden')return;
+  const receipt=button.dataset.order||'',product=button.dataset.product;
+  if(!product||button.disabled)return;
+  if(!intent){
+   if(still||!canPrefetch())return;
+   const keys=receipt?orders.get(receipt)?.lines.find(line=>line.id===product)?.imageIds:packFiles(product);
+   if(!keys?.length||keys.some(id=>!page.media?.[id]?.bytes))return;
+   if(keys.reduce((sum,id)=>sum+page.media[id].bytes,0)>12*1024*1024)return;
+  }
+  const task=prepareFiles(receipt,product);task?.promise.catch(()=>{});
+ }
+ root.addEventListener('pointerdown',event=>warmSave(event.target.closest('[data-shop="free-save"],[data-shop="save-photos"]'),true),{passive:true});
+ root.addEventListener('focusin',event=>warmSave(event.target.closest('[data-shop="free-save"],[data-shop="save-photos"]'),true));
+ let saveObserver=null;
+ function watchSaveButtons(){
+  if(!globalThis.IntersectionObserver)return;
+  saveObserver?.disconnect();
+  saveObserver=new globalThis.IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting)warmSave(entry.target);},{rootMargin:'0px',threshold:.5});
+  for(const button of root.querySelectorAll('[data-shop="free-save"],[data-shop="save-photos"]'))saveObserver.observe(button);
+ }
+ async function download(receipt,product){
+  if(downloadBusy)return;
+  discardSave();downloadBusy=product;downloadCancelled=false;
+  photoSave={receipt,product,files:[],urls:[],loading:true,total:receipt?orders.get(receipt)?.lines.find(line=>line.id===product)?.imageIds.length:packFiles(product).length};render();
+  try{
+   // A tap joins preparation already started by visibility, focus or touch.
+   const task=prepareFiles(receipt,product,entry=>{
+    if(!photoSave||downloadCancelled)return;
+    photoSave.files=entry.files.filter(Boolean);photoSave.urls=entry.urls.filter(Boolean);render();
+   });
+   if(!task)throw Error('Provoni përsëri pas përgatitjes së pakos tjetër.');
+   fileAbort=task.controller;
+   const entry=await task.promise;if(downloadCancelled)return;
+   photoSave={receipt,product,files:entry.shareFiles,urls:entry.urls,total:entry.shareFiles.length};
   }catch(error){
-   controller.abort();
    if(!downloadCancelled&&photoSave){photoSave.loading=false;photoSave.message='Fotot nuk u përgatitën të gjitha. Mbylleni dhe provoni përsëri.';}
-  }finally{if(timer)clearTimeout(timer);downloadBusy='';fileAbort=null;render();}
+  }finally{downloadBusy='';fileAbort=null;render();}
  }
  // Reuse server-embedded first covers; they already arrived with the HTML.
  for(const image of root.querySelectorAll('img[data-photo][src]'))if(image.dataset.size==='thumb'&&image.src?.startsWith('data:image/'))images[image.dataset.photo]=image.getAttribute('src');
  for(const key of page.photoIds)images[key] ||= imageUrl(key);
  render();remember();
  await Promise.all(tokens.map(id=>refreshOrder(id).catch(()=>{})));
- const heroTimer=globalThis.setInterval(()=>{const track=root.querySelector('[data-hero-track]');if(!heroPaused&&!viewer&&!panel&&!photoSave&&document.visibilityState!=='hidden'&&track?.children.length>1)moveHero(heroIndex+1);},5500);
+ const heroTimer=globalThis.setInterval(()=>{const track=root.querySelector('[data-hero-track]');if(canPrefetch()&&!heroPaused&&!viewer&&!panel&&!photoSave&&document.visibilityState!=='hidden'&&track?.children.length>1)moveHero(heroIndex+1);},5500);
  const poll=globalThis.setInterval(()=>{if(still||document.visibilityState==='hidden')return;for(const order of orders.values())if(!order.approved)refreshOrder(order.id).catch(()=>{});},20000);
- globalThis.addEventListener?.('pagehide',event=>{if(!event.persisted){neighbourObserver?.disconnect();globalThis.clearInterval(poll);globalThis.clearInterval(heroTimer);fileAbort?.abort();discardSave();for(const entry of prepared.values())for(const url of entry.urls||[])URL.revokeObjectURL(url);}});
+ globalThis.addEventListener?.('pagehide',event=>{if(!event.persisted){neighbourObserver?.disconnect();saveObserver?.disconnect();activePreparation?.controller.abort();globalThis.clearInterval(poll);globalThis.clearInterval(heroTimer);fileAbort?.abort();discardSave();for(const entry of prepared.values())for(const url of entry.urls||[])URL.revokeObjectURL(url);}});
 }
 

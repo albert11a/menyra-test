@@ -2,6 +2,7 @@ import {createHash} from 'node:crypto';
 import {optimizedShopImage,creatorDisplayImage} from './content-creator-images.js';
 import {schluessel,zugangHolen,lies,wert,empfaenger,meldungAnlegen,schicken,zustellungAendern} from '../api/lifeskin-meldung.js';
 import {CC_CARTS,CC_ORDERS,validShopId,shopQuote,shopCustomer,purchasedFiles,euro} from '../shared/content-creator-shop.js';
+import {CREATOR_MEDIA_ORIGIN,creatorPublicMedia} from '../shared/creator-media.js';
 const BASE='https://firestore.googleapis.com/v1/projects/menyra-c0e68/databases/(default)/documents';
 let tokenRequest;
 export function encodeValue(v){if(v===null)return {nullValue:null};if(Array.isArray(v))return {arrayValue:{values:v.map(encodeValue)}};if(typeof v==='object')return {mapValue:{fields:Object.fromEntries(Object.entries(v).map(([k,x])=>[k,encodeValue(x)]))}};if(typeof v==='boolean')return {booleanValue:v};if(typeof v==='number')return {integerValue:String(v)};return {stringValue:String(v)};}
@@ -30,6 +31,14 @@ export async function shopRepository(){
  };
 }
 function publicOrder(order,id){return {id,pageId:order.pageId,lines:order.lines,totalCents:order.totalCents,currency:'EUR',status:order.status,approved:order.approved===true,paymentMethod:'cod',createdAt:order.createdAt};}
+function r2Download(metadata,input,pageId){
+ const r2=metadata?.r2;
+ if(!r2||!String(r2.key).startsWith(`creator-private/${pageId}/${input.file}/`)||!/^creator-private\/[a-f0-9]{32}\/[a-zA-Z0-9_-]{1,69}\/[a-zA-Z0-9_-]+\.(jpg|png|webp)$/.test(r2.key)||!Number.isSafeInteger(r2.size)||r2.size<1||r2.size>30*1024*1024||!['image/jpeg','image/png','image/webp'].includes(r2.mime))throw Error('Skedari nuk është i disponueshëm.');
+ if(input.format==='authorize-r2')return {r2:{key:r2.key,name:String(r2.name||'photo.jpg').slice(0,180),mime:r2.mime,size:r2.size}};
+ const query=new URLSearchParams({pageId,file:input.file});
+ if(input.orderId)query.set('orderId',input.orderId);else query.set('productId',input.productId);
+ return {redirect:`${CREATOR_MEDIA_ORIGIN}/creator/download?${query}`};
+}
 async function originalFile(path,metadata,repo){
  if(!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>30*1024*1024)throw Error('Skedari nuk është i disponueshëm.');
  const parts=[];let size=0;
@@ -49,6 +58,8 @@ export async function shopAction(input,repo){
   const products=(page.products||[]).filter(p=>p.active!==false&&p.imageIds?.includes(input.file));
   if(!products.length)throw Error('Fotoja nuk u gjet.');
   const free=products.find(p=>p.priceCents===0);
+  const media=creatorPublicMedia(page)[input.file];
+  if(media&&op==='image')return {redirect:media[['thumb','medium','large'].includes(input.size)?input.size:'thumb']};
   if(['2','3'].includes(String(input.display))||op==='prepare-image'){
    const path=`contentCreatorPages/${pageId}/originals/${input.file}`;
    const display=await creatorDisplayImage(path,null,repo,{size:input.size,free:!!free,persist:op==='prepare-image'});
@@ -71,7 +82,8 @@ export async function shopAction(input,repo){
   const page=await repo.read(`contentCreatorPages/${pageId}`),quote=shopQuote(page,[input.productId]),line=quote.lines[0];
   const file=String(input.file||'');
   if(line.priceCents!==0||!line.imageIds.includes(file)||!/^[a-zA-Z0-9_-]{1,64}$/.test(file))throw Error('Ky skedar nuk është falas.');
-  const path=`contentCreatorPages/${pageId}/originals/${file}`,metadata=await repo.read(path,op==='free-download'?['name','mime','size','parts']:undefined);
+  const path=`contentCreatorPages/${pageId}/originals/${file}`,metadata=await repo.read(path,op==='free-download'?['name','mime','size','parts','r2']:undefined);
+  if(op==='free-download'&&(metadata?.r2||input.format==='authorize-r2'))return r2Download(metadata,input,pageId);
   if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>30*1024*1024||!['image/jpeg','image/png','image/webp'].includes(metadata.mime))throw Error('Skedari nuk është i disponueshëm.');
   if(op==='free-image'||op==='free-preview'){
    const preview=await optimizedShopImage(path,metadata,repo,op==='free-preview');
@@ -88,7 +100,8 @@ export async function shopAction(input,repo){
   if(op==='receipt')return publicOrder(order,orderId);
   if(order.approved!==true||order.status!=='released'||order.paymentConfirmed!==true)throw Error('Shkarkimi hapet pas konfirmimit të pagesës.');
   const file=String(input.file||'');if(!/^[a-zA-Z0-9_-]{1,64}$/.test(file)||!purchasedFiles(order).includes(file))throw Error('Ky artikull nuk i përket porosisë.');
-  const metadata=await repo.read(`contentCreatorPages/${order.pageId}/originals/${file}`,['name','mime','size','parts']);
+  const metadata=await repo.read(`contentCreatorPages/${order.pageId}/originals/${file}`,['name','mime','size','parts','r2']);
+  if(metadata?.r2||input.format==='authorize-r2')return r2Download(metadata,input,order.pageId);
   if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100)throw Error('Skedari nuk është i disponueshëm.');
   if(input.format==='file')return originalFile(`contentCreatorPages/${order.pageId}/originals/${file}`,metadata,repo);
   if(input.part===undefined)return {name:metadata.name,mime:metadata.mime,parts:metadata.parts,size:metadata.size};
@@ -131,7 +144,7 @@ export async function shopAction(input,repo){
  if(input.expectedTotalCents!==quote.totalCents)return {priceChanged:true,...quote};
  const customer=shopCustomer(input.customer);
  // Freeze original file identities; removing storefront photos never removes purchased assets.
- for(const file of purchasedFiles(quote)){const asset=await repo.read(`contentCreatorPages/${pageId}/originals/${file}`);if(!asset?.parts)throw Error('Një skedar nuk është ende gati. Ju lutemi, provoni përsëri.');}
+ for(const file of purchasedFiles(quote)){const asset=await repo.read(`contentCreatorPages/${pageId}/originals/${file}`);if(!asset?.parts&&!asset?.r2)throw Error('Një skedar nuk është ende gati. Ju lutemi, provoni përsëri.');}
  const order={pageId,pageName:page.name,cartId,...quote,customer,paymentMethod:'cod',status:'pending',approved:false,createdAt:now,updatedAt:now};
  const created=await repo.write(`${CC_ORDERS}/${orderId}`,order,true);
  const persisted=created?order:await repo.read(`${CC_ORDERS}/${orderId}`);

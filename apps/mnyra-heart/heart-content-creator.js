@@ -1,4 +1,6 @@
-import {saveShopAsset,initialShopProduct,releaseShopOrder,refreshShopPreviews} from "./heart-content-creator-shop.js";
+import {saveShopAsset,initialShopProduct,releaseShopOrder,refreshShopPreviews,savePromoAsset,migrateCreatorPage,saveCreatorCdnAsset,savedCreatorFile} from "./heart-content-creator-shop.js";
+import {creatorCdnEnabled} from './heart-creator-cdn.js';
+import {creatorPublicMedia} from '../../shared/creator-media.js';
 import {CC_CARTS,CC_ORDERS,priceCents} from "../../shared/content-creator-shop.js";
 import { db } from "/shared/firebase-config.js";
 import { collection, doc, getDoc, onSnapshot, setDoc, updateDoc, writeBatch, serverTimestamp } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
@@ -29,12 +31,34 @@ export function createContentCreator({root, store, prepareImage = prepareContent
   let subscriptions = [], pendingId = "", avatarFile = null, photoFiles = [], draftAvatar = "", draftName = "";
   let busy = false, stopped = true, createdMs = 0;
   let captions = {}, mediaBusy = false, imageEpoch = 0;
+  let migrating=false;
+  let migrationFinished=Promise.resolve(),finishMigration=()=>{};
+  const migrationAttempts=new Set();
+  async function migrateExisting(){
+    if(stopped||migrating||!await creatorCdnEnabled())return;
+    if(stopped||migrating||busy||mediaBusy)return;
+    migrating=true;
+    migrationFinished=new Promise(resolve=>{finishMigration=resolve;});
+    try{
+      for(const page of store.getState().contentCreator.pages){
+        if(stopped)break;
+        if(busy||mediaBusy)break;
+        const signature=`${page.id}:${JSON.stringify([page.photoIds,page.products])}`;
+        if(migrationAttempts.has(signature))continue;
+        if(page.cdnMigrationVersion===1&&(page.photoIds||[]).every(id=>creatorPublicMedia(page)[id]))continue;
+        migrationAttempts.add(signature);
+        patch({migrationProgress:`${page.name}: bestehende Fotos werden zu Cloudflare übernommen …`,migrationError:''});
+        try{await migrateCreatorPage(page.id,(done,total)=>patch({migrationProgress:`${page.name}: ${done} / ${total} Fotos übernommen`}));}
+        catch(error){patch({migrationError:`${page.name}: ${error.message} Die bisherigen Fotos bleiben verfügbar.`});break;}
+      }
+    }finally{migrating=false;finishMigration();patch({migrationProgress:''});}
+  }
   function stop() { subscriptions.forEach(unsubscribe => unsubscribe()); subscriptions = []; stopped = true; }
   function load() {
     if (!stopped) return;
     stopped = false; patch({status:"loading",error:""});
     const fail = error => { stop(); patch({status:"error",error:`Lokale konnten nicht geladen werden: ${error.message}`}); };
-    subscriptions.push(onSnapshot(collection(db,CC_PAGES), snap => patch({pages:snap.docs.map(d=>({id:d.id,...d.data()})),status:"ready",error:""}), fail));
+    subscriptions.push(onSnapshot(collection(db,CC_PAGES), snap => {patch({pages:snap.docs.map(d=>({id:d.id,...d.data()})),status:"ready",error:""});void migrateExisting();}, fail));
     subscriptions.push(onSnapshot(collection(db,CC_CARTS), snap => patch({carts:snap.docs.map(d=>({id:d.id,...d.data()}))}), fail));
     subscriptions.push(onSnapshot(collection(db,CC_ORDERS), snap => patch({orders:snap.docs.map(d=>({id:d.id,...d.data()}))}), fail));
     subscriptions.push(onSnapshot(collection(db,CC_VISITS), snap => patch({visits:snap.docs.map(d=>d.data())}), fail));
@@ -65,8 +89,8 @@ export function createContentCreator({root, store, prepareImage = prepareContent
   async function mediaTask(task) {
     if(mediaBusy)return;
     mediaBusy=true;patch({mediaBusy:true,mediaError:""});
-    try{await task();}catch(error){patch({mediaError:error.message || "Änderung nicht gespeichert."});}
-    finally{mediaBusy=false;patch({mediaBusy:false});}
+    try{await migrationFinished;await task();}catch(error){patch({mediaError:error.message || "Änderung nicht gespeichert."});}
+    finally{mediaBusy=false;patch({mediaBusy:false});void migrateExisting();}
   }
   root.addEventListener("input", event => {
     if(['shopTitle','shopPrice'].includes(event.target.name)){patch({[event.target.name]:event.target.value});return;}
@@ -81,6 +105,21 @@ export function createContentCreator({root, store, prepareImage = prepareContent
  if(event.target.matches('#cc-create-form [name="name"]')) { draftName=event.target.value; patch({draftName}); } });
   root.addEventListener("change", event => {
     const input=event.target;
+    if(input.hasAttribute('data-cc-hero-upload')){
+      const files=Array.from(input.files||[]),id=input.dataset.ccHeroUpload;if(!files.length)return;
+      mediaTask(async()=>{
+        if(!await creatorCdnEnabled())throw Error('Titelbild-Upload wird nach Aktivierung des bestehenden Cloudflare-Workers verfügbar.');
+        const pageRef=doc(db,CC_PAGES,id),snap=await getDoc(pageRef),page=snap.data();
+        if((page.heroImages?.length||0)+files.length>6)throw Error('Maximal 6 Titelbilder auswählen.');
+        const images=[...(page.heroImages||[])];
+        for(const file of files){
+          if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>30*1024*1024)throw Error('JPG, PNG oder WebP bis 30 MB wählen.');
+          images.push(await saveCreatorCdnAsset(id,`hero_${crypto.randomUUID().replaceAll('-','')}`,file,{hero:true}));
+        }
+        await updateDoc(pageRef,{heroImages:images,updatedAt:serverTimestamp()});
+        patch({pages:store.getState().contentCreator.pages.map(p=>p.id===id?{...p,heroImages:images}:p)});
+      });return;
+    }
     if(input.hasAttribute('data-cc-hero')){
       const id=input.dataset.ccHero;
       const selected=[...root.querySelectorAll('[data-cc-hero]:checked')].map(node=>node.value);
@@ -101,7 +140,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         if(!page)throw new Error("Lokal wurde nicht gefunden.");
         if((page.photoIds?.length || 0)+files.length>30)throw new Error("Maximal 30 Bilder pro Seite.");
         const keys=[];
-        for(const file of files){const key=crypto.randomUUID().replaceAll("-","");await setDoc(doc(pageRef,"images",key),{data:await prepareImage(file),caption:""});keys.push(key);}
+        for(const file of files){const key=crypto.randomUUID().replaceAll("-","");await savePromoAsset(id,key,file,await prepareImage(file));keys.push(key);}
         await updateDoc(pageRef,{photoIds:[...(page.photoIds || []),...keys],...(!page.published?{published:true,workflow:"ready"}:{}),updatedAt:serverTimestamp()});
         const state=store.getState().contentCreator;
         patch({pages:state.pages.map(p=>p.id===id?{...p,photoIds:[...(page.photoIds || []),...keys],...(!page.published?{published:true,workflow:"ready"}:{})}:p),...(!page.published?{filter:"ready"}:{})});
@@ -124,12 +163,23 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       mediaTask(async()=>{
         const cents=priceCents(price),pageRef=doc(db,CC_PAGES,id),snapshot=await getDoc(pageRef),page=snapshot.data();
         if(!title)throw Error('Bitte einen Paketnamen eingeben.');
-        if(productId){await updateDoc(pageRef,{products:(page.products||[]).map(p=>p.id===productId?{...p,title,priceCents:cents}:p),updatedAt:serverTimestamp()});return;}
+        if(productId){
+          const products=(page.products||[]).map(p=>p.id===productId?{...p,title,priceCents:cents}:p),updated={products,updatedAt:serverTimestamp()};
+          if(await creatorCdnEnabled()){
+            const after={...page,products},valid=creatorPublicMedia(after);
+            for(const key of page.photoIds||[])if(page.media?.[key]&&!valid[key]){
+              const free=products.some(p=>p.active!==false&&p.priceCents===0&&p.imageIds?.includes(key));
+              const media=await saveCreatorCdnAsset(id,key,await savedCreatorFile(id,key),{free,publish:false});
+              const {id:unused,...variants}=media;updated[`media.${key}`]=variants;
+            }
+          }
+          await updateDoc(pageRef,updated);return;
+        }
         if(!files.length || page.photoIds.length+files.length>30 || (page.products||[]).length>=10)throw Error('Fotos auswählen: maximal 30 Bilder und 10 Pakete pro Shop.');
         const keys=[];
         for(const file of files){
           const key=crypto.randomUUID().replaceAll('-',''),data=await prepareImage(file);
-          await (saveAsset||saveShopAsset)(id,key,file,data);keys.push(key);
+          await (saveAsset||saveShopAsset)(id,key,file,data,{free:cents===0});keys.push(key);
         }
         const product={id:crypto.randomUUID().replaceAll('-',''),title,priceCents:cents,imageIds:keys,active:true};
         const updated={photoIds:[...(page.photoIds||[]),...keys],products:[...(page.products||[]),product],...(!page.published?{published:true,workflow:'ready'}:{})};
@@ -156,9 +206,9 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         patch({progress:`Bild ${i+1} von ${photoFiles.length} …`});
         const data=await prepareImage(photoFiles[i]); const imageId=String(i).padStart(3,"0");
         if(kind==='shop'){
-          await (saveAsset||saveShopAsset)(pendingId,imageId,photoFiles[i],data);
+          await (saveAsset||saveShopAsset)(pendingId,imageId,photoFiles[i],data,{free:product.priceCents===0});
           await updateDoc(doc(page,'images',imageId),{caption:String(captions[i] || '').slice(0,1000)});
-        }else await setDoc(doc(page,"images",imageId),{data,caption:String(captions[i] || "").slice(0,1000)});
+        }else {await savePromoAsset(pendingId,imageId,photoFiles[i],data);await updateDoc(doc(page,'images',imageId),{caption:String(captions[i] || '').slice(0,1000)});}
         photoIds.push(imageId);
       }
       const completed={kind,name:draftName.trim(),avatar,createdMs,...(kind==='shop'?{products:product?[{...product,imageIds:photoIds}]:[]}:{}),photoIds,published:photoIds.length>0,workflow:photoIds.length?'ready':'working'};
@@ -178,6 +228,15 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       if(action==="new") {if(busy)return;captions={};patch({pendingPhotos:[],pendingCaptions:{},pageKind:"shop",shopTitle:"",shopPrice:"",selectedId:""});createdMs=0;pendingId="";avatarFile=null;photoFiles=[];draftAvatar="";draftName="";patch({editor:true,draftName:"",avatarName:"",photoNames:"",editorError:""});queueMicrotask(()=>root.querySelector('#cc-create-form [name="name"]')?.focus());}
       if(action==="close" && !busy) patch({editor:false});
       if(action==="filter") patch({filter:button.dataset.key});
+      if(action==='retry-migration'){migrationAttempts.clear();void migrateExisting();}
+      if(action==='hero-delete'||action==='hero-move')await mediaTask(async()=>{
+        const pageRef=doc(db,CC_PAGES,id),snap=await getDoc(pageRef),images=[...(snap.data()?.heroImages||[])];
+        const index=images.findIndex(image=>image.id===button.dataset.image);if(index<0)return;
+        if(action==='hero-delete')images.splice(index,1);
+        else{const next=index+Number(button.dataset.direction);if(next<0||next>=images.length)return;[images[index],images[next]]=[images[next],images[index]];}
+        await updateDoc(pageRef,{heroImages:images,updatedAt:serverTimestamp()});
+        patch({pages:store.getState().contentCreator.pages.map(p=>p.id===id?{...p,heroImages:images}:p)});
+      });
       if(action==='cancel-package-delete')patch({deletePackageConfirm:''});
       if(action==='refresh-previews')await mediaTask(async()=>{
         const snap=await getDoc(doc(db,CC_PAGES,id)),page=snap.data();

@@ -1,7 +1,9 @@
 import {db} from '/shared/firebase-config.js';
-import {doc,getDoc,setDoc,updateDoc,serverTimestamp} from '/shared/vendor/firebase/11.0.0/firebase-firestore.js';
+import {doc,getDoc,getDocs,collection,setDoc,updateDoc,serverTimestamp,writeBatch} from '/shared/vendor/firebase/11.0.0/firebase-firestore.js';
 import {CC_PAGES} from '../../shared/content-creator.js';
 import {CC_ORDERS} from '../../shared/content-creator-shop.js';
+import {creatorCdnEnabled,uploadCreatorMedia,readCreatorOriginal} from './heart-creator-cdn.js';
+import {creatorVariants,creatorPublicMedia} from '../../shared/creator-media.js';
 const PART=400000;
 export function drawShopWatermark(ctx,width,height){
  const text='MNYRA · PREVIEW',fontSize=Math.max(7,width/42);
@@ -21,7 +23,7 @@ export function prepareBoundedShopDisplay(image,edge,quality){
   const frame=document.createElement('canvas');
   frame.width=Math.max(1,Math.round(image.width*scale));frame.height=Math.max(1,Math.round(image.height*scale));
   const context=frame.getContext('2d');context.fillStyle='#f1f2ed';context.fillRect?.(0,0,frame.width,frame.height);context.drawImage(image,0,0,frame.width,frame.height);
-  const q=attempt===0?quality:Math.max(.78,quality-.06);
+  const q=attempt===0?quality:Math.max(.5,quality-.06);
   const encode=()=>{const webp=frame.toDataURL('image/webp',q);return webp.startsWith('data:image/webp')?webp:frame.toDataURL('image/jpeg',q);};
   const clean=encode();drawShopWatermark(context,frame.width,frame.height);
   const record={version:3,width:frame.width,height:frame.height,clean,marked:encode()};
@@ -54,6 +56,11 @@ export async function saveShopPreview(pageId,imageId,display){
  await setDoc(doc(db,CC_PAGES,pageId,'images',imageId),{data:preview},{merge:true});
 }
 export async function refreshShopPreviews(pageId,imageIds){
+ if(await creatorCdnEnabled()){
+  const page=(await getDoc(doc(db,CC_PAGES,pageId))).data();
+  for(const imageId of imageIds){const free=(page.products||[]).some(p=>p.active!==false&&p.priceCents===0&&p.imageIds?.includes(imageId));await saveCreatorCdnAsset(pageId,imageId,await savedCreatorFile(pageId,imageId),{free});}
+  return;
+ }
  for(const imageId of imageIds){
   const snap=await getDoc(doc(db,CC_PAGES,pageId,'originals',imageId)),meta=snap.data();
   if(!meta?.parts)throw Error('Originaldatei fehlt. Vorschau konnte nicht aktualisiert werden.');
@@ -68,8 +75,9 @@ export async function refreshShopPreviews(pageId,imageIds){
  }
  await updateDoc(doc(db,CC_PAGES,pageId),{updatedAt:serverTimestamp()});
 }
-export async function saveShopAsset(pageId,imageId,file,display){
+export async function saveShopAsset(pageId,imageId,file,display,options={}){
  if(!file||file.size>30*1024*1024||!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('JPG, PNG oder WebP bis 30 MB wählen.');
+ if(await creatorCdnEnabled())return saveCreatorCdnAsset(pageId,imageId,file,options);
  const bytes=new Uint8Array(await file.arrayBuffer());
  const parts=Math.ceil(bytes.length/PART);if(!parts)throw Error('Die Datei ist leer.');
  for(let i=0;i<parts;i++){
@@ -80,6 +88,76 @@ export async function saveShopAsset(pageId,imageId,file,display){
  await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId),{name:file.name.slice(0,180),mime:file.type,size:bytes.length,parts});
  const source=URL.createObjectURL(file);
  try{await saveShopPreview(pageId,imageId,source);}finally{URL.revokeObjectURL(source);}
+}
+
+export async function saveCreatorCdnAsset(pageId,imageId,file,{free=false,hero=false,publish=true}={}){
+ const source=URL.createObjectURL(file);
+ let result;
+ try{
+  const image=new Image();image.src=source;await image.decode();
+  const displays={};
+  for(const [size,edge,quality] of [['thumb',480,.68],['medium',1080,.8],['large',1600,.86]])displays[size]=prepareBoundedShopDisplay(image,edge,quality);
+  result=await uploadCreatorMedia(pageId,imageId,file,displays,{free,hero});
+ }finally{URL.revokeObjectURL(source);}
+ // Publishing the manifest is atomic with storing the private original pointer.
+ // Failed uploads leave the old manifest and all legacy originals untouched.
+ const batch=writeBatch(db),pageRef=doc(db,CC_PAGES,pageId);
+ batch.set(doc(pageRef,'originals',imageId),{r2:result.original,name:result.original.name,mime:result.original.mime,size:result.original.size},{merge:true});
+ batch.set(doc(pageRef,'images',imageId),{cdn:result.media},{merge:true});
+ if(!hero&&publish)batch.update(pageRef,{[`media.${imageId}`]:result.media,updatedAt:serverTimestamp()});
+ await batch.commit();
+ return {id:imageId,...result.media};
+}
+
+export async function savedCreatorFile(pageId,imageId){
+ const ref=doc(db,CC_PAGES,pageId,'originals',imageId),snap=await getDoc(ref),meta=snap.data();
+ if(meta?.r2)return readCreatorOriginal(meta.r2);
+ if(!Number.isInteger(meta?.parts)||meta.parts<1||meta.parts>100||!Number.isSafeInteger(meta.size)||meta.size<1||meta.size>30*1024*1024)throw Error('Gespeichertes Original fehlt.');
+ const chunks=[];let size=0;
+ for(let start=0;start<meta.parts;start+=8){
+  const rows=await Promise.all(Array.from({length:Math.min(8,meta.parts-start)},(_,offset)=>getDoc(doc(ref,'chunks',String(start+offset).padStart(3,'0')))));
+  for(const row of rows){const data=row.data()?.data;if(!data)throw Error('Gespeichertes Original ist unvollständig.');const bytes=Uint8Array.from(atob(data),c=>c.charCodeAt(0));size+=bytes.length;if(size>meta.size)throw Error('Originalgröße stimmt nicht.');chunks.push(bytes);}
+ }
+ if(size!==meta.size)throw Error('Originalgröße stimmt nicht.');
+ return new File(chunks,meta.name||`${imageId}.jpg`,{type:meta.mime||'image/jpeg'});
+}
+
+const migrationTasks=new Map();
+export function migrateCreatorPage(pageId,onProgress=()=>{}){
+ if(migrationTasks.has(pageId))return migrationTasks.get(pageId);
+ const task=(async()=>{
+  if(!await creatorCdnEnabled())return false;
+  const pageRef=doc(db,CC_PAGES,pageId),snapshot=await getDoc(pageRef),page=snapshot.data();
+  if(!page)return false;
+  const current=creatorPublicMedia(page);
+  // Include originals retained for existing orders after a package was removed.
+  const originals=page.kind==='shop'?await getDocs(collection(pageRef,'originals')):null;
+  const originalRecords=new Map(originals?.docs.map(d=>[d.id,d.data()])||[]);
+  const ids=[...new Set([...(page.photoIds||[]),...originalRecords.keys()])];
+  let done=0;
+  for(const imageId of ids){
+   const meta=originalRecords.get(imageId);
+   if(imageId.startsWith('hero_')||(meta?.r2&&(!page.photoIds?.includes(imageId)||current[imageId]))){onProgress(++done,ids.length);continue;}
+   let file;
+   if(page.kind==='shop')file=await savedCreatorFile(pageId,imageId);
+   else{
+    const snap=await getDoc(doc(pageRef,'images',imageId)),image=snap.data();
+    if(creatorVariants(image?.cdn)){onProgress(++done,ids.length);continue;}
+    if(!/^data:image\/(jpeg|png|webp);base64,/.test(image?.data||''))throw Error('Gespeichertes Vorschaufoto fehlt.');
+    const blob=await(await fetch(image.data)).blob();file=new File([blob],`${imageId}.jpg`,{type:blob.type});
+   }
+   const free=page.kind!=='shop'||(page.products||[]).some(p=>p.active!==false&&p.priceCents===0&&p.imageIds?.includes(imageId));
+   await saveCreatorCdnAsset(pageId,imageId,file,{free});onProgress(++done,ids.length);
+  }
+  await updateDoc(pageRef,{cdnMigrationVersion:1,updatedAt:serverTimestamp()});
+  return true;
+ })();
+ migrationTasks.set(pageId,task);task.finally(()=>migrationTasks.delete(pageId)).catch(()=>{});return task;
+}
+
+export async function savePromoAsset(pageId,imageId,file,data){
+ if(await creatorCdnEnabled())return saveCreatorCdnAsset(pageId,imageId,file,{free:true});
+ await setDoc(doc(db,CC_PAGES,pageId,'images',imageId),{data,caption:''});
 }
 export {initialShopProduct} from "../../shared/content-creator-shop.js";
 export async function releaseShopOrder(id){await updateDoc(doc(db,CC_ORDERS,id),{approved:true,paymentConfirmed:true,status:'released',releasedAt:serverTimestamp()});}

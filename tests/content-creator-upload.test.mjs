@@ -10,7 +10,7 @@ import {contentLink} from '../shared/content-creator.js';
 // Isolate browser SDK imports while exercising the production controller and events.
 const source=(await readFile(new URL('../apps/mnyra-heart/heart-content-creator.js',import.meta.url),'utf8'))
  .replace(/^import .*;\n/gm,'').replace(/export (async )?function /g,'$1function ');
-const factory=new Function('db','collection','doc','onSnapshot','setDoc','updateDoc','writeBatch','serverTimestamp','CC_PAGES','CC_VISITS','contentLink','initialShopProduct','getDoc','priceCents',`${source}\nreturn createContentCreator;`);
+const factory=new Function('db','collection','doc','onSnapshot','setDoc','updateDoc','writeBatch','serverTimestamp','CC_PAGES','CC_VISITS','contentLink','initialShopProduct','getDoc','priceCents',`const creatorCdnEnabled=async()=>false; const savePromoAsset=async(pageId,imageId,file,data)=>setDoc(doc(db,CC_PAGES,pageId,'images',imageId),{data,caption:''});\n${source}\nreturn createContentCreator;`);
 function setup(failImage=false,shop=false,empty=false){
  const {document,window}=parseHTML('<div id="app"></div>'),root=document.getElementById('app');
  const store=createHeartStore(createHeartInitialState());store.actions.patchContentCreator({editor:true,draftName:'Bistro & Co',pageKind:shop?'shop':'promo',shopPrice:'29',shopTitle:'4 Fotos'});

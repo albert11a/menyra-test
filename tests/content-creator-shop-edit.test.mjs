@@ -6,7 +6,7 @@ import {createHeartStore,createHeartInitialState} from '../apps/mnyra-heart/hear
 import {renderContentCreator} from '../apps/mnyra-heart/heart-content-creator-render.js';
 import {contentLink} from '../shared/content-creator.js';
 const source=(await readFile(new URL('../apps/mnyra-heart/heart-content-creator.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export (async )?function /g,'$1function ');
-const factory=new Function('db','collection','doc','getDoc','onSnapshot','setDoc','updateDoc','writeBatch','serverTimestamp','CC_PAGES','CC_VISITS','contentLink',`${source}\nreturn createContentCreator;`);
+const factory=new Function('db','collection','doc','getDoc','onSnapshot','setDoc','updateDoc','writeBatch','serverTimestamp','CC_PAGES','CC_VISITS','contentLink',`const creatorCdnEnabled=async()=>false; const savePromoAsset=async(pageId,imageId,file,data)=>setDoc(doc(db,CC_PAGES,pageId,'images',imageId),{data,caption:''});\n${source}\nreturn createContentCreator;`);
 function setup(){
  const {document,window}=parseHTML('<div id="app"></div>'),root=document.getElementById('app');
  const store=createHeartStore(createHeartInitialState());
@@ -65,7 +65,7 @@ test('Vorhandene Vorschauen werden aus Originalen erneuert, Bildunterschriften b
  const ctx={save(){},restore(){},translate(){},rotate(){},measureText:()=>({width:200}),fillText(){},drawImage(){}};
  const document={createElement:()=>({getContext:()=>ctx,toDataURL:()=> 'new-preview'})};
  class Image{constructor(){this.width=720;this.height=900;}async decode(){}}
- const refresh=new Function('db','doc','getDoc','setDoc','CC_PAGES','Image','document','URL','updateDoc','serverTimestamp',`${assetSource}\nreturn refreshShopPreviews;`)({},doc,async path=>({data:()=>docs.get(path)}),async(...args)=>writes.push(args),'contentCreatorPages',Image,document,{createObjectURL:()=> 'blob:original',revokeObjectURL:url=>urls.push(url)},async()=>{},()=>0);
+ const refresh=new Function('db','doc','getDoc','setDoc','CC_PAGES','Image','document','URL','updateDoc','serverTimestamp',`const creatorCdnEnabled=async()=>false;\n${assetSource}\nreturn refreshShopPreviews;`)({},doc,async path=>({data:()=>docs.get(path)}),async(...args)=>writes.push(args),'contentCreatorPages',Image,document,{createObjectURL:()=> 'blob:original',revokeObjectURL:url=>urls.push(url)},async()=>{},()=>0);
  await refresh('s',['a']);assert.equal(writes.length,6);assert.equal(writes.filter(([path,data])=>path.includes('/displays/')&&data.version===3).length,3);assert.deepEqual(writes[5],['contentCreatorPages/s/images/a',{data:'new-preview'},{merge:true}]);assert.deepEqual(urls,['blob:original']);
  await assert.rejects(refresh('s',['missing']),/Originaldatei fehlt/);assert.equal(writes.length,6);
 });

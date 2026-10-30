@@ -1,0 +1,37 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {parseHTML} from 'linkedom';
+import {createHeartStore,createHeartInitialState} from '../apps/mnyra-heart/heart-state.js';
+import {renderContentCreator} from '../apps/mnyra-heart/heart-content-creator-render.js';
+import {creatorHeroFiles,renderCreatorCatalog} from '../shared/content-creator-view.js';
+import {creatorPublicMedia,CREATOR_MEDIA_ORIGIN} from '../shared/creator-media.js';
+import {serveContentCreator} from '../api/content-creator.js';
+const pageId='a'.repeat(32);
+const variants={mode:'clean',bytes:10,thumb:`${CREATOR_MEDIA_ORIGIN}/media/creator-public/${pageId}/hero/r_thumb.webp`,medium:`${CREATOR_MEDIA_ORIGIN}/media/creator-public/${pageId}/hero/r_medium.webp`,large:`${CREATOR_MEDIA_ORIGIN}/media/creator-public/${pageId}/hero/r_large.webp`};
+const source=(await readFile(new URL('../apps/mnyra-heart/heart-content-creator.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export (async )?function /g,'$1function ');
+test('Heart uploads, sorts and removes independent title images with no package photos',async()=>{
+ const {document,window}=parseHTML('<main id="root"></main>'),root=document.querySelector('main');
+ const page={id:pageId,name:'Shop',kind:'shop',photoIds:[],products:[],published:true};
+ const docs=new Map([[`contentCreatorPages/${pageId}`,page]]),store=createHeartStore(createHeartInitialState());
+ store.actions.patchContentCreator({pages:[page],selectedId:pageId});
+ store.subscribe(state=>{root.innerHTML=renderContentCreator(state.contentCreator);});root.innerHTML=renderContentCreator(store.getState().contentCreator);
+ const doc=(...args)=>args.filter(x=>typeof x==='string').join('/');
+ const factory=new Function('db','doc','getDoc','updateDoc','serverTimestamp','CC_PAGES','creatorCdnEnabled','saveCreatorCdnAsset','creatorPublicMedia',`${source}\nreturn createContentCreator;`);
+ factory({},doc,async path=>({data:()=>docs.get(path)}),async(path,data)=>docs.set(path,{...docs.get(path),...data}),()=> 'now','contentCreatorPages',async()=>true,async(id,imageId)=>({id:imageId,...variants}),creatorPublicMedia)({root,store});
+ const settle=async()=>{for(let i=0;i<15;i++)await new Promise(resolve=>setImmediate(resolve));};
+ const input=root.querySelector('[data-cc-hero-upload]');Object.defineProperty(input,'files',{value:[new File(['a'],'a.jpg',{type:'image/jpeg'}),new File(['b'],'b.jpg',{type:'image/jpeg'})]});
+ input.dispatchEvent(new window.Event('change',{bubbles:true}));await settle();
+ let updated=docs.get(`contentCreatorPages/${pageId}`);assert.equal(updated.heroImages.length,2);assert.deepEqual(updated.photoIds,[]);
+ const ids=updated.heroImages.map(image=>image.id);assert.deepEqual(creatorHeroFiles(updated),ids);assert.match(renderCreatorCatalog(updated),/creator-public/);
+ root.querySelector('[data-cc-action="hero-move"][data-direction="1"]').dispatchEvent(new window.Event('click',{bubbles:true}));await settle();
+ updated=docs.get(`contentCreatorPages/${pageId}`);assert.deepEqual(updated.heroImages.map(image=>image.id),[ids[1],ids[0]]);
+ root.querySelector('[data-cc-action="hero-delete"]').dispatchEvent(new window.Event('click',{bubbles:true}));await settle();
+ assert.equal(docs.get(`contentCreatorPages/${pageId}`).heroImages.length,1);
+});
+test('A migrated Creator shop renders CDN images immediately without requesting embedded Firestore covers',async()=>{
+ const hero={id:`hero_${'b'.repeat(32)}`,...variants},page={published:true,kind:'shop',name:'Shop',heroImages:[hero],photoIds:[],products:[]};
+ let coverReads=0;const response={headers:{},setHeader(key,value){this.headers[key]=value;},end(body){this.body=body;}};
+ await serveContentCreator({method:'GET',url:`/api/content-creator?id=${pageId}`},response,{read:async()=>page,loadCovers:async()=>{coverReads++;return {};},shell:'<html><head><title>Shop</title></head><body><main id="content-app"></main></body></html>'});
+ assert.equal(coverReads,0);assert.equal(response.statusCode,200);assert.ok(response.body.includes(variants.thumb));assert.match(response.body,/fetchpriority="high"/);
+});

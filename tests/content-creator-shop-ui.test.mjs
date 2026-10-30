@@ -11,15 +11,15 @@ const factory=new Function('db','doc','getDoc','esc','ccImage','CC_PAGES','euro'
 const pageId='a'.repeat(32);
 async function setup(still=false,price=2900,options={}){
  const {document,window}=parseHTML('<html><head><meta name="theme-color" content="#f7f6f2"></head><body><main id="app"></main></body></html>'),root=document.getElementById('app');window.HTMLElement.prototype.scrollIntoView=()=>{};window.HTMLElement.prototype.scrollTo=function(options){this.scrollLeft=options.left;this.dispatchEvent(new window.Event('scroll'));};
- const storage=new Map(),calls=[],zipFiles=[],page={id:pageId,published:true,kind:'shop',name:'Bistro',heroPhotoIds:options.heroPhotoIds||[],photoIds:['one','two','three','four'],products:[{id:'pack',title:'Social Set',priceCents:price,imageIds:['one','two','three','four']}]};
+ const storage=new Map(),calls=[],zipFiles=[],page={id:pageId,published:true,kind:'shop',name:'Bistro',media:options.media||{},heroPhotoIds:options.heroPhotoIds||[],photoIds:['one','two','three','four'],products:[{id:'pack',title:'Social Set',priceCents:price,imageIds:['one','two','three','four']}]};
  const docs=new Map([[`contentCreatorPages/${pageId}`,structuredClone(page)]]);
  for(const key of page.photoIds){docs.set(`contentCreatorPages/${pageId}/originals/${key}`,{parts:1,size:3,name:key+'.jpg',mime:'image/jpeg',cleanPreview:{version:1,data:'data:image/jpeg;base64,YWJj'}});docs.set(`contentCreatorPages/${pageId}/originals/${key}/chunks/000`,{data:'YWJj'});}
  const repo={read:async key=>docs.get(key),write:async(key,data)=>{docs.set(key,{...docs.get(key),...structuredClone(data)});return true;},notify:async()=>true};
  const fetch=async(url,requestOptions)=>{
-  const payload=requestOptions.method==='POST'?JSON.parse(requestOptions.body):Object.fromEntries(new URL(url,'https://www.mnyra.com').searchParams);calls.push(payload);
+  const payload=requestOptions.method==='POST'?JSON.parse(requestOptions.body):Object.fromEntries(new URL(url,'https://www.mnyra.com').searchParams);if(new URL(url,'https://www.mnyra.com').pathname==='/creator/download')payload.op=payload.orderId?'download':'free-download';calls.push(payload);
   try{if(payload.op==='free-download'&&options.download)await options.download(payload);if(payload.op==='free-preview'&&options.preview){const result=await options.preview(payload);if(result)return result;}const result=await shopAction(payload,repo);return {ok:true,json:async()=>result,arrayBuffer:async()=>result.bytes,headers:{get:key=>key==='Content-Type'?result.mime:key==='X-File-Name'?encodeURIComponent(result.name):null}};}catch(error){return {ok:false,json:async()=>({error:error.message})};}
  };
- const mount=factory({},(...args)=>args.filter(x=>typeof x==='string').join('/'),async()=>({data:()=>({data:'data:image/jpeg;base64,YWJj'})}),ccEscape,ccImage,'contentCreatorPages',euro,shopQuote,validShopId,files=>{zipFiles.push(files);return new Blob(['zip']);}, {getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)}, {origin:'https://www.mnyra.com',search:''},fetch,document,{setInterval:(fn,ms)=>{options.intervals?.push({fn,ms});return 0;},addEventListener:()=>{},Image:options.Image,matchMedia:()=>({matches:!!options.reducedMotion})},()=>0,options.navigator||{},creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,renderCreatorCatalog,creatorHowTo);
+ const mount=factory({},(...args)=>args.filter(x=>typeof x==='string').join('/'),async()=>({data:()=>({data:'data:image/jpeg;base64,YWJj'})}),ccEscape,ccImage,'contentCreatorPages',euro,shopQuote,validShopId,files=>{zipFiles.push(files);return new Blob(['zip']);}, {getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)}, {origin:'https://www.mnyra.com',search:''},fetch,document,{setInterval:(fn,ms)=>{options.intervals?.push({fn,ms});return 0;},addEventListener:()=>{},Image:options.Image,IntersectionObserver:options.IntersectionObserver,matchMedia:()=>({matches:!!options.reducedMotion})},()=>0,options.navigator||{},creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,renderCreatorCatalog,creatorHowTo);
  await mount({root,page,still});
  async function settle(){for(let i=0;i<15;i++)await new Promise(r=>setImmediate(r));}
  async function click(selector){const button=root.querySelector(selector);assert.ok(button,selector);button.dispatchEvent(new window.Event('click',{bubbles:true}));await settle();}
@@ -190,4 +190,27 @@ test('Hero respects reduced motion and keeps the introduction in simple Albanian
  const track=ctx.root.querySelector('[data-hero-track]');intervals.find(t=>t.ms===5500).fn();assert.ok(!track.scrollLeft);
  const intro=ctx.root.querySelector('.shop-intro-copy');assert.doesNotMatch(intro.textContent,/[ëË]/);
  assert.match(intro.textContent,/8.700/);assert.match(intro.textContent,/Rezervime tavolinash/);assert.ok(intro.querySelector('a[href^="https://business.google.com/"]'));
+});
+
+
+test('Preparing on focus enables sharing on the first tap without downloading the same originals again',async()=>{
+ const shared=[];
+ const ctx=await setup(false,0,{navigator:{canShare:()=>true,share:async data=>shared.push(data)}});
+ const button=ctx.root.querySelector('[data-shop="free-save"]');button.dispatchEvent(new ctx.window.Event('focusin',{bubbles:true}));await ctx.settle();
+ assert.equal(ctx.calls.filter(call=>call.op==='free-download').length,4);
+ await ctx.click('[data-shop="free-save"]');
+ assert.equal(shared.length,1);assert.equal(shared[0].files.length,4);assert.equal(await shared[0].files[0].text(),'abc');
+ assert.equal(ctx.calls.filter(call=>call.op==='free-download').length,4);assert.equal(ctx.root.querySelector('.shop-save-overlay'),null);
+});
+
+test('Visible free packages prepare at most a small known original set; 3G and data saving skip automatic preparation',async()=>{
+ const origin='https://menyra-media.alberthoti-vsa.workers.dev';
+ const media=Object.fromEntries(['one','two','three','four'].map(id=>[id,{mode:'clean',bytes:100,thumb:`${origin}/media/creator-public/${pageId}/${id}/r_thumb.webp`,medium:`${origin}/media/creator-public/${pageId}/${id}/r_medium.webp`,large:`${origin}/media/creator-public/${pageId}/${id}/r_large.webp`}]));
+ class Observer{constructor(callback){this.callback=callback;}observe(target){this.callback([{target,isIntersecting:true}]);}disconnect(){}}
+ for(const connection of [{effectiveType:'3g'},{effectiveType:'4g',saveData:true}]){
+  const ctx=await setup(false,0,{media,IntersectionObserver:Observer,navigator:{connection}});await ctx.settle();
+  assert.equal(ctx.calls.filter(call=>call.op==='free-download').length,0);
+ }
+ const fast=await setup(false,0,{media,IntersectionObserver:Observer,navigator:{connection:{effectiveType:'4g'}}});await fast.settle();
+ assert.equal(fast.calls.filter(call=>call.op==='free-download').length,4);
 });

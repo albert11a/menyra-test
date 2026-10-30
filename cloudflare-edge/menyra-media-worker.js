@@ -12,6 +12,9 @@
 //   MAX_IMAGE_MB (default 15)
 //   MAX_STORY_MB (default 50)
 //   STORY_TTL_HOURS (default 24)
+//   CREATOR_CDN_ENABLED (default disabled; set to 1 after review)
+//   CREATOR_PRIVATE_BUCKET (private R2 binding, NO public domain/r2.dev access)
+//   CREATOR_ADMIN_UIDS (optional additional comma-separated CEO UIDs)
 // =========================================================
 
 function json(data, status = 200, headers = {}) {
@@ -36,7 +39,7 @@ function corsHeaders(origin, env) {
   if (!allowed.length) {
     return {
       "access-control-allow-origin": origin || "*",
-      "access-control-allow-methods": "POST,OPTIONS",
+      "access-control-allow-methods": "GET,HEAD,POST,OPTIONS",
       "access-control-allow-headers": "content-type,authorization,x-mnyra-media-ticket"
     };
   }
@@ -71,7 +74,7 @@ function corsHeaders(origin, env) {
   return matches
     ? {
         "access-control-allow-origin": allowed.includes("*") ? "*" : origin,
-        "access-control-allow-methods": "POST,OPTIONS",
+        "access-control-allow-methods": "GET,HEAD,POST,OPTIONS",
         "access-control-allow-headers": "content-type,authorization,x-mnyra-media-ticket"
       }
     : {};
@@ -434,7 +437,14 @@ async function handleStoryDelete(request, env, cors) {
 
 async function handleMedia(request, env, ctx) {
     const url = new URL(request.url);
-    const key = url.pathname.replace(/^\/media\//, '');
+    let key;
+    try { key = decodeURIComponent(url.pathname.replace(/^\/media\//, '')); }
+    catch { return new Response('Not found', {status:404}); }
+
+    // Must precede cache.match: originals never have a public media URL.
+    if (key.startsWith('creator-private/') || key.includes('..') || key.includes('\\')) {
+        return new Response('Not found', {status:404,headers:{'Cache-Control':'no-store'}});
+    }
 
     if (!key) {
         return new Response('Not found', { status: 404 });
@@ -521,6 +531,76 @@ async function handleMedia(request, env, ctx) {
     return response;
 }
 
+const CREATOR_DEFAULT_ADMIN = 'aklBkkIuZ7Nrpx266TJn63rrxX62';
+const creatorId = value => /^[a-f0-9]{32}$/.test(String(value || ''));
+const creatorFileId = value => /^(?:hero_)?[a-zA-Z0-9_-]{1,64}$/.test(String(value || ''));
+const creatorPrivateKey = value => /^creator-private\/[a-f0-9]{32}\/[a-zA-Z0-9_-]{1,69}\/[a-zA-Z0-9_-]+\.(?:jpg|png|webp)$/.test(String(value || ''));
+async function creatorAdmin(request,env,ownerId) {
+  // The existing verifier normalizes an empty owner to "general". Select the
+  // claimed owner here, but trust it only after the signature is verified.
+  if(!ownerId){
+    const bearer=String(request.headers.get('x-mnyra-media-ticket')||request.headers.get('authorization')||'').replace(/^Bearer\s+/i,'');
+    try{ownerId=JSON.parse(base64UrlDecodeToString(bearer.split('.')[0])).ownerId;}catch{return {ok:false,status:401,error:'Media ticket required'};}
+  }
+  const auth = await verifyMediaActionTicket({request,env,action:'image_upload',ownerId});
+  if (!auth.ok) return auth;
+  const admins = new Set([CREATOR_DEFAULT_ADMIN,...String(env.CREATOR_ADMIN_UIDS || '').split(',').map(s=>s.trim()).filter(Boolean)]);
+  if (!admins.has(auth.payload.uid) || auth.payload.ownerId !== auth.payload.uid) return {ok:false,status:403,error:'Creator admin required'};
+  return auth;
+}
+async function handleCreatorUpload(request,env,cors) {
+  // Verify the signed actor before accepting/reading the upload body.
+  const auth = await creatorAdmin(request,env,'');
+  if (!auth.ok) return json({error:auth.error},auth.status,cors);
+  if (Number(request.headers.get('content-length')) > 35*1024*1024) return json({error:'Upload too large'},413,cors);
+  const form = await request.formData();
+  const pageId = form.get('pageId'),imageId = form.get('imageId'),mode = form.get('mode');
+  if (!creatorId(pageId) || !creatorFileId(imageId) || !['clean','marked'].includes(mode)) return json({error:'Invalid creator asset'},400,cors);
+  const original = form.get('original'),types = {'image/jpeg':'jpg','image/png':'png','image/webp':'webp'};
+  if (!original?.arrayBuffer || !types[original.type] || original.size < 1 || original.size > 30*1024*1024) return json({error:'Invalid original'},400,cors);
+  const variants = [];
+  for (const size of ['thumb','medium','large']) {
+    const file = form.get(size);
+    if (!file?.arrayBuffer || !types[file.type] || file.size < 1 || file.size > 1024*1024) return json({error:'Invalid display image'},400,cors);
+    variants.push({size,file});
+  }
+  const revision = crypto.randomUUID().replaceAll('-',''),prefix = `${pageId}/${imageId}/${revision}`;
+  const key = `creator-private/${prefix}.${types[original.type]}`;
+  await env.CREATOR_PRIVATE_BUCKET.put(key,await original.arrayBuffer(),{httpMetadata:{contentType:original.type,cacheControl:'private, no-store'}});
+  const origin = new URL(request.url).origin,media = {mode,bytes:original.size};
+  await Promise.all(variants.map(async ({size,file}) => {
+    const path = `creator-public/${prefix}_${size}.${types[file.type]}`;
+    await env.MEDIA_BUCKET.put(path,await file.arrayBuffer(),{httpMetadata:{contentType:file.type,cacheControl:'public, max-age=31536000, immutable'}});
+    media[size] = `${origin}/media/${path}`;
+  }));
+  return json({media,original:{key,name:String(original.name || 'photo.jpg').slice(0,180),mime:original.type,size:original.size}},200,{...cors,'Cache-Control':'no-store'});
+}
+async function creatorObject(request,env,cors,record) {
+  if (!creatorPrivateKey(record?.key)) return json({error:'Not found'},404,cors);
+  const object = await env.CREATOR_PRIVATE_BUCKET.get(record.key);
+  if (!object || object.size !== record.size) return json({error:'Not found'},404,cors);
+  return new Response(request.method === 'HEAD' ? null : object.body,{headers:{...cors,
+    'Content-Type':record.mime,'Content-Length':String(object.size),'Cache-Control':'private, no-store',
+    'Content-Disposition':`inline; filename*=UTF-8''${encodeURIComponent(record.name || 'photo.jpg')}`,
+    'X-File-Name':encodeURIComponent(record.name || 'photo.jpg'),
+    'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Access-Control-Expose-Headers':'X-File-Name, Content-Length, Content-Type'
+  }});
+}
+async function handleCreatorDownload(request,env,cors) {
+  const url = new URL(request.url),query = new URLSearchParams();
+  for (const field of ['pageId','file','productId','orderId']) {
+    const value = url.searchParams.get(field);
+    if (value) query.set(field,value);
+  }
+  if (!creatorFileId(query.get('file')) || (!creatorId(query.get('orderId')) && (!creatorId(query.get('pageId')) || !creatorId(query.get('productId'))))) return json({error:'Invalid download'},400,cors);
+  query.set('op',query.has('orderId') ? 'download' : 'free-download');query.set('format','authorize-r2');
+  // Fixed trusted authorization origin. Never accept a caller-supplied URL/key.
+  const response = await fetch(`https://www.mnyra.com/api/content-creator-shop?${query}`,{redirect:'error',signal:AbortSignal.timeout(15000)});
+  if (!response.ok) return json({error:'Download not authorized'},403,{...cors,'Cache-Control':'no-store'});
+  const authorization = await response.json();
+  return creatorObject(request,env,cors,authorization.r2);
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -529,6 +609,29 @@ export default {
 
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: cors });
+    }
+
+    if (url.pathname === '/creator/status' && ['GET','HEAD'].includes(request.method)) {
+      return json({creatorCdn:env.CREATOR_CDN_ENABLED === '1' && !!env.CREATOR_PRIVATE_BUCKET ? 1 : 0},200,{...cors,'Cache-Control':'no-store'});
+    }
+    if (url.pathname.startsWith('/creator/')) {
+      // Disabling new uploads/migration must not break already sold originals.
+      if (!env.CREATOR_PRIVATE_BUCKET || (url.pathname === '/creator/upload' && env.CREATOR_CDN_ENABLED !== '1')) return json({error:'Creator CDN not enabled'},503,{...cors,'Cache-Control':'no-store'});
+      try {
+        if (url.pathname === '/creator/upload' && request.method === 'POST') return await handleCreatorUpload(request,env,cors);
+        if (['GET','HEAD'].includes(request.method)) {
+          if (url.pathname === '/creator/download') return await handleCreatorDownload(request,env,cors);
+          if (url.pathname === '/creator/admin-original') {
+            const auth = await creatorAdmin(request,env,url.searchParams.get('restaurantId'));
+            if (!auth.ok) return json({error:auth.error},auth.status,cors);
+            if (!creatorPrivateKey(url.searchParams.get('key'))) return json({error:'Not found'},404,cors);
+            const object = await env.CREATOR_PRIVATE_BUCKET.head(url.searchParams.get('key'));
+            if (!object) return json({error:'Not found'},404,cors);
+            return await creatorObject(request,env,cors,{key:url.searchParams.get('key'),mime:object.httpMetadata.contentType,size:object.size,name:'photo.'+url.searchParams.get('key').split('.').at(-1)});
+          }
+        }
+        return json({error:'Not found'},404,cors);
+      } catch { return json({error:'Creator media unavailable'},503,{...cors,'Cache-Control':'no-store'}); }
     }
 
     if (request.method === "GET" || request.method === "HEAD") {

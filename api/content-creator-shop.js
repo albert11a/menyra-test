@@ -8,6 +8,7 @@ export async function serveCreatorShop(req,res,repository=shopRepository){
   if(typeof input==='string')input=JSON.parse(input);if(!input||typeof input!=='object')throw Error('Kërkesa mungon.');
   if(req.method==='GET'&&!['receipt','download','free-download','free-image','image'].includes(input.op))throw Error('Kërkesa nuk lejohet.');
   const result=await shopAction(input,await repository());res.statusCode=200;
+  if(result.redirect){res.statusCode=307;res.setHeader('Location',result.redirect);res.end();return;}
   if(result.bytes){
    if(input.op==='image')res.setHeader('Cache-Control','private, max-age=300');
    res.setHeader('Content-Type',result.mime);

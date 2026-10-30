@@ -1,5 +1,6 @@
 import { ccEscape as esc, ccImage } from './content-creator.js';
 import { euro } from './content-creator-shop.js';
+import {creatorPublicMedia,creatorHeroImages} from './creator-media.js';
 
 // Lucide paths, rendered inline: no icon library/CDN request or hydration delay.
 const paths = {
@@ -26,11 +27,13 @@ export function creatorIcon(name) {
 }
 export const DISPLAY_VERSION = 3;
 export function creatorImageUrl(page, file, size = 'thumb') {
+  const media = creatorPublicMedia(page)[file] || creatorHeroImages(page).find(image=>image.id===file);
+  if (media?.[size]) return media[size];
   return `/api/content-creator-shop?${new URLSearchParams({op:'image',pageId:page.id,file,size,display:String(DISPLAY_VERSION),v:String(page.updatedAt || page.createdMs || '')})}`;
 }
 export function publicCreatorPage(page, id) {
   const photoIds = [...new Set((page.photoIds || []).filter(key => /^[a-zA-Z0-9_-]{1,64}$/.test(key)))].slice(0,30);
-  return {id, published:true, kind:page.kind === 'shop' ? 'shop' : 'promo', name:String(page.name || '').slice(0,160),
+  return {id, published:true, media:creatorPublicMedia(page),heroImages:creatorHeroImages(page),kind:page.kind === 'shop' ? 'shop' : 'promo', name:String(page.name || '').slice(0,160),
     avatar:ccImage(page.avatar), heroPhotoIds:[...new Set((Array.isArray(page.heroPhotoIds)?page.heroPhotoIds:[]).filter(id=>photoIds.includes(id)))].slice(0,6), updatedAt:typeof page.updatedAt === 'string' ? page.updatedAt : '', createdMs:Number(page.createdMs)||0, photoIds,
     products:(page.products || []).filter(p => p.active !== false && /^[a-zA-Z0-9_-]{1,64}$/.test(p.id) && Number.isSafeInteger(p.priceCents) && p.priceCents >= 0).slice(0,10).map(p=>({id:p.id,title:String(p.title || 'Pako fotosh').slice(0,120),priceCents:p.priceCents,active:true,imageIds:photoIds.filter(key=>p.imageIds?.includes(key))}))};
 }
@@ -43,6 +46,8 @@ export function creatorPhoto(page, id, alt, {src, size='thumb', eager=false, act
   return `<img ${active?`src="${esc(url)}"`:`data-deferred-src="${esc(url)}"`} data-photo="${esc(id)}" data-size="${size}" data-alt="${esc(alt)}" alt="${esc(alt)}" width="360" height="450" decoding="async" loading="${eager?'eager':'lazy'}" fetchpriority="${eager?'high':'auto'}" draggable="false">`;
 }
 export function creatorHeroFiles(page) {
+  const independent=creatorHeroImages(page);
+  if(independent.length)return independent.map(image=>image.id);
   const allowed=page.kind==='shop'?page.photoIds.filter(id=>page.products.some(p=>p.active!==false&&p.imageIds?.includes(id))):page.photoIds;
   const chosen=(Array.isArray(page.heroPhotoIds)?page.heroPhotoIds:[]).filter(id=>allowed.includes(id));
   const defaults=(page.products||[]).filter(p=>p.active!==false).map(p=>p.imageIds?.find(id=>allowed.includes(id))).filter(Boolean);
@@ -71,10 +76,18 @@ export function renderCreatorCatalog(page, {ids=[], positions={}, offerButton, p
     ${[{title:'Falas për ty',items:products.filter(p=>p.priceCents===0)},{title:'Me çmim të arsyeshëm',items:products.filter(p=>p.priceCents>0)}].filter(group=>group.items.length).map(group=>`<section class="shop-collection"><div class="shop-section-title"><h2>${group.title}</h2><span>${group.items.length} pako ${creatorIcon('images')}</span></div>
     <div class="shop-products">${group.items.map((product)=>{
       const files=page.photoIds.filter(id=>product.imageIds.includes(id)),position=positions[product.id]||0;
-      return `<article class="shop-product"><div class="shop-carousel"><div class="shop-track" data-track="${esc(product.id)}">${files.map((id,i)=>`<button type="button" class="shop-slide" data-shop="view" data-product="${esc(product.id)}" data-index="${i}" aria-label="Shiko foton ${i+1} të pakos ${esc(product.title)}">${img(id,`${product.title} · ${i+1}`,{active:i===position,eager:i===position,size:'thumb'})}</button>`).join('')}</div><span class="shop-photo-count">${creatorIcon('images')}${files.length}</span><span class="shop-expand">${creatorIcon('expand')}</span>${files.length>1?`<button class="shop-arrow shop-prev" data-shop="slide" data-product="${esc(product.id)}" data-step="-1" aria-label="Fotoja paraprake">${creatorIcon('chevron-left')}</button><button class="shop-arrow shop-next" data-shop="slide" data-product="${esc(product.id)}" data-step="1" aria-label="Fotoja tjetër">${creatorIcon('chevron-right')}</button><div class="shop-dots">${files.map((_,i)=>`<button data-shop="dot" data-product="${esc(product.id)}" data-index="${i}" aria-label="Foto ${i+1}" aria-pressed="${position===i}"></button>`).join('')}</div>`:''}</div><div class="shop-product-info"><div class="shop-price-row"><h3>${esc(product.title)}</h3><strong>${product.priceCents===0?'Falas':euro(product.priceCents)}</strong></div><p>${files.length} foto · Cilësi origjinale</p>${offer(product)}</div></article>`;
+      return `<article class="shop-product"><div class="shop-carousel"><div class="shop-track" data-track="${esc(product.id)}">${files.map((id,i)=>`<button type="button" class="shop-slide" data-shop="view" data-product="${esc(product.id)}" data-index="${i}" aria-label="Shiko foton ${i+1} të pakos ${esc(product.title)}">${img(id,`${product.title} · ${i+1}`,{active:i===position,eager:false,size:'thumb'})}</button>`).join('')}</div><span class="shop-photo-count">${creatorIcon('images')}${files.length}</span><span class="shop-expand">${creatorIcon('expand')}</span>${files.length>1?`<button class="shop-arrow shop-prev" data-shop="slide" data-product="${esc(product.id)}" data-step="-1" aria-label="Fotoja paraprake">${creatorIcon('chevron-left')}</button><button class="shop-arrow shop-next" data-shop="slide" data-product="${esc(product.id)}" data-step="1" aria-label="Fotoja tjetër">${creatorIcon('chevron-right')}</button><div class="shop-dots">${files.map((_,i)=>`<button data-shop="dot" data-product="${esc(product.id)}" data-index="${i}" aria-label="Foto ${i+1}" aria-pressed="${position===i}"></button>`).join('')}</div>`:''}</div><div class="shop-product-info"><div class="shop-price-row"><h3>${esc(product.title)}</h3><strong>${product.priceCents===0?'Falas':euro(product.priceCents)}</strong></div><p>${files.length} foto · Cilësi origjinale</p>${offer(product)}</div></article>`;
     }).join('')}</div></section>`).join('')}`;
 }
 export function creatorHowTo(page) {
   const free=page.products.some(p=>p.active!==false&&p.priceCents===0),paid=page.products.some(p=>p.active!==false&&p.priceCents>0);
   return `<section class="shop-how"><div class="shop-how-heading"><span class="shop-studio-tag">E thjeshtë, që në fillim</span><h2>Si funksionon?</h2><p>Nga një foto e bukur te postimi juaj i radhës.</p></div><div class="shop-how-steps"><article><span>${creatorIcon('images')}</span><div><h3>Gjeni të preferuarat</h3><p>Rrëshqitni fotot. Prekni një foto për ta parë të plotë.</p></div><b>01</b></article><article><span>${creatorIcon(free?'save':'shopping-bag')}</span><div><h3>${free?'Ruajini në telefon':'Zgjidhni pakon tuaj'}</h3><p>${free?'Pakot falas ruhen direkt, pa porosi. Hapni menynë e ruajtjes dhe zgjidhni “Ruaj imazhet”.':'Shtoni në shportë pakon që ju pëlqen dhe konfirmoni porosinë.'}</p></div><b>02</b></article><article><span>${creatorIcon(paid?'shield-check':'check')}</span><div><h3>${paid?'Origjinalet janë tuajat':'Gati për t’u publikuar'}</h3><p>${paid?'Për pakot me pagesë, origjinalet hapen pas konfirmimit të pagesës.':'Publikojini në Instagram, Facebook ose kudo që dëshironi.'}</p></div><b>03</b></article></div></section>`;
+}
+
+export function renderCreatorPromo(page){
+  return `<a class="brand shop-logo" href="/">MNYRA</a><header class="greeting"><h1><span>Përshëndetje,</span>${esc(page.name)}.</h1>${ccImage(page.avatar)?`<img class="avatar" src="${ccImage(page.avatar)}" alt="${esc(page.name)}">`:''}</header>
+        <section class="intro"><p class="eyebrow">Krijuar për ju</p><p>Ne jemi MNYRA. Krijojmë foto dhe video për Instagram, Facebook dhe TikTok, posaçërisht për <strong>${esc(page.name)}</strong>.</p><div class="free">Këto foto janë një dhuratë nga ne. Mbajeni të shtypur foton për ta ruajtur në telefon.</div></section>
+        <section class="gallery" aria-label="Fotot për lokalin tuaj">${page.photoIds.map((key,i)=>`<figure class="photo"><img src="${page.media?.[key]?creatorImageUrl(page,key,'medium'):'/api/content-creator?'+new URLSearchParams({id:page.id,asset:'1',photo:key,v:page.updatedAt||''})}" width="360" height="450" alt="Foto ${i+1} për ${esc(page.name)}" loading="${i<2?'eager':'lazy'}" decoding="async"></figure>`).join('')}</section>
+        <section class="faq"><h2>Pyetje dhe përgjigje</h2><details><summary>A mund t’i përdorim menjëherë?</summary><p>Po. Ruajini në telefon dhe përdorini në rrjetet tuaja sociale, pa asnjë detyrim.</p></details><details><summary>Si funksionon bashkëpunimi?</summary><p>Flasim për nevojat tuaja dhe i dakordojmë së bashku shërbimet dhe çmimin para se të fillojmë.</p></details></section>
+        <section class="answer"><h2>A jeni të interesuar për më shumë foto për lokalin tuaj?</h2><div class="answer-content"><p>Një përgjigje e shkurtër. Pa asnjë detyrim.</p><div class="answers"><button data-answer="yes">Po, më intereson</button><button data-answer="no">Jo, faleminderit</button></div><p id="answer-error" role="alert"></p></div></section><footer>MNYRA · PËR BIZNESIN TUAJ</footer>`;
 }
