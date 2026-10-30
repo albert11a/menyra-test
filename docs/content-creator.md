@@ -367,3 +367,19 @@ npm run build erfolgreich, keine getrackten Bundle-Dateien geaendert.
 Tests decken Autoplay/Pause/Swipe/Dots, reduzierte Bewegung, Gallery-DOM-Erhalt,
 Hero-Auswahl speichern und Ausschluss inaktiver Bilder ab. Kein Test mit echten
 Mobilgeraeten; Browser- und Produktionspruefung folgen nach Git-Deployment.
+
+## Betrieb zuerst und grosse Vorschauen – 30.10.2026
+
+Scope: Betrieb ohne Fotos/Paket anlegen, privat in Arbeit speichern und Pakete
+spaeter hinzufuegen; erste erfolgreiche Medien-Ergaenzung veroeffentlicht die Seite.
+Optionale Sofort-Uploads bleiben kompatibel. Detailreiche PNGs/JPEG-Fallbacks
+muessen automatisch in das Vorschau-Dokumentbudget passen, ohne Originaldateien
+zu veraendern. Browser- und Server-Encoder erhalten begrenzte Anpassungsversuche.
+
+Validierung: 108 Tests bestanden; npm run build erfolgreich; keine getrackten
+Bundle-Dateien geaendert. Neue Tests: Betrieb ohne Logo/Fotos/Preis, erstes Paket
+nachtraeglich mit Preis 0, abgebrochene Dateiauswahl bleibt privat, detailreiches
+1600x2200-PNG sowie Canvas-JPEG-Fallback passen ins Budget. Normale Vorschauen
+behalten die bisherigen Qualitaetswerte; nur uebergrosse Varianten werden
+angepasst, stets erneut aus Originalpixeln. Keine Tests auf echten Mobilgeraeten;
+Heart liegt im Testbrowser hinter dem Login.

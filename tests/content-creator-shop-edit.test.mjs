@@ -69,3 +69,13 @@ test('Vorhandene Vorschauen werden aus Originalen erneuert, Bildunterschriften b
  await refresh('s',['a']);assert.equal(writes.length,6);assert.equal(writes.filter(([path,data])=>path.includes('/displays/')&&data.version===3).length,3);assert.deepEqual(writes[5],['contentCreatorPages/s/images/a',{data:'new-preview'},{merge:true}]);assert.deepEqual(urls,['blob:original']);
  await assert.rejects(refresh('s',['missing']),/Originaldatei fehlt/);assert.equal(writes.length,6);
 });
+
+test('iPhone JPEG fallback adapts oversized previews instead of demanding smaller originals',()=>{
+ let encodes=0;
+ const ctx={save(){},restore(){},translate(){},rotate(){},measureText:()=>({width:150}),fillText(){},drawImage(){},fillRect(){}};
+ const document={createElement:()=>({width:0,height:0,getContext:()=>ctx,toDataURL(mime,q){encodes++;if(mime==='image/webp')return 'data:image/png;base64,AA';return 'data:image/jpeg;base64,'+'A'.repeat(Math.round(this.width*this.height*q*.7));}})};
+ const prepare=new Function('document',`${assetSource}\nreturn prepareBoundedShopDisplay;`)(document);
+ const original={width:4000,height:6000},record=prepare(original,1600,.88);
+ assert.ok(JSON.stringify(record).length<=950000);assert.ok(record.width>=640);assert.ok(encodes>4);
+ assert.deepEqual(original,{width:4000,height:6000});assert.match(record.clean,/^data:image\/jpeg/);assert.match(record.marked,/^data:image\/jpeg/);
+});

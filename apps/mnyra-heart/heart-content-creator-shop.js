@@ -15,6 +15,23 @@ export function drawShopWatermark(ctx,width,height){
  }
  ctx.restore();
 }
+export function prepareBoundedShopDisplay(image,edge,quality){
+ let scale=Math.min(1,edge/image.width,edge*1.5/image.height);
+ for(let attempt=0;attempt<6;attempt++){
+  const frame=document.createElement('canvas');
+  frame.width=Math.max(1,Math.round(image.width*scale));frame.height=Math.max(1,Math.round(image.height*scale));
+  const context=frame.getContext('2d');context.fillStyle='#f1f2ed';context.fillRect?.(0,0,frame.width,frame.height);context.drawImage(image,0,0,frame.width,frame.height);
+  const q=attempt===0?quality:Math.max(.78,quality-.06);
+  const encode=()=>{const webp=frame.toDataURL('image/webp',q);return webp.startsWith('data:image/webp')?webp:frame.toDataURL('image/jpeg',q);};
+  const clean=encode();drawShopWatermark(context,frame.width,frame.height);
+  const record={version:3,width:frame.width,height:frame.height,clean,marked:encode()};
+  const bytes=JSON.stringify(record).length;
+  if(bytes<=950000)return record;
+  // Always redraw from the original; never recompress a previous preview.
+  if(attempt>0)scale*=Math.min(.9,Math.max(.5,Math.sqrt(900000/bytes)*.94));
+ }
+ throw Error('Vorschau konnte nicht vorbereitet werden. Bitte erneut versuchen.');
+}
 export async function saveShopPreview(pageId,imageId,display){
  const image=new Image();image.src=display;await image.decode();
  const canvas=document.createElement('canvas'),ratio=Math.min(1,720/Math.max(image.width,image.height));
@@ -27,13 +44,7 @@ export async function saveShopPreview(pageId,imageId,display){
  let cleanData=clean.toDataURL('image/jpeg',.78);if(cleanData.length>=500000)cleanData=canvas.toDataURL('image/jpeg',.72);
  // Tiny cards and larger views are ready before the page is published.
  for(const [size,edge,quality] of [['thumb',640,.82],['medium',1280,.84],['large',1600,.88]]){
-  const frame=document.createElement('canvas'),scale=Math.min(1,edge/image.width,edge*1.5/image.height);
-  frame.width=Math.max(1,Math.round(image.width*scale));frame.height=Math.max(1,Math.round(image.height*scale));
-  const context=frame.getContext('2d');context.drawImage(image,0,0,frame.width,frame.height);
-  const encode=()=>{const webp=frame.toDataURL('image/webp',quality);return webp.startsWith('data:image/webp')?webp:frame.toDataURL('image/jpeg',quality);};
-  const clean=encode();drawShopWatermark(context,frame.width,frame.height);
-  const record={version:3,width:frame.width,height:frame.height,clean,marked:encode()};
-  if(JSON.stringify(record).length>950000)throw Error('Die hochwertige Vorschau ist zu gross. Bitte ein kleineres Original verwenden.');
+  const record=prepareBoundedShopDisplay(image,edge,quality);
   await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId,'displays',size),record);
  }
  await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId),{cleanPreview:{version:1,data:cleanData},displayPreview:null},{merge:true});

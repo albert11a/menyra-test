@@ -95,16 +95,16 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     }
     if(input.name==='kind'){capture();patch({pageKind:input.value,draftName});return;}
     if(input.hasAttribute("data-cc-add")){
-      const files=Array.from(input.files || []),id=input.dataset.ccAdd;
+      const files=Array.from(input.files || []),id=input.dataset.ccAdd;if(!files.length)return;
       mediaTask(async()=>{
         const pageRef=doc(db,CC_PAGES,id),snap=await getDoc(pageRef),page=snap.data();
         if(!page)throw new Error("Lokal wurde nicht gefunden.");
         if((page.photoIds?.length || 0)+files.length>30)throw new Error("Maximal 30 Bilder pro Seite.");
         const keys=[];
         for(const file of files){const key=crypto.randomUUID().replaceAll("-","");await setDoc(doc(pageRef,"images",key),{data:await prepareImage(file),caption:""});keys.push(key);}
-        await updateDoc(pageRef,{photoIds:[...(page.photoIds || []),...keys],updatedAt:serverTimestamp()});
+        await updateDoc(pageRef,{photoIds:[...(page.photoIds || []),...keys],...(!page.published?{published:true,workflow:"ready"}:{}),updatedAt:serverTimestamp()});
         const state=store.getState().contentCreator;
-        patch({pages:state.pages.map(p=>p.id===id?{...p,photoIds:[...(page.photoIds || []),...keys]}:p)});
+        patch({pages:state.pages.map(p=>p.id===id?{...p,photoIds:[...(page.photoIds || []),...keys],...(!page.published?{published:true,workflow:"ready"}:{})}:p),...(!page.published?{filter:"ready"}:{})});
         await detail(id);
       });return;
     }
@@ -132,18 +132,18 @@ export function createContentCreator({root, store, prepareImage = prepareContent
           await (saveAsset||saveShopAsset)(id,key,file,data);keys.push(key);
         }
         const product={id:crypto.randomUUID().replaceAll('-',''),title,priceCents:cents,imageIds:keys,active:true};
-        const updated={photoIds:[...page.photoIds,...keys],products:[...(page.products||[]),product]};
+        const updated={photoIds:[...(page.photoIds||[]),...keys],products:[...(page.products||[]),product],...(!page.published?{published:true,workflow:'ready'}:{})};
         await updateDoc(pageRef,{...updated,updatedAt:serverTimestamp()});
-        patch({pages:store.getState().contentCreator.pages.map(p=>p.id===id?{...p,...updated}:p)});await detail(id);
+        patch({pages:store.getState().contentCreator.pages.map(p=>p.id===id?{...p,...updated}:p),...(!page.published?{filter:"ready"}:{})});await detail(id);
       });return;
     }
     if(event.target.id!=="cc-create-form")return;
     event.preventDefault(); if(busy)return; capture();
-    if(!draftName.trim() || !photoFiles.length || photoFiles.length>30){patch({editorError:"Bitte Lokalname und 1 bis 30 Bilder auswählen."});return;}
+    if(!draftName.trim() || photoFiles.length>30){patch({editorError:"Bitte einen Betriebsnamen eingeben. Fotos sind optional (maximal 30)."});return;}
     const kind=store.getState().contentCreator.pageKind==='shop'?'shop':'promo';
     let product;
-    if(kind==='shop'){try{product=initialShopProduct(store.getState().contentCreator,[]);}catch(error){patch({editorError:error.message});return;}}
-    busy=true; patch({saving:true,draftName,editorError:"",progress:"Bilder vorbereiten …"});
+    if(kind==='shop'&&photoFiles.length){try{product=initialShopProduct(store.getState().contentCreator,[]);}catch(error){patch({editorError:error.message});return;}}
+    busy=true; patch({saving:true,draftName,editorError:"",progress:photoFiles.length?"Bilder vorbereiten …":"Betrieb wird erstellt …"});
     try {
       const avatar=avatarFile ? await prepareImage(avatarFile,true) : (draftAvatar || "");
       pendingId ||= crypto.randomUUID().replaceAll("-","");
@@ -161,9 +161,13 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         }else await setDoc(doc(page,"images",imageId),{data,caption:String(captions[i] || "").slice(0,1000)});
         photoIds.push(imageId);
       }
-      const batch=writeBatch(db);batch.update(page,{...(kind==='shop'?{products:[{...product,imageIds:photoIds}]}:{}),photoIds,published:true,workflow:"ready",updatedAt:serverTimestamp()});await batch.commit();
+      const completed={kind,name:draftName.trim(),avatar,createdMs,...(kind==='shop'?{products:product?[{...product,imageIds:photoIds}]:[]}:{}),photoIds,published:photoIds.length>0,workflow:photoIds.length?'ready':'working'};
+      const batch=writeBatch(db);batch.update(page,{...completed,updatedAt:serverTimestamp()});await batch.commit();
+      const completedId=pendingId;
+      const pages=store.getState().contentCreator.pages||[];
+      patch({pages:[...pages.filter(p=>p.id!==completedId),{id:completedId,...completed}],images:{}});
       pendingId="";photoFiles=[];avatarFile=null;draftAvatar="";draftName="";
-      patch({editor:false,saving:false,selectedId:"",filter:"ready"});notice("Seite erstellt. Der Link ist bereit.");
+      patch({editor:false,saving:false,selectedId:photoIds.length?"":completedId,filter:photoIds.length?"ready":"working"});notice(photoIds.length?"Seite erstellt. Der Link ist bereit.":"Betrieb erstellt. Fotos und Pakete kannst du jetzt oder später hinzufügen.");
     } catch(error){patch({saving:false,editorError:`Nicht abgeschlossen: ${error.message}. Du kannst es erneut versuchen.`});}
     finally{busy=false;}
   });
@@ -171,7 +175,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     const button=event.target.closest("[data-cc-action]"); if(!button)return;
     const action=button.dataset.ccAction,id=button.dataset.id;
     try {
-      if(action==="new") {if(busy)return;captions={};patch({pendingPhotos:[],pendingCaptions:{},pageKind:"promo",shopTitle:"",shopPrice:"",selectedId:""});createdMs=0;pendingId="";avatarFile=null;photoFiles=[];draftAvatar="";draftName="";patch({editor:true,draftName:"",avatarName:"",photoNames:"",editorError:""});queueMicrotask(()=>root.querySelector('#cc-create-form [name="name"]')?.focus());}
+      if(action==="new") {if(busy)return;captions={};patch({pendingPhotos:[],pendingCaptions:{},pageKind:"shop",shopTitle:"",shopPrice:"",selectedId:""});createdMs=0;pendingId="";avatarFile=null;photoFiles=[];draftAvatar="";draftName="";patch({editor:true,draftName:"",avatarName:"",photoNames:"",editorError:""});queueMicrotask(()=>root.querySelector('#cc-create-form [name="name"]')?.focus());}
       if(action==="close" && !busy) patch({editor:false});
       if(action==="filter") patch({filter:button.dataset.key});
       if(action==='cancel-package-delete')patch({deletePackageConfirm:''});

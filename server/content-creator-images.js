@@ -88,15 +88,19 @@ export async function creatorDisplayImage(path, metadata, repo, {size='thumb', f
      const source=await originalDisplaySource(path,meta,repo);
      const {default:sharp}=await import('sharp');const result={};
      for(const [label,edge,quality] of [['thumb',640,82],['medium',1280,84],['large',1600,88]]){
-      // Lossless intermediate; one final WebP encoding, preserving fine texture.
-      const resized=await sharp(source,{limitInputPixels:50000000}).rotate().resize({width:edge,height:Math.round(edge*1.5),fit:'inside',withoutEnlargement:true}).flatten({background:'#f1f2ed'}).raw().toBuffer({resolveWithObject:true});
-      const image=()=>sharp(resized.data,{raw:{width:resized.info.width,height:resized.info.height,channels:resized.info.channels}});
-      const clean=await image().webp({quality,smartSubsample:true,effort:5}).toBuffer();
-      const marked=await image().composite([{input:watermarkSvg(resized.info.width,resized.info.height)}]).webp({quality,smartSubsample:true,effort:5}).toBuffer();
-      const entry={version:DISPLAY_IMAGE_VERSION,width:resized.info.width,height:resized.info.height,clean:`data:image/webp;base64,${clean.toString('base64')}`,marked:`data:image/webp;base64,${marked.toString('base64')}`};
-      // Independent private documents avoid squeezing every resolution into one
-      // metadata document and lowering quality just to fit its combined budget.
-      if(JSON.stringify(entry).length>950000)throw Error('Fotoja është shumë e madhe për këtë format.');
+      let width=edge,height=Math.round(edge*1.5),entry;
+      for(let attempt=0;attempt<6;attempt++){
+       const resized=await sharp(source,{limitInputPixels:50000000}).rotate().resize({width,height,fit:'inside',withoutEnlargement:true}).flatten({background:'#f1f2ed'}).raw().toBuffer({resolveWithObject:true});
+       const image=()=>sharp(resized.data,{raw:{width:resized.info.width,height:resized.info.height,channels:resized.info.channels}});
+       const q=attempt===0?quality:Math.max(78,quality-6);
+       const clean=await image().webp({quality:q,smartSubsample:true,effort:5}).toBuffer();
+       const marked=await image().composite([{input:watermarkSvg(resized.info.width,resized.info.height)}]).webp({quality:q,smartSubsample:true,effort:5}).toBuffer();
+       entry={version:DISPLAY_IMAGE_VERSION,width:resized.info.width,height:resized.info.height,clean:`data:image/webp;base64,${clean.toString('base64')}`,marked:`data:image/webp;base64,${marked.toString('base64')}`};
+       const length=JSON.stringify(entry).length;
+       if(length<=950000)break;
+       if(attempt===5)throw Error('Fotoja nuk mund te pergatitet. Provoni perseri.');
+       if(attempt>0){const factor=Math.min(.9,Math.max(.5,Math.sqrt(900000/length)*.94));width=Math.max(1,Math.round(resized.info.width*factor));height=Math.max(1,Math.round(resized.info.height*factor));}
+      }
       result[label]=entry;
      }
      displayCache.set(path,{set:result,at:Date.now()});if(displayCache.size>16)displayCache.delete(displayCache.keys().next().value);

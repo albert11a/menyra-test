@@ -66,3 +66,15 @@ test('High quality displays use original pixels even when a low resolution compr
  const {data,info}=await sharp(result.bytes).raw().toBuffer({resolveWithObject:true});assert.equal(info.width,1280);assert.ok(data[2]>180&&data[0]<60);assert.ok(f.stats().reads>=f.metadata.parts);
  assert.equal(f.docs.get(path+'/displays/medium').width,1280);assert.equal(f.docs.get(path+'/displays/thumb').width,640);
 });
+
+test('Detailed PNG originals fit every persisted display budget without rejecting the upload',async()=>{
+ const bytes=await sharp(randomBytes(1600*2200*3),{raw:{width:1600,height:2200,channels:3}}).png().toBuffer();
+ const path='detailed-png-budget',f=fixture(bytes,path),before=Buffer.from(bytes);
+ const display=await creatorDisplayImage(path,f.metadata,f.repo,{size:'large',free:true,persist:true});
+ assert.ok(display.bytes.length>1000);assert.equal(f.stats().writes,3);
+ for(const size of ['thumb','medium','large']){
+  const record=f.docs.get(path+'/displays/'+size);assert.ok(JSON.stringify(record).length<=950000);
+  assert.ok(record.width>=480);assert.ok((await sharp(Buffer.from(record.clean.split(',')[1],'base64')).metadata()).width===record.width);
+ }
+ assert.deepEqual(bytes,before);assert.equal(f.docs.get(path).size,before.length);
+});
