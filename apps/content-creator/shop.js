@@ -9,7 +9,7 @@ export async function mountCreatorShop({root,page,still=false}){
  let orderId='',panel='',error='',notice='',submitting=false,downloadBusy='';
  let viewer=null,backgroundLock=null,sheetLock=null,photoSave=null,downloadCancelled=false,fileAbort=null;
  const originalTheme=document.querySelector('meta[name="theme-color"]')?.getAttribute('content')||'#f7f6f2';
- const prepared=new Map(),imageErrors={};
+ const prepared=new Map(),imageErrors={},largeImages=new Map();
  let neighbourObserver=null;
  const images={},positions={},orders=new Map(),customer={name:'',address:'',country:'Kosovë',phone:''};
  const tokens=still?[]:(Array.isArray(saved.orders)?saved.orders:[]).filter(validShopId).slice(-10);
@@ -46,21 +46,29 @@ export async function mountCreatorShop({root,page,still=false}){
   const status=root.querySelector('#shop-image-errors');if(status)status.innerHTML=imageStatus();
   watchImages();
  }
+ function warmLargeImage(id){
+  if(!globalThis.Image||largeImages.has(id))return;
+  const image=new globalThis.Image();largeImages.set(id,image);
+  image.fetchPriority='low';image.decoding='async';image.src=imageUrl(id,'medium');
+  image.decode?.().catch(()=>{largeImages.delete(id);});
+ }
  function warmNextImage(node){
   const track=node.closest('[data-track]');if(!track)return;
   const rect=track.getBoundingClientRect?.(),height=globalThis.innerHeight||document.documentElement.clientHeight;
   if(rect&&height>0&&(rect.bottom<=0||rect.top>height+100))return;
   const index=positions[track.dataset.track]||0,slide=track.children[index];
-  if(!slide?.contains(node))return;
+  if(!slide?.contains(node)){if(track.children[index+1]?.contains(node))warmLargeImage(node.dataset.photo);return;}
   // The current photo has arrived: fetch and decode the adjacent photograph
   // now, at low priority, rather than waiting for the swipe to begin.
   const next=track.children[index+1]?.querySelector('img[data-deferred-src]');
   if(next){next.loading='eager';next.fetchPriority='low';next.src=next.dataset.deferredSrc;next.removeAttribute('data-deferred-src');next.decode?.().catch(()=>{});}
+  warmLargeImage(node.dataset.photo);
  }
  function watchImages(){
   for(const node of root.querySelectorAll('img[data-photo]')){
    node.onerror=()=>{if(node.dataset.size==='medium'){node.style.opacity='0';return;}imageErrors[node.dataset.photo]=true;paintImage(node.dataset.photo);};
-   node.onload=()=>warmNextImage(node);
+   node.onload=()=>{if(node.dataset.size==='medium')node.style.opacity='1';warmNextImage(node);};
+   if(node.dataset.size==='medium'&&!(node.complete&&node.naturalWidth>0))node.style.opacity='0';
    if(node.complete&&node.naturalWidth>0)warmNextImage(node);
   }
  }
@@ -109,7 +117,10 @@ export async function mountCreatorShop({root,page,still=false}){
    backgroundLock={y:globalThis.scrollY||0,position:body.style.position,top:body.style.top,width:body.style.width,overflow:body.style.overflow,htmlOverflow:html.style.overflow};
    body.style.position='fixed';body.style.top=`-${backgroundLock.y}px`;body.style.width='100%';body.style.overflow='hidden';html.style.overflow='hidden';
   }
-  viewer={product,index:Math.max(0,Math.min(files.length-1,Number(index)||0))};render();
+  root.querySelector('.shop-viewer')?.remove();
+  viewer={product,index:Math.max(0,Math.min(files.length-1,Number(index)||0))};
+  root.querySelector('.shop-shell').insertAdjacentHTML('beforeend',viewerMarkup());
+  syncBrowserChrome();watchImages();bindViewer();syncInert();
   root.querySelector('[data-shop="viewer-close"]')?.focus({preventScroll:true});
  }
  function closeViewer(){
@@ -118,9 +129,32 @@ export async function mountCreatorShop({root,page,still=false}){
    const state=backgroundLock,body=document.body;
    for(const key of ['position','top','width','overflow'])body.style[key]=state[key]||'';
    document.documentElement.style.overflow=state.htmlOverflow||'';backgroundLock=null;
-   render();globalThis.scrollTo?.(0,state.y);
-  }else render();
+   removeViewer();globalThis.scrollTo?.(0,state.y);
+  }else removeViewer();
   root.querySelector(`[data-shop="view"][data-product="${previous.product}"][data-index="${positions[previous.product]||0}"]`)?.focus({preventScroll:true});
+ }
+ function syncInert(){
+  for(const child of root.querySelector('.shop-shell').children){
+   const overlay=photoSave?'shop-save-overlay':viewer?'shop-viewer':panel?'shop-overlay':'';
+   if(overlay&&!child.classList.contains(overlay))child.setAttribute('inert','');else child.removeAttribute('inert');
+  }
+ }
+ function bindViewer(){
+  const track=root.querySelector('[data-view-track]');if(!track||!viewer)return;
+  for(const node of track.querySelectorAll('img[data-size="medium"]')){
+   const cached=largeImages.get(node.dataset.photo);if(!cached?.complete||!cached.naturalWidth)continue;
+   for(const attr of node.attributes)if(attr.name!=='src'&&attr.name!=='style')cached.setAttribute(attr.name,attr.value);
+   cached.style.opacity='1';node.replaceWith(cached);
+  }
+  track.scrollLeft=viewer.index*(track.clientWidth||1);
+  track.addEventListener('scroll',()=>updateViewer(Math.round(track.scrollLeft/(track.clientWidth||1))),{passive:true});
+ }
+ function removeViewer(){
+  root.querySelector('.shop-viewer')?.remove();syncBrowserChrome();syncInert();
+  for(const track of root.querySelectorAll('[data-track]')){
+   const index=positions[track.dataset.track]||0;activateImages(track,index);track.scrollLeft=index*(track.clientWidth||1);
+   for(const dot of track.parentElement.querySelectorAll('[data-index]'))dot.setAttribute('aria-pressed',String(Number(dot.dataset.index)===index));
+  }
  }
  function updateViewer(index){
   if(!viewer)return;
@@ -138,13 +172,15 @@ export async function mountCreatorShop({root,page,still=false}){
   const cart=quote();
   // Retain decoded image nodes across cart/status changes; do not restart
   // image requests or show a blank frame every time the UI updates.
+  const carousels=new Map([...root.querySelectorAll('[data-track]')].map(track=>[track.dataset.track,track.parentElement]));
   const retained=new Map();
   for(const image of root.querySelectorAll('img[data-photo]')){
+   if(image.closest('[data-track]'))continue;
    const key=`${image.dataset.photo}:${image.dataset.size||'thumb'}:${image.getAttribute('src')||image.dataset.deferredSrc||''}`;
    if(!retained.has(key))retained.set(key,[]);retained.get(key).push(image);
   }
   root.innerHTML=`<div class="shop-shell">${renderCreatorCatalog(page,{ids,positions,offerButton,photo:img})}<div id="shop-image-errors">${imageStatus()}</div>${creatorHowTo(page)}
-   <section class="shop-purchases" id="shop-purchases" ${orders.size?'':'hidden'}><h2>Blerjet tuaja</h2>${[...orders.values()].map(order=>`<article class="shop-order"><div class="shop-order-title"><b>Porosia #${esc(order.id.slice(0,8).toUpperCase())}</b><strong>${euro(order.totalCents)}</strong></div><p class="shop-order-state">${order.approved?(order.totalCents===0?'✓ Pako falas · Shkarkimet janë gati':'✓ Pagesa u konfirmua · Shkarkimet janë gati'):(order.totalCents===0?'Në pritje të miratimit':'Në pritje të pagesës / miratimit')}</p>${order.lines.map(line=>`<div class="shop-purchased-item">${img(line.imageIds[0],line.title)}<div><h3>${esc(line.title)}</h3><p>${line.imageIds.length} foto · ${euro(line.priceCents)}</p><button data-shop="save-photos" data-order="${order.id}" data-product="${line.id}" ${!order.approved||downloadBusy?'disabled':''}>${creatorIcon(order.approved?'save':'shield-check')}${order.approved?'Ruaj fotot':'Në pritje të konfirmimit'}</button></div></div>`).join('')}<div class="shop-order-actions"><button data-shop="refresh" data-order="${order.id}">Kontrollo statusin</button>${still?'':`<button data-shop="receipt-link" data-order="${order.id}">Kopjo linkun e porosisë</button>`}</div></article>`).join('')||'<p>Pas porosisë, artikujt tuaj do të shfaqen këtu.</p>'}</section>
+   <section class="shop-purchases" id="shop-purchases"><h2>Blerjet tuaja</h2>${[...orders.values()].map(order=>`<article class="shop-order"><div class="shop-order-title"><b>Porosia #${esc(order.id.slice(0,8).toUpperCase())}</b><strong>${euro(order.totalCents)}</strong></div><p class="shop-order-state">${order.approved?(order.totalCents===0?'✓ Pako falas · Shkarkimet janë gati':'✓ Pagesa u konfirmua · Shkarkimet janë gati'):(order.totalCents===0?'Në pritje të miratimit':'Në pritje të pagesës / miratimit')}</p>${order.lines.map(line=>`<div class="shop-purchased-item">${img(line.imageIds[0],line.title)}<div><h3>${esc(line.title)}</h3><p>${line.imageIds.length} foto · ${euro(line.priceCents)}</p><button data-shop="save-photos" data-order="${order.id}" data-product="${line.id}" ${!order.approved||downloadBusy?'disabled':''}>${creatorIcon(order.approved?'save':'shield-check')}${order.approved?'Ruaj fotot':'Në pritje të konfirmimit'}</button></div></div>`).join('')}<div class="shop-order-actions"><button data-shop="refresh" data-order="${order.id}">Kontrollo statusin</button>${still?'':`<button data-shop="receipt-link" data-order="${order.id}">Kopjo linkun e porosisë</button>`}</div></article>`).join('')||'<p>Pas porosisë, artikujt tuaj do të shfaqen këtu.</p>'}</section>
    <footer class="shop-footer">MNYRA · Krijuar për biznesin tuaj</footer>
    ${notice?`<p class="shop-notice" role="status">${esc(notice)}</p>`:''}
    ${error&&panel!=='checkout'?`<p class="shop-error" role="alert">${esc(error)}</p>`:''}
@@ -154,12 +190,15 @@ export async function mountCreatorShop({root,page,still=false}){
     ${panel==='cart'?`<p class="shop-fine">${cart.totalCents===0?'Falas · Shkarkim pas miratimit':'Pagesa te postieri · Shkarkim pas miratimit'}</p><button class="shop-buy" data-shop="checkout" ${!cart.lines.length?'disabled':''}>Vazhdo te porosia →</button>`:`<form id="shop-checkout"><label>Emri dhe mbiemri<input id="shop-name" name="name" value="${esc(customer.name)}" autocomplete="name" required minlength="3" maxlength="120"></label><label>Adresa e plotë<textarea id="shop-address" name="address" autocomplete="street-address" required minlength="5" maxlength="300">${esc(customer.address)}</textarea></label><label>Shteti<select id="shop-country" name="country">${['Kosovë','Shqipëri','Austri','Gjermani','Zvicër','Maqedoni e Veriut','Mal i Zi','Itali','Francë','Serbi','Slloveni','Kroaci'].map(country=>`<option ${customer.country===country?'selected':''}>${country}</option>`).join('')}</select></label><label>Numri i telefonit<input id="shop-phone" type="tel" name="phone" value="${esc(customer.phone)}" autocomplete="tel" required minlength="6" maxlength="40"></label><div class="shop-payment">${cart.totalCents===0?'<strong>Falas · 0 €</strong><p>Nuk kërkohet pagesë. Shkarkimet hapen pas miratimit nga MNYRA.</p>':'<strong>Pagesa te postieri</strong><p>Pagesë në dorë (Cash on Delivery). Shkarkimet hapen pasi MNYRA të konfirmojë pagesën.</p>'}</div>${error?`<p role="alert" class="shop-inline-error">${esc(error)}</p>`:''}<button class="shop-buy" type="submit" ${submitting?'disabled':''}>${submitting?'Duke dërguar…':`Porosit · ${euro(cart.totalCents)}`}</button></form>`}
    </section></div>`:''}${viewerMarkup()}${photoSaveMarkup()}</div>`;
   for(const image of root.querySelectorAll('img[data-photo]')){
+   if(image.closest('[data-track]'))continue;
    const key=`${image.dataset.photo}:${image.dataset.size||'thumb'}:${image.getAttribute('src')||image.dataset.deferredSrc||''}`;
    const previous=retained.get(key)?.shift();if(previous)image.replaceWith(previous);
   }
+  for(const track of root.querySelectorAll('[data-track]')){const old=carousels.get(track.dataset.track);if(old)track.parentElement.replaceWith(old);}
   syncBrowserChrome();watchImages();
   for(const track of root.querySelectorAll('[data-track]')){
    track.scrollLeft=(positions[track.dataset.track]||0)*track.clientWidth;
+   if(track.dataset.bound)continue;track.dataset.bound='1';
    track.addEventListener('scroll',()=>{const index=Math.round(track.scrollLeft/(track.clientWidth||1));positions[track.dataset.track]=index;activateImages(track,index);for(const dot of track.parentElement.querySelectorAll('[data-index]'))dot.setAttribute('aria-pressed',String(Number(dot.dataset.index)===index));},{passive:true});
   }
   neighbourObserver?.disconnect();
@@ -169,14 +208,7 @@ export async function mountCreatorShop({root,page,still=false}){
    },{rootMargin:'100px 0px'});
    for(const track of root.querySelectorAll('[data-track]'))neighbourObserver.observe(track);
   }
-  const viewerTrack=root.querySelector('[data-view-track]');
-  if(viewerTrack&&viewer){
-   viewerTrack.scrollLeft=viewer.index*(viewerTrack.clientWidth||1);
-   viewerTrack.addEventListener('scroll',()=>updateViewer(Math.round(viewerTrack.scrollLeft/(viewerTrack.clientWidth||1))),{passive:true});
-  }
-  for(const child of root.querySelector('.shop-shell').children){
-   const overlay=photoSave?'shop-save-overlay':viewer?'shop-viewer':panel?'shop-overlay':'';if(overlay&&!child.classList.contains(overlay))child.setAttribute('inert','');
-  }
+  bindViewer();syncInert();
   if(focusId){const field=root.querySelector(`#${focusId}`);if(field){field.focus({preventScroll:true});try{field.setSelectionRange(selection,selection);}catch{ /* select/tel */ }}}
  }
  async function refreshOrder(id){if(still)return;const order=await api('receipt',{orderId:id},true);if(order.pageId!==page.id)return;orders.set(id,order);render();}

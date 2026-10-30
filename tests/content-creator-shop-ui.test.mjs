@@ -19,7 +19,7 @@ async function setup(still=false,price=2900,options={}){
   const payload=requestOptions.method==='POST'?JSON.parse(requestOptions.body):Object.fromEntries(new URL(url,'https://www.mnyra.com').searchParams);calls.push(payload);
   try{if(payload.op==='free-download'&&options.download)await options.download(payload);if(payload.op==='free-preview'&&options.preview){const result=await options.preview(payload);if(result)return result;}const result=await shopAction(payload,repo);return {ok:true,json:async()=>result,arrayBuffer:async()=>result.bytes,headers:{get:key=>key==='Content-Type'?result.mime:key==='X-File-Name'?encodeURIComponent(result.name):null}};}catch(error){return {ok:false,json:async()=>({error:error.message})};}
  };
- const mount=factory({},(...args)=>args.filter(x=>typeof x==='string').join('/'),async()=>({data:()=>({data:'data:image/jpeg;base64,YWJj'})}),ccEscape,ccImage,'contentCreatorPages',euro,shopQuote,validShopId,files=>{zipFiles.push(files);return new Blob(['zip']);}, {getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)}, {origin:'https://www.mnyra.com',search:''},fetch,document,{setInterval:()=>0,addEventListener:()=>{}},()=>0,options.navigator||{},creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,renderCreatorCatalog,creatorHowTo);
+ const mount=factory({},(...args)=>args.filter(x=>typeof x==='string').join('/'),async()=>({data:()=>({data:'data:image/jpeg;base64,YWJj'})}),ccEscape,ccImage,'contentCreatorPages',euro,shopQuote,validShopId,files=>{zipFiles.push(files);return new Blob(['zip']);}, {getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)}, {origin:'https://www.mnyra.com',search:''},fetch,document,{setInterval:()=>0,addEventListener:()=>{},Image:options.Image},()=>0,options.navigator||{},creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,renderCreatorCatalog,creatorHowTo);
  await mount({root,page,still});
  async function settle(){for(let i=0;i<15;i++)await new Promise(r=>setImmediate(r));}
  async function click(selector){const button=root.querySelector(selector);assert.ok(button,selector);button.dispatchEvent(new window.Event('click',{bubbles:true}));await settle();}
@@ -141,4 +141,35 @@ test('The next card image is fetched and decoded after the current photo loads, 
 });
 test('Header and explanation have neither a star icon nor the unwanted headline',async()=>{
  const ctx=await setup(true);assert.doesNotMatch(ctx.root.textContent,/Në një dritë të re/);assert.doesNotMatch(ctx.root.innerHTML,/m12 3 2.5 6.5/);
+});
+
+test('Paid card and decoded images remain mounted through arrows, viewer open and close',async()=>{
+ const ctx=await setup(true),card=ctx.root.querySelector('.shop-product'),track=card.querySelector('[data-track]');
+ Object.defineProperty(track,'clientWidth',{value:170});
+ const images=[...track.querySelectorAll('img')];
+ await ctx.click('[data-shop="slide"][data-step="1"]');
+ assert.equal(track.scrollLeft,170);assert.ok(images[1].getAttribute('src'));
+ await ctx.click('[data-shop="view"][data-index="1"]');
+ assert.equal(ctx.root.querySelector('.shop-product'),card);assert.equal(ctx.root.querySelector('.shop-error'),null);
+ assert.equal(ctx.document.documentElement.dataset.ccViewer,'1');
+ await ctx.click('[data-shop="viewer-step"][data-step="1"]');
+ await ctx.click('[data-shop="viewer-close"]');
+ assert.equal(ctx.root.querySelector('.shop-product'),card);assert.equal(track.scrollLeft,340);
+ assert.deepEqual([...track.querySelectorAll('img')],images);assert.equal(ctx.root.querySelector('.shop-error'),null);
+ assert.equal(card.closest('[inert]'),null);
+});
+test('Catalog sections and solid header match mobile request without paint containment',async()=>{
+ const ctx=await setup(true),css=await readFile(new URL('../apps/content-creator/shop.css',import.meta.url),'utf8');
+ assert.match(ctx.root.textContent,/Me çmim të arsyeshëm/);assert.doesNotMatch(ctx.root.textContent,/Koleksioni juaj/);
+ assert.ok(ctx.root.querySelector('#shop-purchases:not([hidden])'));
+ assert.doesNotMatch(css,/content-visibility|contain-intrinsic-size|#f7f6f2ee/);
+});
+
+test('Visible current and adjacent photos warm decoded larger versions before opening',async()=>{
+ const warmed=[];
+ class Image {constructor(){warmed.push(this);}decode(){this.decoded=true;return Promise.resolve();}}
+ const ctx=await setup(true,2900,{Image});
+ const photos=ctx.root.querySelectorAll('.shop-slide img');photos[0].onload();photos[1].onload();
+ assert.equal(warmed.length,2);assert.ok(warmed.every(image=>image.decoded&&image.src.includes('size=medium')));
+ photos[0].onload();assert.equal(warmed.length,2);
 });

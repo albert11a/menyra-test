@@ -338,3 +338,17 @@ im Commit. Reale Handy-/iPhone-Bedienung wurde nicht manuell geprüft.
 
 ### Original file request consolidation
 The storefront requests each original once with `format=file`. The server checks access once, reads legacy chunks in bounded groups of eight and validates the exact length before returning binary bytes. No base64 chunk requests or reconstruction remain in the browser. Prepared photo files are shared directly on a subsequent Save tap. First-time sharing still requires the complete files to arrive; this is not an instant cold-download guarantee. Original storage remains Firestore, unlike the social media CDN.
+
+## Mobile Galerie-Stabilitaet – 30.10.2026
+
+Scope: Kauf-Cover gleich beim HTML laden, Karten ohne content-visibility;
+Viewer als separates Overlay statt Katalog-Neuaufbau, dekodierte mittlere Bilder
+gezielt vorladen. Freie/bezahlte Abschnitte, opaker Header und abgerundete Tasche.
+Originale, Zugriffspruefung und Zahlungen bleiben unveraendert.
+
+Validierung: 75 Creator-/Pixel-Sperre-Tests bestanden; npm run build erfolgreich,
+keine getrackten Bundle-Dateien geaendert. Regression prueft identische Karten,
+Scroll-Position, Bilder und inert-Zustand nach Pfeil -> Viewer -> Schliessen;
+sowie dedupliziertes Vorladen beider Nachbaransichten. content-visibility wurde
+entfernt, um Safari-Paint-Skipping beim Scrollen/Fixieren zu vermeiden.
+Echte iOS-/Android-Geraete und schwaches 3G bleiben manuell zu pruefen.

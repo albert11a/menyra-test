@@ -19,7 +19,7 @@ async function readCreatorCovers(safePage,page){
   const {shopRepository,shopAction}=await import('../server/content-creator-shop.js');
   const repo=await shopRepository(),pagePath=`contentCreatorPages/${safePage.id}`,covers={};
   const seeded={...repo,read:(path,fields)=>path===pagePath?Promise.resolve(page):repo.read(path,fields)};
-  await Promise.all(safePage.products.slice(0,2).map(async p=>{
+  await Promise.all(safePage.products.slice(0,6).map(async p=>{
     const file=p.imageIds[0];if(!file)return;
     try{const image=await shopAction({op:'image',pageId:safePage.id,file,display:'3',size:'thumb'},seeded);covers[file]=`data:${image.mime};base64,${image.bytes.toString('base64')}`;}catch{}
   }));
@@ -84,7 +84,7 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
         ]).finally(()=>clearTimeout(timer));
       }
       const catalog=renderCreatorCatalog(safePage,{photo:(key,alt,options)=>creatorPhoto(safePage,key,alt,{...options,src:covers[key]})});
-      const firstFrame=`<div class="shop-shell">${catalog}<div id="shop-image-errors"></div>${creatorHowTo(safePage)}<footer class="shop-footer">MNYRA · Krijuar për biznesin tuaj</footer></div>`;
+      const firstFrame=`<div class="shop-shell">${catalog}<div id="shop-image-errors"></div>${creatorHowTo(safePage)}<section class="shop-purchases" id="shop-purchases"><h2>Blerjet tuaja</h2><p>Pas porosisë, artikujt tuaj do të shfaqen këtu.</p></section><footer class="shop-footer">MNYRA · Krijuar për biznesin tuaj</footer></div>`;
       html=html.replace(/(<main[^>]*id="content-app"[^>]*>)[\s\S]*?(<\/main>)/,(_,open,close)=>open+firstFrame+close);
     }
     // CSS is small and shared by the first server frame: avoid two extra 3G
