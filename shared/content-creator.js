@@ -1,3 +1,4 @@
+import {creatorMediaUrl} from './creator-media.js';
 export const CC_PAGES = "contentCreatorPages";
 export const CC_VISITS = "contentCreatorVisits";
 export const CC_FILTERS = Object.freeze([
@@ -31,4 +32,4 @@ export function contentLink(id, preview = false, origin = globalThis.location?.o
 export function ccEscape(value = "") {
   return String(value).replace(/[&<>"']/g, c => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"})[c]);
 }
-export function ccImage(value) { return /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value || "") ? value : ""; }
+export function ccImage(value) { return /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value || "") ? value : creatorMediaUrl(value); }

@@ -1,3 +1,4 @@
+import {creatorPublicMedia} from '../shared/creator-media.js';
 import {createHash} from 'node:crypto';
 import {optimizedShopImage,creatorDisplayImage} from './content-creator-images.js';
 import {schluessel,zugangHolen,lies,wert,empfaenger,meldungAnlegen,schicken,zustellungAendern} from '../api/lifeskin-meldung.js';
@@ -49,6 +50,8 @@ export async function shopAction(input,repo){
   const products=(page.products||[]).filter(p=>p.active!==false&&p.imageIds?.includes(input.file));
   if(!products.length)throw Error('Fotoja nuk u gjet.');
   const free=products.find(p=>p.priceCents===0);
+  const media=creatorPublicMedia(page)[input.file];
+  if(media&&op==='image')return {redirect:media[['thumb','medium','large'].includes(input.size)?input.size:'thumb']};
   if(['2','3'].includes(String(input.display))||op==='prepare-image'){
    const path=`contentCreatorPages/${pageId}/originals/${input.file}`;
    const display=await creatorDisplayImage(path,null,repo,{size:input.size,free:!!free,persist:op==='prepare-image'});
@@ -71,6 +74,8 @@ export async function shopAction(input,repo){
   const page=await repo.read(`contentCreatorPages/${pageId}`),quote=shopQuote(page,[input.productId]),line=quote.lines[0];
   const file=String(input.file||'');
   if(line.priceCents!==0||!line.imageIds.includes(file)||!/^[a-zA-Z0-9_-]{1,64}$/.test(file))throw Error('Ky skedar nuk është falas.');
+  const publicOriginal=creatorPublicMedia(page)[file]?.download;
+  if(op==='free-download'&&input.format==='file'&&publicOriginal)return {redirect:publicOriginal};
   const path=`contentCreatorPages/${pageId}/originals/${file}`,metadata=await repo.read(path,op==='free-download'?['name','mime','size','parts']:undefined);
   if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>30*1024*1024||!['image/jpeg','image/png','image/webp'].includes(metadata.mime))throw Error('Skedari nuk është i disponueshëm.');
   if(op==='free-image'||op==='free-preview'){
