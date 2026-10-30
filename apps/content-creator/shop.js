@@ -43,7 +43,7 @@ export async function mountCreatorShop({root,page,still=false}){
  }
  function imageStatus(){const count=Object.keys(imageErrors).length;return count?`<p role="alert">${count} foto nuk u ngarkuan. <button type="button" data-shop="retry-images">Provo përsëri</button></p>`:'';}
  function paintImage(key){
-  for(const node of root.querySelectorAll(`[data-photo="${key}"]`))node.outerHTML=img(key,node.getAttribute('data-alt')||page.name,{size:node.dataset.size||'thumb',active:true,eager:true});
+  for(const node of root.querySelectorAll(`[data-photo="${key}"]`))node.outerHTML=img(key,node.getAttribute('data-alt')||page.name,{size:node.dataset.size||'thumb',hero:node.hasAttribute('data-hero-image'),active:true,eager:true});
   const status=root.querySelector('#shop-image-errors');if(status)status.innerHTML=imageStatus();
   watchImages();
  }
@@ -67,16 +67,16 @@ export async function mountCreatorShop({root,page,still=false}){
  }
  function watchImages(){
   for(const node of root.querySelectorAll('img[data-photo]')){
-   node.onerror=()=>{if(node.dataset.size==='medium'){node.style.opacity='0';return;}imageErrors[node.dataset.photo]=true;paintImage(node.dataset.photo);};
-   node.onload=()=>{if(node.dataset.size==='medium')node.style.opacity='1';warmNextImage(node);};
-   if(node.dataset.size==='medium'&&!(node.complete&&node.naturalWidth>0))node.style.opacity='0';
+   node.onerror=()=>{if(node.dataset.size==='medium'&&!node.hasAttribute('data-hero-image')){node.style.opacity='0';return;}imageErrors[node.dataset.photo]=true;paintImage(node.dataset.photo);};
+   node.onload=()=>{if(node.dataset.size==='medium'&&!node.hasAttribute('data-hero-image'))node.style.opacity='1';warmNextImage(node);};
+   if(node.dataset.size==='medium'&&!node.hasAttribute('data-hero-image')&&!(node.complete&&node.naturalWidth>0))node.style.opacity='0';
    if(node.complete&&node.naturalWidth>0)warmNextImage(node);
   }
  }
  function imageUrl(key,size='thumb'){return creatorImageUrl(page,key,size);}
  function loadImages(keys){for(const key of keys){delete imageErrors[key];images[key]=`${imageUrl(key)}${imageUrl(key).includes('?')?'&':'?'}retry=${Date.now()}`;paintImage(key);}}
  function activateImages(track,index){
-  for(const [i,slide] of [...track.children].entries())if(Math.abs(i-index)<=(canPrefetch()?1:0))for(const img of slide.querySelectorAll('img[data-deferred-src]')){img.loading='eager';img.fetchPriority=i===index?'high':'low';img.src=img.dataset.size==='thumb'&&images[img.dataset.photo]?.startsWith('data:image/')?images[img.dataset.photo]:img.dataset.deferredSrc;img.removeAttribute('data-deferred-src');img.decode?.().catch(()=>{});}
+  for(const [i,slide] of [...track.children].entries())if(Math.abs(i-index)<=(track.hasAttribute('data-hero-track')?0:canPrefetch()?1:0))for(const img of slide.querySelectorAll('img[data-deferred-src]')){img.loading='eager';img.fetchPriority=i===index?'high':'low';if(img.dataset.deferredSrcset){img.srcset=img.dataset.deferredSrcset;img.removeAttribute('data-deferred-srcset');}img.src=img.dataset.size==='thumb'&&images[img.dataset.photo]?.startsWith('data:image/')?images[img.dataset.photo]:img.dataset.deferredSrc;img.removeAttribute('data-deferred-src');img.decode?.().catch(()=>{});}
  }
  function updateHeroControls(){
   for(const dot of root.querySelectorAll('.shop-hero-dots [data-index]'))dot.setAttribute('aria-pressed',String(Number(dot.dataset.index)===heroIndex));

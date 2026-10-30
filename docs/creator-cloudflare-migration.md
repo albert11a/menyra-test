@@ -38,3 +38,19 @@ or data-saving connections. Large originals still require a real transfer.
 Validation uses synthetic assets and mocked services, followed by the production
 build and existing pixel lock. Actual iPhone and throttled 3G browser verification
 are not inferred from unit tests. No LifeSkin pixel or Worker changes are included.
+
+## Title image quality and framing (2026-10-30)
+
+Heart's title-image editor now owns dark foreground/background colours and uses
+full-width mobile previews. Horizontal/vertical sliders and contain/cover mode
+share one bounded crop contract with the public carousel. The page can use a
+4:3 landscape or 4:5 portrait frame. Positioning is CSS only: it never recompresses
+or re-uploads images. Crop changes are explicitly saved; format changes save on
+selection. Stored settings and public bootstrap are allowlisted and clamped.
+
+The large public hero uses the already uploaded 1080/1600 variants through
+srcset/sizes instead of stretching the 480px card thumbnail. Only the first slide
+is eager/high priority; subsequent slides have deferred src and srcset. This
+avoids loading both a thumbnail and a larger hero. More pixels can require more
+bytes, so identical 3G transfer time is not promised. Existing title images gain
+the better source selection on reload without another upload.

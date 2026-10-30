@@ -177,10 +177,10 @@ test('Visible current and adjacent photos warm decoded larger versions before op
 test('Hero autoplay, swipe, dots and pause preserve the gallery through cart changes',async()=>{
  const intervals=[],ctx=await setup(true,2900,{heroPhotoIds:['one','two','three'],intervals});
  const track=ctx.root.querySelector('[data-hero-track]');Object.defineProperty(track,'clientWidth',{value:390});
- assert.equal(track.children.length,3);assert.equal(track.querySelectorAll('img[src]').length,2);
+ assert.equal(track.children.length,3);assert.equal(track.querySelectorAll('img[src]').length,1);assert.equal(track.querySelectorAll('img[data-deferred-srcset]').length,2);
  const timer=intervals.find(t=>t.ms===5500);assert.ok(timer);timer.fn();assert.equal(track.scrollLeft,390);
  await ctx.click('[data-shop="hero-toggle"]');timer.fn();assert.equal(track.scrollLeft,390);
- await ctx.click('[data-shop="hero-dot"][data-index="2"]');assert.equal(track.scrollLeft,780);
+ await ctx.click('[data-shop="hero-dot"][data-index="2"]');assert.equal(track.scrollLeft,780);assert.ok(track.children[2].querySelector('img').srcset.includes('1600w'));assert.equal(track.children[2].querySelector('img').hasAttribute('data-deferred-srcset'),false);
  await ctx.click('[data-shop="add"]');assert.equal(ctx.root.querySelector('[data-hero-track]'),track);
  track.scrollLeft=0;track.dispatchEvent(new ctx.window.Event('scroll'));
  assert.equal(ctx.root.querySelector('[data-shop="hero-dot"][data-index="0"]').getAttribute('aria-pressed'),'true');

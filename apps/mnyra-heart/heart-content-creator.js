@@ -1,3 +1,4 @@
+import {normalizeCreatorCrop,creatorHeroCropStyle,creatorHeroFormat} from '../../shared/creator-hero.js';
 import {saveShopAsset,initialShopProduct,releaseShopOrder,refreshShopPreviews,savePromoAsset,migrateCreatorPage,saveCreatorCdnAsset,savedCreatorFile} from "./heart-content-creator-shop.js";
 import {creatorCdnEnabled} from './heart-creator-cdn.js';
 import {creatorPublicMedia} from '../../shared/creator-media.js';
@@ -92,7 +93,17 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     try{await migrationFinished;await task();}catch(error){patch({mediaError:error.message || "Änderung nicht gespeichert."});}
     finally{mediaBusy=false;patch({mediaBusy:false});void migrateExisting();}
   }
+  function cropFromCard(card){
+    return normalizeCreatorCrop(Object.fromEntries(['x','y','fit'].map(axis=>[axis,card.querySelector(`[data-cc-hero-adjust="${axis}"]`)?.value])));
+  }
   root.addEventListener("input", event => {
+    if(event.target.hasAttribute('data-cc-hero-adjust')){
+      const card=event.target.closest('[data-cc-hero-card]');if(!card)return;
+      const crop=cropFromCard(card),image=card.querySelector('[data-cc-hero-preview]');
+      if(image)image.setAttribute('style',creatorHeroCropStyle(crop));
+      for(const axis of ['x','y']){const value=card.querySelector(`[data-cc-hero-value="${axis}"]`);if(value)value.textContent=`${crop[axis]}%`;}
+      return;
+    }
     if(['shopTitle','shopPrice'].includes(event.target.name)){patch({[event.target.name]:event.target.value});return;}
     if(event.target.hasAttribute("data-upload-caption")){
       captions[event.target.dataset.uploadCaption]=event.target.value;
@@ -105,6 +116,15 @@ export function createContentCreator({root, store, prepareImage = prepareContent
  if(event.target.matches('#cc-create-form [name="name"]')) { draftName=event.target.value; patch({draftName}); } });
   root.addEventListener("change", event => {
     const input=event.target;
+    if(input.hasAttribute('data-cc-hero-adjust')){
+      const card=input.closest('[data-cc-hero-card]');if(!card)return;
+      const state=store.getState().contentCreator,key=`${card.dataset.page}:${card.dataset.ccHeroCard}`;
+      patch({heroDrafts:{...state.heroDrafts,[key]:cropFromCard(card)}});return;
+    }
+    if(input.hasAttribute('data-cc-hero-format')){
+      const id=input.dataset.ccHeroFormat,heroFormat=creatorHeroFormat({heroFormat:input.value});
+      mediaTask(async()=>{await updateDoc(doc(db,CC_PAGES,id),{heroFormat,updatedAt:serverTimestamp()});patch({pages:store.getState().contentCreator.pages.map(page=>page.id===id?{...page,heroFormat}:page)});});return;
+    }
     if(input.hasAttribute('data-cc-hero-upload')){
       const files=Array.from(input.files||[]),id=input.dataset.ccHeroUpload;if(!files.length)return;
       mediaTask(async()=>{
@@ -228,6 +248,18 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       if(action==="close" && !busy) patch({editor:false});
       if(action==="filter") patch({filter:button.dataset.key});
       if(action==='retry-migration'){migrationAttempts.clear();void migrateExisting();}
+      if(action==='hero-crop-save'){
+        const image=button.dataset.image,card=button.closest('[data-cc-hero-card]'),crop=cropFromCard(card);
+        await mediaTask(async()=>{
+          const pageRef=doc(db,CC_PAGES,id),snapshot=await getDoc(pageRef),page=snapshot.data();
+          const allowed=(page?.heroImages||[]).some(entry=>entry.id===image)||(page?.photoIds||[]).includes(image)&&(page.products||[]).some(product=>product.active!==false&&product.imageIds?.includes(image));
+          if(!allowed)throw Error('Titelbild wurde entfernt. Bitte erneut öffnen.');
+          await updateDoc(pageRef,{[`heroCrop.${image}`]:crop,updatedAt:serverTimestamp()});
+          const state=store.getState().contentCreator,heroDrafts={...state.heroDrafts};delete heroDrafts[`${id}:${image}`];
+          patch({heroDrafts,pages:state.pages.map(item=>item.id===id?{...item,heroCrop:{...item.heroCrop,[image]:crop}}:item)});
+          notice('Titelbild-Ausschnitt gespeichert.');
+        });
+      }
       if(action==='hero-delete'||action==='hero-move')await mediaTask(async()=>{
         const pageRef=doc(db,CC_PAGES,id),snap=await getDoc(pageRef),images=[...(snap.data()?.heroImages||[])];
         const index=images.findIndex(image=>image.id===button.dataset.image);if(index<0)return;

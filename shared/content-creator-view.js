@@ -1,3 +1,4 @@
+import {creatorHeroFormat,creatorHeroCrop,creatorHeroCropStyle} from './creator-hero.js';
 import { ccEscape as esc, ccImage } from './content-creator.js';
 import { euro } from './content-creator-shop.js';
 import {creatorPublicMedia,creatorHeroImages} from './creator-media.js';
@@ -33,7 +34,7 @@ export function creatorImageUrl(page, file, size = 'thumb') {
 }
 export function publicCreatorPage(page, id) {
   const photoIds = [...new Set((page.photoIds || []).filter(key => /^[a-zA-Z0-9_-]{1,64}$/.test(key)))].slice(0,30);
-  return {id, published:true, media:creatorPublicMedia(page),heroImages:creatorHeroImages(page),kind:page.kind === 'shop' ? 'shop' : 'promo', name:String(page.name || '').slice(0,160),
+  return {id, published:true, media:creatorPublicMedia(page),heroImages:creatorHeroImages(page),heroFormat:creatorHeroFormat(page),heroCrop:Object.fromEntries(creatorHeroFiles(page).map(id=>[id,creatorHeroCrop(page,id)])),kind:page.kind === 'shop' ? 'shop' : 'promo', name:String(page.name || '').slice(0,160),
     avatar:ccImage(page.avatar), heroPhotoIds:[...new Set((Array.isArray(page.heroPhotoIds)?page.heroPhotoIds:[]).filter(id=>photoIds.includes(id)))].slice(0,6), updatedAt:typeof page.updatedAt === 'string' ? page.updatedAt : '', createdMs:Number(page.createdMs)||0, photoIds,
     products:(page.products || []).filter(p => p.active !== false && /^[a-zA-Z0-9_-]{1,64}$/.test(p.id) && Number.isSafeInteger(p.priceCents) && p.priceCents >= 0).slice(0,10).map(p=>({id:p.id,title:String(p.title || 'Pako fotosh').slice(0,120),priceCents:p.priceCents,active:true,imageIds:photoIds.filter(key=>p.imageIds?.includes(key))}))};
 }
@@ -41,14 +42,16 @@ export function creatorOfferButton(product, {busy = '', selected = false} = {}) 
   const free = product.priceCents === 0;
   return `<button type="button" class="shop-buy${selected ? ' is-added' : ''}" data-shop="${free?'free-save':'add'}" data-product="${esc(product.id)}" ${busy || selected ? 'disabled' : ''}>${creatorIcon(busy ? 'refresh-cw' : free ? 'save' : selected ? 'check' : 'shopping-bag')}<span>${busy===product.id?'Duke përgatitur…':free?'Ruaj fotot':selected?'Në shportë':'Shto në shportë'}</span></button>`;
 }
-export function creatorPhoto(page, id, alt, {src, size='thumb', eager=false, active=true} = {}) {
+export function creatorPhoto(page, id, alt, {src, size='thumb', eager=false, active=true, hero=false} = {}) {
   const url = (active ? src : undefined) || creatorImageUrl(page,id,size);
-  return `<img ${active?`src="${esc(url)}"`:`data-deferred-src="${esc(url)}"`} data-photo="${esc(id)}" data-size="${size}" data-alt="${esc(alt)}" alt="${esc(alt)}" width="360" height="450" decoding="async" loading="${eager?'eager':'lazy'}" fetchpriority="${eager?'high':'auto'}" draggable="false">`;
+  const candidates=hero?`${creatorImageUrl(page,id,'medium')} 1080w, ${creatorImageUrl(page,id,'large')} 1600w`:'';
+  const responsive=hero?` ${active?'srcset':'data-deferred-srcset'}="${esc(candidates)}" sizes="(min-width: 480px) 440px, calc(100vw - 40px)" data-hero-image style="${creatorHeroCropStyle(creatorHeroCrop(page,id))}"`:'';
+  return `<img ${active?`src="${esc(url)}"`:`data-deferred-src="${esc(url)}"`}${responsive} data-photo="${esc(id)}" data-size="${size}" data-alt="${esc(alt)}" alt="${esc(alt)}" width="360" height="450" decoding="async" loading="${eager?'eager':'lazy'}" fetchpriority="${eager?'high':'auto'}" draggable="false">`;
 }
 export function creatorHeroFiles(page) {
   const independent=creatorHeroImages(page);
   if(independent.length)return independent.map(image=>image.id);
-  const allowed=page.kind==='shop'?page.photoIds.filter(id=>page.products.some(p=>p.active!==false&&p.imageIds?.includes(id))):page.photoIds;
+  const allowed=page.kind==='shop'?(page.photoIds||[]).filter(id=>(page.products||[]).some(p=>p.active!==false&&p.imageIds?.includes(id))):(page.photoIds||[]);
   const chosen=(Array.isArray(page.heroPhotoIds)?page.heroPhotoIds:[]).filter(id=>allowed.includes(id));
   const defaults=(page.products||[]).filter(p=>p.active!==false).map(p=>p.imageIds?.find(id=>allowed.includes(id))).filter(Boolean);
   return [...new Set(chosen.length?chosen:defaults.length?defaults:allowed.slice(0,3))].slice(0,6);
@@ -56,7 +59,7 @@ export function creatorHeroFiles(page) {
 export function creatorIntroduction(page, photo) {
   const files=creatorHeroFiles(page);
   return `<section class="shop-introduction">
-    ${files.length?`<div class="shop-hero-gallery" aria-label="Shembuj te punes sone" aria-roledescription="carousel"><div class="shop-hero-track" data-hero-track>${files.map((id,i)=>`<div class="shop-hero-slide">${photo(id,`Foto per ${page.name} · ${i+1}`,{size:'thumb',active:i===0,eager:i===0})}</div>`).join('')}</div>${files.length>1?`<div class="shop-hero-controls"><div class="shop-hero-dots">${files.map((_,i)=>`<button type="button" data-shop="hero-dot" data-index="${i}" aria-label="Foto e prezantimit ${i+1}" aria-pressed="${i===0}"></button>`).join('')}</div><button type="button" data-shop="hero-toggle" aria-label="Ndalo nderrimin automatik">${creatorIcon('pause')}</button></div>`:''}</div>`:''}
+    ${files.length?`<div class="shop-hero-gallery" aria-label="Shembuj te punes sone" aria-roledescription="carousel"><div class="shop-hero-track" data-hero-track data-format="${creatorHeroFormat(page)}">${files.map((id,i)=>`<div class="shop-hero-slide">${photo(id,`Foto per ${page.name} · ${i+1}`,{size:'medium',hero:true,active:i===0,eager:i===0})}</div>`).join('')}</div>${files.length>1?`<div class="shop-hero-controls"><div class="shop-hero-dots">${files.map((_,i)=>`<button type="button" data-shop="hero-dot" data-index="${i}" aria-label="Foto e prezantimit ${i+1}" aria-pressed="${i===0}"></button>`).join('')}</div><button type="button" data-shop="hero-toggle" aria-label="Ndalo nderrimin automatik">${creatorIcon('pause')}</button></div>`:''}</div>`:''}
     <div class="shop-intro-copy"><span class="shop-studio-tag">MNYRA · Per biznesin tend</span><h1>Biznesi yt meriton<br>me u pa.</h1>
     <p>Ti kujdesesh per biznesin. Por nuk eshte lehte me gjet kohe edhe per foto, postime e mesazhe.</p>
     <p>Sot, shume njerez te shohin ne telefon para se me ble ose me te vizitu. Shikojne fotot, produktet dhe cka thone klientet. Aty krijohet pershtypja e pare.</p>
