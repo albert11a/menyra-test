@@ -30,12 +30,13 @@ async function start(){
     if(page.kind==='shop')await mountCreatorShop({root,page,still});
     else {
       root.innerHTML=renderCreatorPromo(page);
-      root.addEventListener('click',async event=>{
-        const button=event.target.closest('[data-answer]');if(!button)return;
-        const buttons=root.querySelectorAll('[data-answer]');buttons.forEach(b=>b.disabled=true);
-        try{await (await visits()).answer(button.dataset.answer);}catch{buttons.forEach(b=>b.disabled=false);root.querySelector('#answer-error').textContent='Përgjigjja nuk u ruajt. Provoni përsëri.';}
-      });
     }
+    root.addEventListener('click',async event=>{
+      const button=event.target.closest('[data-answer]');if(!button)return;
+      const buttons=root.querySelectorAll('[data-answer]');buttons.forEach(b=>b.disabled=true);
+      try{await (await visits()).answer(button.dataset.answer);}catch{buttons.forEach(b=>b.disabled=false);const error=root.querySelector('#answer-error');if(error)error.textContent='Përgjigjja nuk u ruajt. Provoni përsëri.';}
+    });
+
     // Non-visual work never gates first photos or interactions.
     if(!still)globalThis.setTimeout(()=>{void visits().catch(()=>{tracking=undefined;});},4500);
   }catch{

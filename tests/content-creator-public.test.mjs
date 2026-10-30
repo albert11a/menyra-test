@@ -1,4 +1,4 @@
-import {renderCreatorPromo} from '../shared/content-creator-view.js';
+import {renderCreatorPromo,creatorHowTo} from '../shared/content-creator-view.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -10,8 +10,8 @@ const contentFactory=new Function('esc','ccImage','mountCreatorShop','document',
 const visitsSource=(await readFile(new URL('../apps/content-creator/visits.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace('export async function','async function');
 const visitsFactory=new Function('db','doc','getDoc','setDoc','serverTimestamp','CC_VISITS','localStorage','globalThis','document',`${visitsSource}\nreturn installCreatorVisits;`);
 const id='a'.repeat(32);
-async function setup({preview=false,previous=null,failAnswer=false,storage=new Map(),avatar=true}={}){
- const page={id,published:true,name:'Bistro <One>',avatar:avatar?'data:image/jpeg;base64,AAAA':'',photoIds:['000'],kind:'promo'};
+async function setup({preview=false,previous=null,failAnswer=false,storage=new Map(),avatar=true,kind='promo'}={}){
+ const page={id,published:true,name:'Bistro <One>',avatar:avatar?'data:image/jpeg;base64,AAAA':'',photoIds:['000'],products:[],kind};
  const {document,window}=parseHTML(`<html><head><script type="application/json" id="creator-page-data">${JSON.stringify(page)}</script></head><body><main id="content-app"></main></body></html>`);
  const writes=[],listeners={},timers=[],viewport={scrollY:0,innerHeight:800,setTimeout:fn=>timers.push(fn),addEventListener:(name,fn)=>{listeners[name]=fn;}};
  Object.defineProperty(document.documentElement,'scrollHeight',{value:2800});
@@ -21,7 +21,7 @@ async function setup({preview=false,previous=null,failAnswer=false,storage=new M
  const localStorage={getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key)};
  let sdkLoads=0,fetches=0;
  const install=visitsFactory({},doc,getDoc,setDoc,()=>({server:true}),'contentCreatorVisits',localStorage,viewport,document);
- const start=contentFactory(ccEscape,ccImage,async()=>{},document,{pathname:`/content-creator/${id}`,search:preview?'?still=1':''},localStorage,viewport,async()=>{sdkLoads++;return {installCreatorVisits:install};},async()=>{fetches++;throw Error('Unexpected duplicate page request');},renderCreatorPromo);
+ const start=contentFactory(ccEscape,ccImage,async({root,page})=>{root.innerHTML=creatorHowTo(page);},document,{pathname:`/content-creator/${id}`,search:preview?'?still=1':''},localStorage,viewport,async()=>{sdkLoads++;return {installCreatorVisits:install};},async()=>{fetches++;throw Error('Unexpected duplicate page request');},renderCreatorPromo);
  await start();const firstLoads=sdkLoads;
  async function settle(){for(let i=0;i<10;i++)await new Promise(r=>setImmediate(r));}
  for(const timer of timers)timer();await settle();
@@ -57,4 +57,14 @@ test('Hero selection cannot expose inactive or unknown photographs',async()=>{
  const {creatorHeroFiles}=await import('../shared/content-creator-view.js');
  const page={kind:'shop',photoIds:['a','b','c'],heroPhotoIds:['c','secret','a'],products:[{active:true,imageIds:['a','b']},{active:false,imageIds:['c']}]};
  assert.deepEqual(creatorHeroFiles(page),['a']);
+});
+
+test('Shop interest answers use the existing visitor record and silent mode writes nothing',async()=>{
+ const ctx=await setup({kind:'shop'});await click(ctx,'[data-answer="yes"]');
+ assert.equal(ctx.writes.at(-1).data.answer,'yes');assert.equal(ctx.document.querySelectorAll('[data-answer]').length,0);
+ const quiet=await setup({kind:'shop',preview:true});await click(quiet,'[data-answer="no"]');
+ assert.equal(quiet.writes.length,0);assert.equal(quiet.stats().sdkLoads,0);
+ const failed=await setup({kind:'shop',failAnswer:true});await click(failed,'[data-answer="no"]');
+ assert.match(failed.document.querySelector('#answer-error').textContent,/nuk u ruajt/);
+ assert.equal(failed.document.querySelector('[data-answer="no"]').disabled,false);
 });

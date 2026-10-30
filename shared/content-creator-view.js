@@ -60,14 +60,12 @@ export function creatorIntroduction(page, photo) {
   const files=creatorHeroFiles(page);
   return `<section class="shop-introduction">
     ${files.length?`<div class="shop-hero-gallery" aria-label="Shembuj te punes sone" aria-roledescription="carousel"><div class="shop-hero-track" data-hero-track data-format="${creatorHeroFormat(page)}">${files.map((id,i)=>`<div class="shop-hero-slide">${photo(id,`Foto per ${page.name} · ${i+1}`,{size:'medium',hero:true,active:i===0,eager:i===0})}</div>`).join('')}</div>${files.length>1?`<div class="shop-hero-controls"><div class="shop-hero-dots">${files.map((_,i)=>`<button type="button" data-shop="hero-dot" data-index="${i}" aria-label="Foto e prezantimit ${i+1}" aria-pressed="${i===0}"></button>`).join('')}</div><button type="button" data-shop="hero-toggle" aria-label="Ndalo nderrimin automatik">${creatorIcon('pause')}</button></div>`:''}</div>`:''}
-    <div class="shop-intro-copy"><span class="shop-studio-tag">MNYRA · Per biznesin tend</span><h1>Biznesi yt meriton<br>me u pa.</h1>
+    <div class="shop-intro-copy"><span class="shop-studio-tag">mnyra <span aria-hidden="true">×</span> ${esc(page.name)}</span><h1>Biznesi yt meriton<br>me u pa.</h1>
     <p>Ti kujdesesh per biznesin. Por nuk eshte lehte me gjet kohe edhe per foto, postime e mesazhe.</p>
     <p>Sot, shume njerez te shohin ne telefon para se me ble ose me te vizitu. Shikojne fotot, produktet dhe cka thone klientet. Aty krijohet pershtypja e pare.</p>
     <p>Ne krijojme foto e video qe tregojne bukur ate qe ofron. Per dyqanin, restorantin, kafene, butiken apo produktet qe shet online.</p>
-    <aside class="shop-intro-fact"><strong>79%</strong><p>e bleresve te pyetur ndihen me te sigurt pasi informohen para blerjes.<a href="https://business.google.com/ca-en/think/consumer-insights/build-confident-consumers-to-improve-metrics/" target="_blank" rel="noopener">Google / Ipsos · 2024</a></p></aside>
-    <h2>Me shume se foto.</h2><p>Nga nje postim i bukur, te krejt biznesi yt online. Ne te ndihmojme me:</p>
-    <ul class="shop-intro-services">${[['image','Foto e video'],['shopping-bag','Webfaqe e dyqan online'],['calendar','Rezervime tavolinash e terminesh'],['message-circle','Vleresime ne Google'],['images','Menaxhim te rrjeteve sociale']].map(([icon,label])=>`<li>${creatorIcon(icon)}<span>${label}</span></li>`).join('')}</ul>
-    <p class="shop-intro-close">Ti merresh me biznesin. Ne kujdesemi si duket ai online.</p><div class="shop-intro-trust"><span>Me seli ne Austri</span><span>Mbi 8.700 kliente</span></div></div>
+    <p class="shop-intro-close">Andaj, ju kemi pergatitur disa foto falas. Te tjerat jane me pagese, me cmim te arsyeshem. Merrni sot, paguani me 1 te muajit te ardhshem.</p>
+    <a class="shop-details-link" href="#shop-faq">Me poshte i gjeni te gjitha detajet ${creatorIcon('arrow-right')}</a></div>
   </section>`;
 }
 export function renderCreatorCatalog(page, {ids=[], positions={}, offerButton, photo} = {}) {
@@ -75,6 +73,7 @@ export function renderCreatorCatalog(page, {ids=[], positions={}, offerButton, p
   const img = photo || ((id,alt,opts)=>creatorPhoto(page,id,alt,opts));
   const offer = offerButton || (product=>creatorOfferButton(product,{selected:ids.includes(product.id)}));
   return `<header class="shop-header"><a href="/" class="shop-logo" aria-label="MNYRA">MNYRA<span class="shop-logo-dot"></span></a><button type="button" data-shop="cart" class="shop-cart" aria-label="Hap shportën">${creatorIcon('shopping-bag')}<b ${ids.length?'':'hidden'}>${ids.length}</b></button></header>
+    <div class="shop-weekly">${creatorIcon('calendar')}<span>Çdo javë, foto të reja për ju.</span></div>
     ${creatorIntroduction(page,img)}
     ${[{title:'Falas për ty',items:products.filter(p=>p.priceCents===0)},{title:'Me çmim të arsyeshëm',items:products.filter(p=>p.priceCents>0)}].filter(group=>group.items.length).map(group=>`<section class="shop-collection"><div class="shop-section-title"><h2>${group.title}</h2><span>${group.items.length} pako ${creatorIcon('images')}</span></div>
     <div class="shop-products">${group.items.map((product)=>{
@@ -83,8 +82,19 @@ export function renderCreatorCatalog(page, {ids=[], positions={}, offerButton, p
     }).join('')}</div></section>`).join('')}`;
 }
 export function creatorHowTo(page) {
-  const free=page.products.some(p=>p.active!==false&&p.priceCents===0),paid=page.products.some(p=>p.active!==false&&p.priceCents>0);
-  return `<section class="shop-how"><div class="shop-how-heading"><span class="shop-studio-tag">E thjeshtë, që në fillim</span><h2>Si funksionon?</h2><p>Nga një foto e bukur te postimi juaj i radhës.</p></div><div class="shop-how-steps"><article><span>${creatorIcon('images')}</span><div><h3>Gjeni të preferuarat</h3><p>Rrëshqitni fotot. Prekni një foto për ta parë të plotë.</p></div><b>01</b></article><article><span>${creatorIcon(free?'save':'shopping-bag')}</span><div><h3>${free?'Ruajini në telefon':'Zgjidhni pakon tuaj'}</h3><p>${free?'Pakot falas ruhen direkt, pa porosi. Hapni menynë e ruajtjes dhe zgjidhni “Ruaj imazhet”.':'Shtoni në shportë pakon që ju pëlqen dhe konfirmoni porosinë.'}</p></div><b>02</b></article><article><span>${creatorIcon(paid?'shield-check':'check')}</span><div><h3>${paid?'Origjinalet janë tuajat':'Gati për t’u publikuar'}</h3><p>${paid?'Për pakot me pagesë, origjinalet hapen pas konfirmimit të pagesës.':'Publikojini në Instagram, Facebook ose kudo që dëshironi.'}</p></div><b>03</b></article></div></section>`;
+  return `<section class="shop-how" id="shop-faq" aria-labelledby="shop-faq-title"><div class="shop-how-heading"><span class="shop-studio-tag">Gjithçka që duhet të dini</span><h2 id="shop-faq-title">Pyetje të shpeshta</h2></div>
+    <details data-faq="how"><summary>Si funksionon? ${creatorIcon('chevron-right')}</summary><div class="shop-how-steps">
+      <article><span>${creatorIcon('images')}</span><div><h3>Zgjidhni fotot</h3><p>Shikoni fotot dhe zgjidhni pakot që dëshironi të postoni në Instagram, Facebook apo rrjete të tjera sociale.</p></div><b>01</b></article>
+      <article><span>${creatorIcon('shopping-bag')}</span><div><h3>Konfirmoni blerjen</h3><p>Shtoni pakot në shportë dhe plotësoni të dhënat e lokalit. Pas porosisë, ruajini fotot në telefon dhe përdorini menjëherë. Fotot falas i ruani pa porosi.</p></div><b>02</b></article>
+      <article><span>${creatorIcon('calendar')}</span><div><h3>Paguani në fillim të muajit</h3><p>Më 1 të muajit të ardhshëm vijmë te lokali juaj për pagesën e fotove të blera. Thjesht, lehtë dhe pa pagesë sot.</p></div><b>03</b></article></div></details>
+    <details data-faq="custom"><summary>Foto sipas dëshirës suaj ${creatorIcon('chevron-right')}</summary><p>Keni një ide, një produkt të ri apo një ofertë për të prezantuar? Na tregoni çfarë dëshironi: produktin, stilin, ngjyrat dhe ku do ta përdorni foton. Mund të na dërgoni edhe një shembull. Së bashku i sqarojmë detajet dhe çmimin para se të fillojmë.</p></details>
+    <details data-faq="video"><summary>A krijoni edhe video? ${creatorIcon('chevron-right')}</summary><p>Po, krijojmë edhe video për produktet, lokalin dhe ofertat tuaja, përfshirë Reels dhe Stories. Na shkruani në çdo kohë aty ku ju dërguam këtë link. Na tregoni idenë tuaj dhe ne ju shpjegojmë mundësitë dhe çmimin.</p></details>
+    <details data-faq="free"><summary>A janë vërtet falas? ${creatorIcon('chevron-right')}</summary><p>Po. Pakot e shënuara “Falas” janë dhuratë për ${esc(page.name)}. Ruajini dhe postojini pa pagesë dhe pa detyrim për të blerë foto të tjera. Çmimi i çdo pakoje tjetër shfaqet para porosisë.</p></details>
+  </section>
+  <section class="answer shop-answer" aria-labelledby="shop-answer-title"><h2 id="shop-answer-title">A dëshironi të krijojmë më shumë foto për biznesin tuaj?</h2><div class="answer-content" aria-live="polite"><p>Na ndihmoni të kuptojmë çfarë ju intereson. Pa asnjë detyrim.</p><div class="answers"><button type="button" data-answer="yes">Po, më intereson</button><button type="button" data-answer="no">Jo, faleminderit</button></div><p id="answer-error" role="alert"></p></div></section>`;
+}
+export function creatorFooter(page) {
+  return `<footer class="shop-footer"><a class="shop-logo" href="/" aria-label="MNYRA">MNYRA<span class="shop-logo-dot"></span></a><p>Biznesi yt meriton me u pa.</p><div><span>Krijuar për ${esc(page.name)}</span><a href="#shop-faq">Pyetje të shpeshta ${creatorIcon('arrow-up-right')}</a></div></footer>`;
 }
 
 export function renderCreatorPromo(page){

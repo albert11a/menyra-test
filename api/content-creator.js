@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { ccEscape as esc, ccImage } from '../shared/content-creator.js';
-import {publicCreatorPage,renderCreatorCatalog,creatorPhoto,creatorHowTo,creatorHeroFiles,renderCreatorPromo} from '../shared/content-creator-view.js';
+import {publicCreatorPage,renderCreatorCatalog,creatorPhoto,creatorHowTo,creatorHeroFiles,renderCreatorPromo,creatorFooter} from '../shared/content-creator-view.js';
 const BASE='https://firestore.googleapis.com/v1/projects/menyra-c0e68/databases/(default)/documents';
 function decode(v){if(!v)return null;if('stringValue'in v)return v.stringValue;if('booleanValue'in v)return v.booleanValue;if('integerValue'in v)return Number(v.integerValue);if('doubleValue'in v)return Number(v.doubleValue);if('timestampValue'in v)return v.timestampValue;if(v.mapValue)return Object.fromEntries(Object.entries(v.mapValue.fields||{}).map(([k,x])=>[k,decode(x)]));if(v.arrayValue)return (v.arrayValue.values||[]).map(decode);return null;}
 let creatorStyles;
@@ -85,7 +85,7 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
         ]).finally(()=>clearTimeout(timer));
       }
       const catalog=renderCreatorCatalog(safePage,{photo:(key,alt,options)=>creatorPhoto(safePage,key,alt,{...options,src:covers[key]})});
-      const firstFrame=`<div class="shop-shell">${catalog}<div id="shop-image-errors"></div>${creatorHowTo(safePage)}<section class="shop-purchases" id="shop-purchases"><h2>Blerjet tuaja</h2><p>Pas porosisë, artikujt tuaj do të shfaqen këtu.</p></section><footer class="shop-footer">MNYRA · Krijuar për biznesin tuaj</footer></div>`;
+      const firstFrame=`<div class="shop-shell">${catalog}<div id="shop-image-errors"></div>${creatorHowTo(safePage)}<section class="shop-purchases" id="shop-purchases"><h2>Blerjet tuaja</h2><p>Pas porosisë, artikujt tuaj do të shfaqen këtu.</p></section>${creatorFooter(safePage)}</div>`;
       html=html.replace(/(<main[^>]*id="content-app"[^>]*>)[\s\S]*?(<\/main>)/,(_,open,close)=>open+firstFrame+close);
     }
     if(safePage.kind!=='shop'){

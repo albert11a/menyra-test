@@ -30,7 +30,7 @@ export async function shopRepository(){
   }
  };
 }
-function publicOrder(order,id){return {id,pageId:order.pageId,lines:order.lines,totalCents:order.totalCents,currency:'EUR',status:order.status,approved:order.approved===true,paymentMethod:'cod',createdAt:order.createdAt};}
+function publicOrder(order,id){return {id,pageId:order.pageId,lines:order.lines,totalCents:order.totalCents,currency:'EUR',status:order.status,approved:order.approved===true,downloadsAvailable:order.downloadsReleased===true||order.approved===true,paymentDueDate:order.paymentDueDate||'',paymentMethod:'cod',createdAt:order.createdAt};}
 async function originalFile(path,metadata,repo){
  if(!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>30*1024*1024)throw Error('Skedari nuk është i disponueshëm.');
  const parts=[];let size=0;
@@ -91,7 +91,7 @@ export async function shopAction(input,repo){
   if(!validShopId(orderId))throw Error('Porosia nuk u gjet.');
   const order=await repo.read(`${CC_ORDERS}/${orderId}`);if(!order)throw Error('Porosia nuk u gjet.');
   if(op==='receipt')return publicOrder(order,orderId);
-  if(order.approved!==true||order.status!=='released'||order.paymentConfirmed!==true)throw Error('Shkarkimi hapet pas konfirmimit të pagesës.');
+  if(order.downloadsReleased!==true&&(order.approved!==true||order.status!=='released'||order.paymentConfirmed!==true))throw Error('Shkarkimi hapet pas konfirmimit të pagesës.');
   const file=String(input.file||'');if(!/^[a-zA-Z0-9_-]{1,64}$/.test(file)||!purchasedFiles(order).includes(file))throw Error('Ky artikull nuk i përket porosisë.');
   const metadata=await repo.read(`contentCreatorPages/${order.pageId}/originals/${file}`,['name','mime','size','parts']);
   if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100)throw Error('Skedari nuk është i disponueshëm.');
@@ -137,7 +137,10 @@ export async function shopAction(input,repo){
  const customer=shopCustomer(input.customer);
  // Freeze original file identities; removing storefront photos never removes purchased assets.
  for(const file of purchasedFiles(quote)){const asset=await repo.read(`contentCreatorPages/${pageId}/originals/${file}`);if(!asset?.parts)throw Error('Një skedar nuk është ende gati. Ju lutemi, provoni përsëri.');}
- const order={pageId,pageName:page.name,cartId,...quote,customer,paymentMethod:'cod',status:'pending',approved:false,createdAt:now,updatedAt:now};
+ const monthParts=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Vienna',year:'numeric',month:'2-digit'}).formatToParts(new Date(now));
+ const year=Number(monthParts.find(p=>p.type==='year').value),month=Number(monthParts.find(p=>p.type==='month').value);
+ const paymentDueDate=`${year+(month===12?1:0)}-${String(month===12?1:month+1).padStart(2,'0')}-01`;
+ const order={pageId,pageName:page.name,cartId,...quote,customer,paymentMethod:'cod',status:'pending',approved:false,...(quote.totalCents>0?{downloadsReleased:true,paymentSchedule:'monthly',paymentDueDate}:{}),createdAt:now,updatedAt:now};
  const created=await repo.write(`${CC_ORDERS}/${orderId}`,order,true);
  const persisted=created?order:await repo.read(`${CC_ORDERS}/${orderId}`);
  if(!persisted||persisted.cartId!==cartId||persisted.pageId!==pageId)throw Error('Porosia nuk është e vlefshme.');

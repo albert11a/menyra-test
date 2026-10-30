@@ -34,8 +34,8 @@ test('Fehlende Kundenfelder und nicht fertige Originale verhindern Bestellung',a
  f.docs.delete(`contentCreatorPages/${pageId}/originals/one`);await assert.rejects(shopAction(request,f.repo));
  assert.equal(f.docs.has('contentCreatorOrders/'+orderId),false);
 });
-test('Originale sind bis Zahlung und Freigabe gesperrt; fremde Fotos bleiben gesperrt',async()=>{
- const f=fixture();await shopAction(request,f.repo);
+test('Altbestellungen ohne Sofortfreigabe bleiben bis Zahlung gesperrt; fremde Fotos bleiben gesperrt',async()=>{
+ const f=fixture();await shopAction(request,f.repo);delete f.docs.get('contentCreatorOrders/'+orderId).downloadsReleased;
  const download={op:'download',orderId,file:'one'};await assert.rejects(shopAction(download,f.repo));
  const order=f.docs.get('contentCreatorOrders/'+orderId);order.approved=true;order.status='released';await assert.rejects(shopAction(download,f.repo));
  order.paymentConfirmed=true;assert.equal((await shopAction(download,f.repo)).parts,1);
@@ -114,3 +114,13 @@ test('Ein Bild-Endpunkt entscheidet serverseitig über kostenlose und geschützt
  f.docs.get(`contentCreatorPages/${pageId}/originals/one`).size=4;
  await assert.rejects(shopAction(input,f.repo));
  });
+
+test('Monthly purchase releases only its originals while payment stays pending',async()=>{
+ const f=fixture(),order=await shopAction({...request,downloadsReleased:false,paymentConfirmed:true},f.repo);
+ assert.equal(order.approved,false);assert.equal(order.downloadsAvailable,true);assert.equal(order.status,'pending');
+ assert.match(order.paymentDueDate,/^\d{4}-\d{2}-01$/);
+ const stored=f.docs.get('contentCreatorOrders/'+orderId);assert.equal(stored.paymentConfirmed,undefined);assert.equal(stored.paymentSchedule,'monthly');
+ assert.equal((await shopAction({op:'download',orderId,file:'one',part:0},f.repo)).data,'YWJj');
+ await assert.rejects(shopAction({op:'download',orderId,file:'unknown'},f.repo));
+ assert.equal((await shopAction({op:'receipt',orderId},f.repo)).downloadsAvailable,true);
+});

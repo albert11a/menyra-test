@@ -4,10 +4,10 @@ import {readFile} from 'node:fs/promises';
 import {parseHTML} from 'linkedom';
 import {ccEscape,ccImage} from '../shared/content-creator.js';
 import {euro,shopQuote,validShopId} from '../shared/content-creator-shop.js';
-import {creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,renderCreatorCatalog,creatorHowTo} from '../shared/content-creator-view.js';
+import {creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,renderCreatorCatalog,creatorHowTo,creatorFooter} from '../shared/content-creator-view.js';
 import {shopAction} from '../server/content-creator-shop.js';
 const source=(await readFile(new URL('../apps/content-creator/shop.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace('export async function mountCreatorShop','async function mountCreatorShop');
-const factory=new Function('db','doc','getDoc','esc','ccImage','CC_PAGES','euro','shopQuote','validShopId','zipBlob','localStorage','location','fetch','document','globalThis','setTimeout','navigator','creatorIcon','creatorImageUrl','creatorOfferButton','creatorPhoto','renderCreatorCatalog','creatorHowTo',`${source}\nreturn mountCreatorShop;`);
+const factory=new Function('db','doc','getDoc','esc','ccImage','CC_PAGES','euro','shopQuote','validShopId','zipBlob','localStorage','location','fetch','document','globalThis','setTimeout','navigator','creatorIcon','creatorImageUrl','creatorOfferButton','creatorPhoto','renderCreatorCatalog','creatorHowTo','creatorFooter',`${source}\nreturn mountCreatorShop;`);
 const pageId='a'.repeat(32);
 async function setup(still=false,price=2900,options={}){
  const {document,window}=parseHTML('<html><head><meta name="theme-color" content="#f7f6f2"></head><body><main id="app"></main></body></html>'),root=document.getElementById('app');window.HTMLElement.prototype.scrollIntoView=()=>{};window.HTMLElement.prototype.scrollTo=function(options){this.scrollLeft=options.left;this.dispatchEvent(new window.Event('scroll'));};
@@ -19,7 +19,7 @@ async function setup(still=false,price=2900,options={}){
   const payload=requestOptions.method==='POST'?JSON.parse(requestOptions.body):Object.fromEntries(new URL(url,'https://www.mnyra.com').searchParams);if(new URL(url,'https://www.mnyra.com').pathname==='/creator/download')payload.op=payload.orderId?'download':'free-download';calls.push(payload);
   try{if(payload.op==='free-download'&&options.download)await options.download(payload);if(payload.op==='free-preview'&&options.preview){const result=await options.preview(payload);if(result)return result;}const result=await shopAction(payload,repo);return {ok:true,json:async()=>result,arrayBuffer:async()=>result.bytes,headers:{get:key=>key==='Content-Type'?result.mime:key==='X-File-Name'?encodeURIComponent(result.name):null}};}catch(error){return {ok:false,json:async()=>({error:error.message})};}
  };
- const mount=factory({},(...args)=>args.filter(x=>typeof x==='string').join('/'),async()=>({data:()=>({data:'data:image/jpeg;base64,YWJj'})}),ccEscape,ccImage,'contentCreatorPages',euro,shopQuote,validShopId,files=>{zipFiles.push(files);return new Blob(['zip']);}, {getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)}, {origin:'https://www.mnyra.com',search:''},fetch,document,{setInterval:(fn,ms)=>{options.intervals?.push({fn,ms});return 0;},addEventListener:()=>{},Image:options.Image,IntersectionObserver:options.IntersectionObserver,matchMedia:()=>({matches:!!options.reducedMotion})},()=>0,options.navigator||{},creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,renderCreatorCatalog,creatorHowTo);
+ const mount=factory({},(...args)=>args.filter(x=>typeof x==='string').join('/'),async()=>({data:()=>({data:'data:image/jpeg;base64,YWJj'})}),ccEscape,ccImage,'contentCreatorPages',euro,shopQuote,validShopId,files=>{zipFiles.push(files);return new Blob(['zip']);}, {getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)}, {origin:'https://www.mnyra.com',search:''},fetch,document,{setInterval:(fn,ms)=>{options.intervals?.push({fn,ms});return 0;},addEventListener:()=>{},Image:options.Image,IntersectionObserver:options.IntersectionObserver,matchMedia:()=>({matches:!!options.reducedMotion})},()=>0,options.navigator||{},creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,renderCreatorCatalog,creatorHowTo,creatorFooter);
  await mount({root,page,still});
  async function settle(){for(let i=0;i<15;i++)await new Promise(r=>setImmediate(r));}
  async function click(selector){const button=root.querySelector(selector);assert.ok(button,selector);button.dispatchEvent(new window.Event('click',{bubbles:true}));await settle();}
@@ -28,17 +28,17 @@ async function setup(still=false,price=2900,options={}){
  await settle();
  return {root,docs,calls,zipFiles,click,checkout,submit,document,window,settle};
 }
-test('Shop bündelt vier Fotos, zeigt Dots, Warenkorb, COD und gesperrte Bestellung',async()=>{
+test('Shop bündelt vier Fotos und gibt Originale vor der monatlichen Zahlung frei',async()=>{
  const ctx=await setup();assert.equal(ctx.root.querySelectorAll('.shop-product').length,1);assert.equal(ctx.root.querySelectorAll('.shop-slide').length,4);assert.equal(ctx.root.querySelectorAll('.shop-dots button').length,4);
  await ctx.click('[data-shop="add"]');assert.equal(ctx.calls[0].op,'cart');assert.deepEqual(ctx.calls[0].ids,['pack']);
- await ctx.checkout();assert.match(ctx.root.querySelector('.shop-payment').textContent,/Pagesa te postieri/);await ctx.submit();
- assert.equal(ctx.root.querySelectorAll('.shop-order').length,1);assert.equal(ctx.root.querySelector('[data-shop="save-photos"]').disabled,true);
+ await ctx.checkout();assert.match(ctx.root.querySelector('.shop-payment').textContent,/paguani më 1/);await ctx.submit();
+ assert.equal(ctx.root.querySelectorAll('.shop-order').length,1);assert.equal(ctx.root.querySelector('[data-shop="save-photos"]').disabled,false);
  const [path,order]=[...ctx.docs.entries()].find(([key])=>key.startsWith('contentCreatorOrders/'));ctx.docs.set(path,{...order,approved:true,paymentConfirmed:true,status:'released'});
  await ctx.click('[data-shop="refresh"]');assert.equal(ctx.root.querySelector('[data-shop="save-photos"]').disabled,false);
 });
 test('Still-Modus lässt Checkout durchspielen und sendet keine Warenkorb-/Bestell-Requests',async()=>{
  const ctx=await setup(true);await ctx.click('[data-shop="add"]');await ctx.checkout();await ctx.submit();
- assert.equal(ctx.calls.length,0);assert.equal(ctx.root.querySelectorAll('.shop-order').length,1);assert.equal(ctx.root.querySelector('[data-shop="save-photos"]').disabled,true);
+ assert.equal(ctx.calls.length,0);assert.equal(ctx.root.querySelectorAll('.shop-order').length,1);assert.equal(ctx.root.querySelector('[data-shop="save-photos"]').disabled,false);
 });
 test('Preisänderung erfordert erneute Bestätigung; keine heimlich höhere Bestellung',async()=>{
  const ctx=await setup();await ctx.click('[data-shop="add"]');await ctx.checkout();ctx.docs.get(`contentCreatorPages/${pageId}`).products[0].priceCents=4000;
@@ -189,7 +189,7 @@ test('Hero respects reduced motion and keeps the introduction in simple Albanian
  const intervals=[],ctx=await setup(true,2900,{heroPhotoIds:['one','two'],intervals,reducedMotion:true});
  const track=ctx.root.querySelector('[data-hero-track]');intervals.find(t=>t.ms===5500).fn();assert.ok(!track.scrollLeft);
  const intro=ctx.root.querySelector('.shop-intro-copy');assert.doesNotMatch(intro.textContent,/[ëË]/);
- assert.match(intro.textContent,/8.700/);assert.match(intro.textContent,/Rezervime tavolinash/);assert.ok(intro.querySelector('a[href^="https://business.google.com/"]'));
+ assert.match(intro.textContent,/mnyra.*Bistro/);assert.match(intro.textContent,/foto falas/);assert.ok(intro.querySelector('a[href="#shop-faq"]'));
 });
 
 
@@ -213,4 +213,13 @@ test('Visible free packages prepare at most a small known original set; 3G and d
  }
  const fast=await setup(false,0,{media,IntersectionObserver:Observer,navigator:{connection:{effectiveType:'4g'}}});await fast.settle();
  assert.equal(fast.calls.filter(call=>call.op==='free-download').length,4);
+});
+
+test('FAQ stays open and a saved interest answer survives cart updates',async()=>{
+ const ctx=await setup(true),faq=ctx.root.querySelector('details[data-faq="custom"]');faq.setAttribute('open','');
+ assert.equal(ctx.root.querySelectorAll('.shop-how details').length,4);
+ const answer=ctx.root.querySelector('.answer-content');answer.innerHTML='<p class="answer-message">Faleminderit!</p>';
+ await ctx.click('[data-shop="add"]');
+ assert.ok(ctx.root.querySelector('details[data-faq="custom"][open]'));
+ assert.equal(ctx.root.querySelector('.answer-content'),answer);assert.equal(ctx.root.querySelector('[data-answer]'),null);
 });
