@@ -7,7 +7,7 @@ import {renderContentCreator} from '../apps/mnyra-heart/heart-content-creator-re
 import {contentLink} from '../shared/content-creator.js';
 const source=(await readFile(new URL('../apps/mnyra-heart/heart-content-creator.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export (async )?function /g,'$1function ');
 const factory=new Function('db','collection','doc','getDoc','onSnapshot','setDoc','updateDoc','writeBatch','serverTimestamp','CC_PAGES','CC_VISITS','contentLink',`const creatorCdnEnabled=async()=>false; const savePromoAsset=async(pageId,imageId,file,data)=>setDoc(doc(db,CC_PAGES,pageId,'images',imageId),{data,caption:''});\n${source}\nreturn createContentCreator;`);
-function setup(){
+function setup(options={}){
  const {document,window}=parseHTML('<div id="app"></div>'),root=document.getElementById('app');
  const store=createHeartStore(createHeartInitialState());
  const page={id:'shop',name:'Cafe',kind:'shop',published:true,workflow:'ready',photoIds:['a','b','c'],products:[{id:'p',title:'First',priceCents:250,imageIds:['a','b']},{id:'q',title:'Second',priceCents:500,imageIds:['b','c']}]};
@@ -20,9 +20,14 @@ function setup(){
  const writes=[];return {update:(...args)=>writes.push(()=>update(...args)),delete:path=>writes.push(()=>docs.delete(path)),commit:async()=>{if(fail)throw Error('Offline');for(const write of writes)await write();}};
  },()=>'', 'contentCreatorPages','contentCreatorVisits',contentLink);
  store.actions.patchContentCreator({pages:[page]});store.subscribe(state=>{root.innerHTML=renderContentCreator(state.contentCreator);});root.innerHTML=renderContentCreator(store.getState().contentCreator);
- create({root,store});
+ const uploads=[];
+ create({root,store,prepareImage:async file=>'preview:'+file.name,saveAsset:async(pageId,key,file,data,config)=>{
+   if(options.failUpload&&uploads.length===1)throw Error('Upload fehlgeschlagen');
+   uploads.push({key,file,config});docs.set(`contentCreatorPages/${pageId}/images/${key}`,{data});docs.set(`contentCreatorPages/${pageId}/originals/${key}`,{name:file.name});
+ }});
  async function click(selector){const node=root.querySelector(selector);assert.ok(node,selector);node.dispatchEvent(new window.Event('click',{bubbles:true}));for(let i=0;i<15;i++)await new Promise(r=>setImmediate(r));}
- return {root,store,docs,click,setFailure:value=>{fail=value;}};
+ async function add(product,files){const input=root.querySelector(`[data-cc-package-add="${product}"]`);assert.ok(input);Object.defineProperty(input,'files',{value:files});input.dispatchEvent(new window.Event('change',{bubbles:true}));for(let i=0;i<20;i++)await new Promise(r=>setImmediate(r));}
+ return {root,store,docs,click,add,uploads,setFailure:value=>{fail=value;}};
 }
 test('Paket löschen bestätigt und atomar; gemeinsame Fotos und gekaufte Originale bleiben erhalten',async()=>{
  const c=setup();await c.click('[data-cc-action="detail"]');
@@ -39,16 +44,19 @@ test('Paket löschen bestätigt und atomar; gemeinsame Fotos und gekaufte Origin
  assert.equal(c.docs.has('contentCreatorPages/shop/previews/b'),true);assert.equal(c.docs.has('contentCreatorOrders/buyer'),true);
  assert.equal(c.root.querySelectorAll('[data-cc-package]').length,1);
 });
-test('Shop-Fotos ändern Reihenfolge im Paket; letztes Foto entfernt auch das leere Paket',async()=>{
+test('Paketfotos entfernen behält gemeinsame Fotos und ein erneut befüllbares leeres Paket',async()=>{
  const c=setup();await c.click('[data-cc-action="detail"]');
  await c.click('[data-cc-action="move"][data-image="b"][data-direction="-1"]');
  assert.deepEqual(c.docs.get('contentCreatorPages/shop').products[0].imageIds,['b','a']);
  await c.click('[data-cc-action="delete"][data-image="b"]');
- assert.deepEqual(c.docs.get('contentCreatorPages/shop').products.map(p=>p.imageIds),[['a'],['c']]);
+ assert.deepEqual(c.docs.get('contentCreatorPages/shop').products.map(p=>p.imageIds),[['a'],['b','c']]);
  await c.click('[data-cc-action="delete"][data-image="a"]');
- assert.deepEqual(c.docs.get('contentCreatorPages/shop').products.map(p=>p.id),['q']);
- assert.deepEqual(c.store.getState().contentCreator.pages[0].products.map(p=>p.id),['q']);
+ assert.deepEqual(c.docs.get('contentCreatorPages/shop').products.map(p=>p.id),['p','q']);
+ assert.deepEqual(c.store.getState().contentCreator.pages[0].products.map(p=>p.id),['p','q']);
  assert.equal(c.docs.has('contentCreatorPages/shop/originals/a'),true);
+ assert.equal(c.docs.has('contentCreatorPages/shop/images/b'),true);
+ assert.deepEqual(c.docs.get('contentCreatorPages/shop').products[0].imageIds,[]);
+ assert.ok(c.root.querySelector('[data-cc-package-add="p"]'));
 });
 const assetSource=(await readFile(new URL('../apps/mnyra-heart/heart-content-creator-shop.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/^export \{.*\n/gm,'').replace(/export (async )?function /g,'$1function ');
 test('Wasserzeichen ist dezenter und verwendet gemessene Wortabstände in allen Bildformaten',()=>{
@@ -78,4 +86,26 @@ test('iPhone JPEG fallback adapts oversized previews instead of demanding smalle
  const original={width:4000,height:6000},record=prepare(original,1600,.88);
  assert.ok(JSON.stringify(record).length<=950000);assert.ok(record.width>=640);assert.ok(encodes>4);
  assert.deepEqual(original,{width:4000,height:6000});assert.match(record.clean,/^data:image\/jpeg/);assert.match(record.marked,/^data:image\/jpeg/);
+});
+
+test('Add several photos to one existing package, preserving other packages and purchased originals',async()=>{
+ const c=setup();await c.click('[data-cc-action="detail"]');
+ const files=[{name:'new-1.jpg',type:'image/jpeg',size:100},{name:'new-2.png',type:'image/png',size:100}];
+ await c.add('p',files);const page=c.docs.get('contentCreatorPages/shop');
+ assert.equal(page.photoIds.length,5);assert.deepEqual(page.products[0].imageIds,['a','b',...c.uploads.map(u=>u.key)]);
+ assert.deepEqual(page.products[1].imageIds,['b','c']);assert.equal(page.products[0].priceCents,250);
+ assert.equal(c.uploads.length,2);assert.ok(c.uploads.every(u=>u.config.free===false));
+ assert.deepEqual(c.docs.get('contentCreatorOrders/buyer').lines[0].imageIds,['a','b']);
+ assert.equal(c.root.querySelectorAll('[data-cc-package="p"] figure').length,4);
+});
+test('Failed or oversized package additions leave membership unchanged and can be retried',async()=>{
+ const c=setup({failUpload:true});await c.click('[data-cc-action="detail"]');
+ const file={name:'new.jpg',type:'image/jpeg',size:100};await c.add('p',[file,file]);
+ assert.deepEqual(c.docs.get('contentCreatorPages/shop').photoIds,['a','b','c']);
+ assert.deepEqual(c.docs.get('contentCreatorPages/shop').products[0].imageIds,['a','b']);
+ assert.match(c.store.getState().contentCreator.mediaError,/Upload fehlgeschlagen/);
+ assert.equal(c.root.querySelector('[data-cc-package-add="p"]').disabled,false);
+ const d=setup();await d.click('[data-cc-action="detail"]');await d.add('p',[{...file,size:31*1024*1024}]);
+ assert.equal(d.uploads.length,0);assert.match(d.store.getState().contentCreator.mediaError,/30 MB/);
+ await d.add('p',[file]);assert.equal(d.docs.get('contentCreatorPages/shop').products[0].imageIds.length,3);
 });

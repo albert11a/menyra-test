@@ -125,6 +125,26 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       const id=input.dataset.ccHeroFormat,heroFormat=creatorHeroFormat({heroFormat:input.value});
       mediaTask(async()=>{await updateDoc(doc(db,CC_PAGES,id),{heroFormat,updatedAt:serverTimestamp()});patch({pages:store.getState().contentCreator.pages.map(page=>page.id===id?{...page,heroFormat}:page)});});return;
     }
+    if(input.hasAttribute('data-cc-package-add')){
+      const files=Array.from(input.files||[]),id=input.dataset.page,productId=input.dataset.ccPackageAdd;
+      if(!files.length)return;
+      mediaTask(async()=>{
+        const pageRef=doc(db,CC_PAGES,id),snapshot=await getDoc(pageRef),page=snapshot.data();
+        const product=page?.products?.find(p=>p.id===productId);
+        if(!product||page.kind!=='shop')throw Error('Paket wurde nicht gefunden.');
+        if((page.photoIds?.length||0)+files.length>30)throw Error('Maximal 30 Bilder pro Seite.');
+        for(const file of files)if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>30*1024*1024)throw Error('JPG, PNG oder WebP bis 30 MB wählen.');
+        const keys=[];
+        for(const file of files){
+          const key=crypto.randomUUID().replaceAll('-','');
+          await (saveAsset||saveShopAsset)(id,key,file,await prepareImage(file),{free:product.priceCents===0});keys.push(key);
+        }
+        const updated={photoIds:[...(page.photoIds||[]),...keys],products:page.products.map(p=>p.id===productId?{...p,imageIds:[...p.imageIds,...keys]}:p)};
+        await updateDoc(pageRef,{...updated,updatedAt:serverTimestamp()});
+        patch({pages:store.getState().contentCreator.pages.map(p=>p.id===id?{...p,...updated}:p)});
+        await detail(id);
+      });return;
+    }
     if(input.hasAttribute('data-cc-hero-upload')){
       const files=Array.from(input.files||[]),id=input.dataset.ccHeroUpload;if(!files.length)return;
       mediaTask(async()=>{
@@ -318,6 +338,18 @@ export function createContentCreator({root, store, prepareImage = prepareContent
           const state=store.getState().contentCreator;
           patch({images:{...state.images,[image]:{...state.images[image],caption}},notice:"Bildunterschrift gespeichert."});
         }else{
+          if(action==='delete'&&page.kind==='shop'&&button.dataset.product){
+            const productId=button.dataset.product;
+            if(!page.products?.some(p=>p.id===productId&&p.imageIds.includes(image)))throw Error('Foto wurde bereits aus dem Paket entfernt.');
+            const products=page.products.map(p=>p.id===productId?{...p,imageIds:p.imageIds.filter(key=>key!==image)}:p);
+            const shared=products.some(p=>p.imageIds.includes(image));
+            const updated={products,photoIds:shared?ids:ids.filter(key=>key!==image),heroPhotoIds:(page.heroPhotoIds||[]).filter(key=>shared||key!==image)};
+            const batch=writeBatch(db);batch.update(pageRef,{...updated,updatedAt:serverTimestamp()});
+            if(!shared){batch.delete(doc(pageRef,'images',image));batch.delete(doc(pageRef,'previews',image));}
+            await batch.commit();
+            patch({pages:store.getState().contentCreator.pages.map(p=>p.id===id?{...p,...updated}:p)});
+            await detail(id);return;
+          }
           if(action==="move") {const next=index+Number(button.dataset.direction);if(next<0||next>=ids.length)return;[ids[index],ids[next]]=[ids[next],ids[index]];}
           if(action==="delete") ids.splice(index,1);
           const products=page.kind==='shop'?(page.products||[]).map(p=>({...p,imageIds:action==='move'?ids.filter(key=>p.imageIds.includes(key)):p.imageIds.filter(key=>ids.includes(key))})).filter(p=>p.imageIds.length):undefined;

@@ -18,3 +18,14 @@ Validation: 99 targeted creator unit/DOM regression tests passed; npm run build 
 The tracked social bundle files were unchanged by the build.
 No production data used. No Playwright or smoke run (repository instruction).
 Real mobile browser/iOS visual verification was not performed in this environment.
+
+## Follow-up: edit photos in existing packages
+
+Each package now supports selecting multiple additional photos. Files use the
+existing shop upload path and free/paid preview policy, and become package members
+only after all uploads complete. Removing a photo within a package affects that
+package only; shared photos and purchased originals remain intact. Empty packages
+stay editable and can be refilled. Existing page-wide removal remains available.
+Validation: 12 package/upload tests passed, including partial upload failure,
+retry, size validation and shared-image preservation. Build passed; tracked
+bundles unchanged. Real mobile visual check was not performed.
