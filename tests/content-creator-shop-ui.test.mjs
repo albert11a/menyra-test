@@ -1,5 +1,5 @@
 import {createCreatorVideoPlayback} from '../shared/creator-video-playback.js';
-import {creatorIsVideo,creatorAssetCount} from '../shared/creator-video.js';
+import {creatorIsVideo,creatorAssetCount,creatorVideoFirst} from '../shared/creator-video.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -9,7 +9,7 @@ import {euro,shopQuote,validShopId} from '../shared/content-creator-shop.js';
 import {creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,renderCreatorCatalog,creatorHowTo,creatorFooter} from '../shared/content-creator-view.js';
 import {shopAction} from '../server/content-creator-shop.js';
 const source=(await readFile(new URL('../apps/content-creator/shop.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace('export async function mountCreatorShop','async function mountCreatorShop');
-const factory=new Function('creatorVisitorId','db','doc','getDoc','esc','ccImage','CC_PAGES','euro','shopQuote','validShopId','zipBlob','localStorage','location','fetch','document','globalThis','setTimeout','navigator','creatorIcon','creatorImageUrl','creatorOfferButton','creatorPhoto','renderCreatorCatalog','creatorHowTo','creatorFooter','createCreatorVideoPlayback','creatorIsVideo','creatorAssetCount',`${source}\nreturn mountCreatorShop;`);
+const factory=new Function('creatorVisitorId','db','doc','getDoc','esc','ccImage','CC_PAGES','euro','shopQuote','validShopId','zipBlob','localStorage','location','fetch','document','globalThis','setTimeout','navigator','creatorIcon','creatorImageUrl','creatorOfferButton','creatorPhoto','renderCreatorCatalog','creatorHowTo','creatorFooter','createCreatorVideoPlayback','creatorIsVideo','creatorAssetCount','creatorVideoFirst',`${source}\nreturn mountCreatorShop;`);
 const pageId='a'.repeat(32);
 async function setup(still=false,price=2900,options={}){
  const {document,window}=parseHTML('<html><head><meta name="theme-color" content="#f7f6f2"><meta name="color-scheme" content="light"></head><body><main id="app"></main></body></html>'),root=document.getElementById('app');window.HTMLElement.prototype.scrollIntoView=()=>{};window.HTMLElement.prototype.scrollTo=function(options){this.scrollLeft=options.left;this.dispatchEvent(new window.Event('scroll'));};
@@ -21,7 +21,7 @@ async function setup(still=false,price=2900,options={}){
   const payload=requestOptions.method==='POST'?JSON.parse(requestOptions.body):Object.fromEntries(new URL(url,'https://www.mnyra.com').searchParams);if(new URL(url,'https://www.mnyra.com').pathname==='/creator/download')payload.op=payload.orderId?'download':'free-download';calls.push(payload);
   try{if(payload.op==='free-download'&&options.download)await options.download(payload);if(payload.op==='free-preview'&&options.preview){const result=await options.preview(payload);if(result)return result;}const result=await shopAction(payload,repo);if(payload.op==='order'&&options.lostOrderResponse)throw Error('Response lost after commit');return {ok:true,json:async()=>result,arrayBuffer:async()=>result.bytes,headers:{get:key=>key==='Content-Type'?result.mime:key==='X-File-Name'?encodeURIComponent(result.name):null}};}catch(error){return {ok:false,json:async()=>({error:error.message})};}
  };
- const mount=factory(()=>'e'.repeat(32),{},(...args)=>args.filter(x=>typeof x==='string').join('/'),async()=>({data:()=>({data:'data:image/jpeg;base64,YWJj'})}),ccEscape,ccImage,'contentCreatorPages',euro,shopQuote,validShopId,files=>{zipFiles.push(files);return new Blob(['zip']);}, {getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)}, {origin:'https://www.mnyra.com',search:''},fetch,document,{setInterval:(fn,ms)=>{options.intervals?.push({fn,ms});return 0;},addEventListener:()=>{},Image:options.Image,IntersectionObserver:options.IntersectionObserver,matchMedia:()=>({matches:!!options.reducedMotion})},()=>0,options.navigator||{},creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,renderCreatorCatalog,creatorHowTo,creatorFooter,createCreatorVideoPlayback,creatorIsVideo,creatorAssetCount);
+ const mount=factory(()=>'e'.repeat(32),{},(...args)=>args.filter(x=>typeof x==='string').join('/'),async()=>({data:()=>({data:'data:image/jpeg;base64,YWJj'})}),ccEscape,ccImage,'contentCreatorPages',euro,shopQuote,validShopId,files=>{zipFiles.push(files);return new Blob(['zip']);}, {getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)}, {origin:'https://www.mnyra.com',search:''},fetch,document,{setInterval:(fn,ms)=>{options.intervals?.push({fn,ms});return 0;},addEventListener:()=>{},Image:options.Image,IntersectionObserver:options.IntersectionObserver,matchMedia:()=>({matches:!!options.reducedMotion})},()=>0,options.navigator||{},creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,renderCreatorCatalog,creatorHowTo,creatorFooter,createCreatorVideoPlayback,creatorIsVideo,creatorAssetCount,creatorVideoFirst);
  await mount({root,page,still});
  async function settle(){for(let i=0;i<15;i++)await new Promise(r=>setImmediate(r));}
  async function click(selector){const button=root.querySelector(selector);assert.ok(button,selector);button.dispatchEvent(new window.Event('click',{bubbles:true}));await settle();}
@@ -283,4 +283,14 @@ test('Video viewer has a single audible full video per slide and retains the pla
  assert.ok(ctx.root.querySelector('.shop-viewer-slide [data-creator-video-toggle]'));
  assert.equal(ctx.root.querySelector('.shop-slide [data-creator-video-toggle]'),null);
  const event=new ctx.window.Event('contextmenu',{bubbles:true,cancelable:true});video.dispatchEvent(event);assert.equal(event.defaultPrevented,true);
+});
+
+test('Mixed pack opens its video first and renders progress controls only on video slides',async()=>{
+ const ctx=await setup(true,1400,{mediaTypes:{two:'video'}});
+ assert.equal(ctx.root.querySelector('.shop-slide video').dataset.photo,'two');
+ await ctx.click('[data-shop="view"][data-index="0"]');
+ const first=ctx.root.querySelector('.shop-viewer-slide');assert.equal(first.querySelector('video').dataset.photo,'two');
+ assert.ok(first.querySelector('[data-creator-video-progress]'));assert.ok(first.querySelector('[data-creator-video-time]'));
+ assert.equal(ctx.root.querySelectorAll('[data-creator-video-progress]').length,1);
+ assert.equal(ctx.root.querySelector('.shop-slide [data-creator-video-progress]'),null);
 });

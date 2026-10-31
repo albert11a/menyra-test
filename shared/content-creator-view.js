@@ -1,4 +1,4 @@
-import {creatorIsVideo,creatorVideoUrl,creatorAssetCount} from './creator-video.js';
+import {creatorIsVideo,creatorVideoUrl,creatorAssetCount,creatorVideoFirst} from './creator-video.js';
 import {creatorHeroFormat,creatorHeroCrop,creatorHeroCropStyle} from './creator-hero.js';
 import { ccEscape as esc, ccImage } from './content-creator.js';
 import { euro } from './content-creator-shop.js';
@@ -72,17 +72,21 @@ export function creatorIntroduction(page, photo) {
     <a class="shop-details-link" href="#shop-faq">Si funksionon porosia ${creatorIcon('arrow-right')}</a></div>
   </section>`;
 }
+export function creatorMediaBadge(page,files){
+ const videos=files.filter(id=>creatorIsVideo(page,id)).length,photos=files.length-videos;
+ return `${videos?`<span>${creatorIcon('video')}${videos}</span>`:''}${photos?`<span>${creatorIcon('images')}${photos}</span>`:''}`;
+}
 export function renderCreatorCatalog(page, {ids=[], positions={}, offerButton, photo} = {}) {
-  const products = (page.products || []).filter(p=>p.active!==false && p.imageIds?.some(id=>page.photoIds.includes(id)));
+  const products = (page.products || []).filter(p=>p.active!==false && p.imageIds?.some(id=>page.photoIds.includes(id))).sort((a,b)=>Number(b.imageIds.some(id=>creatorIsVideo(page,id)))-Number(a.imageIds.some(id=>creatorIsVideo(page,id))));
   const img = photo || ((id,alt,opts)=>creatorPhoto(page,id,alt,opts));
   const offer = offerButton || (product=>creatorOfferButton(product,{selected:ids.includes(product.id)}));
   return `<header class="shop-header"><a href="/" class="shop-logo" aria-label="MNYRA">MNYRA<span class="shop-logo-dot"></span></a><button type="button" data-shop="cart" class="shop-cart" aria-label="Hap shportën">${creatorIcon('shopping-bag')}<b ${ids.length?'':'hidden'}>${ids.length}</b></button></header>
     <div class="shop-weekly">${creatorIcon('calendar')}<span>Çdo javë, foto të reja për ju.</span></div>
     ${creatorIntroduction(page,img)}
-    ${[{title:'Falas për ty',items:products.filter(p=>p.priceCents===0)},{title:'Me çmim të arsyeshëm',items:products.filter(p=>p.priceCents>0)}].filter(group=>group.items.length).map(group=>`<section class="shop-collection"><div class="shop-section-title"><h2>${group.title}</h2><span>${group.items.length} pako ${creatorIcon('images')}</span></div>
+    ${[{title:'Video per biznesin tend',items:products.filter(p=>p.imageIds.some(id=>creatorIsVideo(page,id)))},{title:'Falas për ty',items:products.filter(p=>p.priceCents===0&&!p.imageIds.some(id=>creatorIsVideo(page,id)))},{title:'Me çmim të arsyeshëm',items:products.filter(p=>p.priceCents>0&&!p.imageIds.some(id=>creatorIsVideo(page,id)))}].filter(group=>group.items.length).map(group=>`<section class="shop-collection"><div class="shop-section-title"><h2>${group.title}</h2><span>${group.items.length} pako ${creatorIcon('images')}</span></div>
     <div class="shop-products">${group.items.map((product)=>{
-      const files=page.photoIds.filter(id=>product.imageIds.includes(id)),position=positions[product.id]||0;
-      return `<article class="shop-product"><div class="shop-carousel"><div class="shop-track" data-track="${esc(product.id)}">${files.map((id,i)=>`<button type="button" class="shop-slide" data-shop="view" data-product="${esc(product.id)}" data-index="${i}" aria-label="Shiko foton ${i+1} të pakos ${esc(product.title)}">${img(id,`${product.title} · ${i+1}`,{active:i===position,eager:i===position&&creatorIsVideo(page,id)&&products.indexOf(product)<2,size:'thumb'})}</button>`).join('')}</div><span class="shop-photo-count">${creatorIcon(files.some(id=>creatorIsVideo(page,id))?'video':'images')}${files.length}</span><span class="shop-expand">${creatorIcon('expand')}</span>${files.length>1?`<button class="shop-arrow shop-prev" data-shop="slide" data-product="${esc(product.id)}" data-step="-1" aria-label="Fotoja paraprake">${creatorIcon('chevron-left')}</button><button class="shop-arrow shop-next" data-shop="slide" data-product="${esc(product.id)}" data-step="1" aria-label="Fotoja tjetër">${creatorIcon('chevron-right')}</button><div class="shop-dots">${files.map((_,i)=>`<button data-shop="dot" data-product="${esc(product.id)}" data-index="${i}" aria-label="Foto ${i+1}" aria-pressed="${position===i}"></button>`).join('')}</div>`:''}</div><div class="shop-product-info"><div class="shop-price-row"><h3>${esc(product.title)}</h3><strong>${product.priceCents===0?'Falas':euro(product.priceCents)}</strong></div><p>${creatorAssetCount(page,files)} · Cilësi origjinale</p>${offer(product)}</div></article>`;
+      const files=creatorVideoFirst(page,page.photoIds.filter(id=>product.imageIds.includes(id))),position=positions[product.id]||0;
+      return `<article class="shop-product"><div class="shop-carousel"><div class="shop-track" data-track="${esc(product.id)}">${files.map((id,i)=>`<button type="button" class="shop-slide" data-shop="view" data-product="${esc(product.id)}" data-index="${i}" aria-label="Shiko foton ${i+1} të pakos ${esc(product.title)}">${img(id,`${product.title} · ${i+1}`,{active:i===position,eager:i===position&&creatorIsVideo(page,id)&&products.indexOf(product)<2,size:'thumb'})}</button>`).join('')}</div><span class="shop-photo-count" role="img" aria-label="${esc(creatorAssetCount(page,files))}">${creatorMediaBadge(page,files)}</span><span class="shop-expand">${creatorIcon('expand')}</span>${files.length>1?`<button class="shop-arrow shop-prev" data-shop="slide" data-product="${esc(product.id)}" data-step="-1" aria-label="Fotoja paraprake">${creatorIcon('chevron-left')}</button><button class="shop-arrow shop-next" data-shop="slide" data-product="${esc(product.id)}" data-step="1" aria-label="Fotoja tjetër">${creatorIcon('chevron-right')}</button><div class="shop-dots">${files.map((_,i)=>`<button data-shop="dot" data-product="${esc(product.id)}" data-index="${i}" aria-label="Foto ${i+1}" aria-pressed="${position===i}"></button>`).join('')}</div>`:''}</div><div class="shop-product-info"><div class="shop-price-row"><h3>${esc(product.title)}</h3><strong>${product.priceCents===0?'Falas':euro(product.priceCents)}</strong></div><p>${creatorAssetCount(page,files)} · Cilësi origjinale</p>${offer(product)}</div></article>`;
     }).join('')}</div></section>`).join('')}`;
 }
 export function creatorHowTo(page) {

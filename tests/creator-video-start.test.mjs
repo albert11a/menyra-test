@@ -48,11 +48,12 @@ test('Lower-left viewer control preserves explicit pause across scroll/sync and 
 test('Actual encoder waits for playback permission before recording, retains audio and emits a silent boomerang',async()=>{
  const {readFile}=await import('node:fs/promises');
  const source=(await readFile(new URL('../apps/mnyra-heart/heart-creator-video.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace('export async function','async function');
- let permit,requested=false,clock=0;const recordings=[],tracks=[];
- const track=kind=>{const value={kind,stopped:false,stop(){this.stopped=true;}};tracks.push(value);return value;};
- const stream=kind=>{const items=[track(kind)];return {addTrack:t=>items.push(t),getAudioTracks:()=>items.filter(t=>t.kind==='audio'),getTracks:()=>items};};
+ for(const manualCapture of [true,false]){
+ let permit,requested=false,clock=0,requestedFrames=0;const recordings=[],tracks=[];
+ const track=kind=>{const value={kind,stopped:false,stop(){this.stopped=true;}};if(kind==='video'&&manualCapture)value.requestFrame=()=>requestedFrames++;tracks.push(value);return value;};
+ const stream=kind=>{const items=[track(kind)];return {addTrack:t=>items.push(t),getAudioTracks:()=>items.filter(t=>t.kind==='audio'),getVideoTracks:()=>items.filter(t=>t.kind==='video'),getTracks:()=>items};};
  const destination={stream:stream('audio')},audio={createMediaElementSource:()=>({connect(){},disconnect(){}}),createMediaStreamDestination:()=>destination};
- const video={duration:.12,currentTime:0,videoWidth:360,videoHeight:480,paused:true,style:{},setAttribute(){},removeAttribute(){},remove(){},pause(){this.paused=true;},load(){if(this.src)queueMicrotask(()=>this.onloadeddata?.());}};
+ const video={duration:.12,currentTime:0,videoWidth:2160,videoHeight:3840,paused:true,style:{},setAttribute(){},removeAttribute(){},remove(){},pause(){this.paused=true;},load(){if(this.src)queueMicrotask(()=>this.onloadeddata?.());}};
  const context={drawImage(){},getImageData:()=>({frame:video.currentTime}),putImageData(){}};
  const canvases=[];
  const document={visibilityState:'visible',body:{appendChild(){}},addEventListener(){},removeEventListener(){},createElement:kind=>{
@@ -61,8 +62,8 @@ test('Actual encoder waits for playback permission before recording, retains aud
  }};
  class Recorder{
   static isTypeSupported(){return true;}
-  constructor(input,options){this.stream=input;this.mimeType=options.mimeType;this.state='inactive';recordings.push(this);}
-  start(){this.state='recording';}
+  constructor(input,options){if(!manualCapture&&options.mimeType.includes('4d0028'))throw Error('Main configuration rejected');this.options=options;this.stream=input;this.mimeType=options.mimeType;this.state='inactive';recordings.push(this);}
+  start(timeslice){this.timeslice=timeslice;this.state='recording';}
   stop(){this.state='inactive';this.ondataavailable?.({data:new Blob(['encoded'])});this.onstop?.();}
  }
  const raf=callback=>setImmediate(()=>{if(!video.paused){video.currentTime+=.04;if(video.currentTime>video.duration){video.onended?.();return;}}callback();});
@@ -73,6 +74,9 @@ test('Actual encoder waits for playback permission before recording, retains aud
  permit();const result=await pending;
  assert.equal(recordings.length,2);assert.equal(recordings[0].stream.getAudioTracks().length,1);assert.equal(recordings[1].stream.getAudioTracks().length,0);
  assert.ok(result.preview.size>0);assert.ok(result.boomerang.size>0);assert.ok(result.poster.size>0);assert.ok(tracks.every(t=>t.stopped));assert.equal(video.paused,true);
+ assert.equal(recordings[1].timeslice,undefined);assert.equal(recordings[0].options.videoBitsPerSecond,6000000);assert.equal(recordings[1].options.videoBitsPerSecond,3000000);
+ assert.equal(result.width,1080);assert.equal(result.height,1920);assert.equal(Math.max(canvases[1].width,canvases[1].height),1080);assert.equal(requestedFrames>0,manualCapture);assert.equal(recordings[0].options.mimeType.includes('4d0028'),manualCapture);
+ }
 });
 
 test('Processing waits for the audio context as well as video playback before allowing recording',async()=>{

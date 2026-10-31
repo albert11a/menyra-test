@@ -9,3 +9,12 @@ export function creatorAssetCount(page,ids){
  const videos=ids.filter(id=>creatorIsVideo(page,id)).length,photos=ids.length-videos;
  return [photos?`${photos} foto`:'',videos?`${videos} video`:''].filter(Boolean).join(' · ');
 }
+
+// Stable read-only order: keep editorial order within each media type.
+export function creatorVideoFirst(page,ids=page.photoIds||[]){
+ return [...ids].sort((a,b)=>Number(creatorIsVideo(page,b))-Number(creatorIsVideo(page,a)));
+}
+export function creatorVideoTime(value){
+ const seconds=Number.isFinite(value)?Math.max(0,Math.floor(value)):0;
+ return `${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
+}
