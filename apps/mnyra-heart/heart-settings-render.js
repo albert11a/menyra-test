@@ -299,10 +299,32 @@ function renderLifeskinEinstellungen(lifeskin = {}) {
   `;
 }
 
-export function renderSettingsView({ connections = [], setup = {}, lifeskin = {} } = {}) {
+export function renderCreatorReset(state = {}) {
+  const busy = state.resetRunning;
+  return `
+    <section class="heart-section" data-creator-reset>
+      <div class="heart-section__head"><div>
+        <p class="heart-eyebrow">Content Creator</p>
+        <h2>Testdaten zurücksetzen</h2>
+      </div></div>
+      <p class="heart-setup-hero__note">Alle Besuche, Scroll-Statistiken, Klickpfade, Antworten, Warenkörbe und Bestellungen im Content Creator löschen. Businesses, Fotos, Pakete, Preise und Links bleiben erhalten.</p>
+      ${state.resetAsked ? '<p role="alert"><b>Alle Content-Creator-Testdaten endgültig löschen?</b> Das lässt sich nicht rückgängig machen. Bisherige Bestelllinks werden ungültig.</p>' : ''}
+      ${state.resetError ? `<p class="heart-error-block" role="alert">${escapeHtml(state.resetError)}</p>` : ''}
+      ${state.resetNotice ? `<p role="status">${escapeHtml(state.resetNotice)}</p>` : ''}
+      ${busy ? `<p role="status">Wird zurückgesetzt … ${escapeHtml(state.resetDeleted || 0)} Testdatensätze gelöscht.</p>` : ''}
+      <div class="heart-setup-form-actions">
+        <button type="button" class="heart-button heart-button--secondary" data-cc-action="reset-data" ${busy ? 'disabled' : ''}>${busy ? 'Wird zurückgesetzt …' : state.resetError ? 'Fortsetzen' : state.resetAsked ? 'Ja, alle Testdaten löschen' : 'Statistiken und Bestellungen zurücksetzen'}</button>
+        ${state.resetAsked && !busy ? '<button type="button" class="heart-button heart-button--secondary" data-cc-action="cancel-reset">Abbrechen</button>' : ''}
+      </div>
+    </section>
+  `;
+}
+
+export function renderSettingsView({ connections = [], setup = {}, lifeskin = {}, contentCreator = {} } = {}) {
   const setupData = setup.data || {};
   return `
     <div class="heart-view-stack">
+      ${renderCreatorReset(contentCreator)}
       ${renderLifeskinEinstellungen(lifeskin)}
       ${setup.error ? `<div class="heart-error-block">${escapeHtml(setup.error)}</div>` : ""}
       ${setup.status === "loading" && !setup.data ? `<div class="heart-loading-block">Heart-Einrichtung wird geladen...</div>` : ""}

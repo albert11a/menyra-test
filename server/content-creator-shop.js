@@ -12,10 +12,10 @@ export async function shopRepository(){
  const token=await (tokenRequest ||= zugangHolen(key).finally(()=>{tokenRequest=undefined;}));
  return {
   async read(path,fields){const target=fields?.length?`${path}?${fields.map(field=>`mask.fieldPaths=${encodeURIComponent(field)}`).join('&')}`:path;const raw=await lies(target,token);return raw?Object.fromEntries(Object.entries(raw.fields||{}).map(([k,v])=>[k,wert(v)])):null;},
-  async write(path,data,create=false){
-   const mask=create?'currentDocument.exists=false':Object.keys(data).map(k=>`updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');
+  async write(path,data,create=false,requireExisting=false){
+   const mask=create?'currentDocument.exists=false':Object.keys(data).map(k=>`updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&')+(requireExisting?'&currentDocument.exists=true':'');
    const r=await fetch(`${BASE}/${path}?${mask}`,{method:'PATCH',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},body:JSON.stringify({fields:Object.fromEntries(Object.entries(data).map(([k,v])=>[k,encodeValue(v)]))}),signal:AbortSignal.timeout(10000)});
-   if(create&&(r.status===409||r.status===412))return false;if(!r.ok)throw Error('Speichern fehlgeschlagen.');return true;
+   if((create&&(r.status===409||r.status===412))||(requireExisting&&[404,409,412].includes(r.status)))return false;if(!r.ok)throw Error('Speichern fehlgeschlagen.');return true;
   },
   async notify(kind,id,record){
    const fingerprint=createHash('sha256').update(record.lines.map(p=>p.id).sort().join(':')).digest('hex').slice(0,12);
@@ -27,7 +27,7 @@ export async function shopRepository(){
     catch{if(delivery)await zustellungAendern(delivery.pfad,{leaseUntil:0},token).catch(()=>{});return false;}
    }));
    const ok=results.every(Boolean);
-   await this.write(`${kind==='order'?CC_ORDERS:CC_CARTS}/${id}`,{notificationPending:!ok,notificationAttemptAt:new Date().toISOString()});
+   await this.write(`${kind==='order'?CC_ORDERS:CC_CARTS}/${id}`,{notificationPending:!ok,notificationAttemptAt:new Date().toISOString()},false,true);
    return ok;
   }
  };
