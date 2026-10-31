@@ -11,6 +11,10 @@ import { collection, doc, getDoc, onSnapshot, setDoc, updateDoc, writeBatch, ser
 import { CC_PAGES, CC_VISITS, contentLink } from "../../shared/content-creator.js";
 
 export async function prepareContentImage(file, avatar = false) {
+  if(!avatar&&['video/mp4','video/quicktime','video/webm'].includes(file?.type)){
+    if(!file.size||file.size>30*1024*1024)throw Error('Ein Video darf höchstens 30 MB groß sein.');
+    return ''; // Video and poster preparation are loaded only on video upload.
+  }
   if (!file || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw new Error("Bitte JPG-, PNG- oder WebP-Bilder wählen.");
   if (file.size > 30 * 1024 * 1024) throw new Error("Ein Bild darf höchstens 30 MB groß sein.");
   const url = URL.createObjectURL(file);
@@ -32,6 +36,15 @@ export async function prepareContentImage(file, avatar = false) {
 
 export function createContentCreator({root, store, prepareImage = prepareContentImage, saveAsset}) {
   const patch = fields => store.actions.patchContentCreator(fields);
+  let videoPlayback,videoPlaybackLoading;
+  function syncVideoPreviews(){
+    if(videoPlayback){videoPlayback.sync();return;}
+    if(!root.querySelector('video[data-creator-video]'))return;
+    void (videoPlaybackLoading ||= import('../../shared/creator-video-playback.js')).then(({createCreatorVideoPlayback})=>{if(root.querySelector('video[data-creator-video]')){videoPlayback ||= createCreatorVideoPlayback(root);videoPlayback.sync();}}).catch(()=>{});
+  }
+  store.subscribe(()=>queueMicrotask(syncVideoPreviews));
+  root.addEventListener('toggle',syncVideoPreviews,true);
+
   let resetController;
   function creatorReset() {
     return resetController ||= createCreatorReset({
@@ -106,7 +119,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       }
     }finally{migrating=false;finishMigration();patch({migrationProgress:''});}
   }
-  function stop() { subscriptions.forEach(unsubscribe => unsubscribe()); subscriptions = []; stopped = true; clearInterval(liveTimer);liveTimer=null; }
+  function stop() { videoPlayback?.destroy();videoPlayback=null;subscriptions.forEach(unsubscribe => unsubscribe()); subscriptions = []; stopped = true; clearInterval(liveTimer);liveTimer=null; }
   const activationAttempts=new Set();
   async function activateCompletedEmptyShops(pages){
     for(const page of pages){
@@ -254,7 +267,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         const product=page?.products?.find(p=>p.id===productId);
         if(!product||page.kind!=='shop')throw Error('Paket wurde nicht gefunden.');
         if((page.photoIds?.length||0)+files.length>30)throw Error('Maximal 30 Bilder pro Seite.');
-        for(const file of files)if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>30*1024*1024)throw Error('JPG, PNG oder WebP bis 30 MB wählen.');
+        for(const file of files)if(!['image/jpeg','image/png','image/webp','video/mp4','video/quicktime','video/webm'].includes(file.type)||file.size>30*1024*1024)throw Error('JPG, PNG, WebP, MP4, MOV oder WebM bis 30 MB wählen.');
         const keys=[];
         for(const file of files){
           const key=crypto.randomUUID().replaceAll('-','');
@@ -336,7 +349,8 @@ export function createContentCreator({root, store, prepareImage = prepareContent
           await updateDoc(pageRef,updated);
           patch({pages:store.getState().contentCreator.pages.map(p=>p.id===id?{...p,products}:p)});notice('Paket gespeichert.');return;
         }
-        if(!files.length || page.photoIds.length+files.length>30 || (page.products||[]).length>=10)throw Error('Fotos auswählen: maximal 30 Bilder und 10 Pakete pro Shop.');
+        if(!files.length || page.photoIds.length+files.length>30 || (page.products||[]).length>=10)throw Error('Fotos oder Videos auswählen: maximal 30 Dateien und 10 Pakete pro Shop.');
+        for(const file of files)if(!['image/jpeg','image/png','image/webp','video/mp4','video/quicktime','video/webm'].includes(file.type)||file.size>30*1024*1024)throw Error('JPG, PNG, WebP, MP4, MOV oder WebM bis 30 MB wählen.');
         const keys=[];
         for(const file of files){
           const key=crypto.randomUUID().replaceAll('-',''),data=await prepareImage(file);
@@ -365,6 +379,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       const photoIds=[];
       for(let i=0;i<photoFiles.length;i++) {
         patch({progress:`Bild ${i+1} von ${photoFiles.length} …`});
+        if(kind!=='shop'&&photoFiles[i].type?.startsWith('video/'))throw Error('Videos bitte im Shop als Paket hochladen.');
         const data=await prepareImage(photoFiles[i]); const imageId=String(i).padStart(3,"0");
         if(kind==='shop'){
           await (saveAsset||saveShopAsset)(pendingId,imageId,photoFiles[i],data,{free:product.priceCents===0});

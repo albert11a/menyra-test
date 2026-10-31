@@ -1,3 +1,4 @@
+import {creatorVideoPreview} from './creator-video-preview.js';
 import {creatorActivity} from './creator-activity.js';
 import {guardedCreatorWrite} from './creator-guarded-write.js';
 import {creatorPublicMedia} from '../shared/creator-media.js';
@@ -53,6 +54,14 @@ async function originalFile(path,metadata,repo){
 export async function shopAction(input,repo){
  const {op,pageId,cartId,orderId}=input;
  if(op==='visit')return creatorActivity(input,repo);
+ if(op==='video'){
+  if(!validShopId(pageId)||!/^[a-zA-Z0-9_-]{1,64}$/.test(String(input.file||'')))throw Error('Videoja nuk u gjet.');
+  const page=await repo.read(`contentCreatorPages/${pageId}`);
+  if(!page?.published||page.deleting===true||page.kind!=='shop'||!page.photoIds?.includes(input.file))throw Error('Videoja nuk u gjet.');
+  const products=(page.products||[]).filter(p=>p.active!==false&&p.imageIds?.includes(input.file));
+  if(!products.length)throw Error('Videoja nuk u gjet.');
+  return creatorVideoPreview(pageId,input.file,repo,{free:products.some(p=>p.priceCents===0),range:input.range||''});
+ }
  if(op==='image'||op==='prepare-image'){
   if(!validShopId(pageId)||!/^[a-zA-Z0-9_-]{1,64}$/.test(String(input.file||'')))throw Error('Fotoja nuk u gjet.');
   const page=await repo.read(`contentCreatorPages/${pageId}`);
@@ -62,6 +71,12 @@ export async function shopAction(input,repo){
   const free=products.find(p=>p.priceCents===0);
   const media=creatorPublicMedia(page)[input.file];
   if(media&&op==='image')return {redirect:media[['thumb','medium','large'].includes(input.size)?input.size:'thumb']};
+  const videoMeta=page.mediaTypes?.[input.file]==='video'||page.media?.[input.file]?.mediaType==='video';
+  if(videoMeta){
+   const poster=free?(await repo.read(`contentCreatorPages/${pageId}/originals/${input.file}`,['cleanPreview']))?.cleanPreview:(await repo.read(`contentCreatorPages/${pageId}/previews/${input.file}`));
+   if(!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(poster?.data||''))throw Error('Video-Titelbild fehlt.');
+   return {bytes:Buffer.from(poster.data.split(',')[1],'base64'),mime:'image/jpeg'};
+  }
   if(['2','3'].includes(String(input.display))||op==='prepare-image'){
    const path=`contentCreatorPages/${pageId}/originals/${input.file}`;
    const display=await creatorDisplayImage(path,null,repo,{size:input.size,free:!!free,persist:op==='prepare-image'});
@@ -87,9 +102,12 @@ export async function shopAction(input,repo){
   const publicOriginal=creatorPublicMedia(page)[file]?.download;
   if(op==='free-download'&&input.format==='file'&&publicOriginal)return {redirect:publicOriginal};
   const path=`contentCreatorPages/${pageId}/originals/${file}`,metadata=await repo.read(path,op==='free-download'?['name','mime','size','parts']:undefined);
-  if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>30*1024*1024||!['image/jpeg','image/png','image/webp'].includes(metadata.mime))throw Error('Skedari nuk është i disponueshëm.');
+  if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>30*1024*1024||!['image/jpeg','image/png','image/webp','video/mp4','video/quicktime','video/webm'].includes(metadata.mime))throw Error('Skedari nuk është i disponueshëm.');
   if(op==='free-image'||op==='free-preview'){
-   const preview=await optimizedShopImage(path,metadata,repo,op==='free-preview');
+   const posterUrl=metadata.mediaType==='video'?creatorPublicMedia(page)[file]?.thumb:'';
+   if(posterUrl)return op==='free-preview'?{data:posterUrl}:{redirect:posterUrl};
+   const preview=metadata.mediaType==='video'?metadata.cleanPreview:await optimizedShopImage(path,metadata,repo,op==='free-preview');
+   if(!preview?.data)throw Error('Video-Titelbild fehlt.');
    return op==='free-preview'?{data:preview.data}:{bytes:Buffer.from(preview.data.split(',')[1],'base64'),mime:'image/jpeg'};
   }
   if(input.format==='file')return originalFile(path,metadata,repo);

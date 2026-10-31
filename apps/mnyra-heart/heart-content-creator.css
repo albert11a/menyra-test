@@ -159,3 +159,8 @@
 .cc-package-grid .cc-package-position{bottom:8px;padding:2px 5px}
 .cc-package-grid>.cc-package-card:has(.cc-package-editor[open]){grid-column:1/-1}
 .cc-package-grid>.cc-package-card:has(.cc-package-editor[open]) .cc-package-stage{aspect-ratio:4/3}
+
+.cc-package-slide video,.cc-package-photos figure video{display:block;width:100%;height:100%;object-fit:cover;pointer-events:none}
+.cc-package-card video::-webkit-media-controls,.cc-package-editor video::-webkit-media-controls{display:none!important}
+
+.cc-package-photos figure video{height:auto;aspect-ratio:4/5}

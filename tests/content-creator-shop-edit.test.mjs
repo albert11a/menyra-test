@@ -183,3 +183,12 @@ test('Marking a Working business as sent does not bypass its Ready step',async()
  assert.equal(c.docs.get('contentCreatorPages/shop').workflow,'working');
  assert.equal(c.root.querySelector('[data-cc-action="sent"]').getAttribute('aria-pressed'),'true');
 });
+
+test('Video is selectable and can be added to an existing photo package without changing its price',async()=>{
+ const c=setup();await c.click('[data-cc-action="detail"]');
+ assert.match(c.root.querySelector('[data-cc-package-add="p"]').getAttribute('accept'),/video\/mp4/);
+ const file={name:'reel.mp4',type:'video/mp4',size:500};await c.add('p',[file]);
+ const page=c.docs.get('contentCreatorPages/shop');assert.equal(c.uploads.length,1);assert.equal(c.uploads[0].file,file);
+ assert.equal(page.products[0].priceCents,250);assert.equal(page.products[0].imageIds.length,3);
+ assert.deepEqual(page.products[1].imageIds,['b','c']);
+});

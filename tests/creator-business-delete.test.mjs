@@ -27,6 +27,8 @@ function fixture() {
   add(`${root}/originals/image/displays/thumb`);
   // Interrupted old uploads may have descendants without a metadata document.
   add(`${root}/originals/orphan/chunks/0`);
+  add(`${root}/originals/image/videoPreviews/old/chunks/000`);
+  add(`${root}/originals/orphanVideo/videoPreviews/incomplete/chunks/000`);
   add('lifeskin/lifeskin/sessions/untouched');
   const repo={
     async read(path){return structuredClone(docs.get(path)||null);},

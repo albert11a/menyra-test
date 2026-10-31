@@ -59,7 +59,7 @@ test('Betrieb ohne Fotos, Logo oder Paketpreis erstellen und erstes Paket späte
  assert.deepEqual(page.photoIds,[]);assert.deepEqual(page.products,[]);assert.equal(ctx.assets.length,0);
  const form=ctx.root.querySelector('#cc-add-package');assert.ok(form);
  form.querySelector('[name="title"]').value='Fishop 1';form.querySelector('[name="price"]').value='0';
- Object.defineProperty(form.querySelector('[name="files"]'),'files',{value:[{name:'large.png'}]});
+ Object.defineProperty(form.querySelector('[name="files"]'),'files',{value:[{name:'large.png',type:'image/png',size:100}]});
  form.dispatchEvent(new ctx.window.Event('submit',{bubbles:true,cancelable:true}));
  for(let i=0;i<30;i++)await new Promise(r=>setImmediate(r));
  const saved=ctx.docs.get('contentCreatorPages/'+page.id);

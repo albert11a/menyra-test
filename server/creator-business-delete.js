@@ -80,6 +80,14 @@ export async function deleteCreatorBusinessStep(input, repo) {
         return { ok: true, done: false, deleted: children.length };
       }
     }
+    // Include preview generations left by completed or interrupted video uploads.
+    const previews=await repo.list(`${original}/videoPreviews`,{missing:true,size:1});
+    if(previews.length){
+      deleteWrites(previews,`${original}/videoPreviews`);
+      const preview=previews[0].name.slice(`${NAME}/`.length),chunks=await repo.list(`${preview}/chunks`);
+      await repo.commit(chunks.length?deleteWrites(chunks,`${preview}/chunks`):[{delete:previews[0].name}]);
+      return {ok:true,done:false,deleted:chunks.length||1};
+    }
     await repo.commit([{ delete: originals[0].name }]);
     return { ok: true, done: false, deleted: 1 };
   } else if (step < 6) {

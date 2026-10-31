@@ -76,7 +76,7 @@ export async function refreshShopPreviews(pageId,imageIds){
  await updateDoc(doc(db,CC_PAGES,pageId),{updatedAt:serverTimestamp()});
 }
 export async function saveShopAsset(pageId,imageId,file,display,options={}){
- if(!file||file.size>30*1024*1024||!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('JPG, PNG oder WebP bis 30 MB wählen.');
+ if(!file||file.size>30*1024*1024||!['image/jpeg','image/png','image/webp','video/mp4','video/quicktime','video/webm'].includes(file.type))throw Error('JPG, PNG, WebP, MP4, MOV oder WebM bis 30 MB wählen.');
  const bytes=new Uint8Array(await file.arrayBuffer());
  const parts=Math.ceil(bytes.length/PART);if(!parts)throw Error('Die Datei ist leer.');
  for(let i=0;i<parts;i++){
@@ -85,12 +85,33 @@ export async function saveShopAsset(pageId,imageId,file,display,options={}){
   await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId,'chunks',String(i).padStart(3,'0')),{data:btoa(binary)});
  }
  await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId),{name:file.name.slice(0,180),mime:file.type,size:bytes.length,parts});
- if(await creatorCdnEnabled())return saveCreatorCdnAsset(pageId,imageId,file,options);
+ if(file.type.startsWith('video/')||await creatorCdnEnabled())return saveCreatorCdnAsset(pageId,imageId,file,options);
  const source=URL.createObjectURL(file);
  try{await saveShopPreview(pageId,imageId,source);}finally{URL.revokeObjectURL(source);}
 }
 
 export async function saveCreatorCdnAsset(pageId,imageId,file,{free=false,hero=false,publish=true}={}){
+ if(file.type.startsWith('video/')){
+  if(hero)throw Error('Bitte Videos als Paket hochladen. Titelbilder bleiben Fotos.');
+  const {prepareCreatorVideo}=await import('./heart-creator-video.js');
+  const prepared=await prepareCreatorVideo(file,{free,watermark:drawShopWatermark});
+  const bytes=new Uint8Array(await prepared.preview.arrayBuffer()),previewId=crypto.randomUUID().replaceAll('-',''),parts=Math.ceil(bytes.length/PART);
+  for(let i=0;i<parts;i++){
+   let binary='';const slice=bytes.subarray(i*PART,(i+1)*PART);
+   for(let n=0;n<slice.length;n+=4096)binary+=String.fromCharCode(...slice.subarray(n,n+4096));
+   await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId,'videoPreviews',previewId,'chunks',String(i).padStart(3,'0')),{data:btoa(binary)});
+  }
+  // The poster uses the existing public marked/clean image delivery. Never
+  // publish a clean video URL or use the 24-hour Story media bucket.
+  const poster=await saveCreatorCdnAsset(pageId,imageId,prepared.poster,{free,hero:false,publish:false});
+  const {id:unused,download:unusedDownload,...variants}=poster;
+  const media={...variants,mediaType:'video',bytes:file.size};
+  await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId),{mediaType:'video',duration:prepared.duration,videoPreview:{id:previewId,mode:free?'clean':'marked',mime:prepared.preview.type,size:bytes.length,parts}},{merge:true});
+  const batch=writeBatch(db),pageRef=doc(db,CC_PAGES,pageId);
+  batch.set(doc(pageRef,'images',imageId),{cdn:media},{merge:true});
+  if(publish)batch.update(pageRef,{[`media.${imageId}`]:media,[`mediaTypes.${imageId}`]:'video',updatedAt:serverTimestamp()});
+  await batch.commit();return {id:imageId,...media};
+ }
  const source=URL.createObjectURL(file);
  let result;
  try{
