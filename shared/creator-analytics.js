@@ -1,3 +1,4 @@
+import {contentStatus} from './content-creator.js';
 // Creator telemetry and reporting. No dependency on LifeSkin's runtime.
 export const CREATOR_PERIODS=[['today','Heute'],['yesterday','Gestern'],['7','7 Tage'],['30','30 Tage'],['all','Max']];
 export const CREATOR_STATUSES=[['working','Working'],['ready','Ready'],['seen','Seen'],['customer','Kunde'],['archived','Archiv']];
@@ -31,4 +32,11 @@ export function creatorOverview(state={},now=Date.now()){
 export function creatorFollowups(state={}){
  const ordered=new Set((state.orders||[]).map(o=>o.cartId));
  return (state.carts||[]).filter(c=>c.status==='active'&&c.lines?.length&&!ordered.has(c.id)).sort((a,b)=>creatorMs(b.updatedAt)-creatorMs(a.updatedAt));
+}
+
+export function creatorBusinessMatches(page,state={}){
+ const filter=state.filter||'all';
+ const status=creatorBusinessStatus(page,state.visits,state.orders);
+ const legacy=['sent','opened','yes','no'].includes(filter)&&contentStatus(page,(state.visits||[]).filter(v=>v.pageId===page.id))===filter;
+ return (filter==='all'||filter===status||legacy)&&String(page.name||'').toLocaleLowerCase().includes(String(state.search||'').trim().toLocaleLowerCase());
 }

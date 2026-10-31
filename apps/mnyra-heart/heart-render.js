@@ -814,7 +814,7 @@ function captureCreatorDom(root){
  const all=selector=>[...(root.querySelectorAll?.(selector)||[])];
  const controls=new Map();
  for(const field of all('.cc-workspace form input,.cc-workspace form textarea,.cc-workspace form select')){
-  if(field.closest('[hidden]'))continue;
+  if(field.closest('.cc-new-package[hidden]'))continue;
   const form=field.closest('form'),key=`${form.id||form.dataset.ccPackage}:${field.id||field.name||field.dataset.ccPackageAdd}`;
   controls.set(key,{node:field,value:field.value,checked:field.checked});
  }
@@ -823,12 +823,18 @@ function captureCreatorDom(root){
 function restoreCreatorDom(root,previous){
  const all=selector=>[...(root.querySelectorAll?.(selector)||[])];
  for(const field of all('.cc-workspace form input,.cc-workspace form textarea,.cc-workspace form select')){
-  if(field.closest('[hidden]'))continue;
+  if(field.closest('.cc-new-package[hidden]'))continue;
   const form=field.closest('form'),key=`${form.id||form.dataset.ccPackage}:${field.id||field.name||field.dataset.ccPackageAdd}`,old=previous.controls.get(key);
   if(!old)continue;
   if(field.type==='file'){old.node.disabled=field.disabled;if(old.node!==field)field.replaceWith(old.node);}
   else{field.value=old.value;if(field.type==='checkbox')field.checked=old.checked;}
  }
  for(const node of all('[data-cc-fold]'))if(previous.folds.has(node.dataset.ccFold))node.open=previous.folds.get(node.dataset.ccFold);
- for(const node of all('[data-cc-track]'))if(previous.tracks.has(node.dataset.ccTrack))node.scrollLeft=previous.tracks.get(node.dataset.ccTrack);
+ for(const node of all('[data-cc-track]'))if(previous.tracks.has(node.dataset.ccTrack)){
+  node.scrollLeft=previous.tracks.get(node.dataset.ccTrack);
+  if(node.hasAttribute('data-cc-gallery')){
+   const label=all('[data-cc-position]').find(label=>label.dataset.ccPosition===node.dataset.ccGallery);
+   if(label&&node.clientWidth)label.textContent=`${Math.min(node.children.length,Math.round(node.scrollLeft/node.clientWidth)+1)} / ${node.children.length}`;
+  }
+ }
 }

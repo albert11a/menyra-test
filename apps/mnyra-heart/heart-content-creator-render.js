@@ -1,15 +1,14 @@
+import {creatorCard,creatorSearch,creatorIcon as icon} from './heart-creator-components.js';
 import {creatorStats,creatorOrders,creatorFollowupCard,creatorJourney} from './heart-creator-overview.js';
-import {CREATOR_STATUSES,creatorBusinessStatus} from '../../shared/creator-analytics.js';
+import {CREATOR_STATUSES,creatorBusinessStatus,creatorBusinessMatches} from '../../shared/creator-analytics.js';
 import {renderCreatorHeroEditor} from './heart-content-creator-hero.js';
 import {shopAdmin} from "./heart-content-creator-shop-render.js";
-import { CC_FILTERS, contentRows, ccEscape as esc, ccImage } from "../../shared/content-creator.js";
+import { contentRows, ccEscape as esc, ccImage } from "../../shared/content-creator.js";
 export function renderContentCreator(state = {}) {
   const rows = contentRows(state.pages, state.visits).sort((a,b) => (b.createdMs || 0) - (a.createdMs || 0));
-  const filter = state.filter || "all";
   const businessRows=rows.map(row=>({...row,businessStatus:creatorBusinessStatus(row,state.visits,state.orders)}));
-  const labels = Object.fromEntries(CC_FILTERS);
   const detail = rows.find(row => row.id === state.selectedId);
-  const selected = businessRows.filter(r => filter === "all" || r.businessStatus === filter || (!CREATOR_STATUSES.some(([key])=>key===filter)&&r.status===filter));
+  const selected = businessRows.filter(row=>creatorBusinessMatches(row,state));
   const error = state.error ? `<p class="cc-error" role="alert">${esc(state.error)}</p>` : "";
   return `<section class="cc-workspace">
     ${state.migrationProgress ? `<p class="cc-muted" role="status">${esc(state.migrationProgress)}</p>` : ''}
@@ -17,19 +16,8 @@ export function renderContentCreator(state = {}) {
     ${detail ? renderDetail(detail,state) : ""}
     ${!detail?creatorStats(state):''}
     ${error}
-    ${!detail?`<section class="cc-card"><div class="cc-card-head"><h3>Bizneses <small>${rows.length}</small></h3><div class="cc-row-actions"><button class="heart-icon-button" data-cc-action="settings" aria-label="Businesses auswählen" aria-pressed="${!!state.selecting}">⚙</button><button class="heart-icon-button" data-cc-action="new" aria-label="Business erstellen">+</button></div></div>
-    <div class="cc-filters" data-cc-track="business-filters" aria-label="Bizneses filtern"><button data-cc-action="filter" data-key="all" aria-pressed="${filter==='all'}">Alle ${rows.length}</button>${CREATOR_STATUSES.map(([key,label])=>`<button data-cc-action="filter" data-key="${key}" aria-pressed="${filter===key}">${label} <small>${businessRows.filter(r=>r.businessStatus===key).length}</small></button>`).join('')}</div>
-    ${state.selecting?`<div class="cc-row-actions cc-bulk"><span>${(state.selectedIds||[]).length} ausgewählt</span><button data-cc-action="select-all">Alle sichtbaren wählen</button><button data-cc-action="bulk-status" data-key="ready" ${!state.selectedIds?.length||state.mediaBusy?'disabled':''}>Ready</button><button data-cc-action="bulk-status" data-key="archived" ${!state.selectedIds?.length||state.mediaBusy?'disabled':''}>Archiv</button></div>`:''}`:''}
-    <div class="cc-list" ${detail ? "hidden" : ""}>${selected.slice(0,state.businessLimit||20).map(row => `<article class="cc-row">
-      ${state.selecting?`<label class="cc-selection"><input type="checkbox" data-cc-select="${esc(row.id)}" ${(state.selectedIds||[]).includes(row.id)?'checked':''}>Auswählen</label>`:''}
-      <button class="cc-row-head cc-open" data-cc-action="detail" data-id="${esc(row.id)}">${ccImage(row.avatar) ? `<img class="cc-avatar" src="${ccImage(row.avatar)}" alt="" />` : `<span class="cc-avatar cc-avatar-empty">${esc(row.name?.slice(0,1))}</span>`}
-      <div><h2>${esc(row.name)}</h2><span class="cc-status cc-status-${row.status}">${CREATOR_STATUSES.find(([key])=>key===row.businessStatus)?.[1]||labels[row.status]}</span></div></button>
-      <p class="cc-muted">${row.photoIds?.length || 0} Bilder${row.opened ? " · Geöffnet" : ""}${row.scrolled ? " · Gescrollt" : ""}${row.yes ? " · Antwort: Ja" : ""}${row.no ? " · Antwort: Nein" : ""}</p>
-      <details class="cc-more" data-cc-fold="links-${esc(row.id)}"><summary>Mehr anzeigen</summary><div class="cc-row-actions">${row.published ? `<button data-cc-action="preview" data-id="${esc(row.id)}">Vorschau</button><button data-cc-action="still" data-id="${esc(row.id)}">Still-Link kopieren</button><button data-cc-action="copy" data-id="${esc(row.id)}">Link kopieren</button>` : ""}
-      ${row.published && row.workflow !== "sent" && !row.yes && !row.no ? `<button data-cc-action="sent" data-id="${esc(row.id)}">Als verschickt markieren</button>` : ""}
-      ${!row.published && row.photoIds?.length ? `<button data-cc-action="resume" data-id="${esc(row.id)}">Fertigstellen</button>` : ""}</div></details>
-    </article>`).join("") || `<div class="cc-empty">${state.status === "loading" ? "Lokale werden geladen …" : filter === "all" ? "Noch keine Lokale. Erstelle die erste Seite über +." : "Keine Lokale in diesem Filter."}</div>`}</div>
-    ${!detail?`${selected.length>(state.businessLimit||20)?'<button class="cc-more-button" data-cc-action="more" data-key="businessLimit">Mehr anzeigen</button>':''}</section>${creatorOrders(state)}${creatorFollowupCard(state)}`:''}
+    ${!detail?renderBusinesses(businessRows,selected,state):''}
+    ${!detail?creatorSearch(state)+creatorOrders(state)+creatorFollowupCard(state):''}
     ${state.editor ? `<div class="cc-overlay"><section class="cc-dialog" role="dialog" aria-modal="true" aria-labelledby="cc-dialog-title">
       <div class="cc-dialog-head"><h2 id="cc-dialog-title">Betrieb erstellen</h2><button data-cc-action="close" aria-label="Schließen" ${state.saving ? "disabled" : ""}>×</button></div>
       <form id="cc-create-form"><label>Seitenart<select name="kind" id="cc-page-kind" ${state.saving?'disabled':''}><option value="promo" ${state.pageKind!=='shop'?'selected':''}>Content Creator · Vorschau</option><option value="shop" ${state.pageKind==='shop'?'selected':''}>Shop · Fotopakete verkaufen</option></select></label>
@@ -54,10 +42,9 @@ function renderDetail(page,state) {
   ${shopAdmin(page,state)}
   ${creatorOrders(state,page.id)}
   ${renderCreatorHeroEditor(page,state)}
-    <details class="cc-card" data-cc-fold="detail-stats"><summary>Besuche · ${esc(page.name)}</summary><div class="cc-stats">${values.map(([label,n])=>`<div class="cc-stat"><strong>${n}</strong><span>${label}</span></div>`).join("")}</div>
-  <p class="cc-muted">Eindeutige Browserbesuche · eigene Tests mit Still-Link zählen nicht.</p></details>
+  ${creatorCard(`stats-${page.id}`,'Besuche',`<div class="cc-stats">${values.map(([label,n])=>`<div class="cc-stat"><strong>${n}</strong><span>${label}</span></div>`).join('')}</div>`,state)}
 ${creatorFollowupCard(state,page.id)}
-  <section class="cc-card"><h3>Business-Seite</h3>  <div class="cc-row-actions"><button data-cc-action="preview" data-id="${esc(page.id)}">Vorschau öffnen</button><button data-cc-action="still" data-id="${esc(page.id)}">Still-Link kopieren</button><button data-cc-action="copy" data-id="${esc(page.id)}">Kundenlink kopieren</button></div></section>
+  ${creatorCard(`links-${page.id}`,'Business-Seite',renderLinks(page,state),state)}
   ${creatorJourney(page,state)}
   <label class="cc-add" ${page.kind==='shop'?'hidden':''}>Fotos hinzufügen<input type="file" multiple accept="image/jpeg,image/png,image/webp" data-cc-add="${esc(page.id)}" ${state.mediaBusy?'disabled':''}></label>
   ${state.mediaError ? `<p class="cc-error" role="alert">${esc(state.mediaError)}</p>` : ""}
@@ -68,4 +55,29 @@ ${creatorFollowupCard(state,page.id)}
     <label>Bildunterschrift<textarea id="cc-edit-caption-${esc(key)}" data-edit-caption="${esc(key)}" maxlength="1000">${esc(state.captionDrafts?.[key] ?? image?.caption ?? "")}</textarea></label>
     <div class="cc-row-actions"><button data-cc-action="caption" data-id="${esc(page.id)}" data-image="${esc(key)}" ${state.mediaBusy?'disabled':''}>Text speichern</button><button data-cc-action="move" data-id="${esc(page.id)}" data-image="${esc(key)}" data-direction="-1" ${i===0||state.mediaBusy?'disabled':''}>↑</button><button data-cc-action="move" data-id="${esc(page.id)}" data-image="${esc(key)}" data-direction="1" ${i===page.photoIds.length-1||state.mediaBusy?'disabled':''}>↓</button><button data-cc-action="delete" data-id="${esc(page.id)}" data-image="${esc(key)}" ${state.mediaBusy?'disabled':''}>Löschen</button></div></article>`;
   }).join("")}</div></section>`;
+}
+
+function renderLinks(row,state){
+ const chip=(action,label,sign,extra='')=>`<button type="button" class="heart-lifeskin-chip" data-cc-action="${action}" data-id="${esc(row.id)}" ${extra}>${icon(sign)}<span>${label}</span></button>`;
+ return `<div class="cc-link-actions heart-lifeskin-chips--shop">${row.published?chip('preview','Still preview','eye')+chip('still','Still copy','copy')+chip('copy','True copy','externalLink')+chip('sent','Sended','send',`aria-pressed="${row.workflow==='sent'}" ${state.mediaBusy?'disabled':''}`):row.photoIds?.length?chip('resume','Fertigstellen','edit'):''}</div>`;
+}
+function renderBusinesses(rows,selected,state){
+ const filter=state.filter||'all';
+ const chips=[...CREATOR_STATUSES,['all','Alle']];
+ const pages=[chips.slice(0,4),chips.slice(4)];
+ const filters=`<div class="heart-lifeskin-chips heart-shopchip-pages cc-business-chips" data-cc-track="business-filters" aria-label="Bizneset filtern">${pages.map(page=>`<div class="heart-shopchip-page heart-lifeskin-chips--shop">${page.map(([key,label])=>`<button type="button" class="heart-lifeskin-chip${key===filter?' heart-lifeskin-chip--an':''}" data-cc-action="filter" data-key="${key}" aria-pressed="${key===filter}">${label}<span>${key==='all'?rows.length:rows.filter(row=>row.businessStatus===key).length}</span></button>`).join('')}</div>`).join('')}</div>`;
+ const ids=selected.map(row=>row.id),chosen=(state.selectedIds||[]).filter(id=>ids.includes(id)),all=ids.length>0&&chosen.length===ids.length;
+ const bulk=state.selecting?`<div class="heart-faelle-wahl cc-bulk"><div class="heart-faelle-wahl__kopf"><button type="button" class="heart-faelle-wahl__alle" data-cc-action="select-all">${all?'Keine':'Alle auswählen'}</button><span class="heart-faelle-wahl__zahl">${chosen.length} ausgewählt</span><button type="button" class="heart-faelle-wahl__fertig" data-cc-action="settings">Fertig</button></div><div class="heart-faelle-wahl__tasten"><button type="button" class="heart-faelle-wahl__taste" data-cc-action="bulk-status" data-key="ready" ${!chosen.length||state.mediaBusy?'disabled':''}>${icon('check','heart-faelle-wahl__icon')}Ready</button><button type="button" class="heart-faelle-wahl__taste" data-cc-action="bulk-status" data-key="archived" ${!chosen.length||state.mediaBusy?'disabled':''}>${icon('archive','heart-faelle-wahl__icon')}Archiv</button></div></div>`:'';
+ const list=`<div class="cc-list">${selected.slice(0,state.businessLimit||20).map(row=>{
+  const expanded=!!state.expandedBusinesses?.[row.id],picked=(state.selectedIds||[]).includes(row.id);
+  return `<article class="cc-row" data-morph-key="business-${esc(row.id)}"><div class="cc-row-main">
+  <button type="button" class="cc-row-head cc-open" data-cc-action="${state.selecting?'select-business':'detail'}" data-id="${esc(row.id)}" ${state.selecting?`aria-pressed="${picked}"`:''}>
+  <span class="cc-avatar-wrap">${ccImage(row.avatar)?`<img class="cc-avatar" src="${ccImage(row.avatar)}" alt="">`:`<span class="cc-avatar cc-avatar-empty">${esc(row.name?.slice(0,1)||'')}</span>`}${state.selecting?`<span class="heart-lifeskin-fall__wahl${picked?' cc-picked':''}">${picked?icon('check','heart-lifeskin-fall__haken'):''}</span>`:''}</span>
+  <span class="cc-business-info"><span class="cc-business-label">${esc(row.name)}</span><span class="cc-business-meta"><span>${CREATOR_STATUSES.find(([key])=>key===row.businessStatus)?.[1]||''}</span><span>${row.photoIds?.length||0} Bilder</span>${row.opened?'<span>Geöffnet</span>':''}${row.scrolled?'<span>Gescrollt</span>':''}${row.yes?'<span>Ja</span>':''}${row.no?'<span>Nein</span>':''}</span></span></button>
+  ${state.selecting?`<input class="cc-selection-input" type="checkbox" data-cc-select="${esc(row.id)}" ${picked?'checked':''} aria-label="${esc(row.name)} auswählen">`:`<button type="button" class="cc-row-expand" data-cc-action="toggle-links" data-id="${esc(row.id)}" aria-label="Aktionen für ${esc(row.name)}" aria-expanded="${expanded}">${icon(expanded?'chevronUp':'chevronDown')}</button>`}</div>
+  ${expanded&&!state.selecting?renderLinks(row,state):''}</article>`;
+ }).join('')||`<p class="cc-empty">${state.status==='loading'?'Lokale werden geladen …':'Keine Businesses in dieser Auswahl.'}</p>`}</div>`;
+ const more=selected.length>(state.businessLimit||20)?'<button class="cc-more-button" data-cc-action="more" data-key="businessLimit">Mehr anzeigen</button>':'';
+ const actions=`<div class="cc-heading-actions"><button type="button" class="heart-faelle-zahnrad${state.selecting?' heart-faelle-zahnrad--an':''}" data-cc-action="settings" aria-label="Businesses auswählen" aria-pressed="${!!state.selecting}">${icon('zahnrad','heart-faelle-zahnrad__icon')}</button><button type="button" class="heart-faelle-zahnrad" data-cc-action="new" aria-label="Business erstellen">${icon('plus','heart-faelle-zahnrad__icon')}</button></div>`;
+ return creatorCard('businesses','Bizneset',filters+bulk+list+more,state,{count:rows.length,actions,className:'cc-businesses'});
 }

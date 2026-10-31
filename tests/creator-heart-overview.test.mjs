@@ -63,7 +63,7 @@ test('HTTP receipt is returned while push delivery remains pending',async()=>{
 });
 test('Creator detail has ordered cards, one package editor and no duplicate caption grid',()=>{
  const {page}=fixture();const html=renderContentCreator({pages:[page],selectedId:pageId,visits:[]});
- assert.ok(html.indexOf('Biznes')<html.indexOf('Bestellungen'));assert.ok(html.indexOf('Bestellungen')<html.indexOf('Titelbilder'));
+ assert.ok(html.indexOf('cc-business-name')<html.indexOf('cc-package-stage'));assert.ok(html.indexOf('cc-package-stage')<html.indexOf('Bestellungen'));assert.ok(html.indexOf('Bestellungen')<html.indexOf('Titelbilder'));
  const {document}=parseHTML(html);assert.equal(document.querySelectorAll('[data-cc-package]').length,1);assert.equal(document.querySelectorAll('[data-edit-caption]').length,0);assert.ok(document.querySelector('[data-cc-action="new-package"]'));assert.match(html,/Klickpfad/);
 });
 test('Live rerender retains package values, open editors and horizontal photo position',()=>{
@@ -74,4 +74,23 @@ test('Live rerender retains package values, open editors and horizontal photo po
  root.querySelector('[data-cc-fold="package-pack"]').open=true;root.querySelector('[data-cc-track="cover-pack"]').scrollLeft=180;
  state.contentCreator.notice='Aktualisiert';renderHeartApp(root,state,{});
  assert.equal(root.querySelector('#cc-title-pack').value,'Unsaved');assert.equal(root.querySelector('[data-cc-fold="package-pack"]').open,true);assert.equal(root.querySelector('[data-cc-track="cover-pack"]').scrollLeft,180);
+});
+
+test('Approved chips reuse LifeSkin four-column pages and actual settings icon',()=>{
+ const {page}=fixture();const {document}=parseHTML(renderContentCreator({pages:[page],visits:[]}));
+ const heading=document.querySelector('.cc-businesses .cc-card-head');
+ assert.equal(heading.querySelector('h3').textContent,'Bizneset');assert.equal(heading.querySelector('.cc-count').textContent,'1');
+ assert.equal(document.querySelector('.cc-business-chips .heart-shopchip-page').children.length,4);
+ assert.ok(heading.querySelector('[data-cc-action="settings"] svg.heart-faelle-zahnrad__icon'));
+ assert.equal(document.querySelectorAll('.cc-metric').length,4);
+});
+test('Package drafts remain intact through minimisation, live refresh and expansion',()=>{
+ const {document}=parseHTML('<div id="app"></div>'),root=document.querySelector('#app'),state=createHeartInitialState(),{page}=fixture();
+ state.auth={status:'authenticated',access:{allowed:true},user:{uid:'test'}};state.shell.activeView='contentCreator';
+ state.contentCreator={...state.contentCreator,pages:[page],selectedId:pageId,orders:[],visits:[]};
+ renderHeartApp(root,state,{});root.querySelector('#cc-title-pack').value='Draft survives';
+ state.contentCreator.collapsedCards={'package-pack':true};renderHeartApp(root,state,{});
+ state.contentCreator.notice='Heartbeat';renderHeartApp(root,state,{});
+ state.contentCreator.collapsedCards={'package-pack':false};renderHeartApp(root,state,{});
+ assert.equal(root.querySelector('#cc-title-pack').value,'Draft survives');
 });

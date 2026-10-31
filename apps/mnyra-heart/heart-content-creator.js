@@ -1,4 +1,4 @@
-import {creatorBusinessStatus} from '../../shared/creator-analytics.js';
+import {creatorBusinessMatches} from '../../shared/creator-analytics.js';
 import {normalizeCreatorCrop,creatorHeroCropStyle,creatorHeroFormat} from '../../shared/creator-hero.js';
 import {saveShopAsset,initialShopProduct,releaseShopOrder,refreshShopPreviews,savePromoAsset,migrateCreatorPage,saveCreatorCdnAsset,savedCreatorFile} from "./heart-content-creator-shop.js";
 import {creatorCdnEnabled} from './heart-creator-cdn.js';
@@ -83,6 +83,40 @@ export function createContentCreator({root, store, prepareImage = prepareContent
 
   function capture() { const input = root.querySelector('#cc-create-form [name="name"]'); if(input) draftName=input.value; }
   function notice(text) { patch({notice:text}); setTimeout(()=>patch({notice:""}),3500); }
+  function toggleCard(key){
+    if(!key)return;
+    const state=store.getState().contentCreator;
+    // Package options start closed; all other cards start expanded.
+    const current=state.collapsedCards?.[key]??key.startsWith('package-options-');
+    patch({collapsedCards:{...state.collapsedCards,[key]:!current}});
+  }
+  let previousTap=null,lastTouchCollapse=0;
+  function cardFromEvent(event){
+    if(event.target.closest('button,input,textarea,select,label,summary,a,form'))return null;
+    return event.target.closest('[data-cc-collapse],.cc-hero-editor');
+  }
+  function collapseCard(card){
+    if(card.matches('details'))card.open=!card.open;
+    else toggleCard(card.dataset.ccCollapse);
+  }
+  root.addEventListener('dblclick',event=>{
+    if(Date.now()-lastTouchCollapse<500)return;
+    const card=cardFromEvent(event);if(card){event.preventDefault();collapseCard(card);}
+  });
+  root.addEventListener('pointerup',event=>{
+    if(event.pointerType!=='touch')return;
+    const card=cardFromEvent(event);if(!card){previousTap=null;return;}
+    const key=card.dataset.ccCollapse||card.dataset.ccFold,now=Date.now();
+    if(previousTap?.key===key&&now-previousTap.at<350&&Math.abs(event.clientX-previousTap.x)<20&&Math.abs(event.clientY-previousTap.y)<20){
+      previousTap=null;lastTouchCollapse=now;collapseCard(card);
+    }else previousTap={key,at:now,x:event.clientX,y:event.clientY};
+  });
+  function updateGallery(gallery){
+    const width=gallery.clientWidth||1,index=Math.max(0,Math.min(gallery.children.length-1,Math.round(gallery.scrollLeft/width)));
+    const position=[...root.querySelectorAll('[data-cc-position]')].find(node=>node.dataset.ccPosition===gallery.dataset.ccGallery);
+    if(position)position.textContent=`${index+1} / ${gallery.children.length}`;
+  }
+  root.addEventListener('scroll',event=>{if(event.target.matches?.('[data-cc-gallery]'))updateGallery(event.target);},true);
   root.addEventListener("keydown", event => {
     const dialog=root.querySelector(".cc-dialog");if(!dialog)return;
     if(event.key==="Escape" && !busy){event.preventDefault();patch({editor:false});root.querySelector('[data-cc-action="new"]')?.focus();}
@@ -114,6 +148,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     return normalizeCreatorCrop(Object.fromEntries(['x','y','fit'].map(axis=>[axis,card.querySelector(`[data-cc-hero-adjust="${axis}"]`)?.value])));
   }
   root.addEventListener("input", event => {
+    if(event.target.hasAttribute('data-cc-search')){patch({search:event.target.value,businessLimit:20,selectedIds:[]});return;}
     if(event.target.hasAttribute('data-cc-hero-adjust')){
       const card=event.target.closest('[data-cc-hero-card]');if(!card)return;
       const crop=cropFromCard(card),image=card.querySelector('[data-cc-hero-preview]');
@@ -234,7 +269,8 @@ export function createContentCreator({root, store, prepareImage = prepareContent
               const {id:unused,...variants}=media;updated[`media.${key}`]=variants;
             }
           }
-          await updateDoc(pageRef,updated);return;
+          await updateDoc(pageRef,updated);
+          patch({pages:store.getState().contentCreator.pages.map(p=>p.id===id?{...p,products}:p)});notice('Paket gespeichert.');return;
         }
         if(!files.length || page.photoIds.length+files.length>30 || (page.products||[]).length>=10)throw Error('Fotos auswählen: maximal 30 Bilder und 10 Pakete pro Shop.');
         const keys=[];
@@ -284,8 +320,27 @@ export function createContentCreator({root, store, prepareImage = prepareContent
   });
   root.addEventListener("click", async event => {
     const button=event.target.closest("[data-cc-action]"); if(!button)return;
+    event.preventDefault();
+    if(button.disabled)return;
     const action=button.dataset.ccAction,id=button.dataset.id;
     try {
+      if(action==='collapse'){toggleCard(button.dataset.key);return;}
+      if(action==='toggle-links'){
+        const state=store.getState().contentCreator;
+        patch({expandedBusinesses:{...state.expandedBusinesses,[id]:!state.expandedBusinesses?.[id]}});return;
+      }
+      if(action==='select-business'){
+        const chosen=new Set(store.getState().contentCreator.selectedIds||[]);
+        if(chosen.has(id))chosen.delete(id);else chosen.add(id);patch({selectedIds:[...chosen]});return;
+      }
+      if(action==='slide-package'){
+        const gallery=[...root.querySelectorAll('[data-cc-gallery]')].find(node=>node.dataset.ccGallery===button.dataset.product);
+        if(!gallery)return;
+        const width=gallery.clientWidth||1,current=Math.round(gallery.scrollLeft/width),index=Math.max(0,Math.min(gallery.children.length-1,current+Number(button.dataset.direction)));
+        if(typeof gallery.scrollTo==='function')gallery.scrollTo({left:index*width,behavior:globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+        else gallery.scrollLeft=index*width;
+        updateGallery(gallery);return;
+      }
       if(action==='refresh'){stop();load();notice('Wird aktualisiert …');}
       if(action==='more'&&['businessLimit','orderLimit','visitLimit'].includes(button.dataset.key))patch({[button.dataset.key]:(store.getState().contentCreator[button.dataset.key]||20)+20});
       if(action==='date-picker')patch({datePicker:!store.getState().contentCreator.datePicker});
@@ -294,15 +349,18 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       if(action==='new-package')patch({newPackage:!store.getState().contentCreator.newPackage});
       if(action==='select-all'){
         const state=store.getState().contentCreator;
-        patch({selectedIds:state.pages.filter(page=>state.filter==='all'||!state.filter||creatorBusinessStatus(page,state.visits,state.orders)===state.filter).map(page=>page.id)});
+        const visible=state.pages.filter(page=>creatorBusinessMatches(page,state)).map(page=>page.id);
+        const all=visible.length>0&&visible.every(key=>(state.selectedIds||[]).includes(key));
+        patch({selectedIds:all?[]:visible});
       }
       if(action==='bulk-status')await mediaTask(async()=>{
-        const state=store.getState().contentCreator,ids=state.selectedIds||[],workflow=button.dataset.key;
+        const state=store.getState().contentCreator,ids=(state.selectedIds||[]).filter(key=>state.pages.some(page=>page.id===key&&creatorBusinessMatches(page,state))),workflow=button.dataset.key;
         if(!['ready','archived'].includes(workflow)||!ids.length)return;
         if(workflow==='ready'&&state.pages.some(page=>ids.includes(page.id)&&!page.photoIds?.length))throw Error('Ready benötigt mindestens ein Foto. Bitte unvollständige Businesses abwählen.');
         const workflowAt=new Date().toISOString();
         for(let offset=0;offset<ids.length;offset+=400){const batch=writeBatch(db);for(const key of ids.slice(offset,offset+400))batch.update(doc(db,CC_PAGES,key),{workflow,workflowAt,updatedAt:serverTimestamp()});await batch.commit();}
         patch({selectedIds:[],selecting:false,filter:workflow,pages:state.pages.map(page=>ids.includes(page.id)?{...page,workflow,workflowAt}:page)});
+        queueMicrotask(()=>{const chip=[...root.querySelectorAll('[data-cc-action="filter"]')].find(node=>node.dataset.key===workflow),track=root.querySelector('.cc-business-chips');if(chip&&track)track.scrollLeft=chip.closest('.heart-shopchip-page')?.offsetLeft||0;});
       });
       if(action==='followup')await mediaTask(async()=>{
         const ref=doc(db,CC_PAGES,id),snap=await getDoc(ref),page=snap.data(),key=button.dataset.cart;
@@ -316,7 +374,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       }
       if(action==="new") {if(busy)return;captions={};patch({pendingPhotos:[],pendingCaptions:{},pageKind:"shop",shopTitle:"",shopPrice:"",selectedId:""});createdMs=0;pendingId="";avatarFile=null;photoFiles=[];draftAvatar="";draftName="";patch({editor:true,draftName:"",avatarName:"",photoNames:"",editorError:""});queueMicrotask(()=>root.querySelector('#cc-create-form [name="name"]')?.focus());}
       if(action==="close" && !busy) patch({editor:false});
-      if(action==="filter") patch({filter:button.dataset.key});
+      if(action==="filter") patch({filter:button.dataset.key,selectedIds:[],businessLimit:20});
       if(action==='retry-migration'){migrationAttempts.clear();void migrateExisting();}
       if(action==='hero-crop-save'){
         const image=button.dataset.image,card=button.closest('[data-cc-hero-card]'),crop=cropFromCard(card);
@@ -413,7 +471,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         }
       });
       if(action==="copy") {await navigator.clipboard.writeText(contentLink(id));notice("Link kopiert.");}
-      if(action==="sent") {await updateDoc(doc(db,CC_PAGES,id),{workflow:"sent",sentAt:serverTimestamp()});notice("Als verschickt markiert.");}
+      if(action==="sent") {await updateDoc(doc(db,CC_PAGES,id),{workflow:"sent",sentAt:serverTimestamp()});patch({pages:store.getState().contentCreator.pages.map(page=>page.id===id?{...page,workflow:"sent"}:page)});notice("Als verschickt markiert.");}
       if(action==="resume" && !busy){const page=store.getState().contentCreator.pages.find(p=>p.id===id);if(!page)return;pendingId=id;createdMs=page.createdMs;draftName=page.name;draftAvatar=page.avatar;avatarFile=null;photoFiles=[];patch({editor:true,pageKind:page.kind||"promo",draftName,avatarName:"Profilbild gespeichert",photoNames:"Bitte Beispielbilder erneut auswählen.",editorError:""});}
     }catch(error){notice(`Nicht möglich: ${error.message}`);}
   });

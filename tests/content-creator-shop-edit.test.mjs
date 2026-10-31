@@ -1,4 +1,4 @@
-import {creatorBusinessStatus} from '../shared/creator-analytics.js';
+import {creatorBusinessStatus,creatorBusinessMatches} from '../shared/creator-analytics.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -7,7 +7,7 @@ import {createHeartStore,createHeartInitialState} from '../apps/mnyra-heart/hear
 import {renderContentCreator} from '../apps/mnyra-heart/heart-content-creator-render.js';
 import {contentLink} from '../shared/content-creator.js';
 const source=(await readFile(new URL('../apps/mnyra-heart/heart-content-creator.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export (async )?function /g,'$1function ');
-const factory=new Function('db','collection','doc','getDoc','onSnapshot','setDoc','updateDoc','writeBatch','serverTimestamp','CC_PAGES','CC_VISITS','contentLink','creatorBusinessStatus',`const creatorCdnEnabled=async()=>false; const savePromoAsset=async(pageId,imageId,file,data)=>setDoc(doc(db,CC_PAGES,pageId,'images',imageId),{data,caption:''});\n${source}\nreturn createContentCreator;`);
+const factory=new Function('db','collection','doc','getDoc','onSnapshot','setDoc','updateDoc','writeBatch','serverTimestamp','CC_PAGES','CC_VISITS','contentLink','creatorBusinessStatus','creatorBusinessMatches',`const creatorCdnEnabled=async()=>false; const savePromoAsset=async(pageId,imageId,file,data)=>setDoc(doc(db,CC_PAGES,pageId,'images',imageId),{data,caption:''});\n${source}\nreturn createContentCreator;`);
 function setup(options={}){
  const {document,window}=parseHTML('<div id="app"></div>'),root=document.getElementById('app');
  const store=createHeartStore(createHeartInitialState());
@@ -19,7 +19,7 @@ function setup(options={}){
  let fail=false;
  const create=factory({},()=>'',doc,async path=>({data:()=>docs.get(path)}),()=>()=>{},async()=>{},update,()=>{
  const writes=[];return {update:(...args)=>writes.push(()=>update(...args)),delete:path=>writes.push(()=>docs.delete(path)),commit:async()=>{if(fail)throw Error('Offline');for(const write of writes)await write();}};
- },()=>'', 'contentCreatorPages','contentCreatorVisits',contentLink,creatorBusinessStatus);
+ },()=>'', 'contentCreatorPages','contentCreatorVisits',contentLink,creatorBusinessStatus,creatorBusinessMatches);
  store.actions.patchContentCreator({pages:[page]});store.subscribe(state=>{root.innerHTML=renderContentCreator(state.contentCreator);});root.innerHTML=renderContentCreator(store.getState().contentCreator);
  const uploads=[];
  create({root,store,prepareImage:async file=>'preview:'+file.name,saveAsset:async(pageId,key,file,data,config)=>{
@@ -121,4 +121,57 @@ test('Business settings persist bulk Ready/Archiv and follow-up without changing
  await c.click('[data-cc-action="bulk-status"][data-key="archived"]');
  assert.equal(c.docs.get('contentCreatorPages/shop').workflow,'archived');
  assert.equal(c.docs.get('contentCreatorPages/shop').products.length,2);
+});
+
+test('Approved roster exposes compact link chips behind only the row arrow',async()=>{
+ const c=setup();assert.equal(c.root.querySelector('.cc-link-actions'),null);
+ await c.click('[data-cc-action="toggle-links"]');
+ const actions=[...c.root.querySelectorAll('.cc-link-actions button')];
+ assert.deepEqual(actions.map(node=>node.textContent.trim()),['Still preview','Still copy','True copy','Sended']);
+ assert.equal(c.root.querySelector('[data-cc-action="toggle-links"]').getAttribute('aria-expanded'),'true');
+ await c.click('[data-cc-action="toggle-links"]');assert.equal(c.root.querySelector('.cc-link-actions'),null);
+});
+test('Selection uses the LifeSkin toolbar, toggles all/none, and honours the business search',async()=>{
+ const c=setup();await c.click('[data-cc-action="settings"]');
+ assert.ok(c.root.querySelector('.heart-faelle-wahl__kopf'));
+ await c.click('[data-cc-action="select-all"]');assert.deepEqual(c.store.getState().contentCreator.selectedIds,['shop']);
+ await c.click('[data-cc-action="select-all"]');assert.deepEqual(c.store.getState().contentCreator.selectedIds,[]);
+ const field=c.root.querySelector('#cc-business-search');field.value='does not exist';field.dispatchEvent(new c.root.ownerDocument.defaultView.Event('input',{bubbles:true}));
+ assert.equal(c.root.querySelectorAll('.cc-row-main').length,0);
+ await c.click('[data-cc-action="select-all"]');assert.deepEqual(c.store.getState().contentCreator.selectedIds,[]);
+});
+test('Double click minimises cards and the title restores them with keyboard-accessible controls',async()=>{
+ const c=setup();c.root.querySelector('.cc-metric').dispatchEvent(new c.root.ownerDocument.defaultView.Event('dblclick',{bubbles:true,cancelable:true}));
+ assert.equal(c.store.getState().contentCreator.collapsedCards.metrics,true);
+ assert.equal(c.root.querySelector('.cc-metrics-grid').hidden,true);
+ await c.click('[data-cc-action="collapse"][data-key="metrics"]');assert.equal(c.store.getState().contentCreator.collapsedCards.metrics,false);
+});
+test('Package slider steps stay bounded and do not enter a shop or mutate its assets',async()=>{
+ const c=setup();await c.click('[data-cc-action="detail"]');
+ const gallery=c.root.querySelector('[data-cc-gallery="p"]');Object.defineProperty(gallery,'clientWidth',{value:390});gallery.scrollLeft=0;
+ await c.click('[data-cc-action="slide-package"][data-product="p"][data-direction="1"]');
+ assert.equal(gallery.scrollLeft,390);assert.equal(c.root.querySelector('[data-cc-position="p"]').textContent,'2 / 2');
+ await c.click('[data-cc-action="slide-package"][data-product="p"][data-direction="1"]');assert.equal(gallery.scrollLeft,390);
+ assert.deepEqual(c.docs.get('contentCreatorPages/shop').photoIds,['a','b','c']);
+});
+
+test('Still copy and True copy retain their different links; Sended persists the sent marker',async()=>{
+ const c=setup(),copied=[],previous=Object.getOwnPropertyDescriptor(navigator,'clipboard');
+ Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>copied.push(text)}});
+ try{
+  await c.click('[data-cc-action="toggle-links"]');
+  await c.click('[data-cc-action="still"]');await c.click('[data-cc-action="copy"]');
+  assert.equal(copied[0],contentLink('shop',true));assert.equal(copied[1],contentLink('shop'));
+  assert.notEqual(copied[0],copied[1]);
+  await c.click('[data-cc-action="sent"]');assert.equal(c.docs.get('contentCreatorPages/shop').workflow,'sent');
+  assert.equal(c.root.querySelector('[data-cc-action="sent"]').getAttribute('aria-pressed'),'true');
+ }finally{if(previous)Object.defineProperty(navigator,'clipboard',previous);else delete navigator.clipboard;}
+});
+test('Touch double tap collapses a card once even if a browser also fires dblclick',async()=>{
+ const c=setup(),window=c.root.ownerDocument.defaultView;
+ const target=c.root.querySelector('.cc-live-label');
+ const touch=()=>{const event=new window.Event('pointerup',{bubbles:true});Object.defineProperties(event,{pointerType:{value:'touch'},clientX:{value:20},clientY:{value:20}});target.dispatchEvent(event);};
+ touch();touch();assert.equal(c.store.getState().contentCreator.collapsedCards.live,true);
+ c.root.querySelector('.cc-live-card').dispatchEvent(new window.Event('dblclick',{bubbles:true}));
+ assert.equal(c.store.getState().contentCreator.collapsedCards.live,true);
 });
