@@ -4,7 +4,8 @@ import {saveShopAsset,initialShopProduct,releaseShopOrder,refreshShopPreviews,sa
 import {creatorCdnEnabled} from './heart-creator-cdn.js';
 import {creatorPublicMedia} from '../../shared/creator-media.js';
 import {CC_CARTS,CC_ORDERS,priceCents} from "../../shared/content-creator-shop.js";
-import { db } from "/shared/firebase-config.js";
+import { auth, db } from "/shared/firebase-config.js";
+import { createCreatorReset } from "./heart-creator-reset.js";
 import { collection, doc, getDoc, onSnapshot, setDoc, updateDoc, writeBatch, serverTimestamp } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import { CC_PAGES, CC_VISITS, contentLink } from "../../shared/content-creator.js";
 
@@ -30,6 +31,24 @@ export async function prepareContentImage(file, avatar = false) {
 
 export function createContentCreator({root, store, prepareImage = prepareContentImage, saveAsset}) {
   const patch = fields => store.actions.patchContentCreator(fields);
+  let resetController;
+  function creatorReset() {
+    return resetController ||= createCreatorReset({
+      getState: () => store.getState().contentCreator,
+      patch,
+      async request(body) {
+        if (!auth.currentUser) throw Error('Bitte erneut in Heart anmelden.');
+        const response = await fetch('/api/content-creator-reset', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await auth.currentUser.getIdToken()}` },
+          body: JSON.stringify(body), signal: AbortSignal.timeout(60000)
+        });
+        const result = await response.json();
+        if (!response.ok || result.ok !== true) throw Error(result.error || 'Reset fehlgeschlagen.');
+        return result;
+      },
+      refresh: () => { stop(); load(); }
+    });
+  }
   let liveTimer=null;
   let subscriptions = [], pendingId = "", avatarFile = null, photoFiles = [], draftAvatar = "", draftName = "";
   let busy = false, stopped = true, createdMs = 0;
@@ -87,6 +106,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     setTimeout(()=>{if(!stopped)void retryNotifications();},1500);
   }
   async function retryNotifications(){
+    if (store.getState().contentCreator.resetRunning) return;
     const state=store.getState().contentCreator;
     const pending=[...(state.orders||[]).filter(o=>o.notificationPending&&Date.now()-Date.parse(o.notificationAttemptAt||o.createdAt)>60000&&Date.now()-Date.parse(o.createdAt)<86400000).map(o=>({...o,kind:'order'})),...(state.carts||[]).filter(c=>c.notificationPending&&c.status==='active'&&Date.now()-Date.parse(c.notificationAttemptAt||c.updatedAt)>60000&&Date.now()-Date.parse(c.updatedAt)<86400000).map(c=>({...c,kind:'cart'}))];
     for(const row of pending.slice(0,20)){
@@ -337,6 +357,9 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     if(button.disabled)return;
     const action=button.dataset.ccAction,id=button.dataset.id;
     try {
+      if (action === 'reset-data') { await creatorReset().reset(); return; }
+      if (action === 'cancel-reset') { creatorReset().cancel(); return; }
+      if (store.getState().contentCreator.resetRunning) return;
       if(action==='collapse'){toggleCard(button.dataset.key);return;}
       if(action==='toggle-links'){
         const state=store.getState().contentCreator;
