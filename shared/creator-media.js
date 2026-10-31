@@ -10,7 +10,7 @@ export function creatorMediaUrl(value) {
 export function creatorVideoMediaUrl(value) {
   try {
     const url=new URL(value);
-    return url.origin===CREATOR_MEDIA_ORIGIN && /^\/media\/social\/[A-Za-z0-9_-]{1,80}\/[A-Za-z0-9_-]+\.(mp4|webm)$/.test(url.pathname) && !url.search && !url.hash && !url.username && !url.password ? url.href : '';
+    return url.origin===CREATOR_MEDIA_ORIGIN && /^\/media\/stories\/[A-Za-z0-9_-]{1,80}\/[A-Za-z0-9_-]+\.(mp4|webm)$/.test(url.pathname) && !url.search && !url.hash && !url.username && !url.password ? url.href : '';
   } catch { return ''; }
 }
 export function creatorVariants(record) {

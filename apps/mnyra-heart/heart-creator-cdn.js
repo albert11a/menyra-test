@@ -1,9 +1,10 @@
-import {auth} from '/shared/firebase-config.js';
+import {auth,db} from '/shared/firebase-config.js';
+import {collection,query,where,limit,getDocs} from '/shared/vendor/firebase/11.0.0/firebase-firestore.js';
 import {BUNNY_EDGE_BASE, MEDIA_TICKET_ENDPOINT} from '../../shared/bunny-edge.js';
 import {creatorVariants,creatorMediaUrl,creatorVideoMediaUrl} from '../../shared/creator-media.js';
 
-// Photos and video derivatives share the existing /image/upload route,
-// owner ticket, MEDIA_BUCKET and /media/social CDN addresses.
+// Photos use the existing image uploader. Videos reuse the existing menu
+// video uploader below; both already write to the same R2/CDN.
 export async function creatorCdnEnabled() { return true; }
 async function ticket() {
   const user = auth.currentUser;
@@ -17,14 +18,13 @@ async function ticket() {
   return {token:result.ticket,uid:user.uid};
 }
 // One upload implementation for photos, posters and correctly typed videos.
-async function uploadCreatorFile(access,blob,name,{video=false}={}){
+async function uploadCreatorFile(access,blob,name){
   const form=new FormData();form.set('restaurantId',access.uid);form.set('file',blob,name);
   const response=await fetch(`${BUNNY_EDGE_BASE}/image/upload`,{
     method:'POST',headers:{Authorization:`Bearer ${access.token}`},body:form,signal:AbortSignal.timeout(120000)
   });
   const result=await response.json();
-  if(video&&result.error==='image required')throw Error('Der bestehende Foto-Upload muss noch für Videos freigeschaltet werden. Kein neuer Worker nötig.');
-  const url=(video?creatorVideoMediaUrl:creatorMediaUrl)(result.cdnUrl||result.url);
+  const url=creatorMediaUrl(result.cdnUrl||result.url);
   if(!response.ok||!url)throw Error(result.error||'Cloudflare-Upload unvollständig. Bitte wiederholen.');
   return url;
 }
@@ -47,11 +47,34 @@ export async function uploadCreatorMedia(pageId,imageId,file,displays,{free=fals
   return {media};
 }
 
-// Public paid videos are baked-watermark derivatives, never clean originals.
+// Same owner lookup already used by Heart's existing video uploads. The
+// deployed video ticket requires a managed restaurant ID, not the CEO uid.
+const videoOwners=new Map();
+export async function creatorVideoOwner(uid){
+  if(videoOwners.has(uid))return videoOwners.get(uid);
+  const rows=await getDocs(query(collection(db,'restaurants'),where('createdByUid','==',uid),limit(1)));
+  const owner=String(rows.docs[0]?.id||'');
+  if(!owner||owner===uid)throw Error('Für Videos fehlt ein Betrieb unter diesem Konto.');
+  videoOwners.set(uid,owner);return owner;
+}
+
+// Reuse the actual, already deployed menu upload implementation. Its name
+// includes "story", but uploading alone creates no Story document or expiry.
+// Public paid uploads contain only baked-watermark derivatives.
 export async function uploadCreatorVideo(prepared) {
-  const access=await ticket(),result={};
-  for(const [name,blob] of [['video',prepared.preview],['boomerang',prepared.boomerang]]){
-    result[name]=await uploadCreatorFile(access,blob,`${name}.${blob.type==='video/webm'?'webm':'mp4'}`,{video:true});
-  }
+  const user=auth.currentUser;if(!user)throw Error('Bitte erneut in Heart anmelden.');
+  const owner=await creatorVideoOwner(user.uid);
+  const {createMediaUploadRuntimeController}=await import('../menyra-social/core/media/media-upload-runtime-controller.js');
+  const uploader=createMediaUploadRuntimeController({auth,mediaBaseUrl:BUNNY_EDGE_BASE,mediaTicketEndpoint:MEDIA_TICKET_ENDPOINT,fetchFn:fetch});
+  const result={};
+  try{
+    for(const [name,blob] of [['video',prepared.preview],['boomerang',prepared.boomerang]]){
+      const file=new File([blob],`${name}.${blob.type==='video/webm'?'webm':'mp4'}`,{type:blob.type});
+      const uploaded=await uploader.uploadRawMediaFile(file,owner,{maxBytes:48*1024*1024});
+      const url=creatorVideoMediaUrl(uploaded.cdnUrl||uploaded.url);
+      if(!url)throw Error('Cloudflare-Video-Upload unvollständig. Bitte wiederholen.');
+      result[name]=url;
+    }
+  }catch(error){videoOwners.delete(user.uid);throw error;}
   return result;
 }
