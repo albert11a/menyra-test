@@ -10,21 +10,20 @@ function setup(fail=false){
  class Image{constructor(){this.width=360;this.height=480;}async decode(){}}
  const context={drawImage(){},fillRect(){},save(){},translate(){},rotate(){},measureText:()=>({width:50}),fillText(){},restore(){}};
  const document={createElement:()=>({getContext:()=>context,toDataURL:()=> 'data:image/webp;base64,YWJj'})};
- const prepareCreatorVideo=async(input,opts)=>{assert.equal(input,file);assert.equal(opts.free,false);if(fail)throw Error('Encoding failed');return {preview:new Blob(['MARKED-PREVIEW'],{type:'video/mp4'}),poster:new File(['POSTER'],'poster.jpg',{type:'image/jpeg'}),duration:10};};
+ const prepareCreatorVideo=async(input,opts)=>{assert.equal(input,file);assert.equal(opts.free,false);if(fail)throw Error('Encoding failed');return {preview:new Blob(['MARKED-PREVIEW-WITH-AUDIO'],{type:'video/mp4'}),boomerang:new Blob(['BOOMERANG'],{type:'video/mp4'}),poster:new File(['POSTER'],'poster.jpg',{type:'image/jpeg'}),duration:10};};
  const uploadCreatorMedia=async(page,id,input,displays,options)=>{uploaded.push(input);return {media:{mode:options.free?'clean':'marked',thumb:CREATOR_MEDIA_ORIGIN+'/media/social/owner/thumb.webp',medium:CREATOR_MEDIA_ORIGIN+'/media/social/owner/medium.webp',large:CREATOR_MEDIA_ORIGIN+'/media/social/owner/large.webp'}};};
- const factory=new Function('db','doc','setDoc','writeBatch','creatorCdnEnabled','uploadCreatorMedia','Image','URL','document','creatorVariants','serverTimestamp','prepareVideoMock','CC_PAGES',`${source}\nreturn saveShopAsset;`);
- const save=factory({},doc,setDoc,()=>({set:(...args)=>setDoc(...args),update:(_ref,value)=>published.push(value),commit:async()=>{}}),async()=>true,uploadCreatorMedia,Image,{createObjectURL:()=> 'blob:poster',revokeObjectURL(){}},document,creatorVariants,()=>0,prepareCreatorVideo,'contentCreatorPages');
+ const factory=new Function('db','doc','setDoc','writeBatch','creatorCdnEnabled','uploadCreatorMedia','uploadCreatorVideo','Image','URL','document','creatorVariants','serverTimestamp','prepareVideoMock','CC_PAGES',`${source}\nreturn saveShopAsset;`);
+ const save=factory({},doc,setDoc,()=>({set:(...args)=>setDoc(...args),update:(_ref,value)=>published.push(value),commit:async()=>{}}),async()=>true,uploadCreatorMedia,async prepared=>{uploaded.push(prepared.preview,prepared.boomerang);return {video:CREATOR_MEDIA_ORIGIN+'/media/social/owner/full.mp4',boomerang:CREATOR_MEDIA_ORIGIN+'/media/social/owner/boom.mp4'};},Image,{createObjectURL:()=> 'blob:poster',revokeObjectURL(){}},document,creatorVariants,()=>0,prepareCreatorVideo,'contentCreatorPages');
  return {save,docs,uploaded,published,file};
 }
-test('Video upload persists byte-exact private original, separate marked preview and only public image poster',async()=>{
+test('Video upload persists byte-exact private original, marked R2 full video with audio, boomerang and poster',async()=>{
  const c=setup();await c.save('page','clip',c.file,'',{free:false});
  assert.equal(c.docs.get('contentCreatorPages/page/originals/clip/chunks/000').data,btoa('ORIGINAL-WITH-AUDIO'));
- const metadata=c.docs.get('contentCreatorPages/page/originals/clip');assert.equal(metadata.mime,'video/mp4');assert.equal(metadata.name,'reel.mp4');assert.equal(metadata.videoPreview.mode,'marked');assert.equal(metadata.mediaType,'video');
- assert.ok(c.uploaded.length===1&&c.uploaded.every(file=>file.type==='image/jpeg'));
- const path=`contentCreatorPages/page/originals/clip/videoPreviews/${metadata.videoPreview.id}/chunks/000`;
- assert.equal(c.docs.get(path).data,btoa('MARKED-PREVIEW'));
+ const metadata=c.docs.get('contentCreatorPages/page/originals/clip');assert.equal(metadata.mime,'video/mp4');assert.equal(metadata.name,'reel.mp4');assert.equal(metadata.mediaType,'video');
+ assert.deepEqual(await Promise.all(c.uploaded.map(file=>file.text())),['MARKED-PREVIEW-WITH-AUDIO','BOOMERANG','POSTER']);
+ assert.ok([...c.docs.keys()].every(key=>!key.includes('/videoPreviews/')));
  assert.equal(c.published.length,1);assert.equal(c.published[0]['mediaTypes.clip'],'video');
- const media=c.published[0]['media.clip'];assert.equal(media.mediaType,'video');assert.equal(media.download,undefined);assert.equal(media.mode,'marked');
+ const media=c.published[0]['media.clip'];assert.equal(media.mediaType,'video');assert.equal(media.download,undefined);assert.equal(media.mode,'marked');assert.match(media.video,/media\/social\//);assert.match(media.boomerang,/boom.mp4$/);
 });
 test('Failed video encoding leaves no completed preview or public video registration',async()=>{
  const c=setup(true);await assert.rejects(c.save('page','clip',c.file,'',{free:false}),/Encoding failed/);

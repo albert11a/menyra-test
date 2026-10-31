@@ -1,7 +1,7 @@
 // =========================================================
 // MENYRA - Cloudflare Worker (R2 Media)
 // Endpoints:
-//   POST /image/upload  (multipart/form-data: file, restaurantId)
+//   POST /image/upload  (existing photo/video upload; file, restaurantId)
 //   POST /story/upload  (multipart/form-data: file, restaurantId)
 //   POST /story/delete  (json: { videoId })
 // Env:
@@ -36,8 +36,8 @@ function corsHeaders(origin, env) {
   if (!allowed.length) {
     return {
       "access-control-allow-origin": origin || "*",
-      "access-control-allow-methods": "POST,OPTIONS",
-      "access-control-allow-headers": "content-type,authorization,x-mnyra-media-ticket"
+      "access-control-allow-methods": "GET,HEAD,POST,OPTIONS",
+      "access-control-allow-headers": "content-type,authorization,x-mnyra-media-ticket,range,if-range"
     };
   }
 
@@ -71,8 +71,8 @@ function corsHeaders(origin, env) {
   return matches
     ? {
         "access-control-allow-origin": allowed.includes("*") ? "*" : origin,
-        "access-control-allow-methods": "POST,OPTIONS",
-        "access-control-allow-headers": "content-type,authorization,x-mnyra-media-ticket"
+        "access-control-allow-methods": "GET,HEAD,POST,OPTIONS",
+        "access-control-allow-headers": "content-type,authorization,x-mnyra-media-ticket,range,if-range"
       }
     : {};
 }
@@ -293,14 +293,17 @@ async function handleImageUpload(request, env, cors) {
     return json({ error: "file required" }, 400, cors);
   }
 
-  const maxBytes = clampMb(env.MAX_IMAGE_MB, 15) * 1024 * 1024;
+  const mime = String(file.type || "").toLowerCase();
+  const isVideo = ['video/mp4','video/webm'].includes(mime);
+  // Keep the existing endpoint, owner ticket, R2 prefix and image limits.
+  // Only baked Creator video derivatives use the larger video limit.
+  const maxBytes = (isVideo ? 48 : clampMb(env.MAX_IMAGE_MB, 15)) * 1024 * 1024;
   if (file.size > maxBytes) {
     return json({ error: "file too large" }, 400, cors);
   }
 
-  const mime = String(file.type || "").toLowerCase();
-  if (!mime.startsWith("image/")) {
-    return json({ error: "image required" }, 400, cors);
+  if (!mime.startsWith("image/") && !isVideo) {
+    return json({ error: "image, MP4 or WebM required" }, 400, cors);
   }
 
   const rid = safeId(form.get("restaurantId"));
@@ -349,6 +352,43 @@ async function handleImageUpload(request, env, cors) {
   const cdnUrl = `${origin}/media/${key}`;
 
   return json({ ok: true, path: key, url: cdnUrl, cdnUrl }, 200, cors);
+}
+
+// Video byte ranges are essential for Safari startup and seeking. Keep this
+// path separate so existing image transforms and Story behavior are untouched.
+async function handleCreatorVideoMedia(request,env,ctx,key) {
+  const cache=caches.default;
+  const cached=await cache.match(request);
+  if(cached)return request.method==='HEAD'?new Response(null,{status:cached.status,headers:cached.headers}):cached;
+  const meta=await env.MEDIA_BUCKET.head(key);
+  if(!meta)return new Response('Not found',{status:404});
+  const headers=new Headers();meta.writeHttpMetadata(headers);
+  headers.set('etag',meta.httpEtag);headers.set('accept-ranges','bytes');
+  headers.set('cache-control','public, max-age=31536000, immutable');
+  headers.set('access-control-allow-origin','*');
+  headers.set('access-control-expose-headers','Content-Length, Content-Range, Accept-Ranges');
+  let start=0,end=meta.size-1,partial=false;
+  const range=request.headers.get('range'),ifRange=request.headers.get('if-range');
+  if(range&&(!ifRange||ifRange===meta.httpEtag)){
+    const match=/^bytes=(\d*)-(\d*)$/.exec(range);
+    if(!match||(!match[1]&&!match[2])){headers.set('content-range',`bytes */${meta.size}`);return new Response(null,{status:416,headers});}
+    if(match[1]){start=Number(match[1]);end=match[2]?Math.min(end,Number(match[2])):end;}
+    else start=Math.max(0,meta.size-Number(match[2]));
+    if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start>end||start>=meta.size){headers.set('content-range',`bytes */${meta.size}`);return new Response(null,{status:416,headers});}
+    partial=true;headers.set('content-range',`bytes ${start}-${end}/${meta.size}`);
+  }
+  headers.set('content-length',String(end-start+1));
+  if(request.method==='HEAD')return new Response(null,{status:partial?206:200,headers});
+  const object=await env.MEDIA_BUCKET.get(key,partial?{range:{offset:start,length:end-start+1}}:undefined);
+  if(!object)return new Response('Not found',{status:404});
+  const response=new Response(object.body,{status:partial?206:200,headers});
+  // Never cache partial content as a complete object. The full response has a
+  // Content-Length so Cloudflare Cache can satisfy subsequent Range requests.
+  if(start===0&&end===meta.size-1){
+    const completeHeaders=new Headers(headers);completeHeaders.delete('content-range');
+    ctx.waitUntil(cache.put(new Request(request.url),new Response(response.clone().body,{headers:completeHeaders})));
+  }
+  return response;
 }
 
 async function handleStoryUpload(request, env, cors) {
@@ -440,6 +480,7 @@ async function handleMedia(request, env, ctx) {
         return new Response('Not found', { status: 404 });
     }
 
+    if(/^social\/[A-Za-z0-9_-]{1,80}\/[A-Za-z0-9_-]+\.(mp4|webm)$/.test(key))return handleCreatorVideoMedia(request,env,ctx,key);
     const cache = caches.default;
     const cachedResponse = await cache.match(request);
     if (cachedResponse) {

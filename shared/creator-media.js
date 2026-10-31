@@ -7,6 +7,12 @@ export function creatorMediaUrl(value) {
     return url.origin === CREATOR_MEDIA_ORIGIN && /^\/media\/(?:creator-public\/[a-zA-Z0-9/_-]+|social\/[A-Za-z0-9_-]{1,80}\/[A-Za-z0-9_-]+)\.(webp|jpg|png)$/.test(url.pathname) && !url.search && !url.hash && !url.username && !url.password ? url.href : '';
   } catch { return ''; }
 }
+export function creatorVideoMediaUrl(value) {
+  try {
+    const url=new URL(value);
+    return url.origin===CREATOR_MEDIA_ORIGIN && /^\/media\/social\/[A-Za-z0-9_-]{1,80}\/[A-Za-z0-9_-]+\.(mp4|webm)$/.test(url.pathname) && !url.search && !url.hash && !url.username && !url.password ? url.href : '';
+  } catch { return ''; }
+}
 export function creatorVariants(record) {
   if (!record || !['clean','marked'].includes(record.mode)) return null;
   const result = {mode:record.mode,...(record.mediaType==='video'?{mediaType:'video'}:{})};
@@ -15,6 +21,7 @@ export function creatorVariants(record) {
     result[size] = creatorMediaUrl(record[size]);
     if (!result[size]) return null;
   }
+  if(record.mediaType==='video'&&creatorVideoMediaUrl(record.video)&&creatorVideoMediaUrl(record.boomerang)){result.video=creatorVideoMediaUrl(record.video);result.boomerang=creatorVideoMediaUrl(record.boomerang);result.videoVersion=2;}
   if(record.mode==='clean'&&creatorMediaUrl(record.download))result.download=creatorMediaUrl(record.download);
   return result;
 }

@@ -1,3 +1,4 @@
+import {unlockCreatorVideoAudio} from './heart-creator-video-audio.js';
 import {creatorBusinessMatches} from '../../shared/creator-analytics.js';
 import {normalizeCreatorCrop,creatorHeroCropStyle,creatorHeroFormat} from '../../shared/creator-hero.js';
 import {saveShopAsset,initialShopProduct,releaseShopOrder,refreshShopPreviews,savePromoAsset,migrateCreatorPage,saveCreatorCdnAsset,savedCreatorFile} from "./heart-content-creator-shop.js";
@@ -399,6 +400,9 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     } catch(error){patch({saving:false,editorError:`Nicht abgeschlossen: ${error.message}. Du kannst es erneut versuchen.`});}
     finally{busy=false;}
   });
+  const unlockVideoAudio=event=>{const button=event.target.closest('button');if(event.target.closest('[data-cc-action="refresh-previews"],input[type="file"]')||(button?.type==='submit'&&button.closest('form')))unlockCreatorVideoAudio();};
+  root.addEventListener('pointerdown',unlockVideoAudio,{passive:true});
+  root.addEventListener('click',unlockVideoAudio,{passive:true});
   root.addEventListener("click", async event => {
     const button=event.target.closest("[data-cc-action]"); if(!button)return;
     event.preventDefault();

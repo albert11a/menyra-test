@@ -21,7 +21,7 @@ test('Public video card contains only lazy silent looping preview and poster, no
  const node=parseHTML(markup).document.querySelector('video');assert.ok(node);
  for(const attr of ['muted','autoplay','loop','playsinline','disablepictureinpicture'])assert.ok(node.hasAttribute(attr),attr);
  assert.equal(node.hasAttribute('controls'),false);assert.equal(node.hasAttribute('src'),false);assert.equal(node.getAttribute('preload'),'none');
- assert.ok(node.getAttribute('data-video-src').includes('op=video'));assert.ok(node.hasAttribute('data-protected-preview'));assert.ok(node.getAttribute('poster').includes('op=image'));
+ assert.ok(node.getAttribute('data-video-src').includes('op=video'));assert.ok(node.hasAttribute('data-protected-preview'));assert.ok(node.getAttribute('data-video-poster').includes('op=image'));
  assert.equal(safe.mediaTypes.clip,'video');assert.equal(creatorIsVideo(safe,'clip'),true);assert.equal(creatorAssetCount(safe,['clip','photo']),'1 foto · 1 video');
  assert.match(renderCreatorCatalog(safe),/1 video · Cilësi origjinale/);assert.doesNotMatch(markup,/op=download|originals|PRIVATE/);
 });
@@ -64,7 +64,7 @@ test('HTTP supports video Range and HEAD with the right lengths, MIME and range 
 test('Visible current video starts muted, offscreen/background/covered videos pause without reloading',()=>{
  const {document,window}=parseHTML('<main><div data-track="p"><div><video data-creator-video data-video-src="/safe-preview"></video></div><div><video data-creator-video data-deferred-video="/second-preview"></video></div></div></main>');
  const root=document.querySelector('main'),track=root.querySelector('[data-track]'),videos=[...root.querySelectorAll('video')];Object.defineProperty(track,'clientWidth',{value:200});track.scrollLeft=0;
- let callback;class Observer{constructor(cb){callback=cb;}observe(){}unobserve(){}disconnect(){}}
+ let callback;class Observer{constructor(cb,options){if(!options.rootMargin)callback=cb;}observe(){}unobserve(){}disconnect(){}}
  for(const video of videos){video.paused=true;video.loads=0;video.load=()=>video.loads++;video.play=()=>{video.paused=false;return Promise.resolve();};video.pause=()=>{video.paused=true;};}
  const playback=createCreatorVideoPlayback(root,{windowObj:{IntersectionObserver:Observer},documentObj:document});playback.sync();assert.equal(videos[0].hasAttribute('src'),false);
  callback(videos.map(target=>({target,isIntersecting:true,intersectionRatio:1})));assert.equal(videos[0].paused,false);assert.equal(videos[0].muted,true);assert.equal(videos[1].hasAttribute('src'),false);

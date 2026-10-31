@@ -147,7 +147,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   const product=page.products.find(p=>p.id===viewer.product),files=packFiles(viewer.product);
   return `<section class="shop-viewer" role="dialog" aria-modal="true" aria-labelledby="shop-viewer-title">
    <header class="shop-viewer-header"><div><h2 id="shop-viewer-title">${esc(product.title)}</h2><span data-view-count aria-live="polite">${viewer.index+1} / ${files.length}</span></div><button type="button" data-shop="viewer-close" id="shop-viewer-close" aria-label="Mbyll pamjen e madhe">${creatorIcon('x')}</button></header>
-   <div class="shop-viewer-stage"><div class="shop-viewer-track" data-view-track>${files.map((id,i)=>`<div class="shop-viewer-slide">${creatorIsVideo(page,id)?'':img(id,'',{size:'thumb',active:Math.abs(i-viewer.index)<=1,eager:i===viewer.index}).replace('<img ','<img class="shop-viewer-preview" aria-hidden="true" ')}${img(id,`${product.title} · ${i+1}`,{size:'medium',active:Math.abs(i-viewer.index)<=1,eager:i===viewer.index})}</div>`).join('')}</div>
+   <div class="shop-viewer-stage"><div class="shop-viewer-track" data-view-track>${files.map((id,i)=>`<div class="shop-viewer-slide">${creatorIsVideo(page,id)?'':img(id,'',{size:'thumb',active:Math.abs(i-viewer.index)<=1,eager:i===viewer.index}).replace('<img ','<img class="shop-viewer-preview" aria-hidden="true" ')}${img(id,`${product.title} · ${i+1}`,{size:'medium',viewer:true,active:Math.abs(i-viewer.index)<=1,eager:i===viewer.index})}</div>`).join('')}</div>
    ${files.length>1?`<button type="button" class="shop-viewer-arrow shop-viewer-prev" data-shop="viewer-step" data-step="-1" aria-label="Fotoja paraprake">${creatorIcon('chevron-left')}</button><button type="button" class="shop-viewer-arrow shop-viewer-next" data-shop="viewer-step" data-step="1" aria-label="Fotoja tjetër">${creatorIcon('chevron-right')}</button>`:''}</div>
    <footer class="shop-viewer-footer"><div class="shop-viewer-dots">${files.map((_,i)=>`<button type="button" data-shop="viewer-dot" data-index="${i}" aria-label="Foto ${i+1}" aria-pressed="${viewer.index===i}"></button>`).join('')}</div><div class="shop-viewer-buy"><strong>${product.priceCents===0?'Falas':euro(product.priceCents)}</strong>${offerButton(product)}</div></footer>
   </section>`;
@@ -163,7 +163,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   root.querySelector('.shop-viewer')?.remove();
   viewer={product,index:Math.max(0,Math.min(files.length-1,Number(index)||0))};
   root.querySelector('.shop-shell').insertAdjacentHTML('beforeend',viewerMarkup());
-  syncBrowserChrome();watchImages();bindViewer();syncInert();videoPlayback.sync();
+  syncBrowserChrome();watchImages();bindViewer();syncInert();videoPlayback.sync();videoPlayback.openViewer?.();
   root.querySelector('[data-shop="viewer-close"]')?.focus({preventScroll:true});
  }
  function closeViewer(){

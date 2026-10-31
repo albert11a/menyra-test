@@ -2,7 +2,7 @@ import {db} from '/shared/firebase-config.js';
 import {doc,getDoc,setDoc,updateDoc,serverTimestamp,writeBatch} from '/shared/vendor/firebase/11.0.0/firebase-firestore.js';
 import {CC_PAGES} from '../../shared/content-creator.js';
 import {CC_ORDERS} from '../../shared/content-creator-shop.js';
-import {creatorCdnEnabled,uploadCreatorMedia} from './heart-creator-cdn.js';
+import {creatorCdnEnabled,uploadCreatorMedia,uploadCreatorVideo} from './heart-creator-cdn.js';
 import {creatorVariants,creatorPublicMedia} from '../../shared/creator-media.js';
 const PART=400000;
 export function drawShopWatermark(ctx,width,height){
@@ -95,18 +95,13 @@ export async function saveCreatorCdnAsset(pageId,imageId,file,{free=false,hero=f
   if(hero)throw Error('Bitte Videos als Paket hochladen. Titelbilder bleiben Fotos.');
   const {prepareCreatorVideo}=await import('./heart-creator-video.js');
   const prepared=await prepareCreatorVideo(file,{free,watermark:drawShopWatermark});
-  const bytes=new Uint8Array(await prepared.preview.arrayBuffer()),previewId=crypto.randomUUID().replaceAll('-',''),parts=Math.ceil(bytes.length/PART);
-  for(let i=0;i<parts;i++){
-   let binary='';const slice=bytes.subarray(i*PART,(i+1)*PART);
-   for(let n=0;n<slice.length;n+=4096)binary+=String.fromCharCode(...slice.subarray(n,n+4096));
-   await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId,'videoPreviews',previewId,'chunks',String(i).padStart(3,'0')),{data:btoa(binary)});
-  }
-  // The poster uses the existing public marked/clean image delivery. Never
-  // publish a clean video URL or use the 24-hour Story media bucket.
+  // Public R2 contains only baked-watermark derivatives of paid videos.
+  // The byte-exact original, including its sound, remains private.
+  const video=await uploadCreatorVideo(prepared);
   const poster=await saveCreatorCdnAsset(pageId,imageId,prepared.poster,{free,hero:false,publish:false});
   const {id:unused,download:unusedDownload,...variants}=poster;
-  const media={...variants,mediaType:'video',bytes:file.size};
-  await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId),{mediaType:'video',duration:prepared.duration,videoPreview:{id:previewId,mode:free?'clean':'marked',mime:prepared.preview.type,size:bytes.length,parts}},{merge:true});
+  const media={...variants,...video,videoVersion:2,mediaType:'video',bytes:file.size};
+  await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId),{mediaType:'video',duration:prepared.duration},{merge:true});
   const batch=writeBatch(db),pageRef=doc(db,CC_PAGES,pageId);
   batch.set(doc(pageRef,'images',imageId),{cdn:media},{merge:true});
   if(publish)batch.update(pageRef,{[`media.${imageId}`]:media,[`mediaTypes.${imageId}`]:'video',updatedAt:serverTimestamp()});

@@ -1,58 +1,72 @@
 import {creatorVideoFile,CREATOR_VIDEO_PREVIEW_LIMIT} from '../../shared/creator-video.js';
+import {creatorVideoAudioContext} from './heart-creator-video-audio.js';
 
-// Only a downscaled silent canvas derivative is recorded. The input File is
-// never modified; the paid original (including its audio) stays private.
+// Two derivatives: a full 1920px video retaining audio, and a short, silent
+// 960px forward/reverse clip. Paid derivatives have a baked watermark.
 export async function prepareCreatorVideo(file,{free=false,watermark=()=>{}}={}){
  if(!creatorVideoFile(file)||file.size<1||file.size>30*1024*1024)throw Error('MP4, MOV oder WebM bis 30 MB wählen.');
- const canvas=document.createElement('canvas');
  const Recorder=globalThis.MediaRecorder;
- const mime=['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp8','video/webm'].find(type=>Recorder?.isTypeSupported?.(type));
+ const mime=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp8,opus','video/webm'].find(type=>Recorder?.isTypeSupported?.(type));
+ const canvas=document.createElement('canvas'),audio=creatorVideoAudioContext();
  if(!Recorder||!canvas.captureStream||!mime)throw Error('Dieser Browser kann keine geschützte Videovorschau erstellen. Bitte einen aktuellen Safari oder Chrome verwenden.');
- const video=document.createElement('video'),url=URL.createObjectURL(file);
- video.muted=true;video.defaultMuted=true;video.playsInline=true;video.preload='auto';
- video.setAttribute('muted','');video.setAttribute('playsinline','');
- video.style.cssText='position:fixed;left:-10000px;width:2px;height:2px;pointer-events:none';
- document.body.appendChild(video);
- let stream,recorder,timer,frame;
- let onVisibility;
+ if(!audio||audio.state!=='running')throw Error('Bitte „Vorschauen aktualisieren“ oder „Paket hochladen“ erneut antippen, um die Verarbeitung mit Ton zu starten.');
+ const video=document.createElement('video'),url=URL.createObjectURL(file),streams=[],frames=[];
+ video.playsInline=true;video.preload='auto';video.setAttribute('playsinline','');
+ video.style.cssText='position:fixed;left:-10000px;width:2px;height:2px;pointer-events:none';document.body.appendChild(video);
+ // Audio is diverted into the recording, without playing through speakers.
+ const source=audio.createMediaElementSource(video),destination=audio.createMediaStreamDestination();source.connect(destination);
+ let recorder,timer,frame,onVisibility;
+ const cleanupRecorder=()=>{clearTimeout(timer);cancelAnimationFrame(frame);if(onVisibility)document.removeEventListener('visibilitychange',onVisibility);if(recorder?.state&&recorder.state!=='inactive'){recorder.onstop=null;recorder.stop();}};
+ async function record(stream,bitrate,start){
+  recorder=new Recorder(stream,{mimeType:mime,videoBitsPerSecond:bitrate,audioBitsPerSecond:128000});
+  const chunks=[];let size=0;
+  return new Promise((resolve,reject)=>{
+   let failed=false;
+   const fail=message=>{if(failed)return;failed=true;cleanupRecorder();reject(Error(message));};
+   onVisibility=()=>{if(document.visibilityState==='hidden')fail('Videoverarbeitung unterbrochen. Bitte die Seite geöffnet lassen und erneut versuchen.');};document.addEventListener('visibilitychange',onVisibility);
+   recorder.ondataavailable=event=>{if(!event.data?.size)return;size+=event.data.size;if(size>CREATOR_VIDEO_PREVIEW_LIMIT)fail('Videovorschau ist zu groß. Bitte einen kürzeren Clip wählen.');else chunks.push(event.data);};
+   recorder.onerror=()=>fail('Videovorschau konnte nicht erstellt werden.');
+   recorder.onstop=()=>{if(!failed){cleanupRecorder();resolve(new Blob(chunks,{type:recorder.mimeType.split(';')[0]}));}};
+   timer=setTimeout(()=>fail('Videoverarbeitung wurde unterbrochen. Bitte erneut versuchen.'),Math.ceil(video.duration*1000)+25000);
+   recorder.start(250);start(()=>{if(recorder.state!=='inactive')recorder.stop();},fail);
+  });
+ }
  try{
   await new Promise((resolve,reject)=>{
    const timeout=setTimeout(()=>reject(Error('Video konnte nicht gelesen werden.')),20000);
    video.onloadeddata=()=>{clearTimeout(timeout);resolve();};
-   video.onerror=()=>{clearTimeout(timeout);reject(Error('Dieses Videoformat kann der Browser nicht lesen. Bitte als MP4/H.264 exportieren.'));};
-   video.src=url;video.load();
+   video.onerror=()=>{clearTimeout(timeout);reject(Error('Dieses Videoformat kann der Browser nicht lesen. Bitte als MP4/H.264 exportieren.'));};video.src=url;video.load();
   });
   if(!Number.isFinite(video.duration)||video.duration<=0||video.duration>60||!video.videoWidth||!video.videoHeight)throw Error('Videos bis 60 Sekunden wählen.');
-  const scale=Math.min(1,480/Math.max(video.videoWidth,video.videoHeight));
-  canvas.width=Math.max(2,Math.floor(video.videoWidth*scale/2)*2);canvas.height=Math.max(2,Math.floor(video.videoHeight*scale/2)*2);
-  const context=canvas.getContext('2d',{alpha:false});if(!context)throw Error('Videovorschau konnte nicht erstellt werden.');
-  const draw=()=>{context.drawImage(video,0,0,canvas.width,canvas.height);if(!free)watermark(context,canvas.width,canvas.height);};
+  function dimensions(target,edge){const scale=Math.min(1,edge/Math.max(video.videoWidth,video.videoHeight));target.width=Math.max(2,Math.floor(video.videoWidth*scale/2)*2);target.height=Math.max(2,Math.floor(video.videoHeight*scale/2)*2);}
+  dimensions(canvas,1920);const context=canvas.getContext('2d',{alpha:false});
+  if(!context)throw Error('Videovorschau konnte nicht erstellt werden.');
   context.drawImage(video,0,0,canvas.width,canvas.height);
-  const poster=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.85));
-  if(!poster)throw Error('Video-Titelbild konnte nicht erstellt werden.');
-  draw();stream=canvas.captureStream(20);
-  recorder=new Recorder(stream,{mimeType:mime,videoBitsPerSecond:360000});
-  const chunks=[];let size=0;
-  const preview=await new Promise((resolve,reject)=>{
-   let failed=false;
-   const fail=message=>{if(failed)return;failed=true;reject(Error(message));};onVisibility=()=>{if(document.visibilityState==='hidden')fail('Videoverarbeitung pausiert. Bitte die Seite geöffnet lassen und erneut hochladen.');};document.addEventListener('visibilitychange',onVisibility);
-   recorder.ondataavailable=event=>{if(!event.data?.size)return;size+=event.data.size;if(size>CREATOR_VIDEO_PREVIEW_LIMIT){fail('Videovorschau ist zu groß. Bitte einen kürzeren Clip wählen.');if(recorder.state!=='inactive')recorder.stop();}else chunks.push(event.data);};
-   recorder.onerror=()=>fail('Videovorschau konnte nicht erstellt werden.');
-   recorder.onstop=()=>{if(!failed)resolve(new Blob(chunks,{type:recorder.mimeType.split(';')[0]}));};
-   video.onended=()=>{draw();if(recorder.state!=='inactive')recorder.stop();};
-   video.onerror=()=>fail('Video konnte nicht vollständig verarbeitet werden.');
-   // A backgrounded tab can stall canvas recording. Never publish a frozen
-   // or incomplete preview as though the upload had completed.
-   timer=setTimeout(()=>fail('Videoverarbeitung wurde unterbrochen. Bitte die Seite geöffnet lassen und erneut versuchen.'),Math.ceil(video.duration*1000)+20000);
-   recorder.start(500);
-   const tick=()=>{if(failed||recorder.state==='inactive')return;draw();frame=requestAnimationFrame(tick);};
-   video.play().then(tick).catch(()=>fail('Video konnte nicht gestartet werden. Bitte erneut hochladen.'));
+  const poster=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.92));if(!poster)throw Error('Video-Titelbild konnte nicht erstellt werden.');
+  const small=document.createElement('canvas');dimensions(small,960);const smallContext=small.getContext('2d',{alpha:false});
+  const draw=()=>{context.drawImage(video,0,0,canvas.width,canvas.height);if(!free)watermark(context,canvas.width,canvas.height);};
+  draw();const stream=canvas.captureStream(30);streams.push(stream);for(const track of destination.stream.getAudioTracks())stream.addTrack(track);
+  let lastCapture=-1;
+  const preview=await record(stream,6000000,(stop,fail)=>{
+   video.onended=stop;video.onerror=()=>fail('Video konnte nicht vollständig verarbeitet werden.');
+   const tick=()=>{
+    draw();
+    if(video.currentTime<=1.4&&frames.length<35&&video.currentTime-lastCapture>=1/25){smallContext.drawImage(canvas,0,0,small.width,small.height);frames.push(smallContext.getImageData(0,0,small.width,small.height));lastCapture=video.currentTime;}
+    frame=requestAnimationFrame(tick);
+   };
+   video.play().then(tick).catch(()=>fail('Video konnte nicht gestartet werden. Bitte erneut antippen.'));
   });
-  if(!preview.size||preview.size>CREATOR_VIDEO_PREVIEW_LIMIT)throw Error('Videovorschau ist unvollständig.');
-  return {preview,poster:new File([poster],'video-poster.jpg',{type:'image/jpeg'}),duration:video.duration,width:canvas.width,height:canvas.height};
+  video.pause();if(!preview.size||frames.length<2)throw Error('Videovorschau ist unvollständig.');
+  // Reverse is encoded once, rather than repeated seeking/negative playbackRate
+  // on every customer's phone. At most 35 bounded frames are held in memory.
+  const sequence=[...frames,...frames.slice(1,-1).reverse()],fps=24;
+  smallContext.putImageData(sequence[0],0,0);const loopStream=small.captureStream(fps);streams.push(loopStream);
+  const boomerang=await record(loopStream,3000000,stop=>{
+   const started=performance.now();let shown=-1;
+   const tick=()=>{const index=Math.floor((performance.now()-started)*fps/1000);if(index>=sequence.length){stop();return;}if(index!==shown){smallContext.putImageData(sequence[index],0,0);shown=index;}frame=requestAnimationFrame(tick);};tick();
+  });
+  return {preview,boomerang,poster:new File([poster],'video-poster.jpg',{type:'image/jpeg'}),duration:video.duration,width:canvas.width,height:canvas.height};
  }finally{
-  clearTimeout(timer);cancelAnimationFrame(frame);if(onVisibility)document.removeEventListener('visibilitychange',onVisibility);
-  if(recorder?.state&&recorder.state!=='inactive'){recorder.onstop=null;recorder.stop();}
-  stream?.getTracks().forEach(track=>track.stop());video.pause();video.removeAttribute('src');video.load();video.remove();URL.revokeObjectURL(url);
+  cleanupRecorder();for(const stream of streams)stream.getTracks().forEach(track=>track.stop());destination.stream.getTracks().forEach(track=>track.stop());source.disconnect();frames.length=0;video.pause();video.removeAttribute('src');video.load();video.remove();URL.revokeObjectURL(url);
  }
 }

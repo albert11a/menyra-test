@@ -1,9 +1,9 @@
 import {auth} from '/shared/firebase-config.js';
 import {BUNNY_EDGE_BASE, MEDIA_TICKET_ENDPOINT} from '../../shared/bunny-edge.js';
-import {creatorVariants,creatorMediaUrl} from '../../shared/creator-media.js';
+import {creatorVariants,creatorMediaUrl,creatorVideoMediaUrl} from '../../shared/creator-media.js';
 
-// The existing MNYRA image endpoint is already deployed. No capability endpoint,
-// feature flag, Worker update, private bucket or new credentials are required.
+// Photos and video derivatives share the existing /image/upload route,
+// owner ticket, MEDIA_BUCKET and /media/social CDN addresses.
 export async function creatorCdnEnabled() { return true; }
 async function ticket() {
   const user = auth.currentUser;
@@ -16,18 +16,21 @@ async function ticket() {
   if (!response.ok || !result.ticket) throw Error('Cloudflare-Upload konnte nicht freigegeben werden.');
   return {token:result.ticket,uid:user.uid};
 }
+// One upload implementation for photos, posters and correctly typed videos.
+async function uploadCreatorFile(access,blob,name,{video=false}={}){
+  const form=new FormData();form.set('restaurantId',access.uid);form.set('file',blob,name);
+  const response=await fetch(`${BUNNY_EDGE_BASE}/image/upload`,{
+    method:'POST',headers:{Authorization:`Bearer ${access.token}`},body:form,signal:AbortSignal.timeout(120000)
+  });
+  const result=await response.json();
+  if(video&&result.error==='image required')throw Error('Der bestehende Foto-Upload muss noch für Videos freigeschaltet werden. Kein neuer Worker nötig.');
+  const url=(video?creatorVideoMediaUrl:creatorMediaUrl)(result.cdnUrl||result.url);
+  if(!response.ok||!url)throw Error(result.error||'Cloudflare-Upload unvollständig. Bitte wiederholen.');
+  return url;
+}
 export async function uploadCreatorMedia(pageId,imageId,file,displays,{free=false,hero=false}={}) {
   const access=await ticket(),mode=free||hero?'clean':'marked',media={mode,bytes:file.size};
-  async function upload(blob,name){
-    const form=new FormData();form.set('restaurantId',access.uid);form.set('file',blob,name);
-    const response=await fetch(`${BUNNY_EDGE_BASE}/image/upload`,{
-      method:'POST',headers:{Authorization:`Bearer ${access.token}`},body:form,signal:AbortSignal.timeout(120000)
-    });
-    const result=await response.json();
-    const url=creatorMediaUrl(result.cdnUrl||result.url);
-    if(!response.ok||!url)throw Error(result.error||'Cloudflare-Upload unvollständig. Bitte wiederholen.');
-    return url;
-  }
+  const upload=(blob,name)=>uploadCreatorFile(access,blob,name);
   // Only the selected public variant leaves the browser. In particular a paid
   // package never uploads its clean derivatives or original to public R2.
   await Promise.all(['thumb','medium','large'].map(async size=>{
@@ -42,4 +45,13 @@ export async function uploadCreatorMedia(pageId,imageId,file,displays,{free=fals
     try{media.download=await upload(file,file.name||'photo.jpg');}catch{}
   }
   return {media};
+}
+
+// Public paid videos are baked-watermark derivatives, never clean originals.
+export async function uploadCreatorVideo(prepared) {
+  const access=await ticket(),result={};
+  for(const [name,blob] of [['video',prepared.preview],['boomerang',prepared.boomerang]]){
+    result[name]=await uploadCreatorFile(access,blob,`${name}.${blob.type==='video/webm'?'webm':'mp4'}`,{video:true});
+  }
+  return result;
 }

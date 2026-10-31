@@ -271,13 +271,14 @@ test('A committed order with a lost response is recovered without a second purch
  assert.equal(ctx.root.querySelector('[data-faq="video"]').hasAttribute('open'),true);
 });
 
-test('Video viewer has a single muted loop per slide and retains the playing node on cart updates',async()=>{
+test('Video viewer has a single audible full video per slide and retains the playing node on cart updates',async()=>{
  const ctx=await setup(true,1400,{mediaTypes:{one:'video'}});
  await ctx.click('[data-shop="view"][data-index="0"]');
  const video=ctx.root.querySelector('.shop-viewer-slide video');assert.ok(video);
  assert.equal(ctx.root.querySelector('.shop-viewer-slide').querySelectorAll('video').length,1);
  await ctx.click('.shop-viewer [data-shop="add"]');
  assert.equal(ctx.root.querySelector('.shop-viewer-slide video'),video);
- assert.ok(video.hasAttribute('muted')&&video.hasAttribute('loop')&&!video.hasAttribute('controls'));
+ assert.ok(!video.hasAttribute('muted')&&!video.hasAttribute('loop')&&video.hasAttribute('controls'));
+ assert.ok(video.hasAttribute('data-video-viewer'));
  const event=new ctx.window.Event('contextmenu',{bubbles:true,cancelable:true});video.dispatchEvent(event);assert.equal(event.defaultPrevented,true);
 });

@@ -113,7 +113,7 @@ test('Package cards share one two-column grid while the business heading stays o
  const grid=document.querySelector('.cc-package-grid');
  assert.equal(grid.children.length,2);assert.ok([...grid.children].every(node=>node.matches('.cc-package-card')));
  assert.equal(grid.querySelector('.cc-business-name'),null);
- assert.equal(grid.querySelector('.cc-package-price>span').textContent,'1 Bild');
+ assert.equal(grid.querySelector('.cc-package-price>span').textContent,'1 Datei');
  assert.deepEqual([...document.querySelector('.cc-business-name').querySelectorAll('h2')].map(node=>node.textContent),['Cafe']);
 });
 
