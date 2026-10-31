@@ -62,12 +62,11 @@ export function creatorIntroduction(page, photo) {
   const files=creatorHeroFiles(page);
   return `<section class="shop-introduction">
     ${files.length?`<div class="shop-hero-gallery" aria-label="Shembuj te punes sone" aria-roledescription="carousel"><div class="shop-hero-track" data-hero-track data-format="${creatorHeroFormat(page)}">${files.map((id,i)=>`<div class="shop-hero-slide">${photo(id,`Foto per ${page.name} · ${i+1}`,{size:'medium',hero:true,active:i===0,eager:i===0})}</div>`).join('')}</div>${files.length>1?`<div class="shop-hero-controls"><div class="shop-hero-dots">${files.map((_,i)=>`<button type="button" data-shop="hero-dot" data-index="${i}" aria-label="Foto e prezantimit ${i+1}" aria-pressed="${i===0}"></button>`).join('')}</div><button type="button" data-shop="hero-toggle" aria-label="Ndalo nderrimin automatik">${creatorIcon('pause')}</button></div>`:''}</div>`:''}
-    <div class="shop-intro-copy"><span class="shop-studio-tag">mnyra <span aria-hidden="true">×</span> ${esc(page.name)}</span><h1>Biznesi yt meriton<br>me u pa.</h1>
-    <p>Ti kujdesesh per biznesin. Por nuk eshte lehte me gjet kohe edhe per foto, postime e mesazhe.</p>
-    <p>Sot, shume njerez te shohin ne telefon para se me ble ose me te vizitu. Shikojne fotot, produktet dhe cka thone klientet. Aty krijohet pershtypja e pare.</p>
-    <p>Ne krijojme foto e video qe tregojne bukur ate qe ofron. Per dyqanin, restorantin, kafene, butiken apo produktet qe shet online.</p>
-    <p class="shop-intro-close">Andaj, ju kemi pergatitur disa foto falas. Te tjerat jane me pagese, me cmim te arsyeshem. Merrni sot, paguani me 1 te muajit te ardhshem.</p>
-    <a class="shop-details-link" href="#shop-faq">Me poshte i gjeni te gjitha detajet ${creatorIcon('arrow-right')}</a></div>
+    <div class="shop-intro-copy"><span class="shop-studio-tag"><span class="studio-mark">mnyra<span>•</span></span><span class="studio-cross">×</span> ${esc(page.name)}</span>
+    <h1>Biznesi yt meriton<br>me u pa<span class="headline-dot">.</span></h1>
+    <p>Ne krijojmë foto dhe video që e prezantojnë bukur biznesin tuaj. Zgjidhni fotot që ju pëlqejnë dhe përdorini menjëherë pas porosisë.</p>
+    <div class="intro-benefits"><div>${creatorIcon('save')}<span><b>Fotot i merrni menjëherë</b><small>Pa shenjën MNYRA PREVIEW</small></span></div><div>${creatorIcon('shopping-bag')}<span><b>Pagesa bëhet cash</b><small>Te korrieri, 2–3 ditë pas porosisë</small></span></div></div>
+    <a class="shop-details-link" href="#shop-faq">Si funksionon porosia ${creatorIcon('arrow-right')}</a></div>
   </section>`;
 }
 export function renderCreatorCatalog(page, {ids=[], positions={}, offerButton, photo} = {}) {
@@ -84,16 +83,16 @@ export function renderCreatorCatalog(page, {ids=[], positions={}, offerButton, p
     }).join('')}</div></section>`).join('')}`;
 }
 export function creatorHowTo(page) {
-  return `<section class="shop-how" id="shop-faq" aria-labelledby="shop-faq-title"><div class="shop-how-heading"><span class="shop-studio-tag">Gjithçka që duhet të dini</span><h2 id="shop-faq-title">Pyetje të shpeshta</h2></div>
-    <details data-faq="how"><summary>Si funksionon? ${creatorIcon('chevron-right')}</summary><div class="shop-how-steps">
-      <article><span>${creatorIcon('images')}</span><div><h3>Zgjidhni fotot</h3><p>Shikoni fotot dhe zgjidhni pakot që dëshironi të postoni në Instagram, Facebook apo rrjete të tjera sociale.</p></div><b>01</b></article>
-      <article><span>${creatorIcon('shopping-bag')}</span><div><h3>Konfirmoni blerjen</h3><p>Shtoni pakot në shportë dhe plotësoni të dhënat e lokalit. Pas porosisë, ruajini fotot në telefon dhe përdorini menjëherë. Fotot falas i ruani pa porosi.</p></div><b>02</b></article>
-      <article><span>${creatorIcon('calendar')}</span><div><h3>Paguani në fillim të muajit</h3><p>Më 1 të muajit të ardhshëm vijmë te lokali juaj për pagesën e fotove të blera. Thjesht, lehtë dhe pa pagesë sot.</p></div><b>03</b></article></div></details>
-    <details data-faq="custom"><summary>Foto sipas dëshirës suaj ${creatorIcon('chevron-right')}</summary><p>Keni një ide, një produkt të ri apo një ofertë për të prezantuar? Na tregoni çfarë dëshironi: produktin, stilin, ngjyrat dhe ku do ta përdorni foton. Mund të na dërgoni edhe një shembull. Së bashku i sqarojmë detajet dhe çmimin para se të fillojmë.</p></details>
-    <details data-faq="video"><summary>A krijoni edhe video? ${creatorIcon('chevron-right')}</summary><p>Po, krijojmë edhe video për produktet, lokalin dhe ofertat tuaja, përfshirë Reels dhe Stories. Na shkruani në çdo kohë aty ku ju dërguam këtë link. Na tregoni idenë tuaj dhe ne ju shpjegojmë mundësitë dhe çmimin.</p></details>
-    <details data-faq="free"><summary>A janë vërtet falas? ${creatorIcon('chevron-right')}</summary><p>Po. Pakot e shënuara “Falas” janë dhuratë për ${esc(page.name)}. Ruajini dhe postojini pa pagesë dhe pa detyrim për të blerë foto të tjera. Çmimi i çdo pakoje tjetër shfaqet para porosisë.</p></details>
-  </section>
-  <section class="answer shop-answer" aria-labelledby="shop-answer-title"><h2 id="shop-answer-title">A dëshironi të krijojmë më shumë foto për biznesin tuaj?</h2><div class="answer-content" aria-live="polite"><p>Na ndihmoni të kuptojmë çfarë ju intereson. Pa asnjë detyrim.</p><div class="answers"><button type="button" data-answer="yes">Po, më intereson</button><button type="button" data-answer="no">Jo, faleminderit</button></div><p id="answer-error" role="alert"></p></div></section>`;
+ return `<section class="shop-how" id="shop-faq" aria-labelledby="shop-faq-title"><div class="shop-how-heading"><span class="shop-studio-tag">THJESHT DHE QARTË</span><h2 id="shop-faq-title">Pyetje të shpeshta<span>.</span></h2><p>Përgjigjet që ju duhen, në një vend.</p></div>
+ <details data-faq="how" open><summary><span><i>01</i>Si funksionon?</span>${creatorIcon('chevron-right')}</summary><div class="shop-how-steps">
+ <article><span>1</span><div><h3>Shtoni fotot në shportë</h3><p>Zgjidhni fotot që dëshironi dhe shtypni “Shto në shportë”. Pastaj vazhdoni te porosia.</p></div></article>
+ <article><span>2</span><div><h3>Plotësoni të dhënat</h3><p>Shkruani emrin, adresën dhe numrin e telefonit. Pastaj konfirmoni porosinë.</p></div></article>
+ <article><span>3</span><div><h3>Shkarkoni fotot menjëherë</h3><p>Pas porosisë, fotot i gjeni te “Blerjet tuaja”. Shkarkojini pa shenjën MNYRA PREVIEW dhe përdorini menjëherë.</p></div></article></div>
+ <div class="faq-payment">${creatorIcon('calendar')}<p><strong>Paguani cash te korrieri</strong><span>Korrieri ynë vjen për pagesën 2–3 ditë pas porosisë.</span></p></div></details>
+ <details data-faq="custom"><summary><span><i>02</i>Foto sipas dëshirës suaj</span>${creatorIcon('chevron-right')}</summary><p>Keni një ide, një produkt të ri apo një ofertë për të prezantuar? Na tregoni çfarë dëshironi: produktin, stilin, ngjyrat dhe ku do ta përdorni foton. Mund të na dërgoni edhe një shembull. Së bashku i sqarojmë detajet dhe çmimin para se të fillojmë.</p></details>
+ <details data-faq="video"><summary><span><i>03</i>A krijoni edhe video?</span>${creatorIcon('chevron-right')}</summary><p>Po, krijojmë edhe video për produktet, lokalin dhe ofertat tuaja, përfshirë Reels dhe Stories. Na shkruani në çdo kohë aty ku ju dërguam këtë link. Na tregoni idenë tuaj dhe ne ju shpjegojmë mundësitë dhe çmimin.</p></details>
+ <details data-faq="payment"><summary><span><i>04</i>Si bëhet pagesa?</span>${creatorIcon('chevron-right')}</summary><p>Pagesa bëhet cash te korrieri ynë, 2–3 ditë pas porosisë. Fotot mund t’i shkarkoni dhe t’i përdorni menjëherë pas porosisë.</p></details></section>
+ <section class="answer shop-answer" aria-labelledby="shop-answer-title"><span class="answer-eyebrow">KRIJUAR PËR JU</span><h2 id="shop-answer-title">Dëshironi më shumë foto?</h2><div class="answer-content" aria-live="polite"><p>Na tregoni. Pa asnjë detyrim.</p><div class="answers"><button type="button" data-answer="yes">Po, më intereson ${creatorIcon('arrow-up-right')}</button><button type="button" data-answer="no">Jo, faleminderit</button></div><p id="answer-error" role="alert"></p></div></section>`;
 }
 export function creatorFooter(page) {
   return `<footer class="shop-footer"><a class="shop-logo" href="/" aria-label="MNYRA">MNYRA<span class="shop-logo-dot"></span></a><p>Biznesi yt meriton me u pa.</p><div><span>Krijuar për ${esc(page.name)}</span><a href="#shop-faq">Pyetje të shpeshta ${creatorIcon('arrow-up-right')}</a></div></footer>`;
