@@ -3,6 +3,13 @@ import {ccEscape as esc,ccImage} from '../../shared/content-creator.js';
 import {euro,shopQuote,validShopId} from '../../shared/content-creator-shop.js';
 import {creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,renderCreatorCatalog,creatorHowTo,creatorFooter} from '../../shared/content-creator-view.js';
 export async function mountCreatorShop({root,page,still=false,track=async()=>{}}){
+ // Block native image-save/drag actions on paid previews, including new viewer nodes.
+ // Do not cancel touch/pointer gestures: scrolling, swiping and zoom stay native.
+ for(const name of ['contextmenu','dragstart'])root.addEventListener(name,event=>{
+  const target=event.target;
+  const protectedImage=target.closest?.('[data-protected-preview]')||target.closest?.('.shop-slide,.shop-viewer-slide,.shop-hero-slide')?.querySelector('[data-protected-preview]');
+  if(protectedImage)event.preventDefault();
+ });
  const visitorId=still?'':creatorVisitorId(page.id);
  const activity=(event,data={})=>{if(!still)void track(event,{stage:panel==='checkout'?'checkout':panel==='cart'?'cart':'page',cartId,...data}).catch(()=>{});};
  const storageKey=`mnyra:cc:shop:${page.id}${still?':still':''}`;

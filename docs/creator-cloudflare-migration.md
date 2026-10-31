@@ -14,10 +14,16 @@ feature activation, additional credential or Cloudflare dashboard step.
 Paid clean originals remain byte-for-byte in the existing CEO-only Firestore
 originals/chunks collection. Their existing order/payment check is unchanged.
 Only watermarked derivatives of paid photos are uploaded to public R2.
-The approved `MNYRA · PREVIEW` watermark uses 35% white opacity (2026-10-31).
+The approved `MNYRA · PREVIEW` watermark uses 45% white opacity (2026-10-31).
 Text size, spacing, angle and the original-download protection are unchanged.
 Existing baked previews retain their previous opacity until the page's
 `Vorschauen aktualisieren` action regenerates them from the protected originals.
+Paid preview images in cards, the large viewer and legacy hero slides suppress
+the native image callout, context menu and dragging. A transparent hit surface
+keeps the image out of long-press hit testing without cancelling swipe/zoom.
+Free images, independent title images and explicit original-save actions retain
+their existing behavior. This deters casual saving; it is not DRM and cannot
+prevent screenshots or retrieval of public watermarked image URLs.
 Free originals up to the existing 15 MB image-upload limit can additionally be
 uploaded publicly for faster saves; if that optional upload fails, or the file
 is larger, its existing protected download path remains available.

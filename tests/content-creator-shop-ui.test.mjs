@@ -28,6 +28,32 @@ async function setup(still=false,price=2900,options={}){
  await settle();
  return {root,docs,calls,zipFiles,click,checkout,submit,document,window,settle};
 }
+test('Paid preview cards and viewer block native saving while free photos and checkout remain usable',async()=>{
+ const paid=await setup();
+ for(const type of ['contextmenu','dragstart']){
+  const event=new paid.window.Event(type,{bubbles:true,cancelable:true});
+  paid.root.querySelector('.shop-slide img').dispatchEvent(event);assert.equal(event.defaultPrevented,true);
+  const surface=new paid.window.Event(type,{bubbles:true,cancelable:true});
+  paid.root.querySelector('.shop-slide').dispatchEvent(surface);assert.equal(surface.defaultPrevented,true);
+ }
+ const swipe=new paid.window.Event('pointerdown',{bubbles:true,cancelable:true});
+ paid.root.querySelector('.shop-slide').dispatchEvent(swipe);assert.equal(swipe.defaultPrevented,false);
+ await paid.click('[data-shop="view"]');
+ const viewerEvent=new paid.window.Event('contextmenu',{bubbles:true,cancelable:true});
+ paid.root.querySelector('.shop-viewer-slide').dispatchEvent(viewerEvent);assert.equal(viewerEvent.defaultPrevented,true);
+ await paid.click('[data-shop="viewer-close"]');await paid.click('[data-shop="add"]');await paid.checkout();
+ const fieldEvent=new paid.window.Event('contextmenu',{bubbles:true,cancelable:true});
+ paid.root.querySelector('[name="name"]').dispatchEvent(fieldEvent);assert.equal(fieldEvent.defaultPrevented,false);
+ const free=await setup(false,0);assert.equal(free.root.querySelector('[data-protected-preview]'),null);
+ const freeEvent=new free.window.Event('contextmenu',{bubbles:true,cancelable:true});
+ free.root.querySelector('.shop-slide img').dispatchEvent(freeEvent);assert.equal(freeEvent.defaultPrevented,false);
+});
+test('A photo shared with a free package and promotional images stay saveable',()=>{
+ const page={id:pageId,kind:'shop',photoIds:['one'],products:[{active:true,priceCents:1500,imageIds:['one']},{active:true,priceCents:0,imageIds:['one']}]};
+ assert.doesNotMatch(creatorPhoto(page,'one','Free'),/data-protected-preview/);
+ page.products.pop();assert.match(creatorPhoto(page,'one','Paid'),/data-protected-preview/);
+ page.kind='promo';assert.doesNotMatch(creatorPhoto(page,'one','Promo'),/data-protected-preview/);
+});
 test('Shop bündelt vier Fotos und gibt Originale vor der monatlichen Zahlung frei',async()=>{
  const ctx=await setup();assert.equal(ctx.root.querySelectorAll('.shop-product').length,1);assert.equal(ctx.root.querySelectorAll('.shop-slide').length,4);assert.equal(ctx.root.querySelectorAll('.shop-dots button').length,4);
  await ctx.click('[data-shop="add"]');assert.equal(ctx.calls[0].op,'cart');assert.deepEqual(ctx.calls[0].ids,['pack']);

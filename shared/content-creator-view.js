@@ -44,9 +44,11 @@ export function creatorOfferButton(product, {busy = '', selected = false} = {}) 
 }
 export function creatorPhoto(page, id, alt, {src, size='thumb', eager=false, active=true, hero=false} = {}) {
   const url = (active ? src : undefined) || creatorImageUrl(page,id,size);
+  const products=(page.products||[]).filter(product=>product.active!==false&&product.imageIds?.includes(id));
+  const protectedPreview=page.kind==='shop'&&products.some(product=>product.priceCents>0)&&!products.some(product=>product.priceCents===0)&&!creatorHeroImages(page).some(image=>image.id===id);
   const candidates=hero?`${creatorImageUrl(page,id,'medium')} 1080w, ${creatorImageUrl(page,id,'large')} 1600w`:'';
   const responsive=hero?` ${active?'srcset':'data-deferred-srcset'}="${esc(candidates)}" sizes="(min-width: 480px) 440px, calc(100vw - 40px)" data-hero-image style="${creatorHeroCropStyle(creatorHeroCrop(page,id))}"`:'';
-  return `<img ${active?`src="${esc(url)}"`:`data-deferred-src="${esc(url)}"`}${responsive} data-photo="${esc(id)}" data-size="${size}" data-alt="${esc(alt)}" alt="${esc(alt)}" width="360" height="450" decoding="async" loading="${eager?'eager':'lazy'}" fetchpriority="${eager?'high':'auto'}" draggable="false">`;
+  return `<img ${protectedPreview?'data-protected-preview ':''}${active?`src="${esc(url)}"`:`data-deferred-src="${esc(url)}"`}${responsive} data-photo="${esc(id)}" data-size="${size}" data-alt="${esc(alt)}" alt="${esc(alt)}" width="360" height="450" decoding="async" loading="${eager?'eager':'lazy'}" fetchpriority="${eager?'high':'auto'}" draggable="false">`;
 }
 export function creatorHeroFiles(page) {
   const independent=creatorHeroImages(page);
