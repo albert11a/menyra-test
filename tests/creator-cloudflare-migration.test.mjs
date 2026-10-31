@@ -51,3 +51,17 @@ test('A failed upload never replaces a manifest or changes the protected origina
  await assert.rejects(ctx.api.saveCreatorCdnAsset(pageId,'two',new File(['original'],'two.jpg',{type:'image/jpeg'})),/interrupted/);
  assert.deepEqual(ctx.docs.get(`contentCreatorPages/${pageId}`),before);assert.deepEqual(ctx.docs.get(`contentCreatorPages/${pageId}/originals/two`),originalBefore);
 });
+
+
+test('a converted promo keeps unassigned photos without requiring shop originals',async()=>{
+ const ctx=setup();
+ const path=`contentCreatorPages/${pageId}`;
+ const page=ctx.docs.get(path);page.products=[];
+ for(const id of page.photoIds){ctx.docs.delete(`${path}/originals/${id}`);ctx.docs.delete(`${path}/originals/${id}/chunks/000`);}
+ await ctx.api.migrateCreatorPage(pageId);
+ assert.deepEqual(ctx.uploads,[]);
+ assert.deepEqual(ctx.docs.get(path).photoIds,['one','two']);
+ assert.equal(ctx.docs.get(path).kind,'shop');
+ assert.equal(ctx.docs.get(`${path}/images/one`).data,'data:image/jpeg;base64,bGVnYWN5');
+ assert.equal(ctx.docs.get(path).cdnMigrationVersion,1);
+});

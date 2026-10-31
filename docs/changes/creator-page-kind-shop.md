@@ -17,3 +17,19 @@ Pruefung: `node --test tests/*creator*.test.mjs` 141 bestanden;
 im grossen Controller). Kein Playwright-/Smoke-Lauf, mobile Darstellung
 noch nicht geprueft. Die Datenumstellung erfolgt nach Bereitstellung ueber
 die CEO-Sitzung im normalen Heart-UI und wird dort je Seite verifiziert.
+
+
+Bei der ersten Live-Umstellung zeigte die bestehende Bildmigration einen
+fehlenden Originalbestand fuer alte, keinem Paket zugeordnete Vorschaubilder.
+Die Migration und ihre Vollstaendigkeitspruefung beruecksichtigen deshalb bei
+Shops nur aktive Paketbilder. Alte Vorschaubilder bleiben gespeichert, werden
+nicht automatisch als Produkte verkauft und brauchen keine Shop-Originale.
+Ein Regressionstest deckt genau diesen Bestand ab.
+
+Live-Daten: Peshku i pite und La maison bistro wurden ueber die vom Inhaber
+angemeldete CEO-Sitzung auf Shop umgestellt. Heart hat fuer beide die Seitenart
+Shop angezeigt. Beide Eintraege behalten ihre vier gespeicherten Bilder und
+dieselben Links; keine Pakete oder Preise wurden erfunden.
+Finale lokale Pruefung inklusive Bildmigrationskorrektur: 142 Creator-Tests
+bestanden, Build und diff-check erfolgreich, keine getrackten Bundle-Aenderungen.
+Die Live-Pruefung war am Desktop; mobile Darstellung wurde nicht geprueft.

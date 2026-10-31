@@ -129,7 +129,8 @@ export function migrateCreatorPage(pageId,onProgress=()=>{}){
   const pageRef=doc(db,CC_PAGES,pageId),snapshot=await getDoc(pageRef),page=snapshot.data();
   if(!page)return false;
   const current=creatorPublicMedia(page);
-  const ids=[...new Set(page.photoIds||[])];
+  // Preserved promo photos are not shop products and need no private originals.
+  const ids=[...new Set(page.photoIds||[])].filter(id=>page.kind!=='shop'||(page.products||[]).some(product=>product.active!==false&&product.imageIds?.includes(id)));
   let done=0;
   for(const imageId of ids){
    if(imageId.startsWith('hero_')||!page.photoIds?.includes(imageId)||current[imageId]){onProgress(++done,ids.length);continue;}

@@ -67,7 +67,8 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         if(busy||mediaBusy)break;
         const signature=`${page.id}:${JSON.stringify([page.photoIds,page.products])}`;
         if(migrationAttempts.has(signature))continue;
-        if(page.cdnMigrationVersion===1&&(page.photoIds||[]).every(id=>creatorPublicMedia(page)[id]))continue;
+        const migrationIds=(page.photoIds||[]).filter(id=>page.kind!=='shop'||(page.products||[]).some(product=>product.active!==false&&product.imageIds?.includes(id)));
+        if(page.cdnMigrationVersion===1&&migrationIds.every(id=>creatorPublicMedia(page)[id]))continue;
         migrationAttempts.add(signature);
         patch({migrationProgress:`${page.name}: bestehende Fotos werden zu Cloudflare übernommen …`,migrationError:''});
         try{await migrateCreatorPage(page.id,(done,total)=>patch({migrationProgress:`${page.name}: ${done} / ${total} Fotos übernommen`}));}
