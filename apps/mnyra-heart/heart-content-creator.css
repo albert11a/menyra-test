@@ -142,3 +142,20 @@
 @media(max-width:360px){.cc-card{padding:19px 16px 22px}.cc-metrics,.cc-package-card{padding:0}.cc-metric{padding:22px 16px}.cc-metric .cc-metric-label{letter-spacing:.6px}.cc-businesses{padding:16px}.cc-business-name{padding:17px 18px}.cc-link-actions{padding-left:0}}
 
 .cc-workspace .cc-metrics>.cc-metrics-grid{padding:0;border:0}
+
+/* Two equal package cards at phone widths; images fill the entire card edge. */
+.cc-package-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start;min-width:0}
+.cc-package-grid>.cc-package-card{min-width:0;width:100%;box-sizing:border-box;padding:0}
+.cc-package-grid .cc-package-stage{aspect-ratio:4/5;overflow:hidden}
+.cc-package-grid .cc-package-gallery{width:100%;height:100%;margin:0;padding:0}
+.cc-package-grid .cc-package-slide{height:100%;aspect-ratio:auto}
+.cc-package-grid .cc-package-slide img{width:100%;height:100%;display:block;object-fit:cover;border-radius:0}
+.cc-package-grid .cc-package-price{padding:12px 10px 10px;gap:5px;min-height:40px;box-sizing:border-box;align-items:center}
+.cc-package-grid .cc-package-price button,.cc-package-grid .cc-package-price>span{font-size:11px;line-height:16px;white-space:nowrap}
+.cc-package-grid .cc-package-editor{padding:0 10px 12px}
+.cc-package-grid .cc-package-edit-button{min-height:34px;font-size:11px;gap:5px}
+.cc-package-grid .cc-package-prev,.cc-package-grid .cc-package-next{width:28px;height:28px}
+.cc-package-grid .cc-package-prev{left:6px}.cc-package-grid .cc-package-next{right:6px}
+.cc-package-grid .cc-package-position{bottom:8px;padding:2px 5px}
+.cc-package-grid>.cc-package-card:has(.cc-package-editor[open]){grid-column:1/-1}
+.cc-package-grid>.cc-package-card:has(.cc-package-editor[open]) .cc-package-stage{aspect-ratio:4/3}

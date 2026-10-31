@@ -237,9 +237,9 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         if((page.photoIds?.length || 0)+files.length>30)throw new Error("Maximal 30 Bilder pro Seite.");
         const keys=[];
         for(const file of files){const key=crypto.randomUUID().replaceAll("-","");await savePromoAsset(id,key,file,await prepareImage(file));keys.push(key);}
-        await updateDoc(pageRef,{photoIds:[...(page.photoIds || []),...keys],...(!page.published?{published:true,workflow:"ready"}:{}),updatedAt:serverTimestamp()});
+        await updateDoc(pageRef,{photoIds:[...(page.photoIds || []),...keys],...(!page.published?{published:true}:{}),updatedAt:serverTimestamp()});
         const state=store.getState().contentCreator;
-        patch({pages:state.pages.map(p=>p.id===id?{...p,photoIds:[...(page.photoIds || []),...keys],...(!page.published?{published:true,workflow:"ready"}:{})}:p),...(!page.published?{filter:"ready"}:{})});
+        patch({pages:state.pages.map(p=>p.id===id?{...p,photoIds:[...(page.photoIds || []),...keys],...(!page.published?{published:true}:{})}:p),...(!page.published?{filter:"working"}:{})});
         await detail(id);
       });return;
     }
@@ -279,9 +279,9 @@ export function createContentCreator({root, store, prepareImage = prepareContent
           await (saveAsset||saveShopAsset)(id,key,file,data,{free:cents===0});keys.push(key);
         }
         const product={id:crypto.randomUUID().replaceAll('-',''),title,priceCents:cents,imageIds:keys,active:true};
-        const updated={photoIds:[...(page.photoIds||[]),...keys],products:[...(page.products||[]),product],...(!page.published?{published:true,workflow:'ready'}:{})};
+        const updated={photoIds:[...(page.photoIds||[]),...keys],products:[...(page.products||[]),product],...(!page.published?{published:true}:{})};
         await updateDoc(pageRef,{...updated,updatedAt:serverTimestamp()});
-        patch({newPackage:false,pages:store.getState().contentCreator.pages.map(p=>p.id===id?{...p,...updated}:p),...(!page.published?{filter:"ready"}:{})});await detail(id);
+        patch({newPackage:false,pages:store.getState().contentCreator.pages.map(p=>p.id===id?{...p,...updated}:p),...(!page.published?{filter:"working"}:{})});await detail(id);
       });return;
     }
     if(event.target.id!=="cc-create-form")return;
@@ -308,13 +308,13 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         }else {await savePromoAsset(pendingId,imageId,photoFiles[i],data);await updateDoc(doc(page,'images',imageId),{caption:String(captions[i] || '').slice(0,1000)});}
         photoIds.push(imageId);
       }
-      const completed={kind,name:draftName.trim(),avatar,createdMs,...(kind==='shop'?{products:product?[{...product,imageIds:photoIds}]:[]}:{}),photoIds,published:photoIds.length>0,workflow:photoIds.length?'ready':'working'};
+      const completed={kind,name:draftName.trim(),avatar,createdMs,...(kind==='shop'?{products:product?[{...product,imageIds:photoIds}]:[]}:{}),photoIds,published:photoIds.length>0,workflow:'working'};
       const batch=writeBatch(db);batch.update(page,{...completed,updatedAt:serverTimestamp()});await batch.commit();
       const completedId=pendingId;
       const pages=store.getState().contentCreator.pages||[];
       patch({pages:[...pages.filter(p=>p.id!==completedId),{id:completedId,...completed}],images:{}});
       pendingId="";photoFiles=[];avatarFile=null;draftAvatar="";draftName="";
-      patch({editor:false,saving:false,selectedId:photoIds.length?"":completedId,filter:photoIds.length?"ready":"working"});notice(photoIds.length?"Seite erstellt. Der Link ist bereit.":"Betrieb erstellt. Fotos und Pakete kannst du jetzt oder später hinzufügen.");
+      patch({editor:false,saving:false,selectedId:photoIds.length?"":completedId,filter:"working"});notice(photoIds.length?"Business erstellt. Unter Working fertigstellen und anschließend auf Ready setzen.":"Betrieb erstellt. Fotos und Pakete kannst du jetzt oder später hinzufügen.");
     } catch(error){patch({saving:false,editorError:`Nicht abgeschlossen: ${error.message}. Du kannst es erneut versuchen.`});}
     finally{busy=false;}
   });
@@ -471,7 +471,13 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         }
       });
       if(action==="copy") {await navigator.clipboard.writeText(contentLink(id));notice("Link kopiert.");}
-      if(action==="sent") {await updateDoc(doc(db,CC_PAGES,id),{workflow:"sent",sentAt:serverTimestamp()});patch({pages:store.getState().contentCreator.pages.map(page=>page.id===id?{...page,workflow:"sent"}:page)});notice("Als verschickt markiert.");}
+      if(action==="sent") {
+        const ref=doc(db,CC_PAGES,id),snapshot=await getDoc(ref),page=snapshot.data();
+        if(!page)throw Error('Business wurde nicht gefunden.');
+        const workflow=['ready','sent'].includes(page.workflow)?'sent':page.workflow||'working';
+        await updateDoc(ref,{workflow,sentAt:serverTimestamp()});
+        patch({pages:store.getState().contentCreator.pages.map(item=>item.id===id?{...item,workflow,sentAt:Date.now()}:item)});notice("Als verschickt markiert.");
+      }
       if(action==="resume" && !busy){const page=store.getState().contentCreator.pages.find(p=>p.id===id);if(!page)return;pendingId=id;createdMs=page.createdMs;draftName=page.name;draftAvatar=page.avatar;avatarFile=null;photoFiles=[];patch({editor:true,pageKind:page.kind||"promo",draftName,avatarName:"Profilbild gespeichert",photoNames:"Bitte Beispielbilder erneut auswählen.",editorError:""});}
     }catch(error){notice(`Nicht möglich: ${error.message}`);}
   });

@@ -59,7 +59,7 @@ ${creatorFollowupCard(state,page.id)}
 
 function renderLinks(row,state){
  const chip=(action,label,sign,extra='')=>`<button type="button" class="heart-lifeskin-chip" data-cc-action="${action}" data-id="${esc(row.id)}" ${extra}>${icon(sign)}<span>${label}</span></button>`;
- return `<div class="cc-link-actions heart-lifeskin-chips--shop">${row.published?chip('preview','Still preview','eye')+chip('still','Still copy','copy')+chip('copy','True copy','externalLink')+chip('sent','Sended','send',`aria-pressed="${row.workflow==='sent'}" ${state.mediaBusy?'disabled':''}`):row.photoIds?.length?chip('resume','Fertigstellen','edit'):''}</div>`;
+ return `<div class="cc-link-actions heart-lifeskin-chips--shop">${row.published?chip('preview','Still preview','eye')+chip('still','Still copy','copy')+chip('copy','True copy','externalLink')+chip('sent','Sended','send',`aria-pressed="${row.workflow==='sent'||!!row.sentAt}" ${state.mediaBusy?'disabled':''}`):row.photoIds?.length?chip('resume','Fertigstellen','edit'):''}</div>`;
 }
 function renderBusinesses(rows,selected,state){
  const filter=state.filter||'all';

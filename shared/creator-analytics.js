@@ -15,10 +15,11 @@ export function creatorInPeriod(value,period='today',now=Date.now(),date=''){
 export function creatorBusinessStatus(page,visits=[],orders=[]){
  if(page.workflow==='archived')return 'archived';
  if(orders.some(o=>o.pageId===page.id&&o.status!=='cancelled'))return 'customer';
+ if(!['ready','sent'].includes(page.workflow))return 'working';
  const viewed=visits.filter(v=>v.pageId===page.id&&v.opened);
  const latest=Math.max(0,...viewed.map(v=>creatorMs(v.updatedAt||v.createdAt)));
  if(page.workflow==='ready'&&creatorMs(page.workflowAt)>latest)return 'ready';
- if(viewed.length)return 'seen';return page.workflow==='working'?'working':'ready';
+ if(viewed.length)return 'seen';return 'ready';
 }
 export function creatorOverview(state={},now=Date.now()){
  const period=value=>creatorInPeriod(value,state.period||'today',now,state.date);

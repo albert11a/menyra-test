@@ -28,7 +28,8 @@ test('Vienna day boundaries, returning visitors, live expiry and totals share co
 test('Archive, real customers and explicit Ready transitions route businesses correctly',()=>{
  const page={id:pageId,workflow:'working'};assert.equal(creatorBusinessStatus(page),'working');
  const visits=[{pageId,opened:true,updatedAt:'2026-10-30T10:00:00Z'}];
- assert.equal(creatorBusinessStatus(page,visits),'seen');
+ assert.equal(creatorBusinessStatus(page,visits),'working');
+ assert.equal(creatorBusinessStatus({...page,workflow:'ready'},visits),'seen');
  assert.equal(creatorBusinessStatus({...page,workflow:'ready',workflowAt:'2026-10-31T10:00:00Z'},visits),'ready');
  assert.equal(creatorBusinessStatus(page,visits,[{pageId}]),'customer');
  assert.equal(creatorBusinessStatus({...page,workflow:'archived'},visits,[{pageId}]),'archived');
@@ -93,4 +94,23 @@ test('Package drafts remain intact through minimisation, live refresh and expans
  state.contentCreator.notice='Heartbeat';renderHeartApp(root,state,{});
  state.contentCreator.collapsedCards={'package-pack':false};renderHeartApp(root,state,{});
  assert.equal(root.querySelector('#cc-title-pack').value,'Draft survives');
+});
+
+test('Businesses stay Working until Ready, including missing workflows and real visits',()=>{
+ const visits=[{pageId,opened:true,scrolled:true,updatedAt:'2026-10-31T12:00:00Z'}];
+ for(const workflow of [undefined,'working','draft','unknown']){
+  const page={id:pageId,name:'Draft',published:true,workflow,photoIds:['one']};
+  assert.equal(creatorBusinessStatus(page,visits),'working');
+ }
+ assert.equal(creatorBusinessStatus({id:pageId,workflow:'ready',workflowAt:'2026-10-31T13:00:00Z'},visits),'ready');
+ assert.equal(creatorBusinessStatus({id:pageId,workflow:'sent'},visits),'seen');
+});
+test('Package cards share one two-column grid while the business heading stays outside it',()=>{
+ const {page}=fixture();page.photoIds=['one','two'];page.products.push({id:'second',title:'Second',imageIds:['two'],priceCents:350});
+ const {document}=parseHTML(renderContentCreator({pages:[page],selectedId:pageId,visits:[]}));
+ const grid=document.querySelector('.cc-package-grid');
+ assert.equal(grid.children.length,2);assert.ok([...grid.children].every(node=>node.matches('.cc-package-card')));
+ assert.equal(grid.querySelector('.cc-business-name'),null);
+ assert.equal(grid.querySelector('.cc-package-price>span').textContent,'1 Bild');
+ assert.deepEqual([...document.querySelector('.cc-business-name').querySelectorAll('h2')].map(node=>node.textContent),['Cafe']);
 });

@@ -32,7 +32,7 @@ test('Mehrfachupload veröffentlicht erst nach allen Bildschreibvorgängen',asyn
  assert.equal(ctx.writes.filter(w=>w.ref.includes('/images/')).length,2);
  assert.equal(ctx.writes[0].data.published,false);assert.equal(ctx.writes[0].data.workflow,'working');
  assert.equal(ctx.publications.length,1);assert.deepEqual(ctx.publications[0].data.photoIds,['000','001']);
- assert.equal(ctx.publications[0].data.published,true);assert.equal(ctx.publications[0].data.workflow,'ready');
+ assert.equal(ctx.publications[0].data.published,true);assert.equal(ctx.publications[0].data.workflow,'working');
  assert.equal(ctx.store.getState().contentCreator.editor,false);
 });
 test('Unterbrochener Upload bleibt privat und lässt sich mit derselben Seite wiederholen',async()=>{
@@ -63,7 +63,7 @@ test('Betrieb ohne Fotos, Logo oder Paketpreis erstellen und erstes Paket späte
  form.dispatchEvent(new ctx.window.Event('submit',{bubbles:true,cancelable:true}));
  for(let i=0;i<30;i++)await new Promise(r=>setImmediate(r));
  const saved=ctx.docs.get('contentCreatorPages/'+page.id);
- assert.equal(saved.published,true);assert.equal(saved.workflow,'ready');assert.equal(saved.products[0].priceCents,0);
+ assert.equal(saved.published,true);assert.equal(saved.workflow,'working');assert.equal(saved.products[0].priceCents,0);
  assert.equal(saved.photoIds.length,1);assert.equal(ctx.assets.length,1);assert.equal(ctx.store.getState().contentCreator.mediaError,'');
 });
 test('Auch eine Vorschau-Seite kann zunächst ohne Bilder angelegt werden',async()=>{

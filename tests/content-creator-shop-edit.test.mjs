@@ -175,3 +175,11 @@ test('Touch double tap collapses a card once even if a browser also fires dblcli
  c.root.querySelector('.cc-live-card').dispatchEvent(new window.Event('dblclick',{bubbles:true}));
  assert.equal(c.store.getState().contentCreator.collapsedCards.live,true);
 });
+
+test('Marking a Working business as sent does not bypass its Ready step',async()=>{
+ const c=setup();const page={...c.docs.get('contentCreatorPages/shop'),workflow:'working'};
+ c.docs.set('contentCreatorPages/shop',page);c.store.actions.patchContentCreator({pages:[page]});
+ await c.click('[data-cc-action="toggle-links"]');await c.click('[data-cc-action="sent"]');
+ assert.equal(c.docs.get('contentCreatorPages/shop').workflow,'working');
+ assert.equal(c.root.querySelector('[data-cc-action="sent"]').getAttribute('aria-pressed'),'true');
+});
