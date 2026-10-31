@@ -1,3 +1,4 @@
+import { ensureCreatorStyles } from "./heart-creator-styles.js";
 import { fastKonfig } from "../../shared/lifeskin-fast.js";
 import { speichereFast } from "./heart-lifeskin-adapter.js";
 import { baueGewinn } from "./heart-lifeskin-gewinn.js";
@@ -140,6 +141,7 @@ import {
   bindAnalyticsChartInteractions
 } from "../menyra-social/core/analytics/analytics-dashboard-render-utils.js";
 
+ensureCreatorStyles();
 const root = document.getElementById("heartApp");
 const store = createHeartStore(createHeartInitialState());
 const actions = store.actions;

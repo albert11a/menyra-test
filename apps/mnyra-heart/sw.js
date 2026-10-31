@@ -1,6 +1,8 @@
 const HEART_CACHE_PREFIX = "mnyra-heart-shell-";
-const HEART_CACHE = "mnyra-heart-shell-v11";
+const HEART_CACHE = "mnyra-heart-shell-v12";
 const SHELL_ASSETS = [
+  "/apps/mnyra-heart/heart-content-creator.css?v=ba65d1d2672e",
+  "/apps/mnyra-heart/heart-creator-styles.js",
   "/heart/",
   "/heart/index.html",
   "/heart/heart.css",
