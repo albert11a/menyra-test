@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseHTML} from 'linkedom';
-import {creatorOverview,creatorBusinessStatus,creatorFollowups,creatorInPeriod} from '../shared/creator-analytics.js';
+import {CREATOR_LIVE_WINDOW_MS,creatorOverview,creatorBusinessMatches,creatorBusinessStatus,creatorFollowups,creatorInPeriod} from '../shared/creator-analytics.js';
 import {shopAction} from '../server/content-creator-shop.js';
 import {serveCreatorShop} from '../api/content-creator-shop.js';
 import {renderContentCreator} from '../apps/mnyra-heart/heart-content-creator-render.js';
 import {renderHeartApp} from '../apps/mnyra-heart/heart-render.js';
+import {LIVE_FENSTER_MS,istGeradeAktiv} from '../apps/mnyra-heart/heart-lifeskin-live.js';
 import {createHeartInitialState} from '../apps/mnyra-heart/heart-state.js';
 const pageId='a'.repeat(32),visitorId='b'.repeat(32),cartId='c'.repeat(32),orderId='d'.repeat(32);
 function fixture(){
@@ -23,13 +24,14 @@ test('Vienna day boundaries, returning visitors, live expiry and totals share co
  {visitorId,pageId:'other',days:['2026-11-01'],updatedAt:now-120000,stage:'page'},
  {visitorId:'offline',updatedAt:now,stage:'checkout',online:false}];
  const stats=creatorOverview({visits,orders:[{createdAt:now,totalCents:2900},{createdAt:now,totalCents:9900,status:'cancelled'},{createdAt:now-86400000,totalCents:5000}]},now);
- assert.deepEqual(stats,{live:1,visitors:1,orders:1,value:2900,stages:[0,1,0]});
+ assert.deepEqual(stats,{live:3,visitors:1,orders:1,value:2900,stages:[1,2,0]});
 });
 test('Archive, real customers and explicit Ready transitions route businesses correctly',()=>{
  const page={id:pageId,workflow:'working'};assert.equal(creatorBusinessStatus(page),'working');
  const visits=[{pageId,opened:true,updatedAt:'2026-10-30T10:00:00Z'}];
  assert.equal(creatorBusinessStatus(page,visits),'working');
- assert.equal(creatorBusinessStatus({...page,workflow:'ready'},visits),'seen');
+ assert.equal(creatorBusinessStatus({...page,workflow:'ready'},visits),'working');
+ assert.equal(creatorBusinessStatus({...page,workflow:'ready',workflowAt:'2026-10-29T10:00:00Z'},visits),'seen');
  assert.equal(creatorBusinessStatus({...page,workflow:'ready',workflowAt:'2026-10-31T10:00:00Z'},visits),'ready');
  assert.equal(creatorBusinessStatus(page,visits,[{pageId}]),'customer');
  assert.equal(creatorBusinessStatus({...page,workflow:'archived'},visits,[{pageId}]),'archived');
@@ -98,12 +100,12 @@ test('Package drafts remain intact through minimisation, live refresh and expans
 
 test('Businesses stay Working until Ready, including missing workflows and real visits',()=>{
  const visits=[{pageId,opened:true,scrolled:true,updatedAt:'2026-10-31T12:00:00Z'}];
- for(const workflow of [undefined,'working','draft','unknown']){
+ for(const workflow of [undefined,'working','draft','unknown','ready','sent']){
   const page={id:pageId,name:'Draft',published:true,workflow,photoIds:['one']};
   assert.equal(creatorBusinessStatus(page,visits),'working');
  }
  assert.equal(creatorBusinessStatus({id:pageId,workflow:'ready',workflowAt:'2026-10-31T13:00:00Z'},visits),'ready');
- assert.equal(creatorBusinessStatus({id:pageId,workflow:'sent'},visits),'seen');
+ assert.equal(creatorBusinessStatus({id:pageId,workflow:'sent',workflowAt:'2026-10-31T11:00:00Z'},visits),'seen');
 });
 test('Package cards share one two-column grid while the business heading stays outside it',()=>{
  const {page}=fixture();page.photoIds=['one','two'];page.products.push({id:'second',title:'Second',imageIds:['two'],priceCents:350});
@@ -113,4 +115,34 @@ test('Package cards share one two-column grid while the business heading stays o
  assert.equal(grid.querySelector('.cc-business-name'),null);
  assert.equal(grid.querySelector('.cc-package-price>span').textContent,'1 Bild');
  assert.deepEqual([...document.querySelector('.cc-business-name').querySelectorAll('h2')].map(node=>node.textContent),['Cafe']);
+});
+
+
+test('Every Creator live stage uses the same three-minute boundaries as LifeSkin',()=>{
+ const now=Date.parse('2026-10-31T12:00:00Z');assert.equal(CREATOR_LIVE_WINDOW_MS,LIVE_FENSTER_MS);
+ for(const stage of ['page','cart','checkout','ordered'])for(const age of [-60001,-60000,0,90000,179999,180000,180001]){
+  const updatedAt=new Date(now-age).toISOString(),expected=istGeradeAktiv({updatedAt},now);
+  for(const online of [true,false]){
+   const result=creatorOverview({visits:[{stage,updatedAt,online}]},now);
+   assert.equal(result.live,Number(expected),`${stage}, age ${age}, online ${online}`);
+   assert.equal(result.stages.reduce((sum,n)=>sum+n,0),result.live);
+  }
+ }
+});
+
+test('Cash counts completed orders and expires from purchase time despite fresh heartbeats',()=>{
+ const now=Date.parse('2026-10-31T12:00:00Z');
+ const visit=(stage,age)=>({pageId,visitorId,stage,updatedAt:now,events:[{event:'order',at:now-age}]});
+ assert.deepEqual(creatorOverview({visits:[visit('page',0),visit('cart',0),visit('checkout',0),visit('ordered',180000)]},now).stages,[1,2,1]);
+ assert.equal(creatorOverview({visits:[visit('ordered',180001)]},now).live,0);
+});
+
+test('Legacy auto-Ready and Sended businesses remain Working until manual Ready timestamp exists',()=>{
+ const pages=[{id:'draft',workflow:'working'},{id:'old-ready',workflow:'ready'},{id:'old-sent',workflow:'sent',sentAt:'2026-10-30T10:00:00Z'},{id:'manual',workflow:'ready',workflowAt:'2026-10-31T10:00:00Z'}];
+ const visits=pages.map(page=>({pageId:page.id,opened:true,updatedAt:'2026-10-30T12:00:00Z'}));
+ const state={pages,visits,orders:[],filter:'working'};
+ assert.deepEqual(pages.filter(page=>creatorBusinessMatches(page,state)).map(page=>page.id),['draft','old-ready','old-sent']);
+ assert.equal(creatorBusinessStatus({...pages[1],workflowAt:'invalid'},visits),'working');
+ const {document}=parseHTML(renderContentCreator(state));
+ const chip=document.querySelector('[data-cc-action="filter"][data-key="working"]');assert.match(chip.textContent,/Working3/);
 });

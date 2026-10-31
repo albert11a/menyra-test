@@ -1,5 +1,6 @@
 import {contentStatus} from './content-creator.js';
 // Creator telemetry and reporting. No dependency on LifeSkin's runtime.
+export const CREATOR_LIVE_WINDOW_MS=3*60*1000;
 export const CREATOR_PERIODS=[['today','Heute'],['yesterday','Gestern'],['7','7 Tage'],['30','30 Tage'],['all','Max']];
 export const CREATOR_STATUSES=[['working','Working'],['ready','Ready'],['seen','Seen'],['customer','Kunde'],['archived','Archiv']];
 export function creatorMs(value){if(typeof value?.toMillis==='function')return value.toMillis();if(value?.seconds)return value.seconds*1000;return typeof value==='number'?value:Date.parse(value||'')||0;}
@@ -15,7 +16,7 @@ export function creatorInPeriod(value,period='today',now=Date.now(),date=''){
 export function creatorBusinessStatus(page,visits=[],orders=[]){
  if(page.workflow==='archived')return 'archived';
  if(orders.some(o=>o.pageId===page.id&&o.status!=='cancelled'))return 'customer';
- if(!['ready','sent'].includes(page.workflow))return 'working';
+ if(!['ready','sent'].includes(page.workflow)||!creatorMs(page.workflowAt))return 'working';
  const viewed=visits.filter(v=>v.pageId===page.id&&v.opened);
  const latest=Math.max(0,...viewed.map(v=>creatorMs(v.updatedAt||v.createdAt)));
  if(page.workflow==='ready'&&creatorMs(page.workflowAt)>latest)return 'ready';
@@ -24,11 +25,17 @@ export function creatorBusinessStatus(page,visits=[],orders=[]){
 export function creatorOverview(state={},now=Date.now()){
  const period=value=>creatorInPeriod(value,state.period||'today',now,state.date);
  const visits=state.visits||[],orders=(state.orders||[]).filter(o=>o.status!=='cancelled');
- const live=visits.filter(v=>v.online!==false&&now-creatorMs(v.updatedAt)<90000&&creatorMs(v.updatedAt)<=now&&v.stage);
+ const active=value=>{const ms=creatorMs(value),age=now-ms;return ms>0&&age>=-60000&&age<=CREATOR_LIVE_WINDOW_MS;};
+ const live=visits.filter(v=>{
+  if(!active(v.updatedAt||v.createdAt)||!['page','cart','checkout','ordered'].includes(v.stage))return false;
+  // Cash expires from the purchase itself, even while receipt-page heartbeats continue.
+  const orderedAt=Math.max(0,...(v.events||[]).filter(e=>e.event==='order').map(e=>creatorMs(e.at)));
+  return v.stage!=='ordered'||!orderedAt||active(orderedAt);
+ });
  const selected=orders.filter(o=>period(o.createdAt));
  // Heartbeats never manufacture repeat visitors: daily attendance is recorded explicitly.
  const browsers=new Set(visits.filter(v=>(v.days||[creatorDay(v.createdAt)]).some(day=>period(`${day}T12:00:00Z`))).map(v=>v.visitorId||v.id||`${v.pageId}:${creatorMs(v.createdAt)}`));
- return {live:live.length,visitors:browsers.size,orders:selected.length,value:selected.reduce((n,o)=>n+(o.totalCents||0),0),stages:['page','cart','checkout'].map(stage=>live.filter(v=>(v.stage==='ordered'?'page':v.stage)===stage).length)};
+ return {live:live.length,visitors:browsers.size,orders:selected.length,value:selected.reduce((n,o)=>n+(o.totalCents||0),0),stages:['page','cart','ordered'].map(stage=>live.filter(v=>(v.stage==='checkout'?'cart':v.stage)===stage).length)};
 }
 export function creatorFollowups(state={}){
  const ordered=new Set((state.orders||[]).map(o=>o.cartId));
