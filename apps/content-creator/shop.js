@@ -1,12 +1,15 @@
+import {creatorVisitorId} from './visits.js';
 import {ccEscape as esc,ccImage} from '../../shared/content-creator.js';
 import {euro,shopQuote,validShopId} from '../../shared/content-creator-shop.js';
 import {creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,renderCreatorCatalog,creatorHowTo,creatorFooter} from '../../shared/content-creator-view.js';
-export async function mountCreatorShop({root,page,still=false}){
+export async function mountCreatorShop({root,page,still=false,track=async()=>{}}){
+ const visitorId=still?'':creatorVisitorId(page.id);
+ const activity=(event,data={})=>{if(!still)void track(event,{stage:panel==='checkout'?'checkout':panel==='cart'?'cart':'page',cartId,...data}).catch(()=>{});};
  const storageKey=`mnyra:cc:shop:${page.id}${still?':still':''}`;
  let saved={};try{saved=JSON.parse(localStorage.getItem(storageKey)||'{}');}catch{saved={};}
  let ids=Array.isArray(saved.ids)?saved.ids.filter(id=>(page.products||[]).some(p=>p.id===id&&p.priceCents!==0)):[];
  let cartId=validShopId(saved.cartId)?saved.cartId:crypto.randomUUID().replaceAll('-','');
- let orderId='',panel='',error='',notice='',submitting=false,downloadBusy='';
+ let orderId=validShopId(saved.pendingOrderId)?saved.pendingOrderId:'',panel='',error='',notice='',submitting=false,downloadBusy='';
  let viewer=null,backgroundLock=null,sheetLock=null,photoSave=null,downloadCancelled=false,fileAbort=null;
  function canDownload(order){return order?.downloadsAvailable===true||order?.approved===true;}
  const originalTheme=document.querySelector('meta[name="theme-color"]')?.getAttribute('content')||'#f7f6f2';
@@ -17,16 +20,24 @@ export async function mountCreatorShop({root,page,still=false}){
  const tokens=still?[]:(Array.isArray(saved.orders)?saved.orders:[]).filter(validShopId).slice(-10);
  const fromLink=new URLSearchParams(location.search).get('order');if(!still&&validShopId(fromLink)&&!tokens.includes(fromLink))tokens.push(fromLink);
  let cartQueue=Promise.resolve();
- function remember(){try{localStorage.setItem(storageKey,JSON.stringify({ids,cartId,orders:tokens}));}catch{}}
+ function remember(){try{localStorage.setItem(storageKey,JSON.stringify({ids,cartId,orders:tokens,pendingOrderId:orderId}));}catch{}}
  function flash(message){notice=message;setTimeout(()=>{notice='';render();},4500);}
  function quote(){if(!ids.length)return {lines:[],totalCents:0,currency:'EUR'};try{return shopQuote(page,ids);}catch{return {lines:[],totalCents:0,currency:'EUR'};}}
- async function api(op,data={},get=false){
-  const payload={op,pageId:page.id,cartId,...data};
+ async function api(op,data={},get=false,keepalive=false){
+  const payload={op,pageId:page.id,cartId,visitorId,...data};
   if(still&&op!=='free-download')throw Error('Still-Modus: keine echten Bestellungen.');
-  const r=await fetch(`/api/content-creator-shop${get?'?'+new URLSearchParams(payload):''}`,{method:get?'GET':'POST',...(!get?{headers:{'content-type':'application/json'},body:JSON.stringify(payload)}:{}),signal:AbortSignal.timeout(20000)});
+  const r=await fetch(`/api/content-creator-shop${get?'?'+new URLSearchParams(payload):''}`,{method:get?'GET':'POST',keepalive,...(!get?{headers:{'content-type':'application/json'},body:JSON.stringify(payload)}:{}),signal:AbortSignal.timeout(20000)});
   const result=await r.json();if(!r.ok||result.error)throw Object.assign(Error(result.error||'Ju lutemi, provoni përsëri.'),{status:r.status});return result;
  }
  function applyQuote(result){for(const line of result.lines||[]){const product=page.products.find(p=>p.id===line.id);if(product){product.priceCents=line.priceCents;product.title=line.title;}}}
+ let checkoutTimer;
+ function saveCheckout(keepalive=false){
+  if(still||panel!=='checkout')return;
+  const snapshot={cartId,customer:{...customer}};
+  void cartQueue.catch(()=>{}).then(()=>api('checkout',snapshot,false,keepalive)).catch(()=>{});
+ }
+ for(const name of ['input','change'])root.addEventListener(name,event=>{if(!event.target.closest('#shop-checkout'))return;clearTimeout(checkoutTimer);checkoutTimer=setTimeout(saveCheckout,700);});
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveCheckout(true);});
  function saveCart(){
   remember();if(still)return;
   const snapshot=[...ids],snapshotCart=cartId;
@@ -128,6 +139,7 @@ export async function mountCreatorShop({root,page,still=false}){
   </section>`;
  }
  function openViewer(product,index){
+  activity('photo',{productId:product,file:packFiles(product)[Number(index)||0]});
   const files=packFiles(product);if(!files.length)return;
   if(!viewer){
    const body=document.body,html=document.documentElement;
@@ -175,7 +187,7 @@ export async function mountCreatorShop({root,page,still=false}){
  }
  function updateViewer(index){
   if(!viewer)return;
-  const files=packFiles(viewer.product);viewer.index=Math.max(0,Math.min(files.length-1,index));positions[viewer.product]=viewer.index;
+  const files=packFiles(viewer.product);if(index!==viewer.index)activity('photo',{productId:viewer.product,file:files[index]});viewer.index=Math.max(0,Math.min(files.length-1,index));positions[viewer.product]=viewer.index;
   const track=root.querySelector('[data-view-track]');if(track)activateImages(track,viewer.index);
   const count=root.querySelector('[data-view-count]');if(count)count.textContent=`${viewer.index+1} / ${files.length}`;
   for(const dot of root.querySelectorAll('.shop-viewer-dots [data-index]'))dot.setAttribute('aria-pressed',String(Number(dot.dataset.index)===viewer.index));
@@ -222,7 +234,7 @@ export async function mountCreatorShop({root,page,still=false}){
   for(const track of root.querySelectorAll('[data-track]')){
    track.scrollLeft=(positions[track.dataset.track]||0)*track.clientWidth;
    if(track.dataset.bound)continue;track.dataset.bound='1';
-   track.addEventListener('scroll',()=>{const index=Math.round(track.scrollLeft/(track.clientWidth||1));positions[track.dataset.track]=index;activateImages(track,index);for(const dot of track.parentElement.querySelectorAll('[data-index]'))dot.setAttribute('aria-pressed',String(Number(dot.dataset.index)===index));},{passive:true});
+   track.addEventListener('scroll',()=>{const index=Math.round(track.scrollLeft/(track.clientWidth||1));if(index!==positions[track.dataset.track])activity('photo',{productId:track.dataset.track,file:packFiles(track.dataset.track)[index]});positions[track.dataset.track]=index;activateImages(track,index);for(const dot of track.parentElement.querySelectorAll('[data-index]'))dot.setAttribute('aria-pressed',String(Number(dot.dataset.index)===index));},{passive:true});
   }
   neighbourObserver?.disconnect();
   if(typeof globalThis.IntersectionObserver==='function'){
@@ -259,14 +271,14 @@ export async function mountCreatorShop({root,page,still=false}){
    if(action==='slide'||action==='dot'){
     const track=root.querySelector(`[data-track="${product}"]`),max=track.children.length-1;
     const target=action==='dot'?Number(button.dataset.index):Math.min(max,Math.max(0,(positions[product]||0)+Number(button.dataset.step)));
-    positions[product]=target;activateImages(track,target);track.scrollTo({left:target*track.clientWidth,behavior:'smooth'});return;
+    activity('photo',{productId:product,file:packFiles(product)[target]});positions[product]=target;activateImages(track,target);track.scrollTo({left:target*track.clientWidth,behavior:'smooth'});return;
    }
    error='';
-   if(action==='add'){if(page.products.find(p=>p.id===product)?.priceCents===0){await download('',product,'photos');return;}if(!ids.includes(product)){ids.push(product);flash('Pakoja u shtua në shportë.');render();saveCart();}}
-   if(action==='cart'){panel='cart';render();}
-   if(action==='close'&&!submitting){panel='';render();}
-   if(action==='checkout'){panel='checkout';render();root.querySelector('#shop-name')?.focus();}
-   if(action==='remove'&&!submitting){ids=ids.filter(id=>id!==product);render();saveCart();}
+   if(action==='add'){activity('add',{productId:product});if(page.products.find(p=>p.id===product)?.priceCents===0){await download('',product,'photos');return;}if(!ids.includes(product)){ids.push(product);flash('Pakoja u shtua në shportë.');render();saveCart();}}
+   if(action==='cart'){panel='cart';activity('cart');render();}
+   if(action==='close'&&!submitting){panel='';activity('close');render();}
+   if(action==='checkout'){panel='checkout';activity('checkout');saveCheckout();render();root.querySelector('#shop-name')?.focus();}
+   if(action==='remove'&&!submitting){activity('remove',{productId:product});ids=ids.filter(id=>id!==product);render();saveCart();}
    if(action==='refresh')await refreshOrder(button.dataset.order);
    if(action==='receipt-link'){await navigator.clipboard.writeText(`${location.origin}/content-creator/${page.id}?order=${button.dataset.order}`);notice='Linku i porosisë u kopjua. Ruajeni për shkarkimet tuaja.';render();}
   }catch(e){error=e.message;render();}
@@ -301,12 +313,16 @@ export async function mountCreatorShop({root,page,still=false}){
   submitting=true;error='';render();
   try{
    await cartQueue;
-   orderId ||= crypto.randomUUID().replaceAll('-','');
-   const result=still?{id:orderId,pageId:page.id,...quote(),status:'pending',approved:false,downloadsAvailable:true,paymentMethod:'cod'}:await api('order',{orderId,ids:[...ids],expectedTotalCents:quote().totalCents,customer});
+   orderId ||= crypto.randomUUID().replaceAll('-','');remember();
+   let result=await (async()=>{try{return still?{id:orderId,pageId:page.id,...quote(),status:'pending',approved:false,downloadsAvailable:true,paymentMethod:'cod'}:await api('order',{orderId,ids:[...ids],expectedTotalCents:quote().totalCents,customer});}catch(error){
+    const receipt=await api('receipt',{orderId},true).catch(()=>null);
+    if(receipt?.pageId===page.id)return receipt;throw error;
+   }})();
    if(result.priceChanged){applyQuote(result);throw Error('Çmimi u përditësua. Kontrolloni totalin dhe konfirmoni përsëri.');}
    orders.set(result.id,result);if(!still&&!tokens.includes(result.id))tokens.push(result.id);
    if(result.notified===false)api('notify',{kind:'order',orderId:result.id}).catch(()=>{});
-   ids=[];cartId=crypto.randomUUID().replaceAll('-','');orderId='';remember();panel='';notice='Faleminderit! Porosia u pranua. Fotot hapen pas konfirmimit.';
+   activity('order',{stage:'ordered'});
+   ids=[];cartId=crypto.randomUUID().replaceAll('-','');orderId='';remember();panel='';notice='Faleminderit! Porosia u pranua. Artikujt tuaj janë më poshtë.';
    render();root.querySelector('#shop-purchases')?.scrollIntoView({behavior:'smooth'});
   }catch(e){error=e.message;}finally{submitting=false;render();}
  });
@@ -374,6 +390,7 @@ export async function mountCreatorShop({root,page,still=false}){
   for(const button of root.querySelectorAll('[data-shop="free-save"],[data-shop="save-photos"]'))saveObserver.observe(button);
  }
  async function download(receipt,product){
+  activity('download',{productId:product});
   if(downloadBusy)return;
   discardSave();downloadBusy=product;downloadCancelled=false;
   photoSave={receipt,product,files:[],urls:[],loading:true,total:receipt?orders.get(receipt)?.lines.find(line=>line.id===product)?.imageIds.length:packFiles(product).length};render();
@@ -395,6 +412,11 @@ export async function mountCreatorShop({root,page,still=false}){
  for(const image of root.querySelectorAll('img[data-photo][src]'))if(image.dataset.size==='thumb'&&image.src?.startsWith('data:image/'))images[image.dataset.photo]=image.getAttribute('src');
  for(const key of page.photoIds)images[key] ||= imageUrl(key);
  render();remember();
+ // A reload after a lost response must recover the committed order as well.
+ if(!still&&orderId){
+  const receipt=await api('receipt',{orderId},true).catch(()=>null);
+  if(receipt?.pageId===page.id){orders.set(receipt.id,receipt);if(!tokens.includes(receipt.id))tokens.push(receipt.id);ids=[];orderId='';cartId=crypto.randomUUID().replaceAll('-','');remember();render();}
+ }
  await Promise.all(tokens.map(id=>refreshOrder(id).catch(()=>{})));
  const heroTimer=globalThis.setInterval(()=>{const track=root.querySelector('[data-hero-track]');if(canPrefetch()&&!heroPaused&&!viewer&&!panel&&!photoSave&&document.visibilityState!=='hidden'&&track?.children.length>1)moveHero(heroIndex+1);},5500);
  const poll=globalThis.setInterval(()=>{if(still||document.visibilityState==='hidden')return;for(const order of orders.values())if(!order.approved)refreshOrder(order.id).catch(()=>{});},20000);

@@ -1,3 +1,4 @@
+import {waitUntil} from '@vercel/functions';
 import {shopRepository,shopAction} from '../server/content-creator-shop.js';
 export async function serveCreatorShop(req,res,repository=shopRepository){
  res.setHeader('Cache-Control','no-store');res.setHeader('Content-Type','application/json');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
@@ -7,7 +8,15 @@ export async function serveCreatorShop(req,res,repository=shopRepository){
   let input=req.method==='GET'?Object.fromEntries(url.searchParams):req.body;
   if(typeof input==='string')input=JSON.parse(input);if(!input||typeof input!=='object')throw Error('Kërkesa mungon.');
   if(req.method==='GET'&&!['receipt','download','free-download','free-image','image'].includes(input.op))throw Error('Kërkesa nuk lejohet.');
-  const result=await shopAction(input,await repository());res.statusCode=200;
+  const repo=await repository();
+  // Persist first. FCM/device delivery must never hold the buyer's receipt hostage.
+  const deferred=[];
+  const result=await shopAction(input,input.op==='notify'?repo:{...repo,notify:async(...args)=>{deferred.push(args);return true;}});
+  if(deferred.length)waitUntil(Promise.all(deferred.map(async args=>{
+   const delivered=await repo.notify(...args).catch(()=>false);
+   if(!delivered)console.error('creator_notification_pending',{kind:args[0],id:args[1]});
+  })));
+  res.statusCode=200;
   if(result.redirect){res.statusCode=307;res.setHeader('Location',result.redirect);res.end();return;}
   if(result.bytes){
    if(input.op==='image')res.setHeader('Cache-Control','private, max-age=300');

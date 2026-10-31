@@ -1,3 +1,4 @@
+import {creatorBusinessStatus} from '../../shared/creator-analytics.js';
 import {normalizeCreatorCrop,creatorHeroCropStyle,creatorHeroFormat} from '../../shared/creator-hero.js';
 import {saveShopAsset,initialShopProduct,releaseShopOrder,refreshShopPreviews,savePromoAsset,migrateCreatorPage,saveCreatorCdnAsset,savedCreatorFile} from "./heart-content-creator-shop.js";
 import {creatorCdnEnabled} from './heart-creator-cdn.js';
@@ -29,6 +30,7 @@ export async function prepareContentImage(file, avatar = false) {
 
 export function createContentCreator({root, store, prepareImage = prepareContentImage, saveAsset}) {
   const patch = fields => store.actions.patchContentCreator(fields);
+  let liveTimer=null;
   let subscriptions = [], pendingId = "", avatarFile = null, photoFiles = [], draftAvatar = "", draftName = "";
   let busy = false, stopped = true, createdMs = 0;
   let captions = {}, mediaBusy = false, imageEpoch = 0;
@@ -54,16 +56,31 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       }
     }finally{migrating=false;finishMigration();patch({migrationProgress:''});}
   }
-  function stop() { subscriptions.forEach(unsubscribe => unsubscribe()); subscriptions = []; stopped = true; }
+  function stop() { subscriptions.forEach(unsubscribe => unsubscribe()); subscriptions = []; stopped = true; clearInterval(liveTimer);liveTimer=null; }
   function load() {
     if (!stopped) return;
     stopped = false; patch({status:"loading",error:""});
-    const fail = error => { stop(); patch({status:"error",error:`Lokale konnten nicht geladen werden: ${error.message}`}); };
-    subscriptions.push(onSnapshot(collection(db,CC_PAGES), snap => {patch({pages:snap.docs.map(d=>({id:d.id,...d.data()})),status:"ready",error:""});void migrateExisting();}, fail));
-    subscriptions.push(onSnapshot(collection(db,CC_CARTS), snap => patch({carts:snap.docs.map(d=>({id:d.id,...d.data()}))}), fail));
-    subscriptions.push(onSnapshot(collection(db,CC_ORDERS), snap => patch({orders:snap.docs.map(d=>({id:d.id,...d.data()}))}), fail));
-    subscriptions.push(onSnapshot(collection(db,CC_VISITS), snap => patch({visits:snap.docs.map(d=>d.data())}), fail));
+    const errors={};
+    function listen(name,key){
+      subscriptions.push(onSnapshot(collection(db,name),snap=>{
+        delete errors[key];
+        patch({[key]:snap.docs.map(d=>({id:d.id,...d.data()})),status:"ready",error:Object.values(errors).join(' ')});
+        if(key==='pages')void migrateExisting();
+      },error=>{errors[key]=`${key}: ${error.message}`;patch({error:Object.values(errors).join(' ')});}));
+    }
+    listen(CC_PAGES,'pages');listen(CC_CARTS,'carts');listen(CC_ORDERS,'orders');listen(CC_VISITS,'visits');
+    let ticks=0;liveTimer=setInterval(()=>{if(!stopped){patch({now:Date.now()});if(++ticks%2===0)void retryNotifications();}},30000);
+    // Snapshots populate pending deliveries before the first retry pass.
+    setTimeout(()=>{if(!stopped)void retryNotifications();},1500);
   }
+  async function retryNotifications(){
+    const state=store.getState().contentCreator;
+    const pending=[...(state.orders||[]).filter(o=>o.notificationPending&&Date.now()-Date.parse(o.notificationAttemptAt||o.createdAt)>60000&&Date.now()-Date.parse(o.createdAt)<86400000).map(o=>({...o,kind:'order'})),...(state.carts||[]).filter(c=>c.notificationPending&&c.status==='active'&&Date.now()-Date.parse(c.notificationAttemptAt||c.updatedAt)>60000&&Date.now()-Date.parse(c.updatedAt)<86400000).map(c=>({...c,kind:'cart'}))];
+    for(const row of pending.slice(0,20)){
+      try{await fetch('/api/content-creator-shop',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({op:'notify',kind:row.kind,pageId:row.pageId,cartId:row.cartId||row.id,orderId:row.kind==='order'?row.id:undefined}),signal:AbortSignal.timeout(60000)});}catch{}
+    }
+  }
+
   function capture() { const input = root.querySelector('#cc-create-form [name="name"]'); if(input) draftName=input.value; }
   function notice(text) { patch({notice:text}); setTimeout(()=>patch({notice:""}),3500); }
   root.addEventListener("keydown", event => {
@@ -79,7 +96,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
   async function detail(id) {
     const epoch=++imageEpoch;
     const previous=store.getState().contentCreator;
-    patch({selectedId:id,images:{},captionDrafts:previous.selectedId===id ? previous.captionDrafts : {},mediaError:"",deletePackageConfirm:""});
+    patch({selectedId:id,newPackage:false,images:{},captionDrafts:previous.selectedId===id ? previous.captionDrafts : {},mediaError:"",deletePackageConfirm:""});
     const page=store.getState().contentCreator.pages.find(p=>p.id===id);
     if(!page)return;
     const result=await Promise.all((page.photoIds || []).map(async key=>{
@@ -90,7 +107,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
   async function mediaTask(task) {
     if(mediaBusy)return;
     mediaBusy=true;patch({mediaBusy:true,mediaError:""});
-    try{await migrationFinished;await task();}catch(error){patch({mediaError:error.message || "Änderung nicht gespeichert."});}
+    try{await migrationFinished;await task();}catch(error){patch({mediaError:error.message || "Änderung nicht gespeichert."});notice(error.message || "Änderung nicht gespeichert.");}
     finally{mediaBusy=false;patch({mediaBusy:false});void migrateExisting();}
   }
   function cropFromCard(card){
@@ -116,6 +133,11 @@ export function createContentCreator({root, store, prepareImage = prepareContent
  if(event.target.matches('#cc-create-form [name="name"]')) { draftName=event.target.value; patch({draftName}); } });
   root.addEventListener("change", event => {
     const input=event.target;
+    if(input.hasAttribute('data-cc-date')){patch({period:'date',date:input.value,datePicker:false});return;}
+    if(input.hasAttribute('data-cc-select')){
+      const selected=new Set(store.getState().contentCreator.selectedIds||[]);if(input.checked)selected.add(input.dataset.ccSelect);else selected.delete(input.dataset.ccSelect);
+      patch({selectedIds:[...selected]});return;
+    }
     if(input.hasAttribute('data-cc-hero-adjust')){
       const card=input.closest('[data-cc-hero-card]');if(!card)return;
       const state=store.getState().contentCreator,key=`${card.dataset.page}:${card.dataset.ccHeroCard}`;
@@ -223,7 +245,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         const product={id:crypto.randomUUID().replaceAll('-',''),title,priceCents:cents,imageIds:keys,active:true};
         const updated={photoIds:[...(page.photoIds||[]),...keys],products:[...(page.products||[]),product],...(!page.published?{published:true,workflow:'ready'}:{})};
         await updateDoc(pageRef,{...updated,updatedAt:serverTimestamp()});
-        patch({pages:store.getState().contentCreator.pages.map(p=>p.id===id?{...p,...updated}:p),...(!page.published?{filter:"ready"}:{})});await detail(id);
+        patch({newPackage:false,pages:store.getState().contentCreator.pages.map(p=>p.id===id?{...p,...updated}:p),...(!page.published?{filter:"ready"}:{})});await detail(id);
       });return;
     }
     if(event.target.id!=="cc-create-form")return;
@@ -264,6 +286,34 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     const button=event.target.closest("[data-cc-action]"); if(!button)return;
     const action=button.dataset.ccAction,id=button.dataset.id;
     try {
+      if(action==='refresh'){stop();load();notice('Wird aktualisiert …');}
+      if(action==='more'&&['businessLimit','orderLimit','visitLimit'].includes(button.dataset.key))patch({[button.dataset.key]:(store.getState().contentCreator[button.dataset.key]||20)+20});
+      if(action==='date-picker')patch({datePicker:!store.getState().contentCreator.datePicker});
+      if(action==='period')patch({period:button.dataset.key,datePicker:false});
+      if(action==='settings')patch({selecting:!store.getState().contentCreator.selecting,selectedIds:[]});
+      if(action==='new-package')patch({newPackage:!store.getState().contentCreator.newPackage});
+      if(action==='select-all'){
+        const state=store.getState().contentCreator;
+        patch({selectedIds:state.pages.filter(page=>state.filter==='all'||!state.filter||creatorBusinessStatus(page,state.visits,state.orders)===state.filter).map(page=>page.id)});
+      }
+      if(action==='bulk-status')await mediaTask(async()=>{
+        const state=store.getState().contentCreator,ids=state.selectedIds||[],workflow=button.dataset.key;
+        if(!['ready','archived'].includes(workflow)||!ids.length)return;
+        if(workflow==='ready'&&state.pages.some(page=>ids.includes(page.id)&&!page.photoIds?.length))throw Error('Ready benötigt mindestens ein Foto. Bitte unvollständige Businesses abwählen.');
+        const workflowAt=new Date().toISOString();
+        for(let offset=0;offset<ids.length;offset+=400){const batch=writeBatch(db);for(const key of ids.slice(offset,offset+400))batch.update(doc(db,CC_PAGES,key),{workflow,workflowAt,updatedAt:serverTimestamp()});await batch.commit();}
+        patch({selectedIds:[],selecting:false,filter:workflow,pages:state.pages.map(page=>ids.includes(page.id)?{...page,workflow,workflowAt}:page)});
+      });
+      if(action==='followup')await mediaTask(async()=>{
+        const ref=doc(db,CC_PAGES,id),snap=await getDoc(ref),page=snap.data(),key=button.dataset.cart;
+        const followups={...page.followups,[key]:!page.followups?.[key]};
+        await updateDoc(ref,{followups,updatedAt:serverTimestamp()});
+        patch({pages:store.getState().contentCreator.pages.map(page=>page.id===id?{...page,followups}:page)});
+      });
+      if(action==='followup-copy'){
+        const page=store.getState().contentCreator.pages.find(page=>page.id===id);
+        await navigator.clipboard.writeText(`Përshëndetje ${page?.name||''}, pakot tuaja të fotove janë gati. Mund t’i shikoni dhe ta përfundoni porosinë këtu: ${contentLink(id)}`);notice('Nachfass-Nachricht kopiert.');
+      }
       if(action==="new") {if(busy)return;captions={};patch({pendingPhotos:[],pendingCaptions:{},pageKind:"shop",shopTitle:"",shopPrice:"",selectedId:""});createdMs=0;pendingId="";avatarFile=null;photoFiles=[];draftAvatar="";draftName="";patch({editor:true,draftName:"",avatarName:"",photoNames:"",editorError:""});queueMicrotask(()=>root.querySelector('#cc-create-form [name="name"]')?.focus());}
       if(action==="close" && !busy) patch({editor:false});
       if(action==="filter") patch({filter:button.dataset.key});

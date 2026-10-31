@@ -32,13 +32,13 @@ test('Creator-Zustand verändert weder Anmeldung noch Fälle',()=>{
  assert.deepEqual(store.getState().auth,before.auth);assert.deepEqual(store.getState().lifeskin,before.lifeskin);
  assert.equal(before.contentCreator.filter,'all');assert.equal(store.getState().contentCreator.filter,'yes');
 });
-test('Header zeigt rechts ausschließlich Plus; Menüzugang ist vorhanden',()=>{
+test('Header zeigt Datum und Refresh; Plus steht bei Bizneses',()=>{
  const state=createHeartInitialState();state.auth={status:'authenticated',access:{allowed:true},user:{uid:'ceo'}};
  state.shell.activeView='contentCreator';
  const root={innerHTML:'',querySelector:()=>null,contains:()=>false};renderHeartApp(root,state,{});
  assert.match(root.innerHTML,/data-nav-key="contentCreator"/);
  const right=root.innerHTML.split('<div class="heart-topbar__right">')[1].split('</header>')[0];
- assert.match(right,/data-cc-action="new"/);assert.doesNotMatch(right,/refresh-heart|clock|calendar|leadSettingsBtn/);
+ assert.match(right,/data-cc-action="date-picker"/);assert.match(right,/data-cc-action="refresh"/);assert.doesNotMatch(right,/data-cc-action="new"/);assert.match(root.innerHTML,/data-cc-action="new"/);
  assert.doesNotMatch(root.innerHTML,/konnte nicht gezeichnet werden/);
 });
 test('Gefilterte Liste zeigt keine beantworteten Lokale mehr unter Verschickt',()=>{

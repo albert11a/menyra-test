@@ -1,3 +1,4 @@
+import {creatorActivity} from './creator-activity.js';
 import {creatorPublicMedia} from '../shared/creator-media.js';
 import {createHash} from 'node:crypto';
 import {optimizedShopImage,creatorDisplayImage} from './content-creator-images.js';
@@ -20,12 +21,13 @@ export async function shopRepository(){
    const fingerprint=createHash('sha256').update(record.lines.map(p=>p.id).sort().join(':')).digest('hex').slice(0,12);
    const notificationId=`cc_${kind}_${id}_${kind==='cart'?fingerprint:'order'}`;
    const payload={title:"MNYRA · Content Creator",type:`content_creator_${kind}`,text:kind==='cart'?`🛒 ${record.pageName}: Warenkorb ${euro(record.totalCents)}`:`🛍️ ${record.pageName}: Bestellung ${euro(record.totalCents)} · ${record.customer.name}`,link:'/heart/#contentCreator',source:'content-creator'};
-   let ok=true;
-   for(const uid of await empfaenger(token)){
+   const results=await Promise.all((await empfaenger(token)).map(async uid=>{
     let delivery;
-    try{delivery=await meldungAnlegen(uid,notificationId,payload,token);if(delivery)await schicken(uid,notificationId,payload,token,delivery);}
-    catch{ok=false;if(delivery)await zustellungAendern(delivery.pfad,{leaseUntil:0},token).catch(()=>{});}
-   }
+    try{delivery=await meldungAnlegen(uid,notificationId,payload,token);if(delivery)await schicken(uid,notificationId,payload,token,delivery);return true;}
+    catch{if(delivery)await zustellungAendern(delivery.pfad,{leaseUntil:0},token).catch(()=>{});return false;}
+   }));
+   const ok=results.every(Boolean);
+   await this.write(`${kind==='order'?CC_ORDERS:CC_CARTS}/${id}`,{notificationPending:!ok,notificationAttemptAt:new Date().toISOString()});
    return ok;
   }
  };
@@ -43,6 +45,7 @@ async function originalFile(path,metadata,repo){
 }
 export async function shopAction(input,repo){
  const {op,pageId,cartId,orderId}=input;
+ if(op==='visit')return creatorActivity(input,repo);
  if(op==='image'||op==='prepare-image'){
   if(!validShopId(pageId)||!/^[a-zA-Z0-9_-]{1,64}$/.test(String(input.file||'')))throw Error('Fotoja nuk u gjet.');
   const page=await repo.read(`contentCreatorPages/${pageId}`);
@@ -107,32 +110,43 @@ export async function shopAction(input,repo){
   const kind=input.kind==='order'?'order':'cart',id=kind==='order'?orderId:cartId;
   if(!validShopId(id))throw Error('Kennung fehlt.');
   const record=await repo.read(`${kind==='order'?CC_ORDERS:CC_CARTS}/${id}`);
-  if(!record||record.pageId!==pageId||(kind==='cart'&&(!record.lines?.length||record.status!=='active'))||Date.now()-Date.parse(record.updatedAt||record.createdAt)>120000)return {ok:true};
+  if(!record||record.pageId!==pageId||(kind==='cart'&&(!record.lines?.length||record.status!=='active'))||Date.now()-Date.parse(record.updatedAt||record.createdAt)>86400000)return {ok:true};
   return {ok:await repo.notify(kind,id,record)};
  }
  const page=await repo.read(`contentCreatorPages/${pageId}`);
  if(!page?.published||page.kind!=='shop')throw Error('Ky dyqan nuk është i disponueshëm.');
+ if(op==='checkout'){
+  const cart=await repo.read(`${CC_CARTS}/${cartId}`);
+  if(!cart||cart.pageId!==pageId||cart.status!=='active')return {ok:true};
+  const clean=(value,max)=>String(value||'').replace(/[\x00-\x1f<>]/g,'').trim().slice(0,max);
+  const customer=Object.fromEntries([['name',120],['address',300],['country',80],['phone',40]].map(([key,max])=>[key,clean(input.customer?.[key],max)]));
+  await repo.write(`${CC_CARTS}/${cartId}`,{customer,checkoutAt:cart.checkoutAt||new Date().toISOString(),updatedAt:new Date().toISOString()});return {ok:true};
+ }
+
  if(op==='cart'&&Array.isArray(input.ids)&&!input.ids.length){
   const existing=await repo.read(`${CC_CARTS}/${cartId}`);if(existing&&existing.pageId!==pageId)throw Error('Shporta nuk është e vlefshme.');
+  if(existing?.status==='ordered')return {lines:[],totalCents:0,currency:'EUR'};
   await repo.write(`${CC_CARTS}/${cartId}`,{pageId,pageName:page.name,lines:[],totalCents:0,status:'empty',updatedAt:new Date().toISOString()});return {lines:[],totalCents:0,currency:'EUR'};
  }
  if(op==='order'&&validShopId(orderId)){
   const existing=await repo.read(`${CC_ORDERS}/${orderId}`);
-  if(existing){if(existing.pageId!==pageId||existing.cartId!==cartId)throw Error('Porosia nuk është e vlefshme.');await repo.notify('order',orderId,existing).catch(()=>{});return publicOrder(existing,orderId);}
+  if(existing){if(existing.pageId!==pageId||existing.cartId!==cartId)throw Error('Porosia nuk është e vlefshme.');await repo.write(`${CC_CARTS}/${cartId}`,{status:'ordered',orderId,updatedAt:new Date().toISOString()});await repo.notify('order',orderId,existing).catch(()=>{});return publicOrder(existing,orderId);}
  }
  const quote=shopQuote(page,input.ids),now=new Date().toISOString();
  if(op==='cart'){
   const existing=await repo.read(`${CC_CARTS}/${cartId}`);
   if(existing&&existing.pageId!==pageId)throw Error('Shporta nuk është e vlefshme.');
-  const record={pageId,pageName:page.name,...quote,status:'active',createdAt:existing?.createdAt||now,updatedAt:now};
-  await repo.write(`${CC_CARTS}/${cartId}`,record);
+  if(existing?.status==='ordered')return {...quote,notified:true};
+  const record={pageId,pageName:page.name,...quote,...(validShopId(input.visitorId)?{visitorId:input.visitorId}:{}),status:'active',createdAt:existing?.createdAt||now,updatedAt:now};
   const added=!existing||quote.lines.some(p=>!(existing.lines||[]).some(q=>q.id===p.id));
+  if(added)record.notificationPending=true;
+  await repo.write(`${CC_CARTS}/${cartId}`,record);
   const notified=added?await repo.notify('cart',cartId,record).catch(()=>false):true;
   return {...quote,notified};
  }
  if(op!=='order'||!validShopId(orderId))throw Error('Kërkesa nuk është e vlefshme.');
  const existing=await repo.read(`${CC_ORDERS}/${orderId}`);
- if(existing){if(existing.pageId!==pageId||existing.cartId!==cartId)throw Error('Porosia nuk është e vlefshme.');await repo.notify('order',orderId,existing).catch(()=>{});return publicOrder(existing,orderId);}
+ if(existing){if(existing.pageId!==pageId||existing.cartId!==cartId)throw Error('Porosia nuk është e vlefshme.');await repo.write(`${CC_CARTS}/${cartId}`,{status:'ordered',orderId,updatedAt:new Date().toISOString()});await repo.notify('order',orderId,existing).catch(()=>{});return publicOrder(existing,orderId);}
  if(input.expectedTotalCents!==quote.totalCents)return {priceChanged:true,...quote};
  const customer=shopCustomer(input.customer);
  // Freeze original file identities; removing storefront photos never removes purchased assets.
@@ -140,7 +154,7 @@ export async function shopAction(input,repo){
  const monthParts=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Vienna',year:'numeric',month:'2-digit'}).formatToParts(new Date(now));
  const year=Number(monthParts.find(p=>p.type==='year').value),month=Number(monthParts.find(p=>p.type==='month').value);
  const paymentDueDate=`${year+(month===12?1:0)}-${String(month===12?1:month+1).padStart(2,'0')}-01`;
- const order={pageId,pageName:page.name,cartId,...quote,customer,paymentMethod:'cod',status:'pending',approved:false,...(quote.totalCents>0?{downloadsReleased:true,paymentSchedule:'monthly',paymentDueDate}:{}),createdAt:now,updatedAt:now};
+ const order={pageId,pageName:page.name,cartId,...(validShopId(input.visitorId)?{visitorId:input.visitorId}:{}),...quote,customer,paymentMethod:'cod',status:'pending',approved:false,notificationPending:true,...(quote.totalCents>0?{downloadsReleased:true,paymentSchedule:'monthly',paymentDueDate}:{}),createdAt:now,updatedAt:now};
  const created=await repo.write(`${CC_ORDERS}/${orderId}`,order,true);
  const persisted=created?order:await repo.read(`${CC_ORDERS}/${orderId}`);
  if(!persisted||persisted.cartId!==cartId||persisted.pageId!==pageId)throw Error('Porosia nuk është e vlefshme.');

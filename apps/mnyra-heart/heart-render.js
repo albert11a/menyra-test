@@ -543,7 +543,7 @@ function renderShell(state, runtime = {}) {
               : activeView === "lifeskin" ? (MARKEN[lifeskinWeg(state)] ? lifeskinWeg(state) : "lifeskin") : "heart")}
           </div>
           <div class="heart-topbar__right">
-            ${activeView === "contentCreator" ? `<button class="heart-icon-button" data-cc-action="new" aria-label="Neue Lokal-Seite erstellen">${renderHeartIcon("plus")}</button>` : isLeadsView ? `
+            ${activeView === "contentCreator" ? `${state.contentCreator?.selectedId?`<button class="heart-icon-button" data-cc-action="back" aria-label="Zurück zu allen Lokalen">${renderHeartIcon("arrowLeft")}</button>`:`<button class="heart-icon-button" data-cc-action="date-picker" aria-label="Statistik-Zeitraum auswählen">${renderHeartIcon("calendar")}</button>`}<button class="heart-icon-button" data-cc-action="refresh" aria-label="Aktualisieren">${renderHeartIcon("refresh")}</button>` : isLeadsView ? `
               <button id="leadSettingsBtn" class="heart-icon-button" data-action="open-crm-editor" data-crm-domain="leads" data-crm-mode="settings" aria-label="Lead Settings">${renderHeartIcon("settings")}</button>
               <button id="newLeadBtn" class="heart-icon-button heart-icon-button--lead-create" data-action="open-crm-editor" data-crm-domain="leads" data-crm-mode="create" aria-label="Lead erstellen">${renderHeartIcon("plus")}</button>
             ` : `
@@ -689,10 +689,12 @@ export function renderHeartApp(rootNode, state, runtime = {}) {
   const focusSnapshot = captureHeartActiveField(rootNode);
   const wischStand = captureChipScroll(rootNode);
   const bewahrt = captureBewahrt(rootNode);
+  const creatorDom = captureCreatorDom(rootNode);
   if (MORPH && typeof rootNode.ownerDocument?.createElement === "function") morphInhalt(rootNode, markup);
   else rootNode.innerHTML = markup;
   rootNode.__heartLastMarkup = markup;
   restoreBewahrt(rootNode, bewahrt);
+  restoreCreatorDom(rootNode,creatorDom);
   restoreHeartActiveField(rootNode, focusSnapshot);
   restoreChipScroll(rootNode, wischStand);
 }
@@ -804,4 +806,29 @@ export function restoreChipScroll(rootNode, stand) {
     const an = gewaehlterChip(reihe);
     if (an && an.offsetLeft + an.offsetWidth > reihe.clientWidth) reihe.scrollLeft = an.offsetLeft - 16;
   }
+}
+
+// Preserve only Creator's active DOM. Heart's live snapshots must not discard
+// package drafts, selected files, disclosure state or swipe positions.
+function captureCreatorDom(root){
+ const all=selector=>[...(root.querySelectorAll?.(selector)||[])];
+ const controls=new Map();
+ for(const field of all('.cc-workspace form input,.cc-workspace form textarea,.cc-workspace form select')){
+  if(field.closest('[hidden]'))continue;
+  const form=field.closest('form'),key=`${form.id||form.dataset.ccPackage}:${field.id||field.name||field.dataset.ccPackageAdd}`;
+  controls.set(key,{node:field,value:field.value,checked:field.checked});
+ }
+ return {controls,folds:new Map(all('[data-cc-fold]').map(node=>[node.dataset.ccFold,node.open])),tracks:new Map(all('[data-cc-track]').map(node=>[node.dataset.ccTrack,node.scrollLeft]))};
+}
+function restoreCreatorDom(root,previous){
+ const all=selector=>[...(root.querySelectorAll?.(selector)||[])];
+ for(const field of all('.cc-workspace form input,.cc-workspace form textarea,.cc-workspace form select')){
+  if(field.closest('[hidden]'))continue;
+  const form=field.closest('form'),key=`${form.id||form.dataset.ccPackage}:${field.id||field.name||field.dataset.ccPackageAdd}`,old=previous.controls.get(key);
+  if(!old)continue;
+  if(field.type==='file'){old.node.disabled=field.disabled;if(old.node!==field)field.replaceWith(old.node);}
+  else{field.value=old.value;if(field.type==='checkbox')field.checked=old.checked;}
+ }
+ for(const node of all('[data-cc-fold]'))if(previous.folds.has(node.dataset.ccFold))node.open=previous.folds.get(node.dataset.ccFold);
+ for(const node of all('[data-cc-track]'))if(previous.tracks.has(node.dataset.ccTrack))node.scrollLeft=previous.tracks.get(node.dataset.ccTrack);
 }

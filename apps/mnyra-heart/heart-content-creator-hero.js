@@ -5,7 +5,7 @@ import {creatorHeroFormat,creatorHeroCrop,normalizeCreatorCrop,creatorHeroCropSt
 export function renderCreatorHeroEditor(page,state={}) {
   if(page.kind!=='shop')return '';
   const own=page.heroImages||[],files=creatorHeroFiles(page),format=creatorHeroFormat(page),disabled=state.mediaBusy?'disabled':'';
-  return `<details class="cc-hero-editor" open><summary>Titelbilder unter dem Header</summary>
+  return `<details class="cc-hero-editor" data-cc-fold="hero-${esc(page.id)}"><summary>Titelbilder unter dem Header</summary>
     <label class="cc-add">Eigene Titelbilder hochladen<input type="file" multiple accept="image/jpeg,image/png,image/webp" data-cc-hero-upload="${esc(page.id)}" ${disabled}></label>
     <p class="cc-muted">Bis zu 6 eigene Titelbilder. Reihenfolge und Ausschnitt lassen sich unten einstellen.</p>
     <label class="cc-hero-format">Format auf der Webseite<select data-cc-hero-format="${esc(page.id)}" ${disabled}><option value="landscape" ${format==='landscape'?'selected':''}>Querformat · 4:3</option><option value="portrait" ${format==='portrait'?'selected':''}>Hochformat · 4:5</option></select></label>

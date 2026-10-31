@@ -7,20 +7,24 @@ import {ccEscape,ccImage} from '../shared/content-creator.js';
 
 const contentSource=(await readFile(new URL('../apps/content-creator/content.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace("import('./visits.js')","loadVisits()").replace(/void start\(\);\s*$/,'return start;');
 const contentFactory=new Function('esc','ccImage','mountCreatorShop','document','location','localStorage','globalThis','loadVisits','fetch',`const renderCreatorPromo=arguments[9];\n${contentSource}`);
-const visitsSource=(await readFile(new URL('../apps/content-creator/visits.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace('export async function','async function');
-const visitsFactory=new Function('db','doc','getDoc','setDoc','serverTimestamp','CC_VISITS','localStorage','globalThis','document',`${visitsSource}\nreturn installCreatorVisits;`);
+const visitsSource=(await readFile(new URL('../apps/content-creator/visits.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export (async )?function /g,'$1function ');
+const visitsFactory=new Function('db','doc','getDoc','setDoc','serverTimestamp','CC_VISITS','localStorage','globalThis','document','fetch',`${visitsSource}\nreturn installCreatorVisits;`);
 const id='a'.repeat(32);
 async function setup({preview=false,previous=null,failAnswer=false,storage=new Map(),avatar=true,kind='promo'}={}){
  const page={id,published:true,name:'Bistro <One>',avatar:avatar?'data:image/jpeg;base64,AAAA':'',photoIds:['000'],products:[],kind};
  const {document,window}=parseHTML(`<html><head><script type="application/json" id="creator-page-data">${JSON.stringify(page)}</script></head><body><main id="content-app"></main></body></html>`);
- const writes=[],listeners={},timers=[],viewport={scrollY:0,innerHeight:800,setTimeout:fn=>timers.push(fn),addEventListener:(name,fn)=>{listeners[name]=fn;}};
+ const writes=[],listeners={},timers=[],viewport={scrollY:0,innerHeight:800,setTimeout:fn=>timers.push(fn),setInterval:()=>0,addEventListener:(name,fn)=>{listeners[name]=fn;}};
  Object.defineProperty(document.documentElement,'scrollHeight',{value:2800});
  const doc=(...args)=>args.filter(a=>typeof a==='string').join('/');
  const getDoc=async()=>({exists:()=>!!previous,data:()=>previous});
  const setDoc=async(path,data)=>{if(failAnswer&&data.answer)throw Error('offline');writes.push({path,data});};
  const localStorage={getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key)};
  let sdkLoads=0,fetches=0;
- const install=visitsFactory({},doc,getDoc,setDoc,()=>({server:true}),'contentCreatorVisits',localStorage,viewport,document);
+ const install=visitsFactory({},doc,getDoc,setDoc,()=>({server:true}),'contentCreatorVisits',localStorage,viewport,document,async(url,options)=>{
+  const input=JSON.parse(options.body);if(failAnswer&&['yes','no'].includes(input.event))return {ok:false};
+  const data={...input,opened:true,scrolled:input.event==='scroll'||previous?.scrolled===true,answer:['yes','no'].includes(input.event)?input.event:previous?.answer||''};
+  writes.push({path:`contentCreatorVisits/${id}_${input.visitorId}`,data});return {ok:true,json:async()=>data};
+ });
  const start=contentFactory(ccEscape,ccImage,async({root,page})=>{root.innerHTML=creatorHowTo(page);},document,{pathname:`/content-creator/${id}`,search:preview?'?still=1':''},localStorage,viewport,async()=>{sdkLoads++;return {installCreatorVisits:install};},async()=>{fetches++;throw Error('Unexpected duplicate page request');},renderCreatorPromo);
  await start();const firstLoads=sdkLoads;
  async function settle(){for(let i=0;i<10;i++)await new Promise(r=>setImmediate(r));}

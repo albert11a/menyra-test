@@ -27,7 +27,7 @@ async function start(){
       if(!response.ok)throw Error('Faqja nuk u gjet.');page=await response.json();
     }
     document.title=`Për ${page.name} · MNYRA`;
-    if(page.kind==='shop')await mountCreatorShop({root,page,still});
+    if(page.kind==='shop')await mountCreatorShop({root,page,still,track:(event,data)=>visits().then(tracker=>tracker.track?.(event,data))});
     else {
       root.innerHTML=renderCreatorPromo(page);
     }
@@ -38,7 +38,7 @@ async function start(){
     });
 
     // Non-visual work never gates first photos or interactions.
-    if(!still)globalThis.setTimeout(()=>{void visits().catch(()=>{tracking=undefined;});},4500);
+    if(!still)globalThis.setTimeout(()=>{void visits().catch(()=>{tracking=undefined;});},0);
   }catch{
     // Keep any server-rendered photographs visible if hydration fails.
     if(root.querySelector('.shop-product'))return;

@@ -30,6 +30,7 @@
     "check:social-bundle": "node scripts/check-mnyra-social-bundle-budget.mjs"
   },
   "dependencies": {
+    "@vercel/functions": "^3.10.5",
     "rollup-plugin-visualizer": "^7.0.1",
     "sharp": "^0.35.5",
     "vite": "7.3.2"

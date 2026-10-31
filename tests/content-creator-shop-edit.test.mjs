@@ -1,3 +1,4 @@
+import {creatorBusinessStatus} from '../shared/creator-analytics.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -6,7 +7,7 @@ import {createHeartStore,createHeartInitialState} from '../apps/mnyra-heart/hear
 import {renderContentCreator} from '../apps/mnyra-heart/heart-content-creator-render.js';
 import {contentLink} from '../shared/content-creator.js';
 const source=(await readFile(new URL('../apps/mnyra-heart/heart-content-creator.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export (async )?function /g,'$1function ');
-const factory=new Function('db','collection','doc','getDoc','onSnapshot','setDoc','updateDoc','writeBatch','serverTimestamp','CC_PAGES','CC_VISITS','contentLink',`const creatorCdnEnabled=async()=>false; const savePromoAsset=async(pageId,imageId,file,data)=>setDoc(doc(db,CC_PAGES,pageId,'images',imageId),{data,caption:''});\n${source}\nreturn createContentCreator;`);
+const factory=new Function('db','collection','doc','getDoc','onSnapshot','setDoc','updateDoc','writeBatch','serverTimestamp','CC_PAGES','CC_VISITS','contentLink','creatorBusinessStatus',`const creatorCdnEnabled=async()=>false; const savePromoAsset=async(pageId,imageId,file,data)=>setDoc(doc(db,CC_PAGES,pageId,'images',imageId),{data,caption:''});\n${source}\nreturn createContentCreator;`);
 function setup(options={}){
  const {document,window}=parseHTML('<div id="app"></div>'),root=document.getElementById('app');
  const store=createHeartStore(createHeartInitialState());
@@ -18,7 +19,7 @@ function setup(options={}){
  let fail=false;
  const create=factory({},()=>'',doc,async path=>({data:()=>docs.get(path)}),()=>()=>{},async()=>{},update,()=>{
  const writes=[];return {update:(...args)=>writes.push(()=>update(...args)),delete:path=>writes.push(()=>docs.delete(path)),commit:async()=>{if(fail)throw Error('Offline');for(const write of writes)await write();}};
- },()=>'', 'contentCreatorPages','contentCreatorVisits',contentLink);
+ },()=>'', 'contentCreatorPages','contentCreatorVisits',contentLink,creatorBusinessStatus);
  store.actions.patchContentCreator({pages:[page]});store.subscribe(state=>{root.innerHTML=renderContentCreator(state.contentCreator);});root.innerHTML=renderContentCreator(store.getState().contentCreator);
  const uploads=[];
  create({root,store,prepareImage:async file=>'preview:'+file.name,saveAsset:async(pageId,key,file,data,config)=>{
@@ -108,4 +109,16 @@ test('Failed or oversized package additions leave membership unchanged and can b
  const d=setup();await d.click('[data-cc-action="detail"]');await d.add('p',[{...file,size:31*1024*1024}]);
  assert.equal(d.uploads.length,0);assert.match(d.store.getState().contentCreator.mediaError,/30 MB/);
  await d.add('p',[file]);assert.equal(d.docs.get('contentCreatorPages/shop').products[0].imageIds.length,3);
+});
+
+test('Business settings persist bulk Ready/Archiv and follow-up without changing packages',async()=>{
+ const c=setup();await c.click('[data-cc-action="settings"]');
+ const select=c.root.querySelector('[data-cc-select]');select.checked=true;select.dispatchEvent(new c.root.ownerDocument.defaultView.Event('change',{bubbles:true}));
+ await c.click('[data-cc-action="bulk-status"][data-key="ready"]');
+ assert.equal(c.docs.get('contentCreatorPages/shop').workflow,'ready');
+ assert.ok(c.docs.get('contentCreatorPages/shop').workflowAt);
+ await c.click('[data-cc-action="settings"]');await c.click('[data-cc-action="select-all"]');
+ await c.click('[data-cc-action="bulk-status"][data-key="archived"]');
+ assert.equal(c.docs.get('contentCreatorPages/shop').workflow,'archived');
+ assert.equal(c.docs.get('contentCreatorPages/shop').products.length,2);
 });
