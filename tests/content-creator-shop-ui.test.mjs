@@ -54,10 +54,10 @@ test('A photo shared with a free package and promotional images stay saveable',(
  page.products.pop();assert.match(creatorPhoto(page,'one','Paid'),/data-protected-preview/);
  page.kind='promo';assert.doesNotMatch(creatorPhoto(page,'one','Promo'),/data-protected-preview/);
 });
-test('Shop bündelt vier Fotos und gibt Originale vor der monatlichen Zahlung frei',async()=>{
+test('Shop bündelt vier Fotos und gibt Originale vor der Barzahlung beim Kurier frei',async()=>{
  const ctx=await setup();assert.equal(ctx.root.querySelectorAll('.shop-product').length,1);assert.equal(ctx.root.querySelectorAll('.shop-slide').length,4);assert.equal(ctx.root.querySelectorAll('.shop-dots button').length,4);
  await ctx.click('[data-shop="add"]');assert.equal(ctx.calls[0].op,'cart');assert.deepEqual(ctx.calls[0].ids,['pack']);
- await ctx.checkout();assert.match(ctx.root.querySelector('.shop-payment').textContent,/paguani më 1/);await ctx.submit();
+ await ctx.checkout();assert.match(ctx.root.querySelector('.shop-payment').textContent,/Pagesa bëhet cash te korrieri/);await ctx.submit();
  assert.equal(ctx.root.querySelectorAll('.shop-order').length,1);assert.equal(ctx.root.querySelector('[data-shop="save-photos"]').disabled,false);
  const [path,order]=[...ctx.docs.entries()].find(([key])=>key.startsWith('contentCreatorOrders/'));ctx.docs.set(path,{...order,approved:true,paymentConfirmed:true,status:'released'});
  await ctx.click('[data-shop="refresh"]');assert.equal(ctx.root.querySelector('[data-shop="save-photos"]').disabled,false);
@@ -211,11 +211,11 @@ test('Hero autoplay, swipe, dots and pause preserve the gallery through cart cha
  track.scrollLeft=0;track.dispatchEvent(new ctx.window.Event('scroll'));
  assert.equal(ctx.root.querySelector('[data-shop="hero-dot"][data-index="0"]').getAttribute('aria-pressed'),'true');
 });
-test('Hero respects reduced motion and keeps the introduction in simple Albanian pa ë',async()=>{
+test('Hero respects reduced motion and keeps the introduction in clear Albanian with the approved courier copy',async()=>{
  const intervals=[],ctx=await setup(true,2900,{heroPhotoIds:['one','two'],intervals,reducedMotion:true});
  const track=ctx.root.querySelector('[data-hero-track]');intervals.find(t=>t.ms===5500).fn();assert.ok(!track.scrollLeft);
- const intro=ctx.root.querySelector('.shop-intro-copy');assert.doesNotMatch(intro.textContent,/[ëË]/);
- assert.match(intro.textContent,/mnyra.*Bistro/);assert.match(intro.textContent,/foto falas/);assert.ok(intro.querySelector('a[href="#shop-faq"]'));
+ const intro=ctx.root.querySelector('.shop-intro-copy');assert.match(intro.textContent,/Pagesa bëhet cash/);
+ assert.match(intro.textContent,/mnyra.*Bistro/);assert.doesNotMatch(intro.textContent,/falas|muajit/);assert.match(intro.textContent,/2–3 ditë/);assert.ok(intro.querySelector('a[href="#shop-faq"]'));
 });
 
 
@@ -257,4 +257,14 @@ test('A committed order with a lost response is recovered without a second purch
  assert.equal(ctx.root.querySelectorAll('.shop-order').length,1);
  assert.ok(ctx.calls.some(call=>call.op==='receipt'));
  assert.doesNotMatch(ctx.root.textContent,/Response lost/);
+});
+
+ test('Closed FAQ stays closed when adding a package; another open answer stays open',async()=>{
+ const ctx=await setup(true);
+ assert.ok(ctx.root.querySelector('[data-faq="how"]').hasAttribute('open'));
+ ctx.root.querySelector('[data-faq="how"]').removeAttribute('open');
+ ctx.root.querySelector('[data-faq="video"]').setAttribute('open','');
+ await ctx.click('[data-shop="add"]');
+ assert.equal(ctx.root.querySelector('[data-faq="how"]').hasAttribute('open'),false);
+ assert.equal(ctx.root.querySelector('[data-faq="video"]').hasAttribute('open'),true);
 });

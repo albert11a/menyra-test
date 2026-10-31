@@ -115,12 +115,21 @@ test('Ein Bild-Endpunkt entscheidet serverseitig über kostenlose und geschützt
  await assert.rejects(shopAction(input,f.repo));
  });
 
-test('Monthly purchase releases only its originals while payment stays pending',async()=>{
+test('Courier cash purchase releases only its originals while payment stays pending',async()=>{
  const f=fixture(),order=await shopAction({...request,downloadsReleased:false,paymentConfirmed:true},f.repo);
  assert.equal(order.approved,false);assert.equal(order.downloadsAvailable,true);assert.equal(order.status,'pending');
- assert.match(order.paymentDueDate,/^\d{4}-\d{2}-01$/);
- const stored=f.docs.get('contentCreatorOrders/'+orderId);assert.equal(stored.paymentConfirmed,undefined);assert.equal(stored.paymentSchedule,'monthly');
+ assert.equal(order.paymentSchedule,'courier');assert.equal(order.paymentDueDate,'');
+ const stored=f.docs.get('contentCreatorOrders/'+orderId);assert.equal(stored.paymentConfirmed,undefined);assert.equal(stored.paymentSchedule,'courier');assert.deepEqual(stored.paymentWindowDays,[2,3]);
  assert.equal((await shopAction({op:'download',orderId,file:'one',part:0},f.repo)).data,'YWJj');
  await assert.rejects(shopAction({op:'download',orderId,file:'unknown'},f.repo));
  assert.equal((await shopAction({op:'receipt',orderId},f.repo)).downloadsAvailable,true);
+});
+
+test('Existing monthly orders keep their payment date and download access on retry',async()=>{
+ const f=fixture();await shopAction(request,f.repo);
+ const stored=f.docs.get('contentCreatorOrders/'+orderId);
+ stored.paymentSchedule='monthly';stored.paymentDueDate='2026-12-01';delete stored.paymentWindowDays;
+ const retry=await shopAction(request,f.repo);
+ assert.equal(retry.paymentSchedule,'monthly');assert.equal(retry.paymentDueDate,'2026-12-01');
+ assert.equal(retry.downloadsAvailable,true);assert.equal(stored.paymentSchedule,'monthly');
 });
