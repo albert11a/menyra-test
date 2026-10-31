@@ -3,7 +3,7 @@ import {creatorDay} from '../shared/creator-analytics.js';
 const EVENTS=new Set(['open','scroll','photo','package','add','remove','cart','checkout','close','order','download','yes','no']);
 export async function creatorActivity(input,repo,now=new Date().toISOString()){
  const {pageId,visitorId}=input;if(!validShopId(pageId)||!validShopId(visitorId))throw Error('Besuchskennung fehlt.');
- const page=await repo.read(`contentCreatorPages/${pageId}`);if(!page?.published)throw Error('Seite nicht verfügbar.');
+ const page=await repo.read(`contentCreatorPages/${pageId}`);if(!page?.published||page.deleting===true)throw Error('Seite nicht verfügbar.');
  const path=`contentCreatorVisits/${pageId}_${visitorId}`,previous=await repo.read(path)||{};
  const event=EVENTS.has(input.event)?input.event:'';
  const data={pageId,visitorId,opened:true,scrolled:previous.scrolled===true||event==='scroll',answer:previous.answer||(['yes','no'].includes(event)?event:''),createdAt:previous.createdAt||now,updatedAt:now,stage:['page','cart','checkout','ordered'].includes(input.stage)?input.stage:previous.stage||'page',online:input.online!==false,days:[...new Set([...(previous.days||[creatorDay(previous.createdAt)]).filter(Boolean),creatorDay(now)])].slice(-366)};

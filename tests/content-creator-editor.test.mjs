@@ -37,31 +37,3 @@ test('Lokal öffnen, Unterschrift speichern, Reihenfolge ändern, löschen und h
  assert.deepEqual(docs.get('contentCreatorPages/a').heroPhotoIds,['one']);
 
 });
-
-test('bestehende Vorschau wird gezielt zum Shop, Bilder, Link, Workflow und Daten bleiben erhalten', async () => {
- const {document,window}=parseHTML('<div id="app"></div>'),root=document.getElementById('app');
- const store=createHeartStore(createHeartInitialState());
- const pages=[{id:'peshku',name:'Peshku i pite',kind:'promo',published:true,photoIds:['one','two'],workflow:'sent',media:{one:{thumb:'saved'}},heroPhotoIds:['one']},
- {id:'maison',name:'La maison bistro',published:true,photoIds:['three'],workflow:'working',products:[{id:'existing',title:'Existing',priceCents:100,imageIds:['three']}]}];
- const docs=new Map(pages.map(p=>[`contentCreatorPages/${p.id}`,structuredClone(p)])),writes=[];
- const doc=(...args)=>args.filter(x=>typeof x==='string').join('/');
- const create=factory({},()=>'',doc,async key=>({data:()=>docs.get(key)}),()=>()=>{},()=>{},async(key,data)=>{writes.push({key,data});docs.set(key,{...docs.get(key),...data});},()=>{},()=> 'timestamp','contentCreatorPages','contentCreatorVisits',contentLink);
- const visits=[{pageId:'peshku',opened:true,scrolled:true}],orders=[{id:'order',pageId:'maison'}];
- store.actions.patchContentCreator({pages,visits,orders,selectedId:'peshku'});
- store.subscribe(state=>{root.innerHTML=renderContentCreator(state.contentCreator);});root.innerHTML=renderContentCreator(store.getState().contentCreator);
- create({root,store});
- for(const page of pages){
-  store.actions.patchContentCreator({selectedId:page.id});
-  const button=root.querySelector('[data-cc-action="convert-shop"]');assert.ok(button);
-  button.dispatchEvent(new window.Event('click',{bubbles:true}));button.dispatchEvent(new window.Event('click',{bubbles:true}));
-  for(let i=0;i<12;i++)await new Promise(resolve=>setImmediate(resolve));
-  const updated=docs.get(`contentCreatorPages/${page.id}`);
-  assert.deepEqual(updated,{...page,kind:'shop',products:page.products||[],updatedAt:'timestamp'});
-  assert.equal(root.querySelector('[data-cc-action="convert-shop"]'),null);
-  assert.match(root.textContent,/Seitenart: Shop/);
- }
- assert.equal(writes.length,2,'double click does not duplicate conversion');
- assert.deepEqual(store.getState().contentCreator.visits,visits);assert.deepEqual(store.getState().contentCreator.orders,orders);
- assert.deepEqual(Object.keys(writes[0].data).sort(),['kind','products','updatedAt']);
- assert.deepEqual(Object.keys(writes[1].data).sort(),['kind','updatedAt']);
-});

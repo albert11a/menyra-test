@@ -89,10 +89,11 @@ test('Heart activates completed legacy empty shops but keeps interrupted drafts 
  const draft={id:'draft',kind:'shop',name:'Interrupted',published:false,workflow:'working',photoIds:[]};
  const archived={...empty,id:'archived',workflow:'archived'};
  const promo={...empty,id:'promo',kind:'promo'};
- for(const page of [empty,draft,archived,promo])ctx.docs.set('contentCreatorPages/'+page.id,page);
- ctx.emitPages([empty,draft,archived,promo]);for(let i=0;i<10;i++)await new Promise(r=>setImmediate(r));
+ const deleting={...empty,id:'deleting',deleting:true,deletionPhase:0};
+ for(const page of [empty,draft,archived,promo,deleting])ctx.docs.set('contentCreatorPages/'+page.id,page);
+ ctx.emitPages([empty,draft,archived,promo,deleting]);for(let i=0;i<10;i++)await new Promise(r=>setImmediate(r));
  assert.equal(ctx.docs.get('contentCreatorPages/empty').published,true);
  assert.equal(ctx.store.getState().contentCreator.pages.find(p=>p.id==='empty').published,true);
- for(const id of ['draft','archived','promo'])assert.equal(ctx.docs.get('contentCreatorPages/'+id).published,false);
+ for(const id of ['draft','archived','promo','deleting'])assert.equal(ctx.docs.get('contentCreatorPages/'+id).published,false);
  assert.equal(ctx.docs.get('contentCreatorPages/empty').workflow,'working');
 });

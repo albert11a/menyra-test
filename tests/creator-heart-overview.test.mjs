@@ -29,8 +29,8 @@ test('Vienna day boundaries, returning visitors, live expiry and totals share co
 test('Archive, real customers and explicit Ready transitions route businesses correctly',()=>{
  const page={id:pageId,workflow:'working'};assert.equal(creatorBusinessStatus(page),'working');
  const visits=[{pageId,opened:true,updatedAt:'2026-10-30T10:00:00Z'}];
- assert.equal(creatorBusinessStatus(page,visits),'working');
- assert.equal(creatorBusinessStatus({...page,workflow:'ready'},visits),'working');
+ assert.equal(creatorBusinessStatus(page,visits),'seen');
+ assert.equal(creatorBusinessStatus({...page,workflow:'ready'},visits),'seen');
  assert.equal(creatorBusinessStatus({...page,workflow:'ready',workflowAt:'2026-10-29T10:00:00Z'},visits),'seen');
  assert.equal(creatorBusinessStatus({...page,workflow:'ready',workflowAt:'2026-10-31T10:00:00Z'},visits),'ready');
  assert.equal(creatorBusinessStatus(page,visits,[{pageId}]),'customer');
@@ -98,11 +98,11 @@ test('Package drafts remain intact through minimisation, live refresh and expans
  assert.equal(root.querySelector('#cc-title-pack').value,'Draft survives');
 });
 
-test('Businesses stay Working until Ready, including missing workflows and real visits',()=>{
+test('A normal visit moves Working and legacy previews to Seen without a Ready prerequisite',()=>{
  const visits=[{pageId,opened:true,scrolled:true,updatedAt:'2026-10-31T12:00:00Z'}];
  for(const workflow of [undefined,'working','draft','unknown','ready','sent']){
   const page={id:pageId,name:'Draft',published:true,workflow,photoIds:['one']};
-  assert.equal(creatorBusinessStatus(page,visits),'working');
+  assert.equal(creatorBusinessStatus(page,visits),'seen');
  }
  assert.equal(creatorBusinessStatus({id:pageId,workflow:'ready',workflowAt:'2026-10-31T13:00:00Z'},visits),'ready');
  assert.equal(creatorBusinessStatus({id:pageId,workflow:'sent',workflowAt:'2026-10-31T11:00:00Z'},visits),'seen');
@@ -137,12 +137,13 @@ test('Cash counts completed orders and expires from purchase time despite fresh 
  assert.equal(creatorOverview({visits:[visit('ordered',180001)]},now).live,0);
 });
 
-test('Legacy auto-Ready and Sended businesses remain Working until manual Ready timestamp exists',()=>{
+test('Unvisited legacy businesses stay Working; a true visit moves them into Seen',()=>{
  const pages=[{id:'draft',workflow:'working'},{id:'old-ready',workflow:'ready'},{id:'old-sent',workflow:'sent',sentAt:'2026-10-30T10:00:00Z'},{id:'manual',workflow:'ready',workflowAt:'2026-10-31T10:00:00Z'}];
  const visits=pages.map(page=>({pageId:page.id,opened:true,updatedAt:'2026-10-30T12:00:00Z'}));
- const state={pages,visits,orders:[],filter:'working'};
+ const state={pages,visits,orders:[],filter:'seen'};
  assert.deepEqual(pages.filter(page=>creatorBusinessMatches(page,state)).map(page=>page.id),['draft','old-ready','old-sent']);
- assert.equal(creatorBusinessStatus({...pages[1],workflowAt:'invalid'},visits),'working');
+ for(const page of pages.slice(0,3))assert.equal(creatorBusinessStatus(page,[]),'working');
+ assert.equal(creatorBusinessStatus({...pages[1],workflowAt:'invalid'},visits),'seen');
  const {document}=parseHTML(renderContentCreator(state));
- const chip=document.querySelector('[data-cc-action="filter"][data-key="working"]');assert.match(chip.textContent,/Working3/);
+ const chip=document.querySelector('[data-cc-action="filter"][data-key="seen"]');assert.match(chip.textContent,/Seen3/);
 });

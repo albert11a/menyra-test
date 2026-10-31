@@ -34,7 +34,23 @@ export function renderContentCreator(state = {}) {
   </section>`;
 }
 
+export function renderBusinessDelete(page, state = {}) {
+  const busy = state.deletingBusinessId === page.id;
+  const asked = state.deleteBusinessConfirm === page.id;
+  const resumed = page.deleting === true;
+  const error = (asked || resumed) && state.deleteBusinessError;
+  return creatorCard(`delete-${page.id}`, 'Business löschen', `
+    <p class="cc-muted">${esc(page.name)} samt Seite, Paketen, gespeicherten Originalen, Bestellungen, Warenkörben und Besuchsdaten löschen.</p>
+    ${asked || resumed ? '<p><strong>Endgültig löschen?</strong> Das lässt sich nicht rückgängig machen. Bestell- und Downloadlinks werden ungültig.</p><p class="cc-muted">Bereits öffentlich geteilte Bilddateien können außerhalb der Business-Seite weiter erreichbar sein.</p>' : ''}
+    ${error ? `<p class="cc-error" role="alert">${esc(error)}</p>` : ''}
+    ${busy ? '<p role="status">Business und zugehörige Daten werden gelöscht …</p>' : ''}
+    <div class="cc-row-actions"><button type="button" data-cc-action="delete-business" data-id="${esc(page.id)}" ${busy || state.mediaBusy ? 'disabled' : ''}>${busy ? 'Wird gelöscht …' : resumed || error ? 'Löschen fortsetzen' : asked ? 'Ja, Business endgültig löschen' : 'Business löschen'}</button>
+    ${asked && !resumed && !busy ? '<button type="button" data-cc-action="cancel-business-delete">Abbrechen</button>' : ''}</div>`,
+    state, { className: 'cc-business-delete' });
+}
+
 function renderDetail(page,state) {
+  if (page.deleting) return `<section class="cc-detail"><h2>${esc(page.name)}</h2>${renderBusinessDelete(page,state)}</section>`;
   const visits=(state.visits || []).filter(v=>v.pageId===page.id);
   const values=[["Gesehen",visits.filter(v=>v.opened).length],["Gescrollt",visits.filter(v=>v.scrolled).length],["Ja geklickt",visits.filter(v=>v.answer==="yes").length],["Nein geklickt",visits.filter(v=>v.answer==="no").length]];
   return `<section class="cc-detail">
@@ -54,13 +70,13 @@ ${creatorFollowupCard(state,page.id)}
     return `<article class="cc-row">${ccImage(image?.cdn?.thumb||image?.data) ? `<img src="${ccImage(image.cdn?.thumb||image.data)}" alt="Bild ${i+1}">` : "<p>Bild wird geladen …</p>"}
     <label>Bildunterschrift<textarea id="cc-edit-caption-${esc(key)}" data-edit-caption="${esc(key)}" maxlength="1000">${esc(state.captionDrafts?.[key] ?? image?.caption ?? "")}</textarea></label>
     <div class="cc-row-actions"><button data-cc-action="caption" data-id="${esc(page.id)}" data-image="${esc(key)}" ${state.mediaBusy?'disabled':''}>Text speichern</button><button data-cc-action="move" data-id="${esc(page.id)}" data-image="${esc(key)}" data-direction="-1" ${i===0||state.mediaBusy?'disabled':''}>↑</button><button data-cc-action="move" data-id="${esc(page.id)}" data-image="${esc(key)}" data-direction="1" ${i===page.photoIds.length-1||state.mediaBusy?'disabled':''}>↓</button><button data-cc-action="delete" data-id="${esc(page.id)}" data-image="${esc(key)}" ${state.mediaBusy?'disabled':''}>Löschen</button></div></article>`;
-  }).join("")}</div></section>`;
+  }).join("")}</div>${renderBusinessDelete(page,state)}</section>`;
 }
 
 function renderLinks(row,state){
+ if(row.deleting)return `<button type="button" data-cc-action="detail" data-id="${esc(row.id)}">Löschen fortsetzen</button>`;
  const chip=(action,label,sign,extra='')=>`<button type="button" class="heart-lifeskin-chip" data-cc-action="${action}" data-id="${esc(row.id)}" ${extra}>${icon(sign)}<span>${label}</span></button>`;
- const kind=`<p class="cc-muted">Seitenart: <strong>${row.kind==='shop'?'Shop':'Content Creator · Vorschau'}</strong></p>${row.kind==='shop'?'':`<p class="cc-muted">Bilder und Link bleiben erhalten. Fotopakete können anschließend separat angelegt werden.</p><button type="button" data-cc-action="convert-shop" data-id="${esc(row.id)}" ${state.mediaBusy?'disabled':''}>Auf Shop umstellen</button>`}`;
- return kind+`<div class="cc-link-actions heart-lifeskin-chips--shop">${row.published?chip('preview','Still preview','eye')+chip('still','Still copy','copy')+chip('copy','True copy','externalLink')+chip('sent','Sended','send',`aria-pressed="${row.workflow==='sent'||!!row.sentAt}" ${state.mediaBusy?'disabled':''}`):row.photoIds?.length?chip('resume','Fertigstellen','edit'):''}</div>`;
+ return `<div class="cc-link-actions heart-lifeskin-chips--shop">${row.published?chip('preview','Still preview','eye')+chip('still','Still copy','copy')+chip('copy','True copy','externalLink')+chip('sent','Sended','send',`aria-pressed="${row.workflow==='sent'||!!row.sentAt}" ${state.mediaBusy?'disabled':''}`):row.photoIds?.length?chip('resume','Fertigstellen','edit'):''}</div>`;
 }
 function renderBusinesses(rows,selected,state){
  const filter=state.filter||'all';

@@ -33,3 +33,7 @@ dieselben Links; keine Pakete oder Preise wurden erfunden.
 Finale lokale Pruefung inklusive Bildmigrationskorrektur: 142 Creator-Tests
 bestanden, Build und diff-check erfolgreich, keine getrackten Bundle-Aenderungen.
 Die Live-Pruefung war am Desktop; mobile Darstellung wurde nicht geprueft.
+
+Folgeauftrag: Der hier beschriebene Umschalter wurde auf ausdruecklichen
+Inhaberwunsch wieder entfernt. Die beiden bereits gespeicherten Shops bleiben
+Shops. Aktueller Folgestand: creator-seen-delete.md.

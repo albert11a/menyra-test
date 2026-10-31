@@ -6,6 +6,7 @@ import {creatorPublicMedia} from '../../shared/creator-media.js';
 import {CC_CARTS,CC_ORDERS,priceCents} from "../../shared/content-creator-shop.js";
 import { auth, db } from "/shared/firebase-config.js";
 import { createCreatorReset } from "./heart-creator-reset.js";
+import { createCreatorBusinessDeletion } from "./heart-creator-business-delete.js";
 import { collection, doc, getDoc, onSnapshot, setDoc, updateDoc, writeBatch, serverTimestamp } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import { CC_PAGES, CC_VISITS, contentLink } from "../../shared/content-creator.js";
 
@@ -49,6 +50,34 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       refresh: () => { stop(); load(); }
     });
   }
+  let businessDeletion;
+  function creatorBusinessDeletion() {
+    return businessDeletion ||= createCreatorBusinessDeletion({
+      getState: () => store.getState().contentCreator,
+      patch,
+      async request(body) {
+        if (!auth.currentUser) throw Error('Bitte erneut in Heart anmelden.');
+        await migrationFinished;
+        const response = await fetch('/api/content-creator-delete', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await auth.currentUser.getIdToken()}` },
+          body: JSON.stringify(body), signal: AbortSignal.timeout(60000)
+        });
+        const result = await response.json();
+        if (!response.ok || result.ok !== true) throw Error(result.error || 'Löschen fehlgeschlagen.');
+        return result;
+      },
+      deleted(pageId) {
+        const current = store.getState().contentCreator;
+        patch({ pages: current.pages.filter(page => page.id !== pageId),
+          visits: (current.visits || []).filter(row => row.pageId !== pageId),
+          carts: (current.carts || []).filter(row => row.pageId !== pageId),
+          orders: (current.orders || []).filter(row => row.pageId !== pageId),
+          selectedId: current.selectedId === pageId ? '' : current.selectedId,
+          deleteBusinessConfirm: '', deleteBusinessError: '', images: current.selectedId === pageId ? {} : current.images });
+        notice('Business und zugehörige Daten gelöscht.');
+      }
+    });
+  }
   let liveTimer=null;
   let subscriptions = [], pendingId = "", avatarFile = null, photoFiles = [], draftAvatar = "", draftName = "";
   let busy = false, stopped = true, createdMs = 0;
@@ -58,12 +87,13 @@ export function createContentCreator({root, store, prepareImage = prepareContent
   const migrationAttempts=new Set();
   async function migrateExisting(){
     if(stopped||migrating||!await creatorCdnEnabled())return;
-    if(stopped||migrating||busy||mediaBusy)return;
+    if(stopped||migrating||busy||mediaBusy||store.getState().contentCreator.deletingBusinessId)return;
     migrating=true;
     migrationFinished=new Promise(resolve=>{finishMigration=resolve;});
     try{
       for(const page of store.getState().contentCreator.pages){
         if(stopped)break;
+        if(page.deleting)continue;
         if(busy||mediaBusy)break;
         const signature=`${page.id}:${JSON.stringify([page.photoIds,page.products])}`;
         if(migrationAttempts.has(signature))continue;
@@ -82,7 +112,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     for(const page of pages){
       if(stopped)return;
       // Only completed legacy shops have products:[]; interrupted creation drafts do not.
-      if(page.kind!=='shop'||page.published!==false||page.workflow!=='working'||!page.name?.trim()||!Array.isArray(page.products)||page.products.length||(page.photoIds||[]).length||activationAttempts.has(page.id))continue;
+      if(page.deleting||page.kind!=='shop'||page.published!==false||page.workflow!=='working'||!page.name?.trim()||!Array.isArray(page.products)||page.products.length||(page.photoIds||[]).length||activationAttempts.has(page.id))continue;
       activationAttempts.add(page.id);
       try{
         await updateDoc(doc(db,CC_PAGES,page.id),{published:true,updatedAt:serverTimestamp()});
@@ -107,7 +137,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     setTimeout(()=>{if(!stopped)void retryNotifications();},1500);
   }
   async function retryNotifications(){
-    if (store.getState().contentCreator.resetRunning) return;
+    if (store.getState().contentCreator.resetRunning || store.getState().contentCreator.deletingBusinessId) return;
     const state=store.getState().contentCreator;
     const pending=[...(state.orders||[]).filter(o=>o.notificationPending&&Date.now()-Date.parse(o.notificationAttemptAt||o.createdAt)>60000&&Date.now()-Date.parse(o.createdAt)<86400000).map(o=>({...o,kind:'order'})),...(state.carts||[]).filter(c=>c.notificationPending&&c.status==='active'&&Date.now()-Date.parse(c.notificationAttemptAt||c.updatedAt)>60000&&Date.now()-Date.parse(c.updatedAt)<86400000).map(c=>({...c,kind:'cart'}))];
     for(const row of pending.slice(0,20)){
@@ -173,7 +203,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     if(epoch===imageEpoch)patch({images:Object.fromEntries(result)});
   }
   async function mediaTask(task) {
-    if(mediaBusy)return;
+    if(mediaBusy||store.getState().contentCreator.deletingBusinessId)return;
     mediaBusy=true;patch({mediaBusy:true,mediaError:""});
     try{await migrationFinished;await task();}catch(error){patch({mediaError:error.message || "Änderung nicht gespeichert."});notice(error.message || "Änderung nicht gespeichert.");}
     finally{mediaBusy=false;patch({mediaBusy:false});void migrateExisting();}
@@ -358,22 +388,12 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     if(button.disabled)return;
     const action=button.dataset.ccAction,id=button.dataset.id;
     try {
+      if (action === 'delete-business') { if (mediaBusy || busy) return; await creatorBusinessDeletion().remove(id); return; }
+      if (action === 'cancel-business-delete') { creatorBusinessDeletion().cancel(); return; }
+      if (store.getState().contentCreator.deletingBusinessId) return;
       if (action === 'reset-data') { await creatorReset().reset(); return; }
       if (action === 'cancel-reset') { creatorReset().cancel(); return; }
-      if (store.getState().contentCreator.resetRunning) return;
-      if (action === 'convert-shop') {
-        await mediaTask(async () => {
-          const ref = doc(db, CC_PAGES, id), snapshot = await getDoc(ref), page = snapshot.data();
-          if (!page) throw Error('Business wurde nicht gefunden.');
-          if (page.kind === 'shop') return;
-          const fields = { kind: 'shop', ...(!Array.isArray(page.products) ? { products: [] } : {}), updatedAt: serverTimestamp() };
-          await updateDoc(ref, fields);
-          const current = store.getState().contentCreator;
-          patch({ pages: current.pages.map(item => item.id === id ? { ...item, ...fields } : item) });
-          notice(`${page.name || 'Business'} ist jetzt ein Shop. Fotopakete kannst du über Plus anlegen.`);
-        });
-        return;
-      }
+      if (store.getState().contentCreator.resetRunning || store.getState().contentCreator.deletingBusinessId) return;
       if(action==='collapse'){toggleCard(button.dataset.key);return;}
       if(action==='toggle-links'){
         const state=store.getState().contentCreator;
@@ -453,7 +473,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         await refreshShopPreviews(id,page.photoIds||[]);await detail(id);notice('Vorschauen mit dezentem Wasserzeichen aktualisiert.');
       });
       if(action==='delete-package'){
-        if(mediaBusy)return;
+        if(mediaBusy||store.getState().contentCreator.deletingBusinessId)return;
         const productId=button.dataset.product;
         if(store.getState().contentCreator.deletePackageConfirm!==productId){patch({deletePackageConfirm:productId});return;}
         await mediaTask(async()=>{

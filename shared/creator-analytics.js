@@ -16,11 +16,11 @@ export function creatorInPeriod(value,period='today',now=Date.now(),date=''){
 export function creatorBusinessStatus(page,visits=[],orders=[]){
  if(page.workflow==='archived')return 'archived';
  if(orders.some(o=>o.pageId===page.id&&o.status!=='cancelled'))return 'customer';
- if(!['ready','sent'].includes(page.workflow)||!creatorMs(page.workflowAt))return 'working';
  const viewed=visits.filter(v=>v.pageId===page.id&&v.opened);
  const latest=Math.max(0,...viewed.map(v=>creatorMs(v.updatedAt||v.createdAt)));
- if(page.workflow==='ready'&&creatorMs(page.workflowAt)>latest)return 'ready';
- if(viewed.length)return 'seen';return 'ready';
+ const ready=['ready','sent'].includes(page.workflow)&&creatorMs(page.workflowAt)>0;
+ if(ready&&creatorMs(page.workflowAt)>latest)return 'ready';
+ if(viewed.length)return 'seen';return ready?'ready':'working';
 }
 export function creatorOverview(state={},now=Date.now()){
  const period=value=>creatorInPeriod(value,state.period||'today',now,state.date);

@@ -34,7 +34,7 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
   const imageMode=String(req.query?.image || url.searchParams.get('image') || '')==='1';
   try{
     const page=await read(`contentCreatorPages/${id}`);
-    if(!page?.published){res.statusCode=404;res.setHeader('Cache-Control','no-store');res.end();return;}
+    if(!page?.published||page.deleting===true){res.statusCode=404;res.setHeader('Cache-Control','no-store');res.end();return;}
     const safePage=publicCreatorPage(page,id);
     if(!imageMode&&!assetMode&&safePage.avatar){
       try{

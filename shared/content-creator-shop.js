@@ -4,7 +4,7 @@ export const euro=cents=>new Intl.NumberFormat('de-DE',{style:'currency',currenc
 export const validShopId=id=>typeof id==='string'&&/^[a-f0-9]{32}$/.test(id);
 export function priceCents(value){const n=Number(String(value??'').trim().replace(',','.'));if(!String(value??'').trim()||!Number.isFinite(n)||n<0||n>10000)throw Error('Bitte einen Preis zwischen 0 und 10.000 € angeben.');const cents=Math.round(n*100);if(n>0&&cents<1)throw Error("Der Mindestpreis ist 0,01 €.");return cents;}
 export function shopQuote(page,ids){
- if(!page?.published||page.kind!=='shop')throw Error('Ky dyqan nuk është i disponueshëm.');
+ if(!page?.published||page.deleting===true||page.kind!=='shop')throw Error('Ky dyqan nuk është i disponueshëm.');
  if(!Array.isArray(ids)||!ids.length||ids.length>10||new Set(ids).size!==ids.length)throw Error('Shporta nuk është e vlefshme.');
  const lines=ids.map(id=>{
   const product=(page.products||[]).find(p=>p.id===id&&p.active!==false);
