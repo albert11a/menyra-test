@@ -46,7 +46,7 @@ async function displayLimited(task){
  try{return await task();}finally{if(displayWaiting.length)displayWaiting.shift()();else displayActive--;}
 }
 const displayCache = new Map();
-export const DISPLAY_IMAGE_VERSION = 3;
+export const DISPLAY_IMAGE_VERSION = 4;
 export function displaySize(value) { return ['thumb','medium','large'].includes(value) ? value : 'thumb'; }
 function validDisplay(record, mode) {
   return record?.version === DISPLAY_IMAGE_VERSION && (mode ? [mode] : ['clean','marked']).every(mode => /^data:image\/(?:webp|jpeg);base64,[A-Za-z0-9+/=]+$/.test(record[mode] || ''));
