@@ -60,11 +60,11 @@ test('Paketfotos entfernen behält gemeinsame Fotos und ein erneut befüllbares 
  assert.ok(c.root.querySelector('[data-cc-package-add="p"]'));
 });
 const assetSource=(await readFile(new URL('../apps/mnyra-heart/heart-content-creator-shop.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/^export \{.*\n/gm,'').replace(/export (async )?function /g,'$1function ');
-test('Wasserzeichen ist dezenter und verwendet gemessene Wortabstände in allen Bildformaten',()=>{
+test('Wasserzeichen hat 25 Prozent Deckkraft und verwendet gemessene Wortabstände in allen Bildformaten',()=>{
  const draw=new Function(`${assetSource}\nreturn drawShopWatermark;`)();
  for(const [width,height] of [[720,900],[720,150],[100,720],[32,32]]){
   const rows=new Map();let textWidth=0;const ctx={save(){},restore(){},translate(){},rotate(){},measureText(){textWidth=parseFloat(this.font.split(' ')[1])*9;return {width:textWidth};},fillText(text,x,y){assert.equal(text,'MNYRA · PREVIEW');const xs=rows.get(y)||[];xs.push(x);rows.set(y,xs);}};
-  draw(ctx,width,height);assert.equal(ctx.fillStyle,'rgba(255,255,255,.12)');assert.ok(rows.size>1);
+  draw(ctx,width,height);assert.equal(ctx.fillStyle,'rgba(255,255,255,.25)');assert.ok(rows.size>1);
   for(const xs of rows.values())for(let i=1;i<xs.length;i++)assert.ok(xs[i]-xs[i-1]>textWidth+15);
  }
 });
