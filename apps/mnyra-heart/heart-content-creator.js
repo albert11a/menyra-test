@@ -360,6 +360,19 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       if (action === 'reset-data') { await creatorReset().reset(); return; }
       if (action === 'cancel-reset') { creatorReset().cancel(); return; }
       if (store.getState().contentCreator.resetRunning) return;
+      if (action === 'convert-shop') {
+        await mediaTask(async () => {
+          const ref = doc(db, CC_PAGES, id), snapshot = await getDoc(ref), page = snapshot.data();
+          if (!page) throw Error('Business wurde nicht gefunden.');
+          if (page.kind === 'shop') return;
+          const fields = { kind: 'shop', ...(!Array.isArray(page.products) ? { products: [] } : {}), updatedAt: serverTimestamp() };
+          await updateDoc(ref, fields);
+          const current = store.getState().contentCreator;
+          patch({ pages: current.pages.map(item => item.id === id ? { ...item, ...fields } : item) });
+          notice(`${page.name || 'Business'} ist jetzt ein Shop. Fotopakete kannst du über Plus anlegen.`);
+        });
+        return;
+      }
       if(action==='collapse'){toggleCard(button.dataset.key);return;}
       if(action==='toggle-links'){
         const state=store.getState().contentCreator;
