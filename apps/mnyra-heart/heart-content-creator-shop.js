@@ -79,10 +79,14 @@ export async function saveShopAsset(pageId,imageId,file,display,options={}){
  if(!file||file.size>30*1024*1024||!['image/jpeg','image/png','image/webp','video/mp4','video/quicktime','video/webm'].includes(file.type))throw Error('JPG, PNG, WebP, MP4, MOV oder WebM bis 30 MB wählen.');
  const bytes=new Uint8Array(await file.arrayBuffer());
  const parts=Math.ceil(bytes.length/PART);if(!parts)throw Error('Die Datei ist leer.');
- for(let i=0;i<parts;i++){
-  const slice=bytes.subarray(i*PART,(i+1)*PART);let binary='';
-  for(let n=0;n<slice.length;n+=4096)binary+=String.fromCharCode(...slice.subarray(n,n+4096));
-  await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId,'chunks',String(i).padStart(3,'0')),{data:btoa(binary)});
+ // Bound memory/network use while avoiding one round trip per original chunk.
+ // Publish original metadata only after ALL chunks have been acknowledged.
+ for(let start=0;start<parts;start+=6){
+  await Promise.all(Array.from({length:Math.min(6,parts-start)},async(_,offset)=>{
+   const i=start+offset,slice=bytes.subarray(i*PART,(i+1)*PART);let binary='';
+   for(let n=0;n<slice.length;n+=4096)binary+=String.fromCharCode(...slice.subarray(n,n+4096));
+   await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId,'chunks',String(i).padStart(3,'0')),{data:btoa(binary)});
+  }));
  }
  await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId),{name:file.name.slice(0,180),mime:file.type,size:bytes.length,parts});
  if(file.type.startsWith('video/')||await creatorCdnEnabled())return saveCreatorCdnAsset(pageId,imageId,file,options);

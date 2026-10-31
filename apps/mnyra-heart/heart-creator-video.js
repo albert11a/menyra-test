@@ -1,4 +1,5 @@
 import {creatorVideoFile,CREATOR_VIDEO_PREVIEW_LIMIT} from '../../shared/creator-video.js';
+import {startCreatorVideo} from './heart-creator-video-start.js';
 import {creatorVideoAudioContext} from './heart-creator-video-audio.js';
 
 // Two derivatives: a full 1920px video retaining audio, and a short, silent
@@ -9,7 +10,7 @@ export async function prepareCreatorVideo(file,{free=false,watermark=()=>{}}={})
  const mime=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp8,opus','video/webm'].find(type=>Recorder?.isTypeSupported?.(type));
  const canvas=document.createElement('canvas'),audio=creatorVideoAudioContext();
  if(!Recorder||!canvas.captureStream||!mime)throw Error('Dieser Browser kann keine geschützte Videovorschau erstellen. Bitte einen aktuellen Safari oder Chrome verwenden.');
- if(!audio||audio.state!=='running')throw Error('Bitte „Vorschauen aktualisieren“ oder „Paket hochladen“ erneut antippen, um die Verarbeitung mit Ton zu starten.');
+ if(!audio)throw Error('Bitte „Vorschauen aktualisieren“ oder „Paket hochladen“ erneut antippen, um die Verarbeitung mit Ton zu starten.');
  const video=document.createElement('video'),url=URL.createObjectURL(file),streams=[],frames=[];
  video.playsInline=true;video.preload='auto';video.setAttribute('playsinline','');
  video.style.cssText='position:fixed;left:-10000px;width:2px;height:2px;pointer-events:none';document.body.appendChild(video);
@@ -46,6 +47,8 @@ export async function prepareCreatorVideo(file,{free=false,watermark=()=>{}}={})
   const small=document.createElement('canvas');dimensions(small,960);const smallContext=small.getContext('2d',{alpha:false});
   const draw=()=>{context.drawImage(video,0,0,canvas.width,canvas.height);if(!free)watermark(context,canvas.width,canvas.height);};
   draw();const stream=canvas.captureStream(30);streams.push(stream);for(const track of destination.stream.getAudioTracks())stream.addTrack(track);
+  // Resolve Safari gesture restrictions BEFORE the recorder starts.
+  await startCreatorVideo(video,audio);
   let lastCapture=-1;
   const preview=await record(stream,6000000,(stop,fail)=>{
    video.onended=stop;video.onerror=()=>fail('Video konnte nicht vollständig verarbeitet werden.');
@@ -54,7 +57,7 @@ export async function prepareCreatorVideo(file,{free=false,watermark=()=>{}}={})
     if(video.currentTime<=1.4&&frames.length<35&&video.currentTime-lastCapture>=1/25){smallContext.drawImage(canvas,0,0,small.width,small.height);frames.push(smallContext.getImageData(0,0,small.width,small.height));lastCapture=video.currentTime;}
     frame=requestAnimationFrame(tick);
    };
-   video.play().then(tick).catch(()=>fail('Video konnte nicht gestartet werden. Bitte erneut antippen.'));
+   tick();
   });
   video.pause();if(!preview.size||frames.length<2)throw Error('Videovorschau ist unvollständig.');
   // Reverse is encoded once, rather than repeated seeking/negative playbackRate

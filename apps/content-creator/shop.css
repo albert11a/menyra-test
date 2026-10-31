@@ -42,3 +42,6 @@ summary{border-radius:16px}#shop-faq{scroll-margin-top:76px}.shop-intro-copy{pad
 .shop-cart-line>video{width:52px;height:66px;object-fit:cover;border-radius:8px;flex-shrink:0;pointer-events:none}
 .shop-purchased-item>video{width:55px;height:70px;object-fit:cover;border-radius:9px;flex-shrink:0;pointer-events:none}
 .shop-cart-line video::-webkit-media-controls,.shop-purchased-item video::-webkit-media-controls{display:none!important}
+
+/* An explicit mobile control stays at the lower left of the opened video. */
+.shop-video-toggle{position:absolute;z-index:3;left:14px;bottom:14px;display:grid;place-items:center;width:46px;height:46px;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font:20px system-ui;cursor:pointer;outline:none;box-shadow:none}

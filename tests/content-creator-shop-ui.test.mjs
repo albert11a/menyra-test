@@ -278,7 +278,9 @@ test('Video viewer has a single audible full video per slide and retains the pla
  assert.equal(ctx.root.querySelector('.shop-viewer-slide').querySelectorAll('video').length,1);
  await ctx.click('.shop-viewer [data-shop="add"]');
  assert.equal(ctx.root.querySelector('.shop-viewer-slide video'),video);
- assert.ok(!video.hasAttribute('muted')&&!video.hasAttribute('loop')&&video.hasAttribute('controls'));
+ assert.ok(!video.hasAttribute('muted')&&!video.hasAttribute('loop')&&!video.hasAttribute('controls'));
  assert.ok(video.hasAttribute('data-video-viewer'));
+ assert.ok(ctx.root.querySelector('.shop-viewer-slide [data-creator-video-toggle]'));
+ assert.equal(ctx.root.querySelector('.shop-slide [data-creator-video-toggle]'),null);
  const event=new ctx.window.Event('contextmenu',{bubbles:true,cancelable:true});video.dispatchEvent(event);assert.equal(event.defaultPrevented,true);
 });
