@@ -10,20 +10,20 @@ import {contentLink} from '../shared/content-creator.js';
 // Isolate browser SDK imports while exercising the production controller and events.
 const source=(await readFile(new URL('../apps/mnyra-heart/heart-content-creator.js',import.meta.url),'utf8'))
  .replace(/^import .*;\n/gm,'').replace(/export (async )?function /g,'$1function ');
-const factory=new Function('db','collection','doc','onSnapshot','setDoc','updateDoc','writeBatch','serverTimestamp','CC_PAGES','CC_VISITS','contentLink','initialShopProduct','getDoc','priceCents',`const creatorCdnEnabled=async()=>false; const savePromoAsset=async(pageId,imageId,file,data)=>setDoc(doc(db,CC_PAGES,pageId,'images',imageId),{data,caption:''});\n${source}\nreturn createContentCreator;`);
+const factory=new Function('db','collection','doc','onSnapshot','setDoc','updateDoc','writeBatch','serverTimestamp','CC_PAGES','CC_VISITS','contentLink','initialShopProduct','getDoc','priceCents',`const CC_CARTS='contentCreatorCarts',CC_ORDERS='contentCreatorOrders'; const creatorCdnEnabled=async()=>false; const savePromoAsset=async(pageId,imageId,file,data)=>setDoc(doc(db,CC_PAGES,pageId,'images',imageId),{data,caption:''});\n${source}\nreturn createContentCreator;`);
 function setup(failImage=false,shop=false,empty=false){
  const {document,window}=parseHTML('<div id="app"></div>'),root=document.getElementById('app');
  const store=createHeartStore(createHeartInitialState());store.actions.patchContentCreator({editor:true,draftName:'Bistro & Co',pageKind:shop?'shop':'promo',shopPrice:'29',shopTitle:'4 Fotos'});
- const writes=[],publications=[],docs=new Map();let fail=failImage;
+ const writes=[],publications=[],docs=new Map(),listeners=new Map();let fail=failImage;
  const setDoc=async(ref,data)=>{if(fail&&ref.includes('/images/'))throw Error('Upload interrupted');writes.push({ref,data});docs.set(ref,{...docs.get(ref),...data});};
  const doc=(...args)=>args.filter(a=>typeof a==='string').join('/');
- const create=factory({},()=>'',doc,()=>()=>{},setDoc,async(ref,data)=>docs.set(ref,{...docs.get(ref),...data}),()=>({update:(ref,data)=>{publications.push({ref,data});docs.set(ref,{...docs.get(ref),...data});},commit:async()=>{}}),()=>({server:true}),'contentCreatorPages','contentCreatorVisits',contentLink,initialShopProduct,async ref=>({data:()=>docs.get(ref)}),priceCents);
+ const create=factory({},(_db,name)=>name,doc,(name,callback)=>{listeners.set(name,callback);return ()=>listeners.delete(name);},setDoc,async(ref,data)=>docs.set(ref,{...docs.get(ref),...data}),()=>({update:(ref,data)=>{publications.push({ref,data});docs.set(ref,{...docs.get(ref),...data});},commit:async()=>{}}),()=>({server:true}),'contentCreatorPages','contentCreatorVisits',contentLink,initialShopProduct,async ref=>({data:()=>docs.get(ref)}),priceCents);
  store.subscribe(state=>{root.innerHTML=renderContentCreator(state.contentCreator);});root.innerHTML=renderContentCreator(store.getState().contentCreator);
- const assets=[];create({root,store,prepareImage:async()=> 'data:image/jpeg;base64,AAAA',saveAsset:async(...args)=>assets.push(args)});
+ const assets=[];const controller=create({root,store,prepareImage:async()=> 'data:image/jpeg;base64,AAAA',saveAsset:async(...args)=>assets.push(args)});
  function change(name,files){const input=root.querySelector(`[name="${name}"]`);Object.defineProperty(input,'files',{value:files,configurable:true});input.dispatchEvent(new window.Event('change',{bubbles:true}));}
  if(!empty){change('avatar',[{name:'logo.jpg'}]);change('photos',[{name:'one.jpg'},{name:'two.jpg'}]);}
  const submit=()=>root.querySelector('form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));
- return {store,writes,publications,submit,assets,docs,root,window,setFailure:value=>{fail=value;}};
+ return {store,writes,publications,submit,assets,docs,root,window,controller,emitPages:pages=>listeners.get('contentCreatorPages')({docs:pages.map(page=>({id:page.id,data:()=>page}))}),setFailure:value=>{fail=value;}};
 }
 async function settled(ctx){for(let i=0;i<30;i++){await new Promise(resolve=>setImmediate(resolve));if(!ctx.store.getState().contentCreator.saving)return;}throw Error('Upload did not finish');}
 
@@ -55,7 +55,7 @@ test('Betrieb ohne Fotos, Logo oder Paketpreis erstellen und erstes Paket späte
  assert.equal(ctx.root.querySelector('[name="shopPrice"]'),null);
  ctx.submit();await settled(ctx);
  const state=ctx.store.getState().contentCreator,page=state.pages[0];
- assert.equal(state.editor,false);assert.equal(state.selectedId,page.id);assert.equal(page.published,false);
+ assert.equal(state.editor,false);assert.equal(state.selectedId,page.id);assert.equal(page.published,true);
  assert.deepEqual(page.photoIds,[]);assert.deepEqual(page.products,[]);assert.equal(ctx.assets.length,0);
  const form=ctx.root.querySelector('#cc-add-package');assert.ok(form);
  form.querySelector('[name="title"]').value='Fishop 1';form.querySelector('[name="price"]').value='0';
@@ -68,8 +68,31 @@ test('Betrieb ohne Fotos, Logo oder Paketpreis erstellen und erstes Paket späte
 });
 test('Auch eine Vorschau-Seite kann zunächst ohne Bilder angelegt werden',async()=>{
  const ctx=setup(false,false,true);ctx.submit();await settled(ctx);
- assert.equal(ctx.store.getState().contentCreator.editor,false);assert.equal(ctx.publications[0].data.published,false);
+ assert.equal(ctx.store.getState().contentCreator.editor,false);assert.equal(ctx.publications[0].data.published,true);
  assert.deepEqual(ctx.publications[0].data.photoIds,[]);assert.equal(ctx.assets.length,0);
  const input=ctx.root.querySelector('[data-cc-add]');Object.defineProperty(input,'files',{value:[]});input.dispatchEvent(new ctx.window.Event('change',{bubbles:true}));
- await new Promise(r=>setImmediate(r));assert.equal(ctx.store.getState().contentCreator.pages[0].published,false);
+ await new Promise(r=>setImmediate(r));assert.equal(ctx.store.getState().contentCreator.pages[0].published,true);
+});
+
+
+test('Empty completed shops have preview and both copy links immediately and remain Working',async()=>{
+ const ctx=setup(false,true,true);ctx.submit();await settled(ctx);
+ const state=ctx.store.getState().contentCreator,page=state.pages[0];
+ assert.equal(page.published,true);assert.equal(page.workflow,'working');
+ assert.equal(page.avatar,'');assert.deepEqual(page.products,[]);assert.deepEqual(page.photoIds,[]);
+ for(const action of ['preview','still','copy','sent'])assert.ok(ctx.root.querySelector(`[data-cc-action="${action}"][data-id="${page.id}"]`));
+});
+
+test('Heart activates completed legacy empty shops but keeps interrupted drafts private',async t=>{
+ const ctx=setup(false,true,true);t.after(()=>ctx.controller.stop());ctx.store.setState({...ctx.store.getState(),auth:{status:'authenticated',access:{allowed:true}}});ctx.controller.load();
+ const empty={id:'empty',kind:'shop',name:'Mama Mantia',published:false,workflow:'working',photoIds:[],products:[]};
+ const draft={id:'draft',kind:'shop',name:'Interrupted',published:false,workflow:'working',photoIds:[]};
+ const archived={...empty,id:'archived',workflow:'archived'};
+ const promo={...empty,id:'promo',kind:'promo'};
+ for(const page of [empty,draft,archived,promo])ctx.docs.set('contentCreatorPages/'+page.id,page);
+ ctx.emitPages([empty,draft,archived,promo]);for(let i=0;i<10;i++)await new Promise(r=>setImmediate(r));
+ assert.equal(ctx.docs.get('contentCreatorPages/empty').published,true);
+ assert.equal(ctx.store.getState().contentCreator.pages.find(p=>p.id==='empty').published,true);
+ for(const id of ['draft','archived','promo'])assert.equal(ctx.docs.get('contentCreatorPages/'+id).published,false);
+ assert.equal(ctx.docs.get('contentCreatorPages/empty').workflow,'working');
 });

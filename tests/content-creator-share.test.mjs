@@ -40,3 +40,14 @@ test('Public JSON is allowlisted, never contains clean/private file metadata',as
  const res=response();await serveContentCreator({method:'GET',url:`/api/content-creator?id=${id}&format=json`},res,{read:async()=>({published:true,kind:'shop',name:'Test',photoIds:['one'],products:[],originals:{secret:true},customer:'PRIVATE'})});
  assert.equal(res.statusCode,200);assert.equal(res.headers['Content-Type'],'application/json');assert.doesNotMatch(res.body,/PRIVATE|originals/);
 });
+
+
+test('An active empty Working shop renders public HTML and JSON without photos, packages or cover',async()=>{
+ const page={published:true,workflow:'working',kind:'shop',name:'Mama Mantia',avatar:'',photoIds:[],products:[]};
+ for(const query of ['', '&format=json']){
+  const res=response();await serveContentCreator({method:'GET',url:`/api/content-creator?id=${id}${query}`},res,{read:async()=>page,loadCovers:async()=>({}),shell:'<html><head><title>Default</title></head><body><main id="content-app">Loading</main></body></html>'});
+  assert.equal(res.statusCode,200);assert.match(res.body,/Mama Mantia/);
+  if(query){const json=JSON.parse(res.body);assert.equal(json.published,true);assert.deepEqual(json.products,[]);assert.deepEqual(json.photoIds,[]);}
+  else {assert.match(res.body,/id="creator-page-data"/);assert.doesNotMatch(res.body,/>Loading<|src="undefined"/);}
+ }
+});

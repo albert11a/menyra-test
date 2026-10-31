@@ -57,15 +57,28 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     }finally{migrating=false;finishMigration();patch({migrationProgress:''});}
   }
   function stop() { subscriptions.forEach(unsubscribe => unsubscribe()); subscriptions = []; stopped = true; clearInterval(liveTimer);liveTimer=null; }
+  const activationAttempts=new Set();
+  async function activateCompletedEmptyShops(pages){
+    for(const page of pages){
+      if(stopped)return;
+      // Only completed legacy shops have products:[]; interrupted creation drafts do not.
+      if(page.kind!=='shop'||page.published!==false||page.workflow!=='working'||!page.name?.trim()||!Array.isArray(page.products)||page.products.length||(page.photoIds||[]).length||activationAttempts.has(page.id))continue;
+      activationAttempts.add(page.id);
+      try{
+        await updateDoc(doc(db,CC_PAGES,page.id),{published:true,updatedAt:serverTimestamp()});
+        if(!stopped)patch({pages:store.getState().contentCreator.pages.map(item=>item.id===page.id?{...item,published:true}:item)});
+      }catch(error){if(!stopped)patch({error:`Shop konnte nicht aktiviert werden: ${error.message}. Bitte aktualisieren.`});}
+    }
+  }
   function load() {
     if (!stopped) return;
-    stopped = false; patch({status:"loading",error:""});
+    stopped = false; activationAttempts.clear(); patch({status:"loading",error:""});
     const errors={};
     function listen(name,key){
       subscriptions.push(onSnapshot(collection(db,name),snap=>{
         delete errors[key];
         patch({[key]:snap.docs.map(d=>({id:d.id,...d.data()})),status:"ready",error:Object.values(errors).join(' ')});
-        if(key==='pages')void migrateExisting();
+        if(key==='pages'){void activateCompletedEmptyShops(store.getState().contentCreator.pages);void migrateExisting();}
       },error=>{errors[key]=`${key}: ${error.message}`;patch({error:Object.values(errors).join(' ')});}));
     }
     listen(CC_PAGES,'pages');listen(CC_CARTS,'carts');listen(CC_ORDERS,'orders');listen(CC_VISITS,'visits');
@@ -308,13 +321,13 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         }else {await savePromoAsset(pendingId,imageId,photoFiles[i],data);await updateDoc(doc(page,'images',imageId),{caption:String(captions[i] || '').slice(0,1000)});}
         photoIds.push(imageId);
       }
-      const completed={kind,name:draftName.trim(),avatar,createdMs,...(kind==='shop'?{products:product?[{...product,imageIds:photoIds}]:[]}:{}),photoIds,published:photoIds.length>0,workflow:'working'};
+      const completed={kind,name:draftName.trim(),avatar,createdMs,...(kind==='shop'?{products:product?[{...product,imageIds:photoIds}]:[]}:{}),photoIds,published:true,workflow:'working'};
       const batch=writeBatch(db);batch.update(page,{...completed,updatedAt:serverTimestamp()});await batch.commit();
       const completedId=pendingId;
       const pages=store.getState().contentCreator.pages||[];
       patch({pages:[...pages.filter(p=>p.id!==completedId),{id:completedId,...completed}],images:{}});
       pendingId="";photoFiles=[];avatarFile=null;draftAvatar="";draftName="";
-      patch({editor:false,saving:false,selectedId:photoIds.length?"":completedId,filter:"working"});notice(photoIds.length?"Business erstellt. Unter Working fertigstellen und anschließend auf Ready setzen.":"Betrieb erstellt. Fotos und Pakete kannst du jetzt oder später hinzufügen.");
+      patch({editor:false,saving:false,selectedId:photoIds.length?"":completedId,filter:"working"});notice(photoIds.length?"Business erstellt. Unter Working fertigstellen und anschließend auf Ready setzen.":"Business erstellt und aktiv. Vorschau und Links sind bereit; Fotos und Pakete kannst du später hinzufügen.");
     } catch(error){patch({saving:false,editorError:`Nicht abgeschlossen: ${error.message}. Du kannst es erneut versuchen.`});}
     finally{busy=false;}
   });
