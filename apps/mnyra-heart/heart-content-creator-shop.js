@@ -26,7 +26,7 @@ export function prepareBoundedShopDisplay(image,edge,quality){
   const q=attempt===0?quality:Math.max(.5,quality-.06);
   const encode=()=>{const webp=frame.toDataURL('image/webp',q);return webp.startsWith('data:image/webp')?webp:frame.toDataURL('image/jpeg',q);};
   const clean=encode();drawShopWatermark(context,frame.width,frame.height);
-  const record={version:4,width:frame.width,height:frame.height,clean,marked:encode()};
+  const record={version:3,width:frame.width,height:frame.height,clean,marked:encode()};
   const bytes=JSON.stringify(record).length;
   if(bytes<=950000)return record;
   // Always redraw from the original; never recompress a previous preview.

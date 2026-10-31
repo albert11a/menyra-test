@@ -16,17 +16,8 @@ originals/chunks collection. Their existing order/payment check is unchanged.
 Only watermarked derivatives of paid photos are uploaded to public R2.
 The approved `MNYRA · PREVIEW` watermark uses 45% white opacity (2026-10-31).
 Text size, spacing, angle and the original-download protection are unchanged.
-Paid previews now carry `watermarkVersion: 4`. Missing or older revisions are
-excluded from public CDN manifests; the existing protected image endpoint
-generates current 45% derivatives from original chunks instead. Display URLs
-and persisted derivatives also use revision 4, so neither browser caches nor
-previous display records select the old watermark. GETs do not write data.
-Opening Content Creator in Heart automatically replaces outdated paid CDN
-previews through the existing resumable migration. Current marked revisions
-and clean/free images are skipped. Each new manifest is published only after
-all three uploads succeed; partial failures preserve originals and captions
-and can be retried without redoing completed photos. The manual
-`Vorschauen aktualisieren` action remains available.
+Existing baked previews retain their previous opacity until the page's
+`Vorschauen aktualisieren` action regenerates them from the protected originals.
 Paid preview images in cards, the large viewer and legacy hero slides suppress
 the native image callout, context menu and dragging. A transparent hit surface
 keeps the image out of long-press hit testing without cancelling swipe/zoom.

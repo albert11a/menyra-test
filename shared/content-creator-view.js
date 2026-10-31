@@ -26,7 +26,7 @@ const paths = {
 export function creatorIcon(name) {
   return `<svg class="cc-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.image}</svg>`;
 }
-export const DISPLAY_VERSION = 4;
+export const DISPLAY_VERSION = 3;
 export function creatorImageUrl(page, file, size = 'thumb') {
   const media = creatorPublicMedia(page)[file] || creatorHeroImages(page).find(image=>image.id===file);
   if (media?.[size]) return media[size];

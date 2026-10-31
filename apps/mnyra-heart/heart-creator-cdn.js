@@ -1,6 +1,6 @@
 import {auth} from '/shared/firebase-config.js';
 import {BUNNY_EDGE_BASE, MEDIA_TICKET_ENDPOINT} from '../../shared/bunny-edge.js';
-import {creatorVariants,creatorMediaUrl,CREATOR_WATERMARK_VERSION} from '../../shared/creator-media.js';
+import {creatorVariants,creatorMediaUrl} from '../../shared/creator-media.js';
 
 // The existing MNYRA image endpoint is already deployed. No capability endpoint,
 // feature flag, Worker update, private bucket or new credentials are required.
@@ -18,7 +18,6 @@ async function ticket() {
 }
 export async function uploadCreatorMedia(pageId,imageId,file,displays,{free=false,hero=false}={}) {
   const access=await ticket(),mode=free||hero?'clean':'marked',media={mode,bytes:file.size};
-  if(mode==='marked')media.watermarkVersion=CREATOR_WATERMARK_VERSION;
   async function upload(blob,name){
     const form=new FormData();form.set('restaurantId',access.uid);form.set('file',blob,name);
     const response=await fetch(`${BUNNY_EDGE_BASE}/image/upload`,{

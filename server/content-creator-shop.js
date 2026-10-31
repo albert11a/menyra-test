@@ -62,7 +62,7 @@ export async function shopAction(input,repo){
   const free=products.find(p=>p.priceCents===0);
   const media=creatorPublicMedia(page)[input.file];
   if(media&&op==='image')return {redirect:media[['thumb','medium','large'].includes(input.size)?input.size:'thumb']};
-  if(['2','3','4'].includes(String(input.display))||op==='prepare-image'){
+  if(['2','3'].includes(String(input.display))||op==='prepare-image'){
    const path=`contentCreatorPages/${pageId}/originals/${input.file}`;
    const display=await creatorDisplayImage(path,null,repo,{size:input.size,free:!!free,persist:op==='prepare-image'});
    // Explicit cache preparation only; never returns private clean variants.

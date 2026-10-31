@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {creatorMediaUrl,creatorVariants,creatorPublicMedia,CREATOR_MEDIA_ORIGIN,CREATOR_WATERMARK_VERSION} from '../shared/creator-media.js';
+import {creatorMediaUrl,creatorVariants,creatorPublicMedia,CREATOR_MEDIA_ORIGIN} from '../shared/creator-media.js';
 import {shopAction} from '../server/content-creator-shop.js';
 import {publicCreatorPage,creatorImageUrl,renderCreatorCatalog} from '../shared/content-creator-view.js';
 const pageId='a'.repeat(32),productId='b'.repeat(32),orderId='c'.repeat(32),file='photo';
@@ -23,7 +23,7 @@ function setup({failOriginal=false}={}){
   if(blob.name==='original.jpg'&&failOriginal)throw Error('Optional original upload failed');
   return Response.json({url:`${CREATOR_MEDIA_ORIGIN}/media/social/${uid}/${uploads.length}.${blob.type==='image/webp'?'webp':'jpg'}`});
  };
- const api=new Function('auth','BUNNY_EDGE_BASE','MEDIA_TICKET_ENDPOINT','creatorVariants','creatorMediaUrl','CREATOR_WATERMARK_VERSION','fetch',`${source}\nreturn {creatorCdnEnabled,uploadCreatorMedia};`)({currentUser:{uid,getIdToken:async()=> 'firebase-user-token'}},CREATOR_MEDIA_ORIGIN,'https://tickets.invalid/issueMediaActionTicket',creatorVariants,creatorMediaUrl,CREATOR_WATERMARK_VERSION,fetch);
+ const api=new Function('auth','BUNNY_EDGE_BASE','MEDIA_TICKET_ENDPOINT','creatorVariants','creatorMediaUrl','fetch',`${source}\nreturn {creatorCdnEnabled,uploadCreatorMedia};`)({currentUser:{uid,getIdToken:async()=> 'firebase-user-token'}},CREATOR_MEDIA_ORIGIN,'https://tickets.invalid/issueMediaActionTicket',creatorVariants,creatorMediaUrl,fetch);
  const displays=Object.fromEntries(['thumb','medium','large'].map(size=>[size,Object.fromEntries(['clean','marked'].map(mode=>[mode,`data:image/webp;base64,${Buffer.from(`${mode}-${size}`).toString('base64')}`]))]));
  return {api,uploads,calls,displays};
 }
@@ -31,7 +31,6 @@ test('Already deployed image upload works without a Worker status route, new buc
  const ctx=setup();assert.equal(await ctx.api.creatorCdnEnabled(),true);assert.equal(ctx.calls.length,0);
  const result=await ctx.api.uploadCreatorMedia(pageId,file,new File(['private-original'],'original.jpg',{type:'image/jpeg'}),ctx.displays);
  assert.ok(creatorVariants(result.media));assert.equal(result.media.mode,'marked');assert.equal(ctx.uploads.length,3);
- assert.equal(result.media.watermarkVersion,CREATOR_WATERMARK_VERSION);
  assert.deepEqual(ctx.uploads.map(upload=>upload.data).sort(),['marked-large','marked-medium','marked-thumb']);
  assert.equal(result.media.download,undefined);assert.equal('original' in result,false);
  assert.ok(ctx.calls.filter(url=>!url.startsWith('data:')).every(url=>url.includes('/image/upload')||url.includes('/issueMediaActionTicket')));
@@ -52,26 +51,13 @@ test('Paid originals keep the established order, payment and private chunk check
  await assert.rejects(shopAction({...input,file:'other'},repo));
 });
 test('Public manifests expose only the current permitted preview and never a paid original URL',()=>{
- const media={mode:'marked',watermarkVersion:CREATOR_WATERMARK_VERSION,bytes:100,...Object.fromEntries(['thumb','medium','large'].map(size=>[size,`${CREATOR_MEDIA_ORIGIN}/media/social/ceo/${size}.webp`])),download:`${CREATOR_MEDIA_ORIGIN}/media/social/ceo/original.jpg`};
+ const media={mode:'marked',bytes:100,...Object.fromEntries(['thumb','medium','large'].map(size=>[size,`${CREATOR_MEDIA_ORIGIN}/media/social/ceo/${size}.webp`])),download:`${CREATOR_MEDIA_ORIGIN}/media/social/ceo/original.jpg`};
  const page={kind:'shop',photoIds:[file],products:[{id:productId,priceCents:10,imageIds:[file]}],media:{[file]:media}};
  assert.equal(creatorImageUrl({...page,id:pageId},file),media.thumb);
  assert.equal(JSON.stringify(publicCreatorPage(page,pageId)).includes('original.jpg'),false);
  assert.equal((renderCreatorCatalog({...page,id:pageId}).match(/fetchpriority="high"/g)||[]).length,1);
  page.media[file].mode='clean';assert.deepEqual(creatorPublicMedia(page),{});
  page.media[file]={...media,thumb:'https://attacker.invalid/photo.jpg'};assert.deepEqual(creatorPublicMedia(page),{});
-});
-test('Legacy or stale paid CDN previews fall back to a versioned image endpoint; free previews stay available',()=>{
- const media={mode:'marked',...Object.fromEntries(['thumb','medium','large'].map(size=>[size,`${CREATOR_MEDIA_ORIGIN}/media/social/ceo/old_${size}.webp`]))};
- const page={id:pageId,kind:'shop',photoIds:[file],products:[{id:productId,priceCents:1500,imageIds:[file]}],media:{[file]:media}};
- for(const version of [undefined,1,CREATOR_WATERMARK_VERSION-1]){
-  media.watermarkVersion=version;assert.deepEqual(creatorPublicMedia(page),{});
-  assert.match(creatorImageUrl(page,file),/op=image/);assert.match(creatorImageUrl(page,file),/display=4/);
-  assert.deepEqual(publicCreatorPage(page,pageId).media,{});
- }
- media.watermarkVersion=CREATOR_WATERMARK_VERSION;
- assert.equal(creatorImageUrl(page,file),media.thumb);
- page.products[0].priceCents=0;media.mode='clean';delete media.watermarkVersion;
- assert.equal(creatorImageUrl(page,file),media.thumb);
 });
 test('Free original redirects still require current publication, free price and exact package membership',async()=>{
  const download=`${CREATOR_MEDIA_ORIGIN}/media/social/ceo/original.jpg`;

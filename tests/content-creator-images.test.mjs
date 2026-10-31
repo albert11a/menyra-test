@@ -78,27 +78,3 @@ test('Detailed PNG originals fit every persisted display budget without rejectin
  }
  assert.deepEqual(bytes,before);assert.equal(f.docs.get(path).size,before.length);
 });
-
-test('Legacy paid CDN and stored display records regenerate the current watermark without writing on GET',async()=>{
- const pageId='d'.repeat(32),file='legacy',path=`contentCreatorPages/${pageId}/originals/${file}`;
- const original=await sharp({create:{width:600,height:800,channels:3,background:'#151515'}}).jpeg().toBuffer();
- const f=fixture(original,path),baseRead=f.repo.read;
- const old=await sharp({create:{width:30,height:40,channels:3,background:'#ff0000'}}).webp().toBuffer();
- const oldData='data:image/webp;base64,'+old.toString('base64');
- for(const size of ['thumb','medium','large'])f.docs.set(`${path}/displays/${size}`,{version:3,clean:oldData,marked:oldData});
- const media={mode:'marked',...Object.fromEntries(['thumb','medium','large'].map(size=>[size,`https://menyra-media.alberthoti-vsa.workers.dev/media/social/ceo/old_${size}.webp`]))};
- const page={published:true,kind:'shop',photoIds:[file],products:[{id:'paid',priceCents:1500,imageIds:[file]}],media:{[file]:media}};
- f.repo.read=async(key,fields)=>key===`contentCreatorPages/${pageId}`?page:baseRead(key,fields);
- const result=await shopAction({op:'image',pageId,file,display:'4',size:'thumb'},f.repo);
- assert.equal(result.redirect,undefined);assert.equal(result.mime,'image/webp');assert.notDeepEqual(result.bytes,old);
- assert.equal((await sharp(result.bytes).metadata()).width,600);assert.equal(f.stats().writes,0);
- // On the near-black source, a 45% white watermark must contain clearly lighter pixels.
- const raw=await sharp(result.bytes).raw().toBuffer();assert.ok(Math.max(...raw.subarray(0,100000))>95);
- assert.equal(f.docs.get(`${path}/displays/thumb`).version,3);
- assert.equal(f.docs.get(`${path}/chunks/000`).data,original.toString('base64'));
- await shopAction({op:'prepare-image',pageId,file},f.repo);
- assert.equal(f.stats().writes,3);assert.equal(f.docs.get(`${path}/displays/thumb`).version,4);
- const reads=f.stats().reads;
- await shopAction({op:'image',pageId,file,display:'4'},f.repo);
- assert.equal(f.stats().reads,reads+1);assert.equal(f.stats().writes,3);
-});

@@ -1,8 +1,6 @@
 // The already deployed MNYRA image uploader returns /media/social/... URLs.
 // Only this owned media origin is allowed in public Creator manifests.
 export const CREATOR_MEDIA_ORIGIN = 'https://menyra-media.alberthoti-vsa.workers.dev';
-// Revision 4 is the approved 45% watermark, not the original image version.
-export const CREATOR_WATERMARK_VERSION = 4;
 export function creatorMediaUrl(value) {
   try {
     const url = new URL(value);
@@ -12,7 +10,6 @@ export function creatorMediaUrl(value) {
 export function creatorVariants(record) {
   if (!record || !['clean','marked'].includes(record.mode)) return null;
   const result = {mode:record.mode};
-  if(Number.isSafeInteger(record.watermarkVersion)&&record.watermarkVersion>0)result.watermarkVersion=record.watermarkVersion;
   if(Number.isSafeInteger(record.bytes)&&record.bytes>0&&record.bytes<=30*1024*1024)result.bytes=record.bytes;
   for (const size of ['thumb','medium','large']) {
     result[size] = creatorMediaUrl(record[size]);
@@ -28,9 +25,7 @@ export function creatorPublicMedia(page) {
     if (page.kind === 'shop' && !products.length) continue;
     const mode = page.kind !== 'shop' || products.some(p => p.priceCents === 0) ? 'clean' : 'marked';
     const record = creatorVariants(page.media?.[id]);
-    // Missing revisions are legacy baked previews. Serve a fresh server derivative
-    // until Heart replaces them; never show stale paid CDN bytes as current.
-    if (record?.mode === mode && (mode==='clean'||record.watermarkVersion===CREATOR_WATERMARK_VERSION)) result[id] = record;
+    if (record?.mode === mode) result[id] = record;
   }
   return result;
 }

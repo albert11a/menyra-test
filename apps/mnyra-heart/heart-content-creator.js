@@ -100,8 +100,8 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         const migrationIds=(page.photoIds||[]).filter(id=>page.kind!=='shop'||(page.products||[]).some(product=>product.active!==false&&product.imageIds?.includes(id)));
         if(page.cdnMigrationVersion===1&&migrationIds.every(id=>creatorPublicMedia(page)[id]))continue;
         migrationAttempts.add(signature);
-        patch({migrationProgress:`${page.name}: bestehende Vorschauen werden aktualisiert …`,migrationError:''});
-        try{await migrateCreatorPage(page.id,(done,total)=>patch({migrationProgress:`${page.name}: ${done} / ${total} Vorschauen aktualisiert`}));}
+        patch({migrationProgress:`${page.name}: bestehende Fotos werden zu Cloudflare übernommen …`,migrationError:''});
+        try{await migrateCreatorPage(page.id,(done,total)=>patch({migrationProgress:`${page.name}: ${done} / ${total} Fotos übernommen`}));}
         catch(error){patch({migrationError:`${page.name}: ${error.message} Die bisherigen Fotos bleiben verfügbar.`});break;}
       }
     }finally{migrating=false;finishMigration();patch({migrationProgress:''});}

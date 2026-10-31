@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {creatorVariants,creatorPublicMedia,CREATOR_MEDIA_ORIGIN,CREATOR_WATERMARK_VERSION} from '../shared/creator-media.js';
+import {creatorVariants,creatorPublicMedia,CREATOR_MEDIA_ORIGIN} from '../shared/creator-media.js';
 const pageId='a'.repeat(32);
 const source=(await readFile(new URL('../apps/mnyra-heart/heart-content-creator-shop.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/^export \{.*\n/gm,'').replace(/export (async )?function /g,'$1function ');
 function setup({failSecond=false,archived=false}={}){
@@ -19,7 +19,7 @@ function setup({failSecond=false,archived=false}={}){
  const upload=async(pid,id,file,displays,options)=>{
   if(fail&&id==='two')throw Error('Upload interrupted');
   assert.equal(await file.text(),'original');assert.deepEqual(Object.keys(displays),['thumb','medium','large']);uploads.push(id);
-  const media={mode:options.free?'clean':'marked',bytes:file.size,...(!options.free?{watermarkVersion:CREATOR_WATERMARK_VERSION}:{})};
+  const media={mode:options.free?'clean':'marked',bytes:file.size};
   for(const size of ['thumb','medium','large'])media[size]=`${CREATOR_MEDIA_ORIGIN}/media/creator-public/${pid}/${id}/revision_${size}.webp`;
   return {media};
  };
@@ -45,19 +45,6 @@ test('Archived originals and previous orders keep their existing protected stora
  const ctx=setup({archived:true});await ctx.api.migrateCreatorPage(pageId);
  assert.deepEqual(ctx.uploads,['one','two']);assert.equal(ctx.docs.get(`contentCreatorPages/${pageId}/originals/archived`).parts,1);assert.equal(ctx.docs.get(`contentCreatorPages/${pageId}/originals/archived/chunks/000`).data,btoa('original'));
  assert.equal(creatorPublicMedia(ctx.docs.get(`contentCreatorPages/${pageId}`)).archived,undefined);
-});
-test('Already migrated paid photos with older watermarks are refreshed once from originals and then skipped',async()=>{
- const ctx=setup(),path=`contentCreatorPages/${pageId}`,page=ctx.docs.get(path);
- const legacy={mode:'marked',...Object.fromEntries(['thumb','medium','large'].map(size=>[size,`${CREATOR_MEDIA_ORIGIN}/media/social/ceo/old_${size}.webp`]))};
- page.cdnMigrationVersion=1;page.media={one:legacy,two:{...legacy,watermarkVersion:CREATOR_WATERMARK_VERSION}};
- const originalBefore=structuredClone(ctx.docs.get(`${path}/originals/one/chunks/000`));
- await ctx.api.migrateCreatorPage(pageId);
- assert.deepEqual(ctx.uploads,['one']);
- assert.equal(ctx.docs.get(path).media.one.watermarkVersion,CREATOR_WATERMARK_VERSION);
- assert.equal(ctx.docs.get(`${path}/images/one`).caption,'Keep this caption');
- assert.deepEqual(ctx.docs.get(`${path}/originals/one/chunks/000`),originalBefore);
- assert.equal(Object.keys(creatorPublicMedia(ctx.docs.get(path))).length,2);
- await ctx.api.migrateCreatorPage(pageId);assert.deepEqual(ctx.uploads,['one']);
 });
 test('A failed upload never replaces a manifest or changes the protected original',async()=>{
  const ctx=setup({failSecond:true}),before=structuredClone(ctx.docs.get(`contentCreatorPages/${pageId}`)),originalBefore=structuredClone(ctx.docs.get(`contentCreatorPages/${pageId}/originals/two`));
