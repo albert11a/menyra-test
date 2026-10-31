@@ -34,10 +34,10 @@ export function creatorImageUrl(page, file, size = 'thumb') {
   return `/api/content-creator-shop?${new URLSearchParams({op:'image',pageId:page.id,file,size,display:String(DISPLAY_VERSION),v:String(page.updatedAt || page.createdMs || '')})}`;
 }
 export function publicCreatorPage(page, id) {
-  const photoIds = [...new Set((page.photoIds || []).filter(key => /^[a-zA-Z0-9_-]{1,64}$/.test(key)))].slice(0,30);
+  const photoIds = [...new Set((page.photoIds || []).filter(key => /^[a-zA-Z0-9_-]{1,64}$/.test(key)))].slice(0,page.kind==='shop'?100:30);
   return {id, published:true, mediaTypes:Object.fromEntries(photoIds.filter(key=>creatorIsVideo(page,key)).map(key=>[key,'video'])), media:creatorPublicMedia(page),heroImages:creatorHeroImages(page),heroFormat:creatorHeroFormat(page),heroCrop:Object.fromEntries(creatorHeroFiles(page).map(id=>[id,creatorHeroCrop(page,id)])),kind:page.kind === 'shop' ? 'shop' : 'promo', name:String(page.name || '').slice(0,160),
     avatar:ccImage(page.avatar), heroPhotoIds:[...new Set((Array.isArray(page.heroPhotoIds)?page.heroPhotoIds:[]).filter(id=>photoIds.includes(id)))].slice(0,6), updatedAt:typeof page.updatedAt === 'string' ? page.updatedAt : '', createdMs:Number(page.createdMs)||0, photoIds,
-    products:(page.products || []).filter(p => p.active !== false && /^[a-zA-Z0-9_-]{1,64}$/.test(p.id) && Number.isSafeInteger(p.priceCents) && p.priceCents >= 0).slice(0,10).map(p=>({id:p.id,title:String(p.title || 'Pako fotosh').slice(0,120),priceCents:p.priceCents,active:true,imageIds:photoIds.filter(key=>p.imageIds?.includes(key))}))};
+    products:(page.products || []).filter(p => p.active !== false && /^[a-zA-Z0-9_-]{1,64}$/.test(p.id) && Number.isSafeInteger(p.priceCents) && p.priceCents >= 0).slice(0,100).map(p=>({id:p.id,title:String(p.title || 'Pako fotosh').slice(0,120),priceCents:p.priceCents,active:true,imageIds:photoIds.filter(key=>p.imageIds?.includes(key))}))};
 }
 export function creatorOfferButton(product, {busy = '', selected = false} = {}) {
   const free = product.priceCents === 0;

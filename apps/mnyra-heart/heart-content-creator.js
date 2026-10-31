@@ -266,7 +266,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         const pageRef=doc(db,CC_PAGES,id),snapshot=await getDoc(pageRef),page=snapshot.data();
         const product=page?.products?.find(p=>p.id===productId);
         if(!product||page.kind!=='shop')throw Error('Paket wurde nicht gefunden.');
-        if((page.photoIds?.length||0)+files.length>30)throw Error('Maximal 30 Bilder pro Seite.');
+        if((page.photoIds?.length||0)+files.length>100)throw Error('Maximal 100 Dateien pro Shop.');
         for(const file of files)if(!['image/jpeg','image/png','image/webp','video/mp4','video/quicktime','video/webm'].includes(file.type)||file.size>30*1024*1024)throw Error('JPG, PNG, WebP, MP4, MOV oder WebM bis 30 MB wählen.');
         const keys=[];
         for(const file of files){
@@ -349,7 +349,9 @@ export function createContentCreator({root, store, prepareImage = prepareContent
           await updateDoc(pageRef,updated);
           patch({pages:store.getState().contentCreator.pages.map(p=>p.id===id?{...p,products}:p)});notice('Paket gespeichert.');return;
         }
-        if(!files.length || page.photoIds.length+files.length>30 || (page.products||[]).length>=10)throw Error('Fotos oder Videos auswählen: maximal 30 Dateien und 10 Pakete pro Shop.');
+        if(!files.length)throw Error('Bitte mindestens ein Foto oder Video auswählen.');
+        if((page.photoIds?.length||0)+files.length>100)throw Error('Maximal 100 Dateien pro Shop.');
+        if((page.products||[]).length>=100)throw Error('Maximal 100 Pakete pro Shop.');
         for(const file of files)if(!['image/jpeg','image/png','image/webp','video/mp4','video/quicktime','video/webm'].includes(file.type)||file.size>30*1024*1024)throw Error('JPG, PNG, WebP, MP4, MOV oder WebM bis 30 MB wählen.');
         const keys=[];
         for(const file of files){
@@ -364,7 +366,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     }
     if(event.target.id!=="cc-create-form")return;
     event.preventDefault(); if(busy)return; capture();
-    if(!draftName.trim() || photoFiles.length>30){patch({editorError:"Bitte einen Betriebsnamen eingeben. Fotos sind optional (maximal 30)."});return;}
+    if(!draftName.trim() || photoFiles.length>(store.getState().contentCreator.pageKind==='shop'?100:30)){patch({editorError:`Bitte einen Betriebsnamen eingeben. Dateien sind optional (maximal ${store.getState().contentCreator.pageKind==='shop'?100:30}).`});return;}
     const kind=store.getState().contentCreator.pageKind==='shop'?'shop':'promo';
     let product;
     if(kind==='shop'&&photoFiles.length){try{product=initialShopProduct(store.getState().contentCreator,[]);}catch(error){patch({editorError:error.message});return;}}

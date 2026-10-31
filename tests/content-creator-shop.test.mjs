@@ -133,3 +133,16 @@ test('Existing monthly orders keep their payment date and download access on ret
  assert.equal(retry.paymentSchedule,'monthly');assert.equal(retry.paymentDueDate,'2026-12-01');
  assert.equal(retry.downloadsAvailable,true);assert.equal(stored.paymentSchedule,'monthly');
 });
+
+test('100-package shops publish and quote every item, including the last video; package 101 is rejected',async()=>{
+ const {publicCreatorPage,renderCreatorCatalog}=await import('../shared/content-creator-view.js');
+ const ids=Array.from({length:100},(_,i)=>`asset_${i}`);
+ const page={id:pageId,published:true,kind:'shop',name:'Large shop',photoIds:ids,mediaTypes:{asset_99:'video'},products:ids.map((id,i)=>({id:`pack_${i}`,title:`Item ${i+1}`,priceCents:100,imageIds:[id],active:true}))};
+ const safe=publicCreatorPage(page,pageId);assert.equal(safe.products.length,100);assert.equal(safe.photoIds.length,100);
+ assert.equal(safe.mediaTypes.asset_99,'video');assert.equal(safe.products[99].imageIds[0],'asset_99');
+ const quote=shopQuote(page,page.products.map(p=>p.id));assert.equal(quote.lines.length,100);assert.equal(quote.totalCents,10000);
+ assert.match(renderCreatorCatalog(safe),/Item 100/);
+ const extra={id:'pack_100',title:'Too many',priceCents:100,imageIds:['asset_100']};page.products.push(extra);page.photoIds.push('asset_100');
+ assert.throws(()=>shopQuote(page,page.products.map(p=>p.id)));assert.throws(()=>shopQuote({...page,products:[{...extra,imageIds:page.photoIds}]},['pack_100']));
+ const promo=publicCreatorPage({...page,kind:'promo'},pageId);assert.equal(promo.photoIds.length,30);
+});

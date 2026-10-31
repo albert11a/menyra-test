@@ -97,3 +97,23 @@ test('Heart activates completed legacy empty shops but keeps interrupted drafts 
  for(const id of ['draft','archived','promo','deleting'])assert.equal(ctx.docs.get('contentCreatorPages/'+id).published,false);
  assert.equal(ctx.docs.get('contentCreatorPages/empty').workflow,'working');
 });
+
+test('A 99-item shop accepts its 100th package and video, without the obsolete 10/30-item block',async()=>{
+ const ctx=setup(false,true,true);ctx.submit();await settled(ctx);
+ const created=ctx.store.getState().contentCreator.pages[0];
+ const ids=Array.from({length:99},(_,i)=>`photo_${i}`),page={...created,photoIds:ids,products:ids.map((id,i)=>({id:`pack_${i}`,title:`Photo ${i}`,priceCents:200,imageIds:[id]}))};
+ ctx.docs.set('contentCreatorPages/'+page.id,page);ctx.store.actions.patchContentCreator({pages:[page],selectedId:page.id,newPackage:true});
+ const form=ctx.root.querySelector('#cc-add-package');form.querySelector('[name="title"]').value='Video 100';form.querySelector('[name="price"]').value='120';
+ Object.defineProperty(form.querySelector('[name="files"]'),'files',{value:[{name:'new.mov',type:'video/quicktime',size:100}]});form.dispatchEvent(new ctx.window.Event('submit',{bubbles:true,cancelable:true}));
+ for(let i=0;i<35;i++)await new Promise(r=>setImmediate(r));
+ const stored=ctx.docs.get('contentCreatorPages/'+page.id);assert.equal(stored.products.length,100);assert.equal(stored.photoIds.length,100);assert.equal(stored.products[99].priceCents,12000);assert.equal(ctx.assets.length,1);assert.equal(ctx.store.getState().contentCreator.mediaError,'');
+});
+test('A full shop refuses package 101 before uploading and explains the actual 100-package limit',async()=>{
+ const ctx=setup(false,true,true);ctx.submit();await settled(ctx);const created=ctx.store.getState().contentCreator.pages[0];
+ const page={...created,photoIds:['shared'],products:Array.from({length:100},(_,i)=>({id:`pack_${i}`,title:`Package ${i}`,priceCents:100,imageIds:['shared']}))};
+ ctx.docs.set('contentCreatorPages/'+page.id,page);ctx.store.actions.patchContentCreator({pages:[page],selectedId:page.id,newPackage:true});
+ const form=ctx.root.querySelector('#cc-add-package');form.querySelector('[name="title"]').value='Too many';form.querySelector('[name="price"]').value='20';
+ Object.defineProperty(form.querySelector('[name="files"]'),'files',{value:[{name:'new.jpg',type:'image/jpeg',size:100}]});form.dispatchEvent(new ctx.window.Event('submit',{bubbles:true,cancelable:true}));
+ for(let i=0;i<15;i++)await new Promise(r=>setImmediate(r));
+ assert.equal(ctx.docs.get('contentCreatorPages/'+page.id).products.length,100);assert.equal(ctx.assets.length,0);assert.match(ctx.store.getState().contentCreator.mediaError,/100 Pakete/);
+});
