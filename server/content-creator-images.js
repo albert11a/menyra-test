@@ -65,7 +65,7 @@ function watermarkSvg(width,height) {
   const font=Math.max(7,width/42),stepX=font*13.5,stepY=font*4.7,radius=Math.ceil(Math.hypot(width,height));
   let words='';
   for(let y=-radius;y<radius;y+=stepY)for(let x=-radius;x<radius;x+=stepX)words+=`<text x="${x.toFixed(1)}" y="${y.toFixed(1)}">MNYRA · PREVIEW</text>`;
-  return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><g transform="translate(${width/2} ${height/2}) rotate(-20)" font-family="Arial,sans-serif" font-size="${font}" font-weight="400" fill="white" fill-opacity=".25">${words}</g></svg>`);
+  return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><g transform="translate(${width/2} ${height/2}) rotate(-20)" font-family="Arial,sans-serif" font-size="${font}" font-weight="400" fill="white" fill-opacity=".20">${words}</g></svg>`);
 }
 export async function creatorDisplayImage(path, metadata, repo, {size='thumb', free=false, persist=false}={}) {
  size=displaySize(size);
