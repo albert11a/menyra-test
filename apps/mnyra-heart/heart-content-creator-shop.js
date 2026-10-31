@@ -9,7 +9,7 @@ export function drawShopWatermark(ctx,width,height){
  const text='MNYRA · PREVIEW',fontSize=Math.max(7,width/42);
  ctx.save();ctx.translate(width/2,height/2);ctx.rotate(-.35);
  ctx.font=`400 ${fontSize}px Arial`;ctx.textAlign='center';ctx.textBaseline='middle';
- ctx.fillStyle='rgba(255,255,255,.25)';ctx.shadowColor='rgba(0,0,0,.04)';ctx.shadowBlur=.5;
+ ctx.fillStyle='rgba(255,255,255,.35)';ctx.shadowColor='rgba(0,0,0,.04)';ctx.shadowBlur=.5;
  const stepX=Math.ceil(ctx.measureText(text).width+fontSize*3),stepY=Math.ceil(fontSize*4.7);
  const radius=Math.hypot(width,height)/2;
  for(let row=-Math.ceil(radius/stepY);row<=Math.ceil(radius/stepY);row++){
