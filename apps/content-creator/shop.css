@@ -1,4 +1,8 @@
 /* One mobile composition, including on wider screens. No desktop-only flow. */
+/* Safari 26 samples viewport-edge headers as well as the document background.
+   Keep the underlying sticky header dark until the full-screen viewer closes. */
+html[data-cc-viewer="1"] .shop-header{background:var(--cc-viewer)}
+html[data-cc-viewer="1"] .shop-viewer-header{position:sticky;top:0;background:var(--cc-viewer)}
 /* A transparent hit surface keeps iOS from targeting the paid preview image.
    Native scrolling, pinch zoom and the containing button remain available. */
 .shop-shell [data-protected-preview]{pointer-events:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-user-drag:none}

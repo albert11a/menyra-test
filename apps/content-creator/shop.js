@@ -20,6 +20,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
  let viewer=null,backgroundLock=null,sheetLock=null,photoSave=null,downloadCancelled=false,fileAbort=null;
  function canDownload(order){return order?.downloadsAvailable===true||order?.approved===true;}
  const originalTheme=document.querySelector('meta[name="theme-color"]')?.getAttribute('content')||'#f7f6f2';
+ const colorScheme=document.querySelector('meta[name="color-scheme"]'),originalColorScheme=colorScheme?.getAttribute('content');
  const prepared=new Map(),imageErrors={},largeImages=new Map();
  function canPrefetch(){const connection=navigator.connection;return !connection?.saveData&&!['slow-2g','2g','3g'].includes(connection?.effectiveType);}
  let neighbourObserver=null,heroIndex=0,heroPaused=!!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -128,6 +129,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   }
   document.documentElement.dataset.ccViewer=viewer?'1':'0';
   const theme=document.querySelector('meta[name="theme-color"]');if(theme)theme.setAttribute('content',viewer?'#101813':originalTheme);
+  if(colorScheme){if(viewer)colorScheme.setAttribute('content','dark');else if(originalColorScheme!==null)colorScheme.setAttribute('content',originalColorScheme);else colorScheme.removeAttribute('content');}
  }
  function photoSaveMarkup(){
   if(!photoSave)return '';
