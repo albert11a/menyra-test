@@ -1,5 +1,6 @@
+import {createCreatorVideoPreload} from '../../shared/creator-video-preload.js';
 import {createCreatorVideoPlayback} from '../../shared/creator-video-playback.js';
-import {creatorIsVideo,creatorAssetCount,creatorVideoFirst} from '../../shared/creator-video.js';
+import {creatorIsVideo,creatorAssetCount,creatorVideoFirst,creatorVideoUrl} from '../../shared/creator-video.js';
 import {creatorVisitorId} from './visits.js';
 import {ccEscape as esc,ccImage} from '../../shared/content-creator.js';
 import {euro,shopQuote,validShopId} from '../../shared/content-creator-shop.js';
@@ -13,6 +14,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   if(protectedImage)event.preventDefault();
  });
  const videoPlayback=createCreatorVideoPlayback(root);
+ const videoPreload=createCreatorVideoPreload(root.ownerDocument);
  const visitorId=still?'':creatorVisitorId(page.id);
  const activity=(event,data={})=>{if(!still)void track(event,{stage:panel==='checkout'?'checkout':panel==='cart'?'cart':'page',cartId,...data}).catch(()=>{});};
  const storageKey=`mnyra:cc:shop:${page.id}${still?':still':''}`;
@@ -87,6 +89,11 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   const next=track.children[index+1]?.querySelector('img[data-deferred-src]');
   if(next&&canPrefetch()){next.loading='eager';next.fetchPriority='low';next.src=next.dataset.deferredSrc;next.removeAttribute('data-deferred-src');next.decode?.().catch(()=>{});}
   warmLargeImage(node.dataset.photo);
+  // One visible candidate only, after its cover has loaded. Metadata is a
+  // browser hint, not a request to download every video in the catalog.
+  if(node.hasAttribute('data-video-cover')&&!videoPreload.hasCandidate&&!viewer&&!panel&&!photoSave&&!navigator.connection?.saveData&&document.visibilityState!=='hidden'&&rect&&height>0&&rect.bottom>0&&rect.top<height){
+   videoPreload.prepare(node.dataset.photo,creatorVideoUrl(page,node.dataset.photo,{viewer:true}),{poster:node.currentSrc||node.getAttribute('src')});
+  }
  }
  function watchImages(){
   for(const node of root.querySelectorAll('img[data-photo]')){
@@ -147,7 +154,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   const product=page.products.find(p=>p.id===viewer.product),files=packFiles(viewer.product);
   return `<section class="shop-viewer" role="dialog" aria-modal="true" aria-labelledby="shop-viewer-title">
    <header class="shop-viewer-header"><div><h2 id="shop-viewer-title">${esc(product.title)}</h2><span data-view-count aria-live="polite">${viewer.index+1} / ${files.length}</span></div><button type="button" data-shop="viewer-close" id="shop-viewer-close" aria-label="Mbyll pamjen e madhe">${creatorIcon('x')}</button></header>
-   <div class="shop-viewer-stage"><div class="shop-viewer-track" data-view-track>${files.map((id,i)=>`<div class="shop-viewer-slide">${creatorIsVideo(page,id)?'':img(id,'',{size:'thumb',active:Math.abs(i-viewer.index)<=1,eager:i===viewer.index}).replace('<img ','<img class="shop-viewer-preview" aria-hidden="true" ')}${img(id,`${product.title} · ${i+1}`,{size:creatorIsVideo(page,id)?'large':'medium',viewer:true,nativeControls:false,active:Math.abs(i-viewer.index)<=1,eager:i===viewer.index})}${creatorIsVideo(page,id)?'<div class="shop-video-controls" data-creator-video-controls><button type="button" class="shop-video-toggle" data-creator-video-toggle aria-label="Luaj videon">▶</button><span class="shop-video-time" data-creator-video-time>0:00 / 0:00</span><input class="shop-video-progress" data-creator-video-progress type="range" min="0" max="1000" value="0" step="1" aria-label="Pozicioni i videos"></div>':''}</div>`).join('')}</div>
+   <div class="shop-viewer-stage"><div class="shop-viewer-track" data-view-track>${files.map((id,i)=>`<div class="shop-viewer-slide">${creatorIsVideo(page,id)?'':img(id,'',{size:'thumb',active:Math.abs(i-viewer.index)<=1,eager:i===viewer.index}).replace('<img ','<img class="shop-viewer-preview" aria-hidden="true" ')}${img(id,`${product.title} · ${i+1}`,{size:creatorIsVideo(page,id)?'large':'medium',viewer:true,nativeControls:false,posterSrc:images[id]||imageUrl(id),active:Math.abs(i-viewer.index)<=1,eager:i===viewer.index})}${creatorIsVideo(page,id)?'<div class="shop-video-controls" data-creator-video-controls><button type="button" class="shop-video-toggle" data-creator-video-toggle aria-label="Luaj videon">▶</button><span class="shop-video-time" data-creator-video-time>0:00 / 0:00</span><input class="shop-video-progress" data-creator-video-progress type="range" min="0" max="1000" value="0" step="1" aria-label="Pozicioni i videos"></div>':''}</div>`).join('')}</div>
    ${files.length>1?`<button type="button" class="shop-viewer-arrow shop-viewer-prev" data-shop="viewer-step" data-step="-1" aria-label="Fotoja paraprake">${creatorIcon('chevron-left')}</button><button type="button" class="shop-viewer-arrow shop-viewer-next" data-shop="viewer-step" data-step="1" aria-label="Fotoja tjetër">${creatorIcon('chevron-right')}</button>`:''}</div>
    <footer class="shop-viewer-footer"><div class="shop-viewer-dots">${files.map((_,i)=>`<button type="button" data-shop="viewer-dot" data-index="${i}" aria-label="Foto ${i+1}" aria-pressed="${viewer.index===i}"></button>`).join('')}</div><div class="shop-viewer-buy"><strong>${product.priceCents===0?'Falas':euro(product.priceCents)}</strong>${offerButton(product)}</div></footer>
   </section>`;
@@ -163,11 +170,14 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   root.querySelector('.shop-viewer')?.remove();
   viewer={product,index:Math.max(0,Math.min(files.length-1,Number(index)||0))};
   root.querySelector('.shop-shell').insertAdjacentHTML('beforeend',viewerMarkup());
-  syncBrowserChrome();watchImages();bindViewer();syncInert();videoPlayback.sync();videoPlayback.openViewer?.();
+  syncBrowserChrome();bindViewer();syncInert();videoPlayback.openViewer?.();watchImages();videoPlayback.sync();
   root.querySelector('[data-shop="viewer-close"]')?.focus({preventScroll:true});
  }
  function closeViewer(){
-  if(!viewer)return;const previous=viewer;viewer=null;
+  if(!viewer)return;const previous=viewer;
+  const track=root.querySelector('[data-view-track]'),current=track?.children[viewer.index]?.querySelector('video[data-video-viewer]')||track?.querySelector('video[data-video-viewer][src]');
+  if(current)videoPreload.keep(current.dataset.photo,current);
+  viewer=null;
   if(backgroundLock){
    const state=backgroundLock,body=document.body;
    for(const key of ['position','top','width','overflow'])body.style[key]=state[key]||'';
@@ -184,6 +194,11 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
  }
  function bindViewer(){
   const track=root.querySelector('[data-view-track]');if(!track||!viewer)return;
+  const current=track.children[viewer.index]?.querySelector('video[data-video-viewer]');
+  if(current&&!current.hasAttribute('src')){
+   const cover=root.querySelector(`[data-track="${viewer.product}"] img[data-photo="${current.dataset.photo}"]`);
+   videoPreload.take(current.dataset.photo,current,{poster:cover?.currentSrc||cover?.getAttribute('src')||imageUrl(current.dataset.photo)});
+  }
   for(const node of track.querySelectorAll('img[data-size="medium"]')){
    const cached=largeImages.get(node.dataset.photo);if(!cached?.complete||!cached.naturalWidth)continue;
    for(const attr of node.attributes)if(attr.name!=='src'&&attr.name!=='style')cached.setAttribute(attr.name,attr.value);
@@ -261,6 +276,14 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   if(focusId){const field=root.querySelector(`#${focusId}`);if(field){field.focus({preventScroll:true});try{field.setSelectionRange(selection,selection);}catch{ /* select/tel */ }}}
  }
  async function refreshOrder(id){if(still)return;const order=await api('receipt',{orderId:id},true);if(order.pageId!==page.id)return;orders.set(id,order);render();}
+ const prepareVideoIntent=event=>{
+  const button=event.target.closest('[data-shop="view"]');if(!button||viewer||panel||photoSave||document.visibilityState==='hidden')return;
+  const id=packFiles(button.dataset.product)[Number(button.dataset.index)||0];if(!creatorIsVideo(page,id))return;
+  const cover=button.querySelector('img[data-video-cover]');
+  videoPreload.prepare(id,creatorVideoUrl(page,id,{viewer:true}),{intent:true,poster:cover?.currentSrc||cover?.getAttribute('src')||imageUrl(id)});
+ };
+ root.addEventListener('pointerdown',prepareVideoIntent,{passive:true});
+ root.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' ')prepareVideoIntent(event);});
  root.addEventListener('input',event=>{if(event.target.closest('#shop-checkout')&&event.target.name)customer[event.target.name]=event.target.value;});
  root.addEventListener('change',event=>{if(event.target.closest('#shop-checkout')&&event.target.name)customer[event.target.name]=event.target.value;});
  root.addEventListener('click',async event=>{
@@ -434,6 +457,6 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
  await Promise.all(tokens.map(id=>refreshOrder(id).catch(()=>{})));
  const heroTimer=globalThis.setInterval(()=>{const track=root.querySelector('[data-hero-track]');if(canPrefetch()&&!heroPaused&&!viewer&&!panel&&!photoSave&&document.visibilityState!=='hidden'&&track?.children.length>1)moveHero(heroIndex+1);},5500);
  const poll=globalThis.setInterval(()=>{if(still||document.visibilityState==='hidden')return;for(const order of orders.values())if(!order.approved)refreshOrder(order.id).catch(()=>{});},20000);
- globalThis.addEventListener?.('pagehide',event=>{if(!event.persisted){videoPlayback.destroy();neighbourObserver?.disconnect();saveObserver?.disconnect();activePreparation?.controller.abort();globalThis.clearInterval(poll);globalThis.clearInterval(heroTimer);fileAbort?.abort();discardSave();for(const entry of prepared.values())for(const url of entry.urls||[])URL.revokeObjectURL(url);}});
+ globalThis.addEventListener?.('pagehide',event=>{if(!event.persisted){videoPlayback.destroy();videoPreload.destroy();neighbourObserver?.disconnect();saveObserver?.disconnect();activePreparation?.controller.abort();globalThis.clearInterval(poll);globalThis.clearInterval(heroTimer);fileAbort?.abort();discardSave();for(const entry of prepared.values())for(const url of entry.urls||[])URL.revokeObjectURL(url);}});
 }
 

@@ -58,7 +58,7 @@ export function createCreatorVideoPlayback(root,{windowObj=globalThis,documentOb
   if(!configured.has(video))configure(video);
   const src=video.dataset.videoSrc||video.dataset.deferredVideo;
   if(!src)return;
-  if(video.getAttribute('src')!==src){video.preload='metadata';video.setAttribute('src',src);video.load?.();}
+  if(video.getAttribute('src')!==src){video.preload=video.hasAttribute('data-video-viewer')?'auto':'metadata';video.setAttribute('src',src);video.load?.();}
   if(video.paused!==false&&!manualPaused.has(video))play(video);
  }
  const resizeObserver=typeof windowObj.ResizeObserver==='function'?new windowObj.ResizeObserver(entries=>{for(const entry of entries)fitControls(entry.target);}):null;
@@ -66,7 +66,7 @@ export function createCreatorVideoPlayback(root,{windowObj=globalThis,documentOb
  const posterObserver=typeof windowObj.IntersectionObserver==='function'?new windowObj.IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){poster(entry.target);posterObserver.unobserve(entry.target);}},{rootMargin:'300px',threshold:0}):null;
  function sync(){
   if(destroyed)return;
-  for(const video of videos)if(!root.contains(video)){video.pause?.();observer?.unobserve(video);posterObserver?.unobserve(video);videos.delete(video);visible.delete(video);listeners.get(video)?.();listeners.delete(video);resizeObserver?.unobserve(video);}
+  for(const video of videos)if(!root.contains(video)){video.pause?.();observer?.unobserve(video);posterObserver?.unobserve(video);videos.delete(video);visible.delete(video);listeners.get(video)?.();listeners.delete(video);configured.delete(video);manualPaused.delete(video);resizeObserver?.unobserve(video);}
   for(const video of root.querySelectorAll('video[data-creator-video]')){
    if(!videos.has(video)){videos.add(video);posterObserver?.observe(video);observer?.observe(video);}
    if(!observer){const r=video.getBoundingClientRect?.(),height=windowObj.innerHeight||documentObj.documentElement?.clientHeight||0,width=windowObj.innerWidth||documentObj.documentElement?.clientWidth||0;if(r&&height&&width&&r.bottom>0&&r.top<height&&r.right>0&&r.left<width)visible.add(video);else visible.delete(video);}
