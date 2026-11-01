@@ -9,6 +9,10 @@ export async function serveCreatorShop(req,res,repository=shopRepository){
   if(typeof input==='string')input=JSON.parse(input);if(!input||typeof input!=='object')throw Error('Kërkesa mungon.');
   if(req.method!=='POST'&&!['receipt','download','free-download','free-image','image','video'].includes(input.op))throw Error('Kërkesa nuk lejohet.');
   if(input.op==='video')input.range=req.headers?.range||'';
+  if(input.op==='visit'){
+   const decode=value=>{try{return decodeURIComponent(String(value||''));}catch{return '';}};
+   input={...input,location:{country:decode(req.headers?.['x-vercel-ip-country']),city:decode(req.headers?.['x-vercel-ip-city'])}};
+  }
   const repo=await repository();
   // Persist first. FCM/device delivery must never hold the buyer's receipt hostage.
   const deferred=[];

@@ -1,0 +1,11 @@
+# Content Creator: detailed visitor tracking
+
+Scope: extend the existing first-party visitor endpoint and HEART journey, without changing shop routing, uploads, order logic or Meta Pixel. Measure visible page/stage time, individual loaded media exposures, repeat views, actual video playback/completions, scroll depth, cart snapshots and approximate platform-provided country/city. Still previews remain untracked. Existing historical visits do not gain invented durations.
+
+Measurement: sample visible media every 500 ms; require at least 50% of its viewport-sized area and 1 second exposure. Hidden tabs, covered/inert content, unloaded images and paused/buffering videos are excluded. Video cover visibility and actual video playback are distinct. Flush cumulative session snapshots every 10 seconds, on actions, tab hide and pagehide. Bounded snapshots and stable event/session IDs permit idempotent retries. No raw IP or precise location is stored.
+
+HEART: business lists (including Seen) show last visit in Vienna time and total/repeat visits; the detail statistics include visits, repeats and visible time. Each visitor has a session breakdown, media counts/time, video playback/completions, cart snapshots and chronological events. Stable browser identity counts repeat visits; another browser/device cannot be linked automatically. Back/forward cache returns start a fresh visit. Lifetime visit count and visible time survive the bounded last-30-session detail history. Media detail and events are bounded to keep the visitor document below Firestore limits.
+
+Persistence: hosting headers provide approximate location; visitor-supplied locations are ignored at the API boundary. Optimistic write preconditions plus conflict retries protect simultaneous heartbeat/unload requests. Older sequence snapshots cannot replace newer measurements; shortened unload requests preserve already-saved media totals.
+
+Validation: 216 Content Creator regression tests passed; final targeted checks and production build passed. npm run build generated the static output; tracked bundle files did not change. No mobile browser/device check or production deploy was performed. Work is prepared on feat/creator-detailed-tracking for review.
