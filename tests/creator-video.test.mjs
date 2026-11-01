@@ -16,14 +16,13 @@ function fixture(){
  const reads=[],repo={read:async p=>{reads.push(p);return docs.get(p);},write:async(p,d)=>{docs.set(p,{...docs.get(p),...d});return true;},notify:async()=>true};
  return {page,base,docs,repo,reads,preview,original};
 }
-test('Public video card contains only lazy silent looping preview and poster, no controls or original URL',()=>{
+test('Public video card is a protected static cover with no video source, autoplay or original URL',()=>{
  const f=fixture(),safe=publicCreatorPage(f.page,pageId),markup=creatorPhoto(safe,'clip','Reel');
- const node=parseHTML(markup).document.querySelector('video');assert.ok(node);
- for(const attr of ['muted','autoplay','loop','playsinline','disablepictureinpicture'])assert.ok(node.hasAttribute(attr),attr);
- assert.equal(node.hasAttribute('controls'),false);assert.equal(node.hasAttribute('src'),false);assert.equal(node.getAttribute('preload'),'none');
- assert.ok(node.getAttribute('data-video-src').includes('op=video'));assert.ok(node.hasAttribute('data-protected-preview'));assert.ok(node.getAttribute('data-video-poster').includes('op=image'));
+ const {document}=parseHTML(markup),node=document.querySelector('img[data-video-cover]');assert.ok(node);
+ assert.equal(document.querySelector('video'),null);assert.ok(node.getAttribute('src').includes('op=image'));assert.ok(node.hasAttribute('data-protected-preview'));
  assert.equal(safe.mediaTypes.clip,'video');assert.equal(creatorIsVideo(safe,'clip'),true);assert.equal(creatorAssetCount(safe,['clip','photo']),'1 foto · 1 video');
- assert.match(renderCreatorCatalog(safe),/1 video · Cilësi origjinale/);assert.doesNotMatch(markup,/op=download|originals|PRIVATE/);
+ assert.match(renderCreatorCatalog(safe),/1 video · Cilësi origjinale/);assert.doesNotMatch(markup,/op=download|op=video|originals|PRIVATE|autoplay|data-video-src/);
+ const viewer=parseHTML(creatorPhoto(safe,'clip','Reel',{viewer:true})).document.querySelector('video');assert.ok(viewer);assert.ok(viewer.getAttribute('data-video-src').includes('op=video'));assert.equal(viewer.hasAttribute('muted'),false);assert.equal(viewer.hasAttribute('autoplay'),false);
 });
 test('Video preview serves marked bytes only; a range reads only its private preview chunk',async()=>{
  const f=fixture(),r=await shopAction({op:'video',pageId,file:'clip',range:'bytes=400001-400004'},f.repo);

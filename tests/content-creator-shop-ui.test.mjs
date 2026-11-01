@@ -287,10 +287,28 @@ test('Video viewer has a single audible full video per slide and retains the pla
 
 test('Mixed pack opens its video first and renders progress controls only on video slides',async()=>{
  const ctx=await setup(true,1400,{mediaTypes:{two:'video'}});
- assert.equal(ctx.root.querySelector('.shop-slide video').dataset.photo,'two');
+ assert.equal(ctx.root.querySelector('.shop-slide img[data-video-cover]').dataset.photo,'two');
  await ctx.click('[data-shop="view"][data-index="0"]');
  const first=ctx.root.querySelector('.shop-viewer-slide');assert.equal(first.querySelector('video').dataset.photo,'two');
  assert.ok(first.querySelector('[data-creator-video-progress]'));assert.ok(first.querySelector('[data-creator-video-time]'));
  assert.equal(ctx.root.querySelectorAll('[data-creator-video-progress]').length,1);
  assert.equal(ctx.root.querySelector('.shop-slide [data-creator-video-progress]'),null);
+});
+
+test('Three video packs in the catalog/hero use covers only; opening and closing adds/removes only viewer video',async()=>{
+ const ctx=await setup(true,1400,{mediaTypes:{one:'video',two:'video',three:'video'},heroPhotoIds:['one']});
+ assert.equal(ctx.root.querySelectorAll('video').length,0);assert.ok(ctx.root.querySelectorAll('img[data-video-cover]').length>=3);
+ assert.equal(ctx.root.querySelector('[data-video-src],[data-deferred-video]'),null);
+ await ctx.click('[data-shop="view"][data-index="0"]');assert.ok(ctx.root.querySelector('.shop-viewer video[data-video-viewer]'));assert.equal(ctx.root.querySelectorAll('video:not([data-video-viewer])').length,0);
+ await ctx.click('[data-shop="viewer-close"]');assert.equal(ctx.root.querySelectorAll('video').length,0);
+});
+
+test('A failed/retried video cover cannot replace a playing full-view video with a poster',async()=>{
+ const ctx=await setup(true,1400,{mediaTypes:{one:'video'}});
+ await ctx.click('[data-shop="view"][data-index="0"]');
+ const player=ctx.root.querySelector('.shop-viewer video'),cover=ctx.root.querySelector('.shop-slide img[data-video-cover]');assert.ok(player);assert.ok(cover);
+ cover.onerror();await ctx.settle();assert.equal(ctx.root.querySelector('.shop-viewer video'),player);
+ await ctx.click('[data-shop="retry-images"]');assert.equal(ctx.root.querySelector('.shop-viewer video'),player);
+ ctx.root.querySelector('.shop-slide img[data-video-cover]').onerror();await ctx.settle();
+ await ctx.click('[data-shop="viewer-close"]');await ctx.click('[data-shop="view"][data-index="0"]');assert.ok(ctx.root.querySelector('.shop-viewer video[data-video-viewer]'));
 });

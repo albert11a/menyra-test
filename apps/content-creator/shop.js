@@ -60,13 +60,13 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
  }
  function img(id,alt,options={}){
   if(typeof options!=='object')options={};
-  if(imageErrors[id])return `<span data-photo="${esc(id)}" data-alt="${esc(alt)}" class="shop-image-loading">Fotoja nuk u ngarkua</span>`;
+  if(imageErrors[id]&&!(options.viewer&&creatorIsVideo(page,id)))return `<span data-photo="${esc(id)}" data-alt="${esc(alt)}" class="shop-image-loading">Fotoja nuk u ngarkua</span>`;
   const size=options.size||'thumb';
   return creatorPhoto(page,id,alt,{...options,size,src:size==='thumb'?images[id]:undefined});
  }
  function imageStatus(){const count=Object.keys(imageErrors).length;return count?`<p role="alert">${count} foto nuk u ngarkuan. <button type="button" data-shop="retry-images">Provo përsëri</button></p>`:'';}
  function paintImage(key){
-  for(const node of root.querySelectorAll(`[data-photo="${key}"]`))node.outerHTML=img(key,node.getAttribute('data-alt')||page.name,{size:node.dataset.size||'thumb',hero:node.hasAttribute('data-hero-image'),active:true,eager:true});
+  for(const node of root.querySelectorAll(`[data-photo="${key}"]`))if(!node.hasAttribute('data-video-viewer'))node.outerHTML=img(key,node.getAttribute('data-alt')||page.name,{size:node.dataset.size||'thumb',hero:node.hasAttribute('data-hero-image'),active:true,eager:true});
   const status=root.querySelector('#shop-image-errors');if(status)status.innerHTML=imageStatus();
   watchImages();videoPlayback.sync();
  }

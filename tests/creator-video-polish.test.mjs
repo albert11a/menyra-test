@@ -14,7 +14,7 @@ test('Video packs precede all photo packs regardless of insertion order or price
  ]};
  const original=structuredClone(page),{document}=parseHTML(renderCreatorCatalog(page));
  assert.deepEqual([...document.querySelectorAll('.shop-product h3')].map(x=>x.textContent),['Old mixed pack','New video','Free photo','Photo only']);
- const first=document.querySelector('.shop-product');assert.equal(first.querySelector('.shop-slide video').dataset.photo,'old-video');
+ const first=document.querySelector('.shop-product');assert.equal(first.querySelector('.shop-slide img[data-video-cover]').dataset.photo,'old-video');
  assert.equal(first.querySelector('.shop-photo-count').getAttribute('aria-label'),'1 foto · 1 video');assert.equal(first.querySelectorAll('.shop-photo-count>span').length,2);
  assert.deepEqual(creatorVideoFirst(page),['old-video','new-video','photo','new-photo']);assert.deepEqual(page,original);
 });

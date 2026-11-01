@@ -34,11 +34,11 @@ test('Existing Worker still serves old video objects; 24-hour cache lifetime doe
  assert.equal(r.status,200);assert.equal(await r.text(),'0123456789');assert.equal(r.headers.get('cache-control'),'public, max-age=86400');
  assert.equal(r.headers.get('content-type'),'video/mp4');
 });
-test('Paid manifest exposes only marked owned R2 boomerang/full URLs; card and viewer choose different derivatives',()=>{
+test('Paid manifest stays protected; catalog uses a poster and only the viewer selects full video',()=>{
  const base=CREATOR_MEDIA_ORIGIN+'/media/',record={mode:'marked',mediaType:'video',video:base+'stories/business/full.mp4',boomerang:base+'stories/business/boom.mp4',...Object.fromEntries(['thumb','medium','large'].map(size=>[size,base+`social/ceo/${size}.webp`]))};
  const page={id:'a'.repeat(32),kind:'shop',name:'Video',photoIds:['clip'],mediaTypes:{clip:'video'},products:[{id:'p',title:'Clip',priceCents:100,imageIds:['clip']}],media:{clip:record}};
  assert.equal(creatorVideoUrl(page,'clip'),record.boomerang);assert.equal(creatorVideoUrl(page,'clip',{viewer:true}),record.video);
- const html=renderCreatorCatalog(page);assert.ok(html.includes(record.boomerang));assert.ok(html.includes('m16 8 6-4v16l-6-4'));assert.ok(html.includes(`poster="${record.medium}"`));
+ const html=renderCreatorCatalog(page);assert.ok(!html.includes(record.boomerang));assert.ok(!html.includes(record.video));assert.ok(!html.includes('<video'));assert.ok(html.includes('data-video-cover'));assert.ok(html.includes('m16 8 6-4v16l-6-4'));assert.ok(html.includes(`src="${record.thumb}"`));
  page.media.clip={...record,mode:'clean'};assert.deepEqual(creatorPublicMedia(page),{});assert.ok(!creatorVideoUrl(page,'clip').includes('/media/stories/'));
  for(const url of ['https://evil.invalid/media/stories/business/full.mp4',record.video+'?token=secret',base+'social/ceo/full.mp4'])assert.equal(creatorVideoMediaUrl(url),'');
 });
