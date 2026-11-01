@@ -34,7 +34,7 @@ export function creatorOverview(state={},now=Date.now()){
  });
  const selected=orders.filter(o=>period(o.createdAt));
  // Heartbeats never manufacture repeat visitors: daily attendance is recorded explicitly.
- const browsers=new Set(visits.filter(v=>(v.days||[creatorDay(v.createdAt)]).some(day=>period(`${day}T12:00:00Z`))).map(v=>v.visitorId||v.id||`${v.pageId}:${creatorMs(v.createdAt)}`));
+ const browsers=new Set(visits.filter(v=>(v.days||[v.createdAt?creatorDay(v.createdAt):'']).some(day=>period(`${day}T12:00:00Z`))).map(v=>v.visitorId||v.id||`${v.pageId}:${creatorMs(v.createdAt)}`));
  return {live:live.length,visitors:browsers.size,orders:selected.length,value:selected.reduce((n,o)=>n+(o.totalCents||0),0),stages:['page','cart','ordered'].map(stage=>live.filter(v=>(v.stage==='checkout'?'cart':v.stage)===stage).length)};
 }
 export function creatorFollowups(state={}){
@@ -47,4 +47,10 @@ export function creatorBusinessMatches(page,state={}){
  const status=creatorBusinessStatus(page,state.visits,state.orders);
  const legacy=['sent','opened','yes','no'].includes(filter)&&contentStatus(page,(state.visits||[]).filter(v=>v.pageId===page.id))===filter;
  return (filter==='all'||filter===status||legacy)&&String(page.name||'').toLocaleLowerCase().includes(String(state.search||'').trim().toLocaleLowerCase());
+}
+
+export function creatorVisitStats(visits=[]){
+ const opened=visits.filter(v=>v.opened),sessions=opened.flatMap(v=>v.sessions||[]);
+ const count=opened.reduce((sum,v)=>sum+(v.sessionCount??Math.max(v.sessions?.length||0,(v.events||[]).filter(e=>e.event==='open').length,1)),0);
+ return {count,returns:Math.max(0,count-opened.length),lastSeen:Math.max(0,...opened.map(v=>creatorMs(v.lastSeenAt||v.updatedAt||v.createdAt))),activeMs:opened.reduce((sum,v)=>sum+(v.activeMs??(v.sessions||[]).reduce((n,s)=>n+(s.activeMs||0),0)),0),sessions};
 }

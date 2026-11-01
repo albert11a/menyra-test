@@ -12,14 +12,15 @@ export function encodeValue(v){if(v===null)return {nullValue:null};if(Array.isAr
 export async function shopRepository(){
  const key=schluessel();if(!key)throw Error('Shop-Zugang ist noch nicht eingerichtet.');
  const token=await (tokenRequest ||= zugangHolen(key).finally(()=>{tokenRequest=undefined;}));
- let pageGuard;
+ let pageGuard;const visitVersions=new Map();
  return {
-  async read(path,fields){const target=fields?.length?`${path}?${fields.map(field=>`mask.fieldPaths=${encodeURIComponent(field)}`).join('&')}`:path;const raw=await lies(target,token);const data=raw?Object.fromEntries(Object.entries(raw.fields||{}).map(([k,v])=>[k,wert(v)])):null;if(/^contentCreatorPages\/[a-f0-9]{32}$/.test(path))pageGuard={path,active:data?.published===true&&!data?.deleting};return data;},
+  async read(path,fields){const target=fields?.length?`${path}?${fields.map(field=>`mask.fieldPaths=${encodeURIComponent(field)}`).join('&')}`:path;const raw=await lies(target,token);if(/^contentCreatorVisits\/[^/]+$/.test(path))visitVersions.set(path,raw?.updateTime||null);const data=raw?Object.fromEntries(Object.entries(raw.fields||{}).map(([k,v])=>[k,wert(v)])):null;if(/^contentCreatorPages\/[a-f0-9]{32}$/.test(path))pageGuard={path,active:data?.published===true&&!data?.deleting};return data;},
   async write(path,data,create=false,requireExisting=false){
    if(pageGuard&&/^(contentCreatorVisits|contentCreatorCarts|contentCreatorOrders)\/[^/]+$/.test(path)){
     if(!pageGuard.active)throw Error('Diese Business-Seite ist nicht mehr verfügbar.');
     const update={update:{name:BASE.replace('https://firestore.googleapis.com/v1/','')+'/'+path,fields:Object.fromEntries(Object.entries(data).map(([k,v])=>[k,encodeValue(v)]))},...(!create?{updateMask:{fieldPaths:Object.keys(data)}}:{}),...(create||requireExisting?{currentDocument:{exists:!create}}:{})};
-    return guardedCreatorWrite({base:BASE,headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},pagePath:pageGuard.path,write:update,create,requireExisting});
+    if(visitVersions.has(path))update.currentDocument=visitVersions.get(path)?{updateTime:visitVersions.get(path)}:{exists:false};
+    return guardedCreatorWrite({conflictRetry:visitVersions.has(path),base:BASE,headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},pagePath:pageGuard.path,write:update,create,requireExisting});
    }
    const mask=create?'currentDocument.exists=false':Object.keys(data).map(k=>`updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&')+(requireExisting?'&currentDocument.exists=true':'');
    const r=await fetch(`${BASE}/${path}?${mask}`,{method:'PATCH',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},body:JSON.stringify({fields:Object.fromEntries(Object.entries(data).map(([k,v])=>[k,encodeValue(v)]))}),signal:AbortSignal.timeout(10000)});
@@ -53,7 +54,7 @@ async function originalFile(path,metadata,repo){
 }
 export async function shopAction(input,repo){
  const {op,pageId,cartId,orderId}=input;
- if(op==='visit')return creatorActivity(input,repo);
+ if(op==='visit'){for(let attempt=0;;attempt++){try{return await creatorActivity(input,repo);}catch(error){if(error.code!=='CREATOR_VISIT_CONFLICT'||attempt>=3)throw error;}}}
  if(op==='video'){
   if(!validShopId(pageId)||!/^[a-zA-Z0-9_-]{1,64}$/.test(String(input.file||'')))throw Error('Videoja nuk u gjet.');
   const page=await repo.read(`contentCreatorPages/${pageId}`);

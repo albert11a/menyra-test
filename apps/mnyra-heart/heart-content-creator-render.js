@@ -1,6 +1,6 @@
 import {creatorCard,creatorSearch,creatorIcon as icon} from './heart-creator-components.js';
-import {creatorStats,creatorOrders,creatorFollowupCard,creatorJourney} from './heart-creator-overview.js';
-import {CREATOR_STATUSES,creatorBusinessStatus,creatorBusinessMatches} from '../../shared/creator-analytics.js';
+import {creatorStats,creatorOrders,creatorFollowupCard,creatorJourney,creatorTime,creatorDuration} from './heart-creator-overview.js';
+import {CREATOR_STATUSES,creatorBusinessStatus,creatorBusinessMatches,creatorVisitStats} from '../../shared/creator-analytics.js';
 import {renderCreatorHeroEditor} from './heart-content-creator-hero.js';
 import {shopAdmin} from "./heart-content-creator-shop-render.js";
 import { contentRows, ccEscape as esc, ccImage } from "../../shared/content-creator.js";
@@ -52,13 +52,14 @@ export function renderBusinessDelete(page, state = {}) {
 function renderDetail(page,state) {
   if (page.deleting) return `<section class="cc-detail"><h2>${esc(page.name)}</h2>${renderBusinessDelete(page,state)}</section>`;
   const visits=(state.visits || []).filter(v=>v.pageId===page.id);
-  const values=[["Gesehen",visits.filter(v=>v.opened).length],["Gescrollt",visits.filter(v=>v.scrolled).length],["Ja geklickt",visits.filter(v=>v.answer==="yes").length],["Nein geklickt",visits.filter(v=>v.answer==="no").length]];
+  const attendance=creatorVisitStats(visits);
+  const values=[["Besuche",attendance.count],["Wiederbesuche",attendance.returns],["Gesehen",visits.filter(v=>v.opened).length],["Gescrollt",visits.filter(v=>v.scrolled).length],["Ja geklickt",visits.filter(v=>v.answer==="yes").length],["Nein geklickt",visits.filter(v=>v.answer==="no").length]];
   return `<section class="cc-detail">
 
   ${shopAdmin(page,state)}
   ${creatorOrders(state,page.id)}
   ${renderCreatorHeroEditor(page,state)}
-  ${creatorCard(`stats-${page.id}`,'Besuche',`<div class="cc-stats">${values.map(([label,n])=>`<div class="cc-stat"><strong>${n}</strong><span>${label}</span></div>`).join('')}</div>`,state)}
+  ${creatorCard(`stats-${page.id}`,'Besuche',`<div class="cc-stats">${values.map(([label,n])=>`<div class="cc-stat"><strong>${n}</strong><span>${label}</span></div>`).join('')}</div><p class="cc-muted">Letzter Besuch: ${creatorTime(attendance.lastSeen)} · Sichtbare Zeit: ${creatorDuration(attendance.activeMs)}</p>`,state)}
 ${creatorFollowupCard(state,page.id)}
   ${creatorCard(`links-${page.id}`,'Business-Seite',renderLinks(page,state),state)}
   ${creatorJourney(page,state)}
@@ -87,10 +88,11 @@ function renderBusinesses(rows,selected,state){
  const bulk=state.selecting?`<div class="heart-faelle-wahl cc-bulk"><div class="heart-faelle-wahl__kopf"><button type="button" class="heart-faelle-wahl__alle" data-cc-action="select-all">${all?'Keine':'Alle auswählen'}</button><span class="heart-faelle-wahl__zahl">${chosen.length} ausgewählt</span><button type="button" class="heart-faelle-wahl__fertig" data-cc-action="settings">Fertig</button></div><div class="heart-faelle-wahl__tasten"><button type="button" class="heart-faelle-wahl__taste" data-cc-action="bulk-status" data-key="ready" ${!chosen.length||state.mediaBusy?'disabled':''}>${icon('check','heart-faelle-wahl__icon')}Ready</button><button type="button" class="heart-faelle-wahl__taste" data-cc-action="bulk-status" data-key="archived" ${!chosen.length||state.mediaBusy?'disabled':''}>${icon('archive','heart-faelle-wahl__icon')}Archiv</button></div></div>`:'';
  const list=`<div class="cc-list">${selected.slice(0,state.businessLimit||20).map(row=>{
   const expanded=!!state.expandedBusinesses?.[row.id],picked=(state.selectedIds||[]).includes(row.id);
+  const attendance=creatorVisitStats((state.visits||[]).filter(visit=>visit.pageId===row.id));
   return `<article class="cc-row" data-morph-key="business-${esc(row.id)}"><div class="cc-row-main">
   <button type="button" class="cc-row-head cc-open" data-cc-action="${state.selecting?'select-business':'detail'}" data-id="${esc(row.id)}" ${state.selecting?`aria-pressed="${picked}"`:''}>
   <span class="cc-avatar-wrap">${ccImage(row.avatar)?`<img class="cc-avatar" src="${ccImage(row.avatar)}" alt="">`:`<span class="cc-avatar cc-avatar-empty">${esc(row.name?.slice(0,1)||'')}</span>`}${state.selecting?`<span class="heart-lifeskin-fall__wahl${picked?' cc-picked':''}">${picked?icon('check','heart-lifeskin-fall__haken'):''}</span>`:''}</span>
-  <span class="cc-business-info"><span class="cc-business-label">${esc(row.name)}</span><span class="cc-business-meta"><span>${CREATOR_STATUSES.find(([key])=>key===row.businessStatus)?.[1]||''}</span><span>${row.photoIds?.length||0} Bilder</span>${row.opened?'<span>Geöffnet</span>':''}${row.scrolled?'<span>Gescrollt</span>':''}${row.yes?'<span>Ja</span>':''}${row.no?'<span>Nein</span>':''}</span></span></button>
+  <span class="cc-business-info"><span class="cc-business-label">${esc(row.name)}</span><span class="cc-business-meta"><span>${CREATOR_STATUSES.find(([key])=>key===row.businessStatus)?.[1]||''}</span><span>${row.photoIds?.length||0} Bilder</span>${attendance.lastSeen?`<span>Zuletzt: ${creatorTime(attendance.lastSeen)}</span><span>${attendance.count} Besuche · ${attendance.returns} Wiederbesuche</span>`:''}${row.scrolled?'<span>Gescrollt</span>':''}${row.yes?'<span>Ja</span>':''}${row.no?'<span>Nein</span>':''}</span></span></button>
   ${state.selecting?`<input class="cc-selection-input" type="checkbox" data-cc-select="${esc(row.id)}" ${picked?'checked':''} aria-label="${esc(row.name)} auswählen">`:`<button type="button" class="cc-row-expand" data-cc-action="toggle-links" data-id="${esc(row.id)}" aria-label="Aktionen für ${esc(row.name)}" aria-expanded="${expanded}">${icon(expanded?'chevronUp':'chevronDown')}</button>`}</div>
   ${expanded&&!state.selecting?renderLinks(row,state):''}</article>`;
  }).join('')||`<p class="cc-empty">${state.status==='loading'?'Lokale werden geladen …':'Keine Businesses in dieser Auswahl.'}</p>`}</div>`;
