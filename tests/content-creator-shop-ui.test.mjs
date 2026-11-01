@@ -188,7 +188,7 @@ test('Paid card and decoded images remain mounted through arrows, viewer open an
 });
 test('Catalog sections and solid header match mobile request without paint containment',async()=>{
  const ctx=await setup(true),css=await readFile(new URL('../apps/content-creator/shop.css',import.meta.url),'utf8');
- assert.match(ctx.root.textContent,/Me çmim të arsyeshëm/);assert.doesNotMatch(ctx.root.textContent,/Koleksioni juaj/);
+ assert.match(ctx.root.textContent,/Fotot per biznesin tend/);assert.doesNotMatch(ctx.root.textContent,/Koleksioni juaj/);
  assert.ok(ctx.root.querySelector('#shop-purchases:not([hidden])'));
  assert.doesNotMatch(css,/content-visibility|contain-intrinsic-size|#f7f6f2ee/);
 });
