@@ -39,3 +39,7 @@ Validation:
   a separate issue. Open Content Creator in signed-in Heart after deployment and
   leave it open until the migration progress finishes; failures keep old URLs.
 
+
+Deployment packaging: Vercel npm skips unapproved dependency scripts. Pin the
+ffmpeg-static installer approval to 5.3.0 and check H.264 encoder availability
+at build time. The function explicitly includes the platform binary.
