@@ -43,3 +43,12 @@ Validation:
 Deployment packaging: Vercel npm skips unapproved dependency scripts. Pin the
 ffmpeg-static installer approval to 5.3.0 and check H.264 encoder availability
 at build time. The function explicitly includes the platform binary.
+
+Owner correction: production rejected old videos before encoding because the
+selected first restaurant ID did not match the stored R2 owner path exactly.
+Resolve each existing video's owner against all restaurants created by the
+authenticated user. Match lowercase Worker keys back to the actual mixed-case
+Firestore ID; use that exact ID for Firebase ticket authorization. Server path
+comparison permits only case differences in the owner segment; foreign owners
+and untrusted origins remain rejected. Added multi-business and mixed-case
+regressions; 45 video tests passed, build passed.

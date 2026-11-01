@@ -81,3 +81,13 @@ test('Rejected existing menu upload invalidates the owner cache, so a retry can 
  const c=client({rejectUpload:true});await assert.rejects(c.uploadCreatorVideo(prepared()),/Forbidden/);assert.equal(c.queries.length,1);
  await assert.rejects(c.uploadCreatorVideo(prepared()),/Forbidden/);assert.equal(c.queries.length,2);assert.equal(c.uploads.length,0);
 });
+
+test('Existing video resolves its own managed restaurant, including lowercase Worker paths and mixed-case IDs',async()=>{
+ const queries=[];
+ const api=new Function('auth','db','collection','query','where','limit','getDocs','creatorVideoMediaUrl',`${cdnSource}\nreturn {creatorVideoOwner};`)({}, {},(_db,name)=>name,(...x)=>{queries.push(x);return x;},(...x)=>x,n=>n,async()=>({docs:[{id:'UnrelatedFirst'},{id:'0PkYan3Ua3Kwbbu2oVS6'}]}),creatorVideoMediaUrl);
+ const video=CREATOR_MEDIA_ORIGIN+'/media/stories/0pkyan3ua3kwbbu2ovs6/existing.mp4';
+ assert.equal(await api.creatorVideoOwner('ceo',video),'0PkYan3Ua3Kwbbu2oVS6');
+ assert.deepEqual(queries[0],['restaurants',['createdByUid','==','ceo']]);
+ assert.equal(await api.creatorVideoOwner('ceo',video),'0PkYan3Ua3Kwbbu2oVS6');assert.equal(queries.length,1);
+ await assert.rejects(api.creatorVideoOwner('ceo',video.replace('0pkyan3ua3kwbbu2ovs6','foreign')),/zugehörige/);
+});

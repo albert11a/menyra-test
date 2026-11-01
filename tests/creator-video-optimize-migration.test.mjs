@@ -13,7 +13,7 @@ function harness({concurrent=false,deleting=false,fail=false}={}){
  const optimize=async(...args)=>{calls.push(args);if(fail)throw Error('offline');if(concurrent)page.media.clip.video=base+'stories/owner/newer.mp4';if(deleting)page.deleting=true;return {video:base+'stories/owner/web.mp4',webVideoVersion:1,videoBytes:40,videoSourceBytes:100};};
  const transaction={get:getDoc,set:(path,value)=>writes.push({path,value}),update:(path,value)=>{writes.push({path,value});if(value['media.clip'])page.media.clip=value['media.clip'];}};
  const runTransaction=async(_db,fn)=>fn(transaction);
- const api=new Function('auth','db','doc','getDoc','creatorPublicMedia','creatorVideoOwner','optimize','runTransaction','serverTimestamp','CC_PAGES',`${source}\nreturn optimizeCreatorPageVideos;`)({currentUser:{uid:'ceo'}},{},doc,getDoc,creatorPublicMedia,async()=> 'owner',optimize,runTransaction,()=> 'now','contentCreatorPages');
+ const api=new Function('auth','db','doc','getDoc','creatorPublicMedia','creatorVideoOwner','optimize','runTransaction','serverTimestamp','CC_PAGES',`${source}\nreturn optimizeCreatorPageVideos;`)({currentUser:{uid:'ceo'}},{},doc,getDoc,creatorPublicMedia,async(uid,video)=>{assert.equal(uid,'ceo');assert.equal(video,page.media.clip.video);return 'owner';},optimize,runTransaction,()=> 'now','contentCreatorPages');
  return {page,writes,calls,progress,run:()=>api('page',(...args)=>progress.push(args))};
 }
 test('Existing migration only replaces the video derivative and persists completion once',async()=>{

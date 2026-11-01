@@ -188,11 +188,11 @@ export async function optimizeCreatorPageVideos(pageId,onProgress=()=>{}){
  const media=creatorPublicMedia(page);
  const pending=Object.entries(media).filter(([,record])=>record.mediaType==='video'&&record.video&&record.webVideoVersion!==1);
  if(!pending.length)return;
- const owner=await creatorVideoOwner(user.uid);
  const {requestCreatorVideoOptimization}=await import('./heart-creator-video-optimize.js');
  let done=0;
  for(const [imageId,record] of pending){
   onProgress(done,pending.length);
+  const owner=await creatorVideoOwner(user.uid,record.video);
   const optimized=await requestCreatorVideoOptimization(record.video,owner);
   await runTransaction(db,async transaction=>{
    const latest=(await transaction.get(pageRef)).data();

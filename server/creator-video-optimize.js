@@ -8,6 +8,9 @@ import {CREATOR_MEDIA_ORIGIN,creatorVideoMediaUrl} from '../shared/creator-media
 import {MEDIA_TICKET_ENDPOINT} from '../shared/bunny-edge.js';
 
 const exec=promisify(execFile),MAX_BYTES=48*1024*1024;
+// Worker storage keys may lowercase a mixed-case restaurant document ID. Keep
+// the actual ID for Firebase authorization; compare only this path segment.
+const sameVideoOwner=(video,owner)=>new URL(video).pathname.split('/')[3].toLowerCase()===owner.toLowerCase();
 export function creatorVideoCompressionArgs(input,output,{copyAudio=false}={}){
  // No scale/crop/fps filter: retain the derivative's existing pixel dimensions
  // and timestamps. The private download original never enters this endpoint.
@@ -39,7 +42,8 @@ async function limitedVideo(response){
 }
 export async function optimizeCreatorVideo(input,token,{fetchFn=fetch,encode=encodeCreatorWebVideo}={}){
  const source=creatorVideoMediaUrl(input?.video),owner=String(input?.owner||'');
- if(!source||!/^[A-Za-z0-9_-]{1,80}$/.test(owner)||!new URL(source).pathname.startsWith(`/media/stories/${owner}/`))throw Error('Ungültige Creator-Videovorschau.');
+ if(!source)throw Object.assign(Error('Ungültige Creator-Videovorschau.'),{code:'VIDEO_SOURCE_INVALID'});
+ if(!/^[A-Za-z0-9_-]{1,80}$/.test(owner)||!sameVideoOwner(source,owner))throw Object.assign(Error('Ungültige Creator-Videovorschau.'),{code:'VIDEO_OWNER_MISMATCH'});
  const deadline=AbortSignal.timeout(260000);
  const request=(url,options={})=>fetchFn(url,{...options,redirect:'error',signal:AbortSignal.any([deadline,AbortSignal.timeout(45000)])});
  // Validate the existing restaurant ownership before downloading/encoding.
@@ -55,6 +59,6 @@ export async function optimizeCreatorVideo(input,token,{fetchFn=fetch,encode=enc
  const form=new FormData();form.set('restaurantId',owner);form.set('file',new Blob([encoded],{type:'video/mp4'}),'creator-web.mp4');
  const uploaded=await request(`${CREATOR_MEDIA_ORIGIN}/story/upload`,{method:'POST',headers:{Authorization:`Bearer ${ticket.ticket}`,Origin:'https://mnyra.com'},body:form});
  const result=await uploaded.json(),video=creatorVideoMediaUrl(result.cdnUrl||result.url);
- if(!uploaded.ok||!video||!new URL(video).pathname.startsWith(`/media/stories/${owner}/`))throw Error('Optimierte Videovorschau konnte nicht gespeichert werden.');
+ if(!uploaded.ok||!video||!sameVideoOwner(video,owner))throw Error('Optimierte Videovorschau konnte nicht gespeichert werden.');
  return {video,webVideoVersion:1,videoBytes:encoded.length,videoSourceBytes:bytes.length};
 }

@@ -50,12 +50,20 @@ export async function uploadCreatorMedia(pageId,imageId,file,displays,{free=fals
 // Same owner lookup already used by Heart's existing video uploads. The
 // deployed video ticket requires a managed restaurant ID, not the CEO uid.
 const videoOwners=new Map();
-export async function creatorVideoOwner(uid){
-  if(videoOwners.has(uid))return videoOwners.get(uid);
-  const rows=await getDocs(query(collection(db,'restaurants'),where('createdByUid','==',uid),limit(1)));
-  const owner=String(rows.docs[0]?.id||'');
-  if(!owner||owner===uid)throw Error('Für Videos fehlt ein Betrieb unter diesem Konto.');
-  videoOwners.set(uid,owner);return owner;
+export async function creatorVideoOwner(uid,video=''){
+  const source=video?creatorVideoMediaUrl(video):'';
+  if(video&&!source)throw Error('Ungültige Creator-Videovorschau.');
+  const sourceOwner=source?new URL(source).pathname.split('/')[3]:'';
+  const cacheKey=sourceOwner?`${uid}:${sourceOwner.toLowerCase()}`:uid;
+  if(videoOwners.has(cacheKey))return videoOwners.get(cacheKey);
+  // Existing Worker objects may use lowercase keys for mixed-case Firestore
+  // IDs. Resolve that key to the actual managed document ID for ticket auth.
+  // An existing video need not belong to the first restaurant in the account.
+  const constraints=[where('createdByUid','==',uid)];if(!sourceOwner)constraints.push(limit(1));
+  const rows=await getDocs(query(collection(db,'restaurants'),...constraints));
+  const owner=String((sourceOwner?rows.docs.find(row=>row.id.toLowerCase()===sourceOwner.toLowerCase()):rows.docs[0])?.id||'');
+  if(!owner||owner===uid)throw Error('Für dieses Video fehlt der zugehörige Betrieb unter diesem Konto.');
+  videoOwners.set(cacheKey,owner);return owner;
 }
 
 // Reuse the actual, already deployed menu upload implementation. Its name

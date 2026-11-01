@@ -63,3 +63,16 @@ test('Real packaged encoder preserves synthetic video dimensions and sound and w
   const args=creatorVideoCompressionArgs('in','out');assert.ok(!args.includes('-vf')&&!args.includes('-s')&&!args.includes('-r'));
  }finally{await rm(directory,{recursive:true,force:true});}
 });
+
+test('Lowercase Worker key keeps the actual mixed-case restaurant ID for ticket authorization and upload',async()=>{
+ const actual='MiXeD',video=CREATOR_MEDIA_ORIGIN+'/media/stories/mixed/source.mp4',calls=[];
+ const fetchFn=async(url,options)=>{
+  calls.push(url);
+  if(url===MEDIA_TICKET_ENDPOINT){assert.equal(JSON.parse(options.body).restaurantId,actual);return Response.json({ticket:'TICKET'});}
+  if(url===video)return new Response(Buffer.alloc(1000),{headers:{'content-type':'video/mp4'}});
+  assert.equal(options.body.get('restaurantId'),actual);
+  return Response.json({url:CREATOR_MEDIA_ORIGIN+'/media/stories/mixed/optimized.mp4'});
+ };
+ const result=await optimizeCreatorVideo({video,owner:actual},'TOKEN',{fetchFn,encode:async()=>Buffer.alloc(400)});
+ assert.equal(result.video,CREATOR_MEDIA_ORIGIN+'/media/stories/mixed/optimized.mp4');assert.equal(calls.length,4);
+});
