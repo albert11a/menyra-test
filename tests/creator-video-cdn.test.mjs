@@ -48,7 +48,7 @@ test('Opening viewer starts audible video from the tap; cards stay silent and co
  const playback=createCreatorVideoPlayback(root,{windowObj:{IntersectionObserver:class{observe(){}disconnect(){}unobserve(){}}},documentObj:document});playback.sync();assert.equal(plays,0);playback.openViewer();assert.equal(plays,1);assert.equal(video.muted,false);assert.equal(video.controls,true);assert.equal(video.loop,false);
  Object.defineProperty(document,'visibilityState',{value:'hidden',configurable:true});playback.sync();assert.equal(video.paused,true);video.remove();playback.sync();assert.equal(video.paused,true);playback.destroy();
 });
-const cdnSource=(await readFile(new URL('../apps/mnyra-heart/heart-creator-cdn.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export (async )?function /g,'$1function ').replace("await import('../menyra-social/core/media/media-upload-runtime-controller.js')",'({createMediaUploadRuntimeController:menuUploader})');
+const cdnSource=(await readFile(new URL('../apps/mnyra-heart/heart-creator-cdn.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export (async )?function /g,'$1function ').replace("await import('../menyra-social/core/media/media-upload-runtime-controller.js')",'({createMediaUploadRuntimeController:menuUploader})').replace("await import('./heart-creator-video-optimize.js')",'({requestCreatorVideoOptimization:optimizeMock})');
 function client({owner='managed-business',rejectUpload=false}={}){
  const uploads=[],calls=[],queries=[];
  const auth={currentUser:{uid:'ceo',getIdToken:async()=>'firebase-token'}};
@@ -62,13 +62,13 @@ function client({owner='managed-business',rejectUpload=false}={}){
   const file=options.body.get('file');assert.equal(file.type,'video/mp4');uploads.push(await file.text());
   return Response.json({url:CREATOR_MEDIA_ORIGIN+`/media/stories/${owner}/${uploads.length}.mp4`});
  };
- const api=new Function('auth','db','collection','query','where','limit','getDocs','BUNNY_EDGE_BASE','MEDIA_TICKET_ENDPOINT','creatorVideoMediaUrl','fetch','menuUploader',`${cdnSource}\nreturn {uploadCreatorVideo,creatorVideoOwner};`)(auth,{},(_db,name)=>name,(...args)=>args,(...args)=>args,count=>count,async q=>{queries.push(q);return {docs:owner?[{id:owner}]:[]};},CREATOR_MEDIA_ORIGIN,'https://ticket.invalid',creatorVideoMediaUrl,fetch,createMediaUploadRuntimeController);
+ const api=new Function('auth','db','collection','query','where','limit','getDocs','BUNNY_EDGE_BASE','MEDIA_TICKET_ENDPOINT','creatorVideoMediaUrl','fetch','menuUploader','optimizeMock',`${cdnSource}\nreturn {uploadCreatorVideo,creatorVideoOwner};`)(auth,{},(_db,name)=>name,(...args)=>args,(...args)=>args,count=>count,async q=>{queries.push(q);return {docs:owner?[{id:owner}]:[]};},CREATOR_MEDIA_ORIGIN,'https://ticket.invalid',creatorVideoMediaUrl,fetch,createMediaUploadRuntimeController,async(video,actualOwner)=>{assert.equal(actualOwner,owner);return {video,webVideoVersion:1,videoBytes:10,videoSourceBytes:20};});
  return {...api,queries,calls,uploads};
 }
 const prepared=()=>({preview:new Blob(['MARKED-AUDIO'],{type:'video/mp4'}),boomerang:new Blob(['MARKED-BOOMERANG'],{type:'video/mp4'})});
 test('Creator executes the actual menu video uploader with a managed business; no photo-route workaround or Story writes',async()=>{
  const c=client();const result=await c.uploadCreatorVideo(prepared());assert.deepEqual(c.uploads,['MARKED-AUDIO','MARKED-BOOMERANG']);
- assert.ok(creatorVideoMediaUrl(result.video));assert.ok(creatorVideoMediaUrl(result.boomerang));assert.equal(c.queries.length,1);
+ assert.equal(result.webVideoVersion,1);assert.equal(result.videoBytes,10);assert.ok(creatorVideoMediaUrl(result.video));assert.ok(creatorVideoMediaUrl(result.boomerang));assert.equal(c.queries.length,1);
  assert.deepEqual(c.queries[0],['restaurants',['createdByUid','==','ceo'],1]);
  await c.uploadCreatorVideo(prepared());assert.equal(c.queries.length,1);
  assert.ok(c.calls.every(url=>url==='https://ticket.invalid'||url===CREATOR_MEDIA_ORIGIN+'/story/upload'));

@@ -1236,6 +1236,10 @@
     },
     "api/lifeskin-product-media.js": {
       "includeFiles": "apps/lifeskin-shop/assets/{lf-acne-2.jpg,lf-acne-3.jpg,lf-moistur.jpg,lf-pore.jpg,lf-pigment.jpg,produkt-lf-acne.jpg,produkt-lf-moistur.jpg}"
+    },
+    "api/content-creator-video-optimize.js": {
+      "maxDuration": 300,
+      "includeFiles": "node_modules/ffmpeg-static/ffmpeg"
     }
   }
 }

@@ -1,7 +1,7 @@
 import {unlockCreatorVideoAudio} from './heart-creator-video-audio.js';
 import {creatorBusinessMatches} from '../../shared/creator-analytics.js';
 import {normalizeCreatorCrop,creatorHeroCropStyle,creatorHeroFormat} from '../../shared/creator-hero.js';
-import {saveShopAsset,initialShopProduct,releaseShopOrder,refreshShopPreviews,savePromoAsset,migrateCreatorPage,saveCreatorCdnAsset,savedCreatorFile} from "./heart-content-creator-shop.js";
+import {saveShopAsset,initialShopProduct,releaseShopOrder,refreshShopPreviews,savePromoAsset,migrateCreatorPage,optimizeCreatorPageVideos,saveCreatorCdnAsset,savedCreatorFile} from "./heart-content-creator-shop.js";
 import {creatorCdnEnabled} from './heart-creator-cdn.js';
 import {creatorPublicMedia} from '../../shared/creator-media.js';
 import {CC_CARTS,CC_ORDERS,priceCents} from "../../shared/content-creator-shop.js";
@@ -109,6 +109,12 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         if(stopped)break;
         if(page.deleting)continue;
         if(busy||mediaBusy)break;
+        const videoSignature=`video:${page.id}:${JSON.stringify(Object.entries(page.media||{}).filter(([,media])=>media.mediaType==='video').map(([id,media])=>[id,media.video,media.webVideoVersion]))}`;
+        if(page.kind==='shop'&&!migrationAttempts.has(videoSignature)&&Object.values(creatorPublicMedia(page)).some(media=>media.mediaType==='video'&&media.webVideoVersion!==1)){
+          migrationAttempts.add(videoSignature);
+          try{await optimizeCreatorPageVideos(page.id,(done,total)=>patch({migrationProgress:`${page.name}: Videos werden optimiert … ${done} / ${total}`,migrationError:''}));}
+          catch(error){patch({migrationError:`${page.name}: ${error.message} Die bisherigen Videos bleiben verfügbar. Beim erneuten Öffnen wird es nochmals versucht.`});}
+        }
         const signature=`${page.id}:${JSON.stringify([page.photoIds,page.products])}`;
         if(migrationAttempts.has(signature))continue;
         const migrationIds=(page.photoIds||[]).filter(id=>page.kind!=='shop'||(page.products||[]).some(product=>product.active!==false&&product.imageIds?.includes(id)));
@@ -136,7 +142,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
   }
   function load() {
     if (!stopped) return;
-    stopped = false; activationAttempts.clear(); patch({status:"loading",error:""});
+    stopped = false; activationAttempts.clear(); migrationAttempts.clear(); patch({status:"loading",error:""});
     const errors={};
     function listen(name,key){
       subscriptions.push(onSnapshot(collection(db,name),snap=>{

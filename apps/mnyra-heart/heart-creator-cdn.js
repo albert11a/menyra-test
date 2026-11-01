@@ -76,5 +76,11 @@ export async function uploadCreatorVideo(prepared) {
       result[name]=url;
     }
   }catch(error){videoOwners.delete(user.uid);throw error;}
+  // Upload already contains only the public marked/clean derivative. Keep a
+  // working upload available if optimization is temporarily unavailable.
+  try{
+    const {requestCreatorVideoOptimization}=await import('./heart-creator-video-optimize.js');
+    Object.assign(result,await requestCreatorVideoOptimization(result.video,owner));
+  }catch{console.warn('creator_video_optimization_pending');}
   return result;
 }

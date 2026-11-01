@@ -22,6 +22,7 @@ export function creatorVariants(record) {
     if (!result[size]) return null;
   }
   if(record.mediaType==='video'&&creatorVideoMediaUrl(record.video)&&creatorVideoMediaUrl(record.boomerang)){result.video=creatorVideoMediaUrl(record.video);result.boomerang=creatorVideoMediaUrl(record.boomerang);result.videoVersion=2;}
+  if(result.video&&record.webVideoVersion===1){result.webVideoVersion=1;for(const name of ['videoBytes','videoSourceBytes'])if(Number.isSafeInteger(record[name])&&record[name]>0&&record[name]<=48*1024*1024)result[name]=record[name];}
   if(record.mode==='clean'&&creatorMediaUrl(record.download))result.download=creatorMediaUrl(record.download);
   return result;
 }

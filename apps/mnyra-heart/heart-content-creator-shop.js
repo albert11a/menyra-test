@@ -1,8 +1,8 @@
-import {db} from '/shared/firebase-config.js';
-import {doc,getDoc,setDoc,updateDoc,serverTimestamp,writeBatch} from '/shared/vendor/firebase/11.0.0/firebase-firestore.js';
+import {auth,db} from '/shared/firebase-config.js';
+import {doc,getDoc,setDoc,updateDoc,serverTimestamp,writeBatch,runTransaction} from '/shared/vendor/firebase/11.0.0/firebase-firestore.js';
 import {CC_PAGES} from '../../shared/content-creator.js';
 import {CC_ORDERS} from '../../shared/content-creator-shop.js';
-import {creatorCdnEnabled,uploadCreatorMedia,uploadCreatorVideo} from './heart-creator-cdn.js';
+import {creatorCdnEnabled,uploadCreatorMedia,uploadCreatorVideo,creatorVideoOwner} from './heart-creator-cdn.js';
 import {creatorVariants,creatorPublicMedia} from '../../shared/creator-media.js';
 const PART=400000;
 export function drawShopWatermark(ctx,width,height){
@@ -178,3 +178,31 @@ export async function savePromoAsset(pageId,imageId,file,data){
 export {initialShopProduct} from "../../shared/content-creator-shop.js";
 export async function releaseShopOrder(id){await updateDoc(doc(db,CC_ORDERS,id),{approved:true,paymentConfirmed:true,status:'released',releasedAt:serverTimestamp()});}
 
+
+// Existing public derivatives are optimized once, independently of protected
+// originals and posters. Publish only if concurrent edits left this source valid.
+export async function optimizeCreatorPageVideos(pageId,onProgress=()=>{}){
+ const user=auth.currentUser;if(!user)throw Error('Bitte erneut in Heart anmelden.');
+ const pageRef=doc(db,CC_PAGES,pageId),page=(await getDoc(pageRef)).data();
+ if(!page||page.deleting||page.kind!=='shop')return;
+ const media=creatorPublicMedia(page);
+ const pending=Object.entries(media).filter(([,record])=>record.mediaType==='video'&&record.video&&record.webVideoVersion!==1);
+ if(!pending.length)return;
+ const owner=await creatorVideoOwner(user.uid);
+ const {requestCreatorVideoOptimization}=await import('./heart-creator-video-optimize.js');
+ let done=0;
+ for(const [imageId,record] of pending){
+  onProgress(done,pending.length);
+  const optimized=await requestCreatorVideoOptimization(record.video,owner);
+  await runTransaction(db,async transaction=>{
+   const latest=(await transaction.get(pageRef)).data();
+   if(!latest||latest.deleting||latest.kind!=='shop')return;
+   const current=creatorPublicMedia(latest)[imageId];
+   if(!current||current.video!==record.video||current.mode!==record.mode)return;
+   const updated={...latest.media[imageId],...optimized};
+   transaction.set(doc(pageRef,'images',imageId),{cdn:updated},{merge:true});
+   transaction.update(pageRef,{[`media.${imageId}`]:updated,updatedAt:serverTimestamp()});
+  });
+  onProgress(++done,pending.length);
+ }
+}
