@@ -7,15 +7,15 @@ import {readFile} from 'node:fs/promises';
 import {parseHTML} from 'linkedom';
 import {ccEscape,ccImage} from '../shared/content-creator.js';
 import {euro,shopQuote,validShopId} from '../shared/content-creator-shop.js';
-import {creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,renderCreatorCatalog,creatorHowTo,creatorFooter} from '../shared/content-creator-view.js';
+import {creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,creatorSoldCards,renderCreatorCatalog,creatorHowTo,creatorFooter} from '../shared/content-creator-view.js';
 import {shopAction} from '../server/content-creator-shop.js';
 const source=(await readFile(new URL('../apps/content-creator/shop.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace('export async function mountCreatorShop','async function mountCreatorShop');
-const factory=new Function('creatorVisitorId','db','doc','getDoc','esc','ccImage','CC_PAGES','euro','shopQuote','validShopId','zipBlob','localStorage','location','fetch','document','globalThis','setTimeout','navigator','creatorIcon','creatorImageUrl','creatorOfferButton','creatorPhoto','renderCreatorCatalog','creatorHowTo','creatorFooter','createCreatorVideoPlayback','creatorIsVideo','creatorAssetCount','creatorVideoFirst','creatorVideoUrl','createCreatorVideoPreload',`${source}\nreturn mountCreatorShop;`);
+const factory=new Function('creatorVisitorId','db','doc','getDoc','esc','ccImage','CC_PAGES','euro','shopQuote','validShopId','zipBlob','localStorage','location','fetch','document','globalThis','setTimeout','navigator','creatorIcon','creatorImageUrl','creatorOfferButton','creatorPhoto','creatorSoldCards','renderCreatorCatalog','creatorHowTo','creatorFooter','createCreatorVideoPlayback','creatorIsVideo','creatorAssetCount','creatorVideoFirst','creatorVideoUrl','createCreatorVideoPreload',`${source}\nreturn mountCreatorShop;`);
 const pageId='a'.repeat(32);
 async function setup(still=false,price=2900,options={}){
  const {document,window}=parseHTML('<html><head><meta name="theme-color" content="#f7f6f2"><meta name="color-scheme" content="light"></head><body><main id="app"></main></body></html>'),root=document.getElementById('app');window.HTMLElement.prototype.scrollIntoView=()=>{};window.HTMLElement.prototype.scrollTo=function(options){this.scrollLeft=options.left;this.dispatchEvent(new window.Event('scroll'));};
  const createElement=document.createElement.bind(document);document.createElement=name=>{const node=createElement(name);if(name==='video')options.mediaElement?.(node);return node;};
- const storage=new Map(),calls=[],zipFiles=[],page={id:pageId,published:true,kind:'shop',name:'Bistro',media:options.media||{},mediaTypes:options.mediaTypes||{},heroPhotoIds:options.heroPhotoIds||[],photoIds:['one','two','three','four'],products:[{id:'pack',title:'Social Set',priceCents:price,imageIds:['one','two','three','four']}]};
+ const storage=new Map(),calls=[],zipFiles=[],page={id:pageId,published:true,kind:'shop',name:'Bistro',sold:options.sold||[],media:options.media||{},mediaTypes:options.mediaTypes||{},heroPhotoIds:options.heroPhotoIds||[],photoIds:['one','two','three','four'],products:[{id:'pack',title:'Social Set',priceCents:price,imageIds:['one','two','three','four']}]};
  const docs=new Map([[`contentCreatorPages/${pageId}`,structuredClone(page)]]);
  for(const key of page.photoIds){docs.set(`contentCreatorPages/${pageId}/originals/${key}`,{parts:1,size:3,name:key+'.jpg',mime:'image/jpeg',cleanPreview:{version:1,data:'data:image/jpeg;base64,YWJj'}});docs.set(`contentCreatorPages/${pageId}/originals/${key}/chunks/000`,{data:'YWJj'});}
  const repo={read:async key=>docs.get(key),write:async(key,data)=>{docs.set(key,{...docs.get(key),...structuredClone(data)});return true;},notify:async()=>true};
@@ -23,7 +23,7 @@ async function setup(still=false,price=2900,options={}){
   const payload=requestOptions.method==='POST'?JSON.parse(requestOptions.body):Object.fromEntries(new URL(url,'https://www.mnyra.com').searchParams);if(new URL(url,'https://www.mnyra.com').pathname==='/creator/download')payload.op=payload.orderId?'download':'free-download';calls.push(payload);
   try{if(payload.op==='free-download'&&options.download)await options.download(payload);if(payload.op==='free-preview'&&options.preview){const result=await options.preview(payload);if(result)return result;}const result=await shopAction(payload,repo);if(payload.op==='order'&&options.lostOrderResponse)throw Error('Response lost after commit');return {ok:true,json:async()=>result,arrayBuffer:async()=>result.bytes,headers:{get:key=>key==='Content-Type'?result.mime:key==='X-File-Name'?encodeURIComponent(result.name):null}};}catch(error){return {ok:false,json:async()=>({error:error.message})};}
  };
- const mount=factory(()=>'e'.repeat(32),{},(...args)=>args.filter(x=>typeof x==='string').join('/'),async()=>({data:()=>({data:'data:image/jpeg;base64,YWJj'})}),ccEscape,ccImage,'contentCreatorPages',euro,shopQuote,validShopId,files=>{zipFiles.push(files);return new Blob(['zip']);}, {getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)}, {origin:'https://www.mnyra.com',search:''},fetch,document,{setInterval:(fn,ms)=>{options.intervals?.push({fn,ms});return 0;},addEventListener:()=>{},Image:options.Image,IntersectionObserver:options.IntersectionObserver,matchMedia:()=>({matches:!!options.reducedMotion})},()=>0,options.navigator||{},creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,renderCreatorCatalog,creatorHowTo,creatorFooter,(node)=>createCreatorVideoPlayback(node,{windowObj:options.playbackWindow||globalThis}),creatorIsVideo,creatorAssetCount,creatorVideoFirst,creatorVideoUrl,createCreatorVideoPreload);
+ const mount=factory(()=>'e'.repeat(32),{},(...args)=>args.filter(x=>typeof x==='string').join('/'),async()=>({data:()=>({data:'data:image/jpeg;base64,YWJj'})}),ccEscape,ccImage,'contentCreatorPages',euro,shopQuote,validShopId,files=>{zipFiles.push(files);return new Blob(['zip']);}, {getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)}, {origin:'https://www.mnyra.com',search:''},fetch,document,{setInterval:(fn,ms)=>{options.intervals?.push({fn,ms});return 0;},addEventListener:()=>{},Image:options.Image,IntersectionObserver:options.IntersectionObserver,matchMedia:()=>({matches:!!options.reducedMotion})},()=>0,options.navigator||{},creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,creatorSoldCards,renderCreatorCatalog,creatorHowTo,creatorFooter,(node)=>createCreatorVideoPlayback(node,{windowObj:options.playbackWindow||globalThis}),creatorIsVideo,creatorAssetCount,creatorVideoFirst,creatorVideoUrl,createCreatorVideoPreload);
  await mount({root,page,still});
  async function settle(){for(let i=0;i<15;i++)await new Promise(r=>setImmediate(r));}
  async function click(selector){const button=root.querySelector(selector);assert.ok(button,selector);button.dispatchEvent(new window.Event('click',{bubbles:true}));await settle();}
@@ -328,4 +328,11 @@ test('Pointer intent loads the chosen full video before click; opening/reopening
  await ctx.click('[data-creator-video-toggle]');assert.equal(video.paused,true);
  await ctx.click('[data-shop="viewer-step"][data-step="1"]');await ctx.click('[data-shop="viewer-close"]');
  await ctx.click('[data-shop="view"][data-index="0"]');assert.equal(ctx.root.querySelector('.shop-viewer video'),video);assert.equal(video.loads,1);
+});
+
+test('A visitor without a receipt sees business purchases but has no download action',async()=>{
+ const ctx=await setup(false,2900,{sold:[{id:'pack',title:'Social Set',imageIds:['one']}]});
+ assert.equal(ctx.root.querySelectorAll('.shop-product').length,0);
+ assert.match(ctx.root.querySelector('#shop-purchases').textContent,/Social Set.*E blerë/);
+ assert.equal(ctx.root.querySelector('[data-shop="save-photos"]'),null);
 });

@@ -15,7 +15,7 @@ export async function shopRepository(){
  const token=await (tokenRequest ||= zugangHolen(key).finally(()=>{tokenRequest=undefined;}));
  let pageGuard;const visitVersions=new Map();
  return {
-  async read(path,fields){const target=fields?.length?`${path}?${fields.map(field=>`mask.fieldPaths=${encodeURIComponent(field)}`).join('&')}`:path;const raw=await lies(target,token);if(/^contentCreatorVisits\/[^/]+$/.test(path))visitVersions.set(path,raw?.updateTime||null);const data=raw?Object.fromEntries(Object.entries(raw.fields||{}).map(([k,v])=>[k,wert(v)])):null;if(/^contentCreatorPages\/[a-f0-9]{32}$/.test(path))pageGuard={path,active:data?.published===true&&!data?.deleting};return data;},
+  async read(path,fields){const target=fields?.length?`${path}?${fields.map(field=>`mask.fieldPaths=${encodeURIComponent(field)}`).join('&')}`:path;const raw=await lies(target,token);if(/^contentCreatorVisits\/[^/]+$/.test(path))visitVersions.set(path,raw?.updateTime||null);const data=raw?Object.fromEntries(Object.entries(raw.fields||{}).map(([k,v])=>[k,wert(v)])):null;if(/^contentCreatorPages\/[a-f0-9]{32}$/.test(path))pageGuard={path,active:data?.published===true&&!data?.deleting,version:raw?.updateTime};return data;},
   async write(path,data,create=false,requireExisting=false){
    if(pageGuard&&(/^(contentCreatorVisits|contentCreatorCarts|contentCreatorOrders)\/[^/]+$/.test(path)||path.startsWith(pageGuard.path+'/originals/')&&path.endsWith('/displays/delivery-thumb'))){
     if(!pageGuard.active)throw Error('Diese Business-Seite ist nicht mehr verfügbar.');
@@ -26,6 +26,29 @@ export async function shopRepository(){
    const mask=create?'currentDocument.exists=false':Object.keys(data).map(k=>`updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&')+(requireExisting?'&currentDocument.exists=true':'');
    const r=await fetch(`${BASE}/${path}?${mask}`,{method:'PATCH',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},body:JSON.stringify({fields:Object.fromEntries(Object.entries(data).map(([k,v])=>[k,encodeValue(v)]))}),signal:AbortSignal.timeout(10000)});
    if((create&&(r.status===409||r.status===412))||(requireExisting&&[404,409,412].includes(r.status)))return false;if(!r.ok)throw Error('Speichern fehlgeschlagen.');return true;
+  },
+  async sold(pageId){
+   const response=await fetch(`${BASE}:runQuery`,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},signal:AbortSignal.timeout(7000),body:JSON.stringify({structuredQuery:{
+    from:[{collectionId:CC_ORDERS}],select:{fields:[{fieldPath:'lines'}]},
+    where:{fieldFilter:{field:{fieldPath:'pageId'},op:'EQUAL',value:{stringValue:pageId}}}
+   }})});
+   if(!response.ok)throw Error('Blerjet nuk u ngarkuan. Provoni përsëri.');
+   const lines=new Map();
+   for(const row of await response.json())for(const line of wert(row.document?.fields?.lines)||[]){
+    if(typeof line.id==='string'&&line.priceCents>0)lines.set(line.id,{id:line.id,title:String(line.title||'Pako fotosh').slice(0,120),imageIds:(line.imageIds||[]).filter(id=>/^[A-Za-z0-9_-]{1,64}$/.test(id)).slice(0,100)});
+   }
+   return [...lines.values()];
+  },
+  async createOrder(pageId,orderId,order){
+   if(!pageGuard?.active||!pageGuard.version||pageGuard.path!==`contentCreatorPages/${pageId}`)throw Error('Faqja ka ndryshuar. Provoni përsëri.');
+   const name=BASE.replace('https://firestore.googleapis.com/v1/','');
+   const response=await fetch(`${BASE}:commit`,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},signal:AbortSignal.timeout(10000),body:JSON.stringify({writes:[
+    {update:{name:`${name}/${CC_ORDERS}/${orderId}`,fields:Object.fromEntries(Object.entries(order).map(([key,value])=>[key,encodeValue(value)]))},currentDocument:{exists:false}},
+    {update:{name:`${name}/${pageGuard.path}`,fields:{lastOrderAt:{timestampValue:order.createdAt}}},updateMask:{fieldPaths:['lastOrderAt']},currentDocument:{updateTime:pageGuard.version}}
+   ]})});
+   if([409,412].includes(response.status))return false;
+   if(!response.ok)throw Error('Porosia nuk u ruajt. Provoni përsëri.');
+   return true;
   },
   async notify(kind,id,record){
    const fingerprint=createHash('sha256').update(record.lines.map(p=>p.id).sort().join(':')).digest('hex').slice(0,12);
@@ -64,6 +87,12 @@ async function originalFile(path,metadata,repo){
 }
 export async function shopAction(input,repo,{streamPhoto=false}={}){
  const {op,pageId,cartId,orderId}=input;
+ if(op==='sold'){
+  if(!validShopId(pageId))throw Error('Faqja nuk u gjet.');
+  const page=await repo.read(`contentCreatorPages/${pageId}`);
+  if(!page?.published||page.deleting||page.kind!=='shop')throw Error('Faqja nuk u gjet.');
+  return {sold:await repo.sold(pageId)};
+ }
  if(op==='visit'){for(let attempt=0;;attempt++){try{return await creatorActivity(input,repo);}catch(error){if(error.code!=='CREATOR_VISIT_CONFLICT'||attempt>=3)throw error;}}}
  if(op==='photo-gallery'||op==='photo-preview'||op==='photo-download'||op==='photo-record'){
   if(!validShopId(pageId)||!validShopId(input.token))throw Error('Linku nuk është i vlefshëm.');
@@ -224,13 +253,16 @@ export async function shopAction(input,repo,{streamPhoto=false}={}){
  if(op!=='order'||!validShopId(orderId))throw Error('Kërkesa nuk është e vlefshme.');
  const existing=await repo.read(`${CC_ORDERS}/${orderId}`);
  if(existing){if(existing.pageId!==pageId||existing.cartId!==cartId)throw Error('Porosia nuk është e vlefshme.');await repo.write(`${CC_CARTS}/${cartId}`,{status:'ordered',orderId,updatedAt:new Date().toISOString()});await repo.notify('order',orderId,existing).catch(()=>{});return publicOrder(existing,orderId);}
+ const sold=await repo.sold?.(pageId)||[];
+ if(quote.lines.some(line=>sold.some(item=>item.id===line.id)))return {sold};
  if(input.expectedTotalCents!==quote.totalCents)return {priceChanged:true,...quote};
  const customer=shopCustomer(input.customer);
  // Freeze original file identities; removing storefront photos never removes purchased assets.
  for(const file of purchasedFiles(quote)){const asset=await repo.read(`contentCreatorPages/${pageId}/originals/${file}`);if(!asset?.parts)throw Error('Një skedar nuk është ende gati. Ju lutemi, provoni përsëri.');}
  const order={pageId,pageName:page.name,cartId,...(validShopId(input.visitorId)?{visitorId:input.visitorId}:{}),...quote,customer,paymentMethod:'cod',status:'pending',approved:false,notificationPending:true,...(quote.totalCents>0?{downloadsReleased:true,paymentSchedule:'courier',paymentWindowDays:[2,3]}:{}),createdAt:now,updatedAt:now};
- const created=await repo.write(`${CC_ORDERS}/${orderId}`,order,true);
+ const created=repo.createOrder?await repo.createOrder(pageId,orderId,order):await repo.write(`${CC_ORDERS}/${orderId}`,order,true);
  const persisted=created?order:await repo.read(`${CC_ORDERS}/${orderId}`);
+ if(!persisted&&repo.sold){const latest=await repo.sold(pageId);if(quote.lines.some(line=>latest.some(item=>item.id===line.id)))return {sold:latest};throw Error('Oferta u përditësua. Provoni përsëri.');}
  if(!persisted||persisted.cartId!==cartId||persisted.pageId!==pageId)throw Error('Porosia nuk është e vlefshme.');
  await repo.write(`${CC_CARTS}/${cartId}`,{status:'ordered',orderId,updatedAt:now});
  const notified=await repo.notify('order',orderId,persisted).catch(()=>false);

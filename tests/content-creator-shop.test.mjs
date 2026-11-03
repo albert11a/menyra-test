@@ -198,3 +198,15 @@ test('Each delivery link returns only its own selected CDN originals',async()=>{
  assert.deepEqual(await shopAction({...record,file:'one'},repo),{ok:true});
  assert.equal(docs.get(`contentCreatorVisits/${pageId}_${cartId}`).photoDownloads.one.count,1);
 });
+
+test('A previous business purchase blocks a second order even with a different cart',async()=>{
+ const {docs,repo}=fixture();
+ const first=await shopAction(request,repo);
+ assert.equal(first.id,orderId);
+ repo.sold=async()=>[{id:'pack',title:'4 Fotos',imageIds:['one']}];
+ const duplicate=await shopAction({...request,cartId:other,orderId:other},repo);
+ assert.deepEqual(duplicate,{sold:await repo.sold()});
+ assert.equal(docs.has('contentCreatorOrders/'+other),false);
+ const retry=await shopAction(request,repo);
+ assert.equal(retry.id,orderId);
+});

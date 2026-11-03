@@ -4,7 +4,7 @@ import {creatorIsVideo,creatorAssetCount,creatorVideoFirst,creatorVideoUrl} from
 import {creatorVisitorId} from './visits.js';
 import {ccEscape as esc,ccImage} from '../../shared/content-creator.js';
 import {euro,shopQuote,validShopId} from '../../shared/content-creator-shop.js';
-import {creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,renderCreatorCatalog,creatorHowTo,creatorFooter} from '../../shared/content-creator-view.js';
+import {creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,creatorSoldCards,renderCreatorCatalog,creatorHowTo,creatorFooter} from '../../shared/content-creator-view.js';
 export async function mountCreatorShop({root,page,still=false,track=async()=>{}}){
  // Block native image-save/drag actions on paid previews, including new viewer nodes.
  // Do not cancel touch/pointer gestures: scrolling, swiping and zoom stay native.
@@ -30,10 +30,19 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
  function canPrefetch(){const connection=navigator.connection;return !connection?.saveData&&!['slow-2g','2g','3g'].includes(connection?.effectiveType);}
  let neighbourObserver=null,heroIndex=0,heroPaused=!!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
  const images={},positions={},orders=new Map(),customer={name:'',address:'',country:'Kosovë',phone:''};
- const purchasedIds=new Set();
+ const ownedIds=new Set(),purchasedIds=new Set();
+ let sold=[];
+ function applySold(lines){
+  sold=lines;
+  purchasedIds.clear();
+  for(const id of ownedIds)purchasedIds.add(id);
+  for(const line of sold)purchasedIds.add(line.id);
+  ids=ids.filter(id=>!purchasedIds.has(id));
+ }
+ applySold(page.sold||[]);
  function rememberOrder(order){
   orders.set(order.id,order);
-  for(const line of order.lines)purchasedIds.add(line.id);
+  for(const line of order.lines){ownedIds.add(line.id);purchasedIds.add(line.id);}
   ids=ids.filter(id=>!purchasedIds.has(id));
  }
  const tokens=still?[]:(Array.isArray(saved.orders)?saved.orders:[]).filter(validShopId);
@@ -256,7 +265,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
    if(!retained.has(key))retained.set(key,[]);retained.get(key).push(image);
   }
   root.innerHTML=`<div class="shop-shell">${renderCreatorCatalog(page,{ids,positions,offerButton,photo:img,purchasedIds})}<div id="shop-image-errors">${imageStatus()}</div>${creatorHowTo(page)}
-   <section class="shop-purchases" id="shop-purchases"><h2>Blerjet tuaja</h2>${[...orders.values()].map(order=>`<article class="shop-order"><div class="shop-order-title"><b>Porosia #${esc(order.id.slice(0,8).toUpperCase())}</b><strong>${euro(order.totalCents)}</strong></div><p class="shop-order-state">${order.approved?(order.totalCents===0?'✓ Pako falas · Shkarkimet janë gati':'✓ Pagesa u konfirmua · Shkarkimet janë gati'):(canDownload(order)?order.paymentSchedule==='courier'?'✓ Fotot janë gati · Pagesa cash pas 2–3 ditësh':`✓ Fotot janë gati · Pagesa më ${order.paymentDueDate?esc(order.paymentDueDate.split('-').reverse().join('.')):'1 të muajit të ardhshëm'}`:(order.totalCents===0?'Në pritje të miratimit':'Në pritje të pagesës / miratimit'))}</p>${order.lines.map(line=>`<div class="shop-purchased-item">${img(line.imageIds[0],line.title)}<div><h3>${esc(line.title)}</h3><p>${creatorAssetCount(page,line.imageIds)} · ${euro(line.priceCents)}</p><button data-shop="save-photos" data-order="${order.id}" data-product="${line.id}" ${!canDownload(order)||downloadBusy?'disabled':''}>${creatorIcon(canDownload(order)?'save':'shield-check')}${canDownload(order)?(line.imageIds.some(id=>creatorIsVideo(page,id))?'Ruaj skedarët':'Ruaj fotot'):'Në pritje të konfirmimit'}</button></div></div>`).join('')}<div class="shop-order-actions"><button data-shop="refresh" data-order="${order.id}">Kontrollo statusin</button>${still?'':`<button data-shop="receipt-link" data-order="${order.id}">Kopjo linkun e porosisë</button>`}</div></article>`).join('')||'<p>Pas porosisë, artikujt tuaj do të shfaqen këtu.</p>'}</section>
+   <section class="shop-purchases" id="shop-purchases"><h2>Blerjet tuaja</h2>${([...orders.values()].map(order=>`<article class="shop-order"><div class="shop-order-title"><b>Porosia #${esc(order.id.slice(0,8).toUpperCase())}</b><strong>${euro(order.totalCents)}</strong></div><p class="shop-order-state">${order.approved?(order.totalCents===0?'✓ Pako falas · Shkarkimet janë gati':'✓ Pagesa u konfirmua · Shkarkimet janë gati'):(canDownload(order)?order.paymentSchedule==='courier'?'✓ Fotot janë gati · Pagesa cash pas 2–3 ditësh':`✓ Fotot janë gati · Pagesa më ${order.paymentDueDate?esc(order.paymentDueDate.split('-').reverse().join('.')):'1 të muajit të ardhshëm'}`:(order.totalCents===0?'Në pritje të miratimit':'Në pritje të pagesës / miratimit'))}</p>${order.lines.map(line=>`<div class="shop-purchased-item">${img(line.imageIds[0],line.title)}<div><h3>${esc(line.title)}</h3><p>${creatorAssetCount(page,line.imageIds)} · ${euro(line.priceCents)}</p><button data-shop="save-photos" data-order="${order.id}" data-product="${line.id}" ${!canDownload(order)||downloadBusy?'disabled':''}>${creatorIcon(canDownload(order)?'save':'shield-check')}${canDownload(order)?(line.imageIds.some(id=>creatorIsVideo(page,id))?'Ruaj skedarët':'Ruaj fotot'):'Në pritje të konfirmimit'}</button></div></div>`).join('')}<div class="shop-order-actions"><button data-shop="refresh" data-order="${order.id}">Kontrollo statusin</button>${still?'':`<button data-shop="receipt-link" data-order="${order.id}">Kopjo linkun e porosisë</button>`}</div></article>`).join('')+creatorSoldCards(page,sold,ownedIds))||'<p>Pas porosisë, artikujt tuaj do të shfaqen këtu.</p>'}</section>
    ${creatorFooter(page)}
    ${notice?`<p class="shop-notice" role="status">${esc(notice)}</p>`:''}
    ${error&&panel!=='checkout'?`<p class="shop-error" role="alert">${esc(error)}</p>`:''}
@@ -370,6 +379,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
     const receipt=await api('receipt',{orderId},true).catch(()=>null);
     if(receipt?.pageId===page.id)return receipt;throw error;
    }})();
+   if(result.sold){applySold(result.sold);remember();panel=ids.length?'cart':'';flash('Një pako është blerë tashmë. Shikoni te Blerjet tuaja.');return;}
    if(result.priceChanged){applyQuote(result);throw Error('Çmimi u përditësua. Kontrolloni totalin dhe konfirmoni përsëri.');}
    rememberOrder(result);if(!still&&!tokens.includes(result.id))tokens.push(result.id);
    if(result.notified===false)api('notify',{kind:'order',orderId:result.id}).catch(()=>{});
@@ -471,7 +481,12 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
  }
  await Promise.all(tokens.map(id=>refreshOrder(id).catch(()=>{})));
  const heroTimer=globalThis.setInterval(()=>{const track=root.querySelector('[data-hero-track]');if(canPrefetch()&&!heroPaused&&!viewer&&!panel&&!photoSave&&document.visibilityState!=='hidden'&&track?.children.length>1)moveHero(heroIndex+1);},5500);
- const poll=globalThis.setInterval(()=>{if(still||document.visibilityState==='hidden')return;for(const order of orders.values())if(!order.approved)refreshOrder(order.id).catch(()=>{});},20000);
+ const poll=globalThis.setInterval(()=>{if(still||document.visibilityState==='hidden')return;for(const order of orders.values())if(!order.approved)refreshOrder(order.id).catch(()=>{});
+  if(!submitting)api('sold',{},true).then(result=>{
+   if(submitting||JSON.stringify(result.sold)===JSON.stringify(sold))return;
+   applySold(result.sold);remember();render();
+  }).catch(()=>{});
+ },20000);
  globalThis.addEventListener?.('pagehide',event=>{if(!event.persisted){videoPlayback.destroy();videoPreload.destroy();neighbourObserver?.disconnect();saveObserver?.disconnect();activePreparation?.controller.abort();globalThis.clearInterval(poll);globalThis.clearInterval(heroTimer);fileAbort?.abort();discardSave();for(const entry of prepared.values())for(const url of entry.urls||[])URL.revokeObjectURL(url);}});
 }
 

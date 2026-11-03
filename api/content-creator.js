@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { ccEscape as esc, ccImage, contentLink } from '../shared/content-creator.js';
-import {publicCreatorPage,renderCreatorCatalog,creatorPhoto,creatorHowTo,creatorHeroFiles,renderCreatorPromo,creatorFooter} from '../shared/content-creator-view.js';
+import {publicCreatorPage,creatorSoldCards,renderCreatorCatalog,creatorPhoto,creatorHowTo,creatorHeroFiles,renderCreatorPromo,creatorFooter} from '../shared/content-creator-view.js';
 const BASE='https://firestore.googleapis.com/v1/projects/menyra-c0e68/databases/(default)/documents';
 function decode(v){if(!v)return null;if('stringValue'in v)return v.stringValue;if('booleanValue'in v)return v.booleanValue;if('integerValue'in v)return Number(v.integerValue);if('doubleValue'in v)return Number(v.doubleValue);if('timestampValue'in v)return v.timestampValue;if(v.mapValue)return Object.fromEntries(Object.entries(v.mapValue.fields||{}).map(([k,x])=>[k,decode(x)]));if(v.arrayValue)return (v.arrayValue.values||[]).map(decode);return null;}
 let creatorStyles;
@@ -24,11 +24,15 @@ async function readCreatorCovers(safePage,page){
   }));
   return covers;
 }
+async function readSoldPackages(id){
+  const {shopRepository}=await import('../server/content-creator-shop.js');
+  return (await shopRepository()).sold(id);
+}
 async function readPhotoAlias(code){
   const {shopRepository}=await import('../server/content-creator-shop.js');
   return (await shopRepository()).read(`contentCreatorPages/photo-links/originals/${code}`);
 }
-export async function serveContentCreator(req,res,{read=publicDocument,shell,loadCovers=readCreatorCovers,readAlias=readPhotoAlias}={}){
+export async function serveContentCreator(req,res,{read=publicDocument,shell,loadCovers=readCreatorCovers,readAlias=readPhotoAlias,loadSold=read===publicDocument?readSoldPackages:async()=>[]}={}){
   res.setHeader('X-Content-Type-Options','nosniff');
   if(!['GET','HEAD'].includes(req.method)){res.statusCode=405;res.setHeader('Allow','GET, HEAD');res.end();return;}
   const url=new URL(req.url || '/', 'https://www.mnyra.com');
@@ -70,6 +74,7 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
         safePage.avatar=`data:image/jpeg;base64,${bytes.toString('base64')}`;
       }catch{}
     }
+    if(safePage.kind==='shop'&&!assetMode&&!imageMode)safePage.sold=await loadSold(id);
     if(String(req.query?.format || url.searchParams.get('format') || '')==='json'){
       res.statusCode=200;res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');res.end(req.method==='HEAD'?undefined:JSON.stringify(safePage));return;
     }
@@ -111,8 +116,8 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
           new Promise(resolve=>{timer=setTimeout(resolve,1200);})
         ]).finally(()=>clearTimeout(timer));
       }
-      const catalog=renderCreatorCatalog(safePage,{photo:(key,alt,options)=>creatorPhoto(safePage,key,alt,{...options,src:covers[key]})});
-      const firstFrame=`<div class="shop-shell">${catalog}<div id="shop-image-errors"></div>${creatorHowTo(safePage)}<section class="shop-purchases" id="shop-purchases"><h2>Blerjet tuaja</h2><p>Pas porosisë, artikujt tuaj do të shfaqen këtu.</p></section>${creatorFooter(safePage)}</div>`;
+      const catalog=renderCreatorCatalog(safePage,{purchasedIds:new Set(safePage.sold.map(line=>line.id)),photo:(key,alt,options)=>creatorPhoto(safePage,key,alt,{...options,src:covers[key]})});
+      const firstFrame=`<div class="shop-shell">${catalog}<div id="shop-image-errors"></div>${creatorHowTo(safePage)}<section class="shop-purchases" id="shop-purchases"><h2>Blerjet tuaja</h2>${creatorSoldCards(safePage,safePage.sold)||'<p>Pas porosisë, artikujt tuaj do të shfaqen këtu.</p>'}</section>${creatorFooter(safePage)}</div>`;
       html=html.replace(/(<main[^>]*id="content-app"[^>]*>)[\s\S]*?(<\/main>)/,(_,open,close)=>open+firstFrame+close);
     }
     if(safePage.kind!=='shop'){
