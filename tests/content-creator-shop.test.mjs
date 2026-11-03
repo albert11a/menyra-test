@@ -146,3 +146,26 @@ test('100-package shops publish and quote every item, including the last video; 
  assert.throws(()=>shopQuote(page,page.products.map(p=>p.id)));assert.throws(()=>shopQuote({...page,products:[{...extra,imageIds:page.photoIds}]},['pack_100']));
  const promo=publicCreatorPage({...page,kind:'promo'},pageId);assert.equal(promo.photoIds.length,30);
 });
+
+test('Foto-Link delivers only explicitly shared current photos and counts byte-exact downloads',async()=>{
+ const {page,docs,repo}=fixture(),token=other,visitorId=cartId;
+ const accessPath=`contentCreatorPages/${pageId}/originals/photo-delivery`;
+ const visitPath=`contentCreatorVisits/${pageId}_${visitorId}`;
+ page.photoDeliveryEnabled=true;
+ page.mediaTypes={two:'video'};
+ docs.set(accessPath,{token,files:['one','two']});
+ const gallery={op:'photo-gallery',pageId,token};
+ assert.deepEqual((await shopAction(gallery,repo)).photos.map(photo=>photo.file),['one']);
+ assert.equal(docs.has(visitPath),false);
+ await assert.rejects(shopAction({...gallery,token:orderId},repo));
+ const download={...gallery,op:'photo-download',visitorId,file:'one'};
+ await assert.rejects(shopAction({...download,file:'three'},repo));
+ assert.deepEqual((await shopAction(download,repo)).bytes,Buffer.from('abc'));
+ await shopAction(download,repo);
+ assert.equal(docs.get(visitPath).photoDownloads.one.count,2);
+ assert.equal(docs.get(visitPath).photoDownloads.one.recent.length,2);
+ page.products[0].imageIds=['two','three','four'];
+ await assert.rejects(shopAction(download,repo));
+ docs.delete(accessPath);
+ await assert.rejects(shopAction(gallery,repo));
+});

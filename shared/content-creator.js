@@ -34,3 +34,11 @@ export function ccEscape(value = "") {
   return String(value).replace(/[&<>"']/g, c => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"})[c]);
 }
 export function ccImage(value) { return /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value || "") ? value : creatorMediaUrl(value); }
+
+export function creatorDeliveryPhotos(page) {
+  const active = new Set((page.products || []).filter(product => product.active !== false).flatMap(product => product.imageIds || []));
+  return (page.kind === 'shop' ? page.photoIds || [] : []).filter(file =>
+    /^[a-zA-Z0-9_-]{1,64}$/.test(file) && active.has(file)
+    && page.mediaTypes?.[file] !== 'video' && page.media?.[file]?.mediaType !== 'video'
+  );
+}

@@ -5,6 +5,7 @@ const root=document.getElementById('content-app');
 const pathId=location.pathname.split('/').filter(Boolean).at(-1);
 let id=pathId;
 const params=new URLSearchParams(location.search);
+const photoGallery=params.get('photos')==='1';
 let still=params.get('still')==='1'||params.get('preview')==='1';
 try{
   if(params.get('still')==='1')localStorage.setItem('mnyra:content:still','1');
@@ -14,11 +15,16 @@ try{
 let tracking;
 function responseMessage(answer){const node=root.querySelector('.answer-content');if(node)node.innerHTML=`<p class="answer-message">${answer==='yes'?'Faleminderit për interesimin! E morëm përgjigjen tuaj. Mund të vazhdoni bisedën me ne aty ku ju dërguam linkun.':'Faleminderit për përgjigjen tuaj! Fotot shembull mbeten tuajat për t’i përdorur kur të dëshironi.'}</p>`;}
 function visits(){
-  if(still)return Promise.resolve({answer:async value=>responseMessage(value)});
+  if(still&&!photoGallery)return Promise.resolve({answer:async value=>responseMessage(value)});
   return tracking ||= import('./visits.js').then(({installCreatorVisits})=>installCreatorVisits({id,onAnswer:responseMessage})).catch(error=>{tracking=undefined;throw error;});
 }
 async function start(){
   try{
+    if(photoGallery){
+      const {mountCreatorPhotoGallery}=await import('./photo-gallery.js');
+      await mountCreatorPhotoGallery({root,pageId:id,token:location.hash.slice(1),track:()=>{void visits().catch(()=>{});}});
+      return;
+    }
     let page;
     const initial=document.getElementById('creator-page-data');
     try{if(initial)page=JSON.parse(initial.textContent);}catch{}

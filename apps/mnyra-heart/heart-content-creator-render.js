@@ -61,8 +61,9 @@ function renderDetail(page,state) {
   ${renderCreatorHeroEditor(page,state)}
   ${creatorCard(`stats-${page.id}`,'Besuche',`<div class="cc-stats">${values.map(([label,n])=>`<div class="cc-stat"><strong>${n}</strong><span>${label}</span></div>`).join('')}</div><p class="cc-muted">Letzter Besuch: ${creatorTime(attendance.lastSeen)} · Sichtbare Zeit: ${creatorDuration(attendance.activeMs)}</p>`,state)}
 ${creatorFollowupCard(state,page.id)}
-  ${creatorCard(`links-${page.id}`,'Business-Seite',renderLinks(page,state),state)}
+  ${creatorCard(`links-${page.id}`,'Business-Seite',renderLinks(page,state)+renderPhotoLinks(page),state)}
   ${creatorJourney(page,state)}
+  ${renderDownloads(page,visits,state)}
   <label class="cc-add" ${page.kind==='shop'?'hidden':''}>Fotos hinzufügen<input type="file" multiple accept="image/jpeg,image/png,image/webp" data-cc-add="${esc(page.id)}" ${state.mediaBusy?'disabled':''}></label>
   ${state.mediaError ? `<p class="cc-error" role="alert">${esc(state.mediaError)}</p>` : ""}
   ${state.mediaBusy ? '<p role="status">Bilder werden gespeichert …</p>' : ""}
@@ -72,6 +73,24 @@ ${creatorFollowupCard(state,page.id)}
     <label>Bildunterschrift<textarea id="cc-edit-caption-${esc(key)}" data-edit-caption="${esc(key)}" maxlength="1000">${esc(state.captionDrafts?.[key] ?? image?.caption ?? "")}</textarea></label>
     <div class="cc-row-actions"><button data-cc-action="caption" data-id="${esc(page.id)}" data-image="${esc(key)}" ${state.mediaBusy?'disabled':''}>Text speichern</button><button data-cc-action="move" data-id="${esc(page.id)}" data-image="${esc(key)}" data-direction="-1" ${i===0||state.mediaBusy?'disabled':''}>↑</button><button data-cc-action="move" data-id="${esc(page.id)}" data-image="${esc(key)}" data-direction="1" ${i===page.photoIds.length-1||state.mediaBusy?'disabled':''}>↓</button><button data-cc-action="delete" data-id="${esc(page.id)}" data-image="${esc(key)}" ${state.mediaBusy?'disabled':''}>Löschen</button></div></article>`;
   }).join("")}</div>${renderBusinessDelete(page,state)}</section>`;
+}
+
+function renderPhotoLinks(page){
+ if(page.kind!=='shop'||!page.published)return '';
+ return `<div class="cc-link-actions heart-lifeskin-chips--shop"><button type="button" class="heart-lifeskin-chip" data-cc-action="photo-link" data-id="${esc(page.id)}">${icon('copy')}<span>Foto-Link kopieren</span></button>${page.photoDeliveryEnabled? `<button type="button" class="heart-lifeskin-chip" data-cc-action="revoke-photo-link" data-id="${esc(page.id)}">Foto-Link sperren</button>`:''}</div>`;
+}
+function renderDownloads(page,visits,state){
+ const totals=new Map();
+ for(const visit of visits)for(const [file,download] of Object.entries(visit.photoDownloads||{})){
+  const row=totals.get(file)||{file,name:download.name,count:0,lastAt:'',recent:[]};
+  row.count+=download.count;
+  if(download.lastAt>row.lastAt)row.lastAt=download.lastAt;
+  row.recent.push(...(download.recent||[]));
+  totals.set(file,row);
+ }
+ const rows=[...totals.values()].sort((a,b)=>b.lastAt.localeCompare(a.lastAt));
+ const count=rows.reduce((sum,row)=>sum+row.count,0);
+ return creatorCard(`downloads-${page.id}`,'Downloader',rows.length?rows.map(row=>`<details class="cc-journey" data-cc-fold="download-${esc(row.file)}"><summary>${esc(row.name)}<small>${row.count} × · Zuletzt ${creatorTime(row.lastAt)}</small></summary><ol>${row.recent.sort().reverse().slice(0,10).map(at=>`<li>${creatorTime(at)}</li>`).join('')}</ol></details>`).join(''):'<p class="cc-muted">Noch keine Downloads über den Foto-Link.</p>',state,{count});
 }
 
 function renderLinks(row,state){

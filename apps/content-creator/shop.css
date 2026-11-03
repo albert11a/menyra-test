@@ -61,3 +61,12 @@ summary{border-radius:16px}#shop-faq{scroll-margin-top:76px}.shop-intro-copy{pad
 .shop-video-progress::-moz-range-track{height:4px;border:0;border-radius:0;background:#ffffff50}
 .shop-video-progress::-moz-range-progress{height:4px;background:var(--cc-brand-green)}
 .shop-video-progress::-moz-range-thumb{height:10px;width:10px;border:0;background:var(--cc-brand-green);opacity:0}
+
+.creator-photo-delivery { padding: 1rem; }
+.creator-photo-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .75rem; }
+.creator-photo-grid article { overflow: hidden; border: 1px solid #ddd; border-radius: 1rem; background: #fff; }
+.creator-photo-grid img { display: block; width: 100%; aspect-ratio: 4/5; object-fit: contain; background: #f1efeb; }
+.creator-photo-grid button { display: flex; align-items: center; justify-content: center; gap: .35rem; width: 100%; min-height: 44px; color: #fff; background: #171717; border: 0; font: inherit; cursor: pointer; }
+.creator-photo-grid button:disabled { opacity: .7; cursor: wait; }
+.creator-photo-message { color: #9b2020; margin: .5rem; }
+.creator-photo-message:empty { display: none; }

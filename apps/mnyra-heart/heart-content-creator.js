@@ -8,8 +8,8 @@ import {CC_CARTS,CC_ORDERS,priceCents} from "../../shared/content-creator-shop.j
 import { auth, db } from "/shared/firebase-config.js";
 import { createCreatorReset } from "./heart-creator-reset.js";
 import { createCreatorBusinessDeletion } from "./heart-creator-business-delete.js";
-import { collection, doc, getDoc, onSnapshot, setDoc, updateDoc, writeBatch, serverTimestamp } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
-import { CC_PAGES, CC_VISITS, contentLink } from "../../shared/content-creator.js";
+import { collection, doc, getDoc, onSnapshot, setDoc, updateDoc, writeBatch, runTransaction, serverTimestamp } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
+import { CC_PAGES, CC_VISITS, contentLink, creatorDeliveryPhotos } from "../../shared/content-creator.js";
 
 export async function prepareContentImage(file, avatar = false) {
   if(!avatar&&['video/mp4','video/quicktime','video/webm'].includes(file?.type)){
@@ -567,6 +567,27 @@ export function createContentCreator({root, store, prepareImage = prepareContent
           await detail(id);
         }
       });
+      if(action==='photo-link'||action==='revoke-photo-link'){
+        const revoke=action==='revoke-photo-link';
+        if(!globalThis.confirm(revoke?'Foto-Link sperren?':'Alle aktuellen Paketfotos dieses Business über den Foto-Link im Original freigeben?'))return;
+        const ref=doc(db,CC_PAGES,id),access=doc(ref,'originals','photo-delivery');
+        const link=await runTransaction(db,async transaction=>{
+          const page=(await transaction.get(ref)).data(),previous=(await transaction.get(access)).data();
+          if(!page?.published||page.deleting)throw Error('Business ist nicht verfügbar.');
+          if(revoke){transaction.delete(access);transaction.update(ref,{photoDeliveryEnabled:false});return '';}
+          const files=creatorDeliveryPhotos(page);
+          if(!files.length)throw Error('Keine Paketfotos vorhanden.');
+          const token=previous?.token||crypto.randomUUID().replaceAll('-','');
+          transaction.set(access,{token,files});
+          transaction.update(ref,{photoDeliveryEnabled:true});
+          return `${location.origin}/content-creator/${id}?photos=1#${token}`;
+        });
+        if(revoke)notice('Foto-Link gesperrt.');
+        else{
+          try{await navigator.clipboard.writeText(link);notice('Foto-Link kopiert.');}
+          catch{globalThis.prompt('Foto-Link kopieren',link);}
+        }
+      }
       if(action==="copy") {await navigator.clipboard.writeText(contentLink(id));notice("Link kopiert.");}
       if(action==="sent") {
         const ref=doc(db,CC_PAGES,id),snapshot=await getDoc(ref),page=snapshot.data();

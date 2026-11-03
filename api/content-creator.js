@@ -35,8 +35,9 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
   try{
     const page=await read(`contentCreatorPages/${id}`);
     if(!page?.published||page.deleting===true){res.statusCode=404;res.setHeader('Cache-Control','no-store');res.end();return;}
+    const gallery=String(req.query?.photos || url.searchParams.get('photos') || '')==='1';
     const safePage=publicCreatorPage(page,id);
-    if(!imageMode&&!assetMode&&safePage.avatar){
+    if(!gallery&&!imageMode&&!assetMode&&safePage.avatar){
       try{
         const {default:sharp}=await import('sharp');
         const bytes=await sharp(Buffer.from(safePage.avatar.split(',')[1],'base64'),{limitInputPixels:50000000}).rotate().resize({width:96,height:96,fit:'inside',withoutEnlargement:true}).jpeg({quality:64}).toBuffer();
@@ -68,6 +69,11 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
     }
     let html=shell;
     if(!html){try{html=await readFile(new URL('../dist/apps/content-creator/index.html',import.meta.url),'utf8');}catch{html=await readFile(new URL('../apps/content-creator/index.html',import.meta.url),'utf8');}}
+    if(gallery){
+      res.statusCode=200;res.setHeader('Content-Type','text/html; charset=utf-8');
+      res.setHeader('Cache-Control','no-store');res.setHeader('Referrer-Policy','no-referrer');
+      res.end(req.method==='HEAD'?undefined:html);return;
+    }
     const title=`Për ${page.name} · MNYRA`,description=`Foto të përgatitura posaçërisht për ${page.name}. Përmbajtje për rrjetet tuaja sociale nga MNYRA.`;
     const origin='https://www.mnyra.com',image=`${origin}/api/content-creator?id=${id}&image=1&display=3&photo=${encodeURIComponent(last || '')}&v=${encodeURIComponent(safePage.updatedAt || String(safePage.createdMs))}`;
     html=html.replace(/<title>[^<]*<\/title>/,()=>`<title>${esc(title)}</title>`).replace('</head>',()=>`<meta property="og:type" content="website"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><meta property="og:url" content="${esc(contentLink(id,false,origin))}"><meta name="twitter:card" content="summary_large_image">${last?`<meta property="og:image" content="${esc(image)}"><meta name="twitter:image" content="${esc(image)}">`:''}</head>`);
