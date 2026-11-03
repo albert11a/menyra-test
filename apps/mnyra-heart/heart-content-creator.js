@@ -140,7 +140,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       }catch(error){if(!stopped)patch({error:`Shop konnte nicht aktiviert werden: ${error.message}. Bitte aktualisieren.`});}
     }
   }
-  const deliveryAttempts=new Set();
+  const deliveryAttempts=new Map();
   let preparingDeliveries=false;
   async function preparePackageDeliveries(){
     if(preparingDeliveries||stopped||busy||mediaBusy)return;
@@ -152,12 +152,12 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         const released=(orders||[]).filter(order=>order.pageId===page.id&&(order.downloadsReleased===true||(order.approved===true&&order.paymentConfirmed===true&&order.status==='released')));
         const soldFiles=released.flatMap(order=>(order.lines||[]).filter(line=>line.priceCents>0).flatMap(line=>line.imageIds||[]));
         const media=creatorPublicMedia(page);
-        for(const file of new Set([...creatorDeliveryPhotos(page),...soldFiles])){
+        for(const file of new Set([...soldFiles,...creatorDeliveryPhotos(page)])){
           if(media[file]?.download)continue;
           if(stopped||busy||mediaBusy)return;
           const key=`${page.id}:${file}`;
-          if(deliveryAttempts.has(key))continue;
-          deliveryAttempts.add(key);
+          if((deliveryAttempts.get(key)||0)>Date.now())continue;
+          deliveryAttempts.set(key,Infinity);
           try{
             const ref=doc(db,CC_PAGES,page.id,'originals',file);
             const original=(await getDoc(ref)).data();
@@ -166,7 +166,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
             const preview=await (await fetch(await prepareContentImage(image,true))).blob();
             const url=await uploadCreatorDeliveryOriginal(image,preview);
             await updateDoc(ref,{deliveryCdn:{url,thumb:true,name:image.name,size:image.size}});
-          }catch{/* The original remains available through Firestore. */}
+          }catch{deliveryAttempts.set(key,Date.now()+60000); /* Firestore remains available. */}
         }
       }
     }finally{preparingDeliveries=false;}

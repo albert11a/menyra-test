@@ -99,14 +99,17 @@ export async function shopAction(input,repo,{streamPhoto=false}={}){
  const {op,pageId,cartId,orderId}=input;
  if(op==='sold'||op==='sold-download'||op==='sold-preview'){
   if(!validShopId(pageId))throw Error('Faqja nuk u gjet.');
-  const page=await repo.read(`contentCreatorPages/${pageId}`);
-  if(!page?.published||page.deleting||page.kind!=='shop')throw Error('Faqja nuk u gjet.');
-  const sold=await repo.sold(pageId);
-  if(op==='sold')return {sold};
   const {file,productId}=input;
-  if(!/^[A-Za-z0-9_-]{1,64}$/.test(file||'')||!sold.some(line=>line.id===productId&&line.downloadIds?.includes(file)))throw Error('Fotoja nuk është e disponueshme për shkarkim.');
+  if(op!=='sold'&&!/^[A-Za-z0-9_-]{1,64}$/.test(file||''))throw Error('Fotoja nuk është e disponueshme për shkarkim.');
   const path=`contentCreatorPages/${pageId}/originals/${file}`;
-  const metadata=await repo.read(path,['name','mime','size','parts','deliveryCdn']);
+  const [page,sold,metadata]=await Promise.all([
+   repo.read(`contentCreatorPages/${pageId}`,op==='sold'?['published','deleting','kind']:['published','deleting','kind','products','photoIds','media']),
+   repo.sold(pageId),
+   op==='sold'?null:repo.read(path,['name','mime','size','parts','deliveryCdn'])
+  ]);
+  if(!page?.published||page.deleting||page.kind!=='shop')throw Error('Faqja nuk u gjet.');
+  if(op==='sold')return {sold};
+  if(!sold.some(line=>line.id===productId&&line.downloadIds?.includes(file)))throw Error('Fotoja nuk është e disponueshme për shkarkim.');
   const cdn=creatorMediaUrl(metadata?.deliveryCdn?.url)||creatorPublicMedia(page)[file]?.download;
   if(op==='sold-preview'){
    if(cdn&&metadata?.deliveryCdn?.thumb&&input.source!=='firestore')return {redirect:`${cdn}?w=240`};
@@ -114,6 +117,7 @@ export async function shopAction(input,repo,{streamPhoto=false}={}){
   }
   if(cdn&&input.source!=='firestore')return {redirect:cdn};
   if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!['image/jpeg','image/png','image/webp'].includes(metadata.mime))throw Error('Origjinali nuk është i disponueshëm.');
+  if(streamPhoto)return {chunks:originalChunks(path,metadata,repo),...metadata};
   return originalFile(path,metadata,repo);
  }
  if(op==='visit'){for(let attempt=0;;attempt++){try{return await creatorActivity(input,repo);}catch(error){if(error.code!=='CREATOR_VISIT_CONFLICT'||attempt>=3)throw error;}}}

@@ -29,12 +29,13 @@ export async function serveCreatorShop(req,res,repository=shopRepository){
    res.setHeader('Content-Type',result.mime);
    res.setHeader('X-File-Name',encodeURIComponent(result.name||'foto.jpg'));
    res.setHeader('Content-Length',String(result.size));
+   if(req.method==='HEAD'){res.end();return;}
    for await(const chunk of result.chunks){
     if(res.destroyed)return;
     if(!res.write(chunk))await once(res,'drain',{signal:AbortSignal.timeout(15000)});
    }
    res.end();
-   waitUntil(result.recordDownload().catch(error=>console.error('creator_photo_download_tracking',error.message)));
+   if(result.recordDownload)waitUntil(result.recordDownload().catch(error=>console.error('creator_photo_download_tracking',error.message)));
    return;
   }
   if(result.bytes){
