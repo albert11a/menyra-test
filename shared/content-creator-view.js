@@ -97,10 +97,10 @@ export function creatorPurchaseDate(value){
 }
 export function creatorPurchasePhotos(page,line,{orderId='',enabled=false,photo}={}){
  const img=photo||((id,alt,options)=>creatorPhoto(page,id,alt,options));
- const files=(line.imageIds||[]).filter(file=>!creatorIsVideo(page,file)&&(orderId||page.photoIds.includes(file)));
+ const files=(line.imageIds||[]).filter(file=>!creatorIsVideo(page,file)&&(orderId||line.downloadIds?.includes(file)||page.photoIds.includes(file)));
  return files.length?`<div class="creator-photo-grid">${files.map((file,index)=>`<article>
  ${page.photoIds.includes(file)?img(file,`${line.title} · ${index+1}`,{size:'thumb'}):''}
- ${orderId?`<button type="button" data-shop="save-one-photo" data-order="${esc(orderId)}" data-product="${esc(line.id)}" data-file="${esc(file)}" ${enabled?'':'disabled'}>${creatorIcon('save')} Ruaje foton</button>`:''}
+ ${orderId||line.downloadIds?.includes(file)?`<button type="button" data-shop="save-one-photo" data-order="${esc(orderId)}" data-product="${esc(line.id)}" data-file="${esc(file)}" ${!orderId||enabled?'':'disabled'}>${creatorIcon('save')} Ruaje foton</button>`:''}
  </article>`).join('')}</div>`:'';
 }
 export function creatorSoldCards(page, sold, ownedIds=new Set()){

@@ -210,3 +210,13 @@ test('A previous business purchase blocks a second order even with a different c
  const retry=await shopAction(request,repo);
  assert.equal(retry.id,orderId);
 });
+
+test('Public download accepts only released files in the purchased package on that page',async()=>{
+ const {repo}=fixture();
+ repo.sold=async()=>[{id:'pack',imageIds:['one','two'],downloadIds:['one']}];
+ const input={op:'sold-download',pageId,productId:'pack',file:'one'};
+ assert.deepEqual((await shopAction(input,repo)).bytes,Buffer.from('abc'));
+ await assert.rejects(shopAction({...input,file:'two'},repo));
+ await assert.rejects(shopAction({...input,productId:'wrong'},repo));
+ await assert.rejects(shopAction({...input,pageId:other},repo));
+});

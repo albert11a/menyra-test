@@ -29,13 +29,23 @@ export async function shopRepository(){
   },
   async sold(pageId){
    const response=await fetch(`${BASE}:runQuery`,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},signal:AbortSignal.timeout(7000),body:JSON.stringify({structuredQuery:{
-    from:[{collectionId:CC_ORDERS}],select:{fields:[{fieldPath:'lines'},{fieldPath:'createdAt'}]},
+    from:[{collectionId:CC_ORDERS}],select:{fields:[{fieldPath:'lines'},{fieldPath:'createdAt'},{fieldPath:'downloadsReleased'},{fieldPath:'approved'},{fieldPath:'paymentConfirmed'},{fieldPath:'status'}]},
     where:{fieldFilter:{field:{fieldPath:'pageId'},op:'EQUAL',value:{stringValue:pageId}}}
    }})});
    if(!response.ok)throw Error('Blerjet nuk u ngarkuan. Provoni përsëri.');
    const lines=new Map();
-   for(const row of await response.json())for(const line of wert(row.document?.fields?.lines)||[]){
-    if(typeof line.id==='string'&&line.priceCents>0)lines.set(line.id,{id:line.id,createdAt:wert(row.document.fields.createdAt)||'',title:String(line.title||'Pako fotosh').slice(0,120),imageIds:(line.imageIds||[]).filter(id=>/^[A-Za-z0-9_-]{1,64}$/.test(id)).slice(0,100)});
+   for(const row of await response.json()){
+    const fields=row.document?.fields;
+    if(!fields)continue;
+    const released=wert(fields.downloadsReleased)===true||(wert(fields.approved)===true&&wert(fields.paymentConfirmed)===true&&wert(fields.status)==='released');
+    for(const line of wert(fields.lines)||[]){
+     if(typeof line.id!=='string'||!(line.priceCents>0))continue;
+     const imageIds=(line.imageIds||[]).filter(id=>/^[A-Za-z0-9_-]{1,64}$/.test(id)).slice(0,100);
+     const previous=lines.get(line.id);
+     lines.set(line.id,{id:line.id,createdAt:wert(fields.createdAt)||'',title:String(line.title||'Pako fotosh').slice(0,120),
+      imageIds:[...new Set([...(previous?.imageIds||[]),...imageIds])],
+      downloadIds:[...new Set([...(previous?.downloadIds||[]),...(released?imageIds:[])])]});
+    }
    }
    return [...lines.values()];
   },
@@ -87,11 +97,18 @@ async function originalFile(path,metadata,repo){
 }
 export async function shopAction(input,repo,{streamPhoto=false}={}){
  const {op,pageId,cartId,orderId}=input;
- if(op==='sold'){
+ if(op==='sold'||op==='sold-download'){
   if(!validShopId(pageId))throw Error('Faqja nuk u gjet.');
   const page=await repo.read(`contentCreatorPages/${pageId}`);
   if(!page?.published||page.deleting||page.kind!=='shop')throw Error('Faqja nuk u gjet.');
-  return {sold:await repo.sold(pageId)};
+  const sold=await repo.sold(pageId);
+  if(op==='sold')return {sold};
+  const {file,productId}=input;
+  if(!/^[A-Za-z0-9_-]{1,64}$/.test(file||'')||!sold.some(line=>line.id===productId&&line.downloadIds?.includes(file)))throw Error('Fotoja nuk është e disponueshme për shkarkim.');
+  const path=`contentCreatorPages/${pageId}/originals/${file}`;
+  const metadata=await repo.read(path,['name','mime','size','parts']);
+  if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!['image/jpeg','image/png','image/webp'].includes(metadata.mime))throw Error('Origjinali nuk është i disponueshëm.');
+  return originalFile(path,metadata,repo);
  }
  if(op==='visit'){for(let attempt=0;;attempt++){try{return await creatorActivity(input,repo);}catch(error){if(error.code!=='CREATOR_VISIT_CONFLICT'||attempt>=3)throw error;}}}
  if(op==='photo-gallery'||op==='photo-preview'||op==='photo-download'||op==='photo-record'){

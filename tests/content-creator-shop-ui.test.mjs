@@ -330,9 +330,9 @@ test('Pointer intent loads the chosen full video before click; opening/reopening
  await ctx.click('[data-shop="view"][data-index="0"]');assert.equal(ctx.root.querySelector('.shop-viewer video'),video);assert.equal(video.loads,1);
 });
 
-test('A visitor without a receipt sees business purchases but has no download action',async()=>{
- const ctx=await setup(false,2900,{sold:[{id:'pack',title:'Social Set',imageIds:['one']}]});
+test('A visitor without a receipt can save an individual released business photo',async()=>{
+ const ctx=await setup(false,2900,{sold:[{id:'pack',title:'Social Set',imageIds:['one'],downloadIds:['one']}]});
  assert.equal(ctx.root.querySelectorAll('.shop-product').length,0);
  assert.match(ctx.root.querySelector('#shop-purchases').textContent,/Social Set.*E blerë/);
- assert.equal(ctx.root.querySelector('[data-shop="save-photos"]'),null);
+ assert.ok(ctx.root.querySelector('[data-shop="save-one-photo"]'));
 });

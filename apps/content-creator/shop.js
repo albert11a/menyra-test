@@ -62,7 +62,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
  function quote(){if(!ids.length)return {lines:[],totalCents:0,currency:'EUR'};try{return shopQuote(page,ids);}catch{return {lines:[],totalCents:0,currency:'EUR'};}}
  async function api(op,data={},get=false,keepalive=false){
   const payload={op,pageId:page.id,cartId,visitorId,...data};
-  if(still&&op!=='free-download')throw Error('Still-Modus: keine echten Bestellungen.');
+  if(still&&!['free-download','sold-download'].includes(op))throw Error('Still-Modus: keine echten Bestellungen.');
   const r=await fetch(`/api/content-creator-shop${get?'?'+new URLSearchParams(payload):''}`,{method:get?'GET':'POST',keepalive,...(!get?{headers:{'content-type':'application/json'},body:JSON.stringify(payload)}:{}),signal:AbortSignal.timeout(20000)});
   const result=await r.json();if(!r.ok||result.error)throw Object.assign(Error(result.error||'Ju lutemi, provoni përsëri.'),{status:r.status});return result;
  }
@@ -420,21 +420,22 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
    if(activePreparation.key!==key)return null;
    activePreparation.listeners.add(progress);progress(activePreparation);return activePreparation;
   }
-  const order=orders.get(receipt),line=receipt?order?.lines.find(p=>p.id===product):page.products.find(p=>p.id===product&&p.active!==false&&p.priceCents===0);
+  const publicPurchase=!receipt&&singleFile;
+  const order=orders.get(receipt),line=publicPurchase?sold.find(p=>p.id===product&&p.downloadIds?.includes(singleFile)):receipt?order?.lines.find(p=>p.id===product):page.products.find(p=>p.id===product&&p.active!==false&&p.priceCents===0);
   if(!line||(receipt&&!canDownload(order)))return null;
-  const keys=receipt?line.imageIds:packFiles(product);
+  const keys=receipt||publicPurchase?line.imageIds:packFiles(product);
   if(singleFile&&!keys.includes(singleFile))return null;
   const selected=singleFile?[singleFile]:keys,controller=new AbortController();
   const task={key,controller,listeners:new Set([progress]),files:new Array(selected.length),urls:new Array(selected.length)};
   activePreparation=task;
-  const operation=receipt?'download':'free-download',access=receipt?{orderId:receipt}:{productId:product};
+  const operation=publicPurchase?'sold-download':receipt?'download':'free-download',access=receipt?{orderId:receipt}:{productId:product};
   const timer=setTimeout(()=>controller.abort(),120000);
   task.promise=(async()=>{
    let cursor=0,bytesTotal=0;
    async function worker(){
     while(cursor<selected.length){
      const index=cursor++,file=selected[index];
-     const direct=!receipt&&line.priceCents===0?ccImage(page.media?.[file]?.download):'';
+     const direct=!receipt&&!publicPurchase&&line.priceCents===0?ccImage(page.media?.[file]?.download):'';
      const target=direct||`/api/content-creator-shop?${new URLSearchParams({op:operation,pageId:page.id,...access,file,format:'file'})}`;
      const response=await fetch(target,{method:'GET',signal:controller.signal});
      if(!response.ok){const result=await response.json();throw Error(result.error||'Ruajtja u ndërpre. Provoni përsëri.');}
