@@ -140,19 +140,48 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       }catch(error){if(!stopped)patch({error:`Shop konnte nicht aktiviert werden: ${error.message}. Bitte aktualisieren.`});}
     }
   }
+  const deliveryAttempts=new Set();
+  let preparingDeliveries=false;
+  async function prepareReleasedDeliveries(){
+    if(preparingDeliveries||stopped||busy||mediaBusy)return;
+    preparingDeliveries=true;
+    try{
+      const {orders,pages}=store.getState().contentCreator;
+      for(const order of orders||[]){
+        const page=pages.find(page=>page.id===order.pageId&&page.published&&!page.deleting);
+        if(!page||!(order.downloadsReleased===true||(order.approved===true&&order.paymentConfirmed===true&&order.status==='released')))continue;
+        for(const file of new Set((order.lines||[]).filter(line=>line.priceCents>0).flatMap(line=>line.imageIds||[]))){
+          if(stopped||busy||mediaBusy)return;
+          const key=`${page.id}:${file}`;
+          if(deliveryAttempts.has(key))continue;
+          deliveryAttempts.add(key);
+          try{
+            const ref=doc(db,CC_PAGES,page.id,'originals',file);
+            const original=(await getDoc(ref)).data();
+            if(!original||creatorMediaUrl(original.deliveryCdn?.url)||!['image/jpeg','image/png','image/webp'].includes(original.mime)||original.size>15*1024*1024)continue;
+            const image=await savedCreatorFile(page.id,file);
+            const preview=await (await fetch(await prepareContentImage(image,true))).blob();
+            const url=await uploadCreatorDeliveryOriginal(image,preview);
+            await updateDoc(ref,{deliveryCdn:{url,thumb:true,name:image.name,size:image.size}});
+          }catch{/* The original remains available through Firestore. */}
+        }
+      }
+    }finally{preparingDeliveries=false;}
+  }
   function load() {
     if (!stopped) return;
-    stopped = false; activationAttempts.clear(); migrationAttempts.clear(); patch({status:"loading",error:""});
+    stopped = false; activationAttempts.clear(); migrationAttempts.clear(); deliveryAttempts.clear(); patch({status:"loading",error:""});
     const errors={};
     function listen(name,key){
       subscriptions.push(onSnapshot(collection(db,name),snap=>{
         delete errors[key];
         patch({[key]:snap.docs.map(d=>({id:d.id,...d.data()})),status:"ready",error:Object.values(errors).join(' ')});
+        if(key==='pages'||key==='orders')void prepareReleasedDeliveries();
         if(key==='pages'){void activateCompletedEmptyShops(store.getState().contentCreator.pages);void migrateExisting();}
       },error=>{errors[key]=`${key}: ${error.message}`;patch({error:Object.values(errors).join(' ')});}));
     }
     listen(CC_PAGES,'pages');listen(CC_CARTS,'carts');listen(CC_ORDERS,'orders');listen(CC_VISITS,'visits');
-    let ticks=0;liveTimer=setInterval(()=>{if(!stopped){patch({now:Date.now()});if(++ticks%2===0)void retryNotifications();}},30000);
+    let ticks=0;liveTimer=setInterval(()=>{if(!stopped){patch({now:Date.now()});if(++ticks%2===0){void retryNotifications();void prepareReleasedDeliveries();}}},30000);
     // Snapshots populate pending deliveries before the first retry pass.
     setTimeout(()=>{if(!stopped)void retryNotifications();},1500);
   }
