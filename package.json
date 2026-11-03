@@ -13,7 +13,7 @@
     "test:all": "npm run test:unit && npm run test:rules && npm run test:functions && npm run arch:check && npm run build",
     "lint": "eslint .",
     "format:check": "prettier --check AGENTS.md docs/codex/**/*.md seed/**/*.json seed/**/*.mjs tests/e2e/**/*.ts tests/rules/**/*.mjs tests/functions/**/*.mjs shared/config/**/*.js scripts/generate-architecture-report.mjs scripts/generate-bundle-report.mjs scripts/run-architecture-check.mjs scripts/run-architecture-graph.mjs scripts/run-architecture-cycles.mjs scripts/run-build-analyze.mjs scripts/run-test-files.mjs scripts/start-local-emulators.mjs .dependency-cruiser.cjs eslint.config.js madge.config.cjs",
-    "build": "node scripts/check-creator-video-encoder.mjs && npm run build:menyra-social:bundle && node scripts/build-vercel-static-output.mjs",
+    "build": "node scripts/check-creator-direct-routes.mjs && node scripts/check-creator-video-encoder.mjs && npm run build:menyra-social:bundle && node scripts/build-vercel-static-output.mjs",
     "build:menyra-social:bundle": "vite build --config vite.config.mjs",
     "build:analyze": "node scripts/run-build-analyze.mjs",
     "bundle:report": "node scripts/generate-bundle-report.mjs",

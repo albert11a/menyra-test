@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { ccEscape as esc, ccImage } from '../shared/content-creator.js';
+import { ccEscape as esc, ccImage, contentLink } from '../shared/content-creator.js';
 import {publicCreatorPage,renderCreatorCatalog,creatorPhoto,creatorHowTo,creatorHeroFiles,renderCreatorPromo,creatorFooter} from '../shared/content-creator-view.js';
 const BASE='https://firestore.googleapis.com/v1/projects/menyra-c0e68/databases/(default)/documents';
 function decode(v){if(!v)return null;if('stringValue'in v)return v.stringValue;if('booleanValue'in v)return v.booleanValue;if('integerValue'in v)return Number(v.integerValue);if('doubleValue'in v)return Number(v.doubleValue);if('timestampValue'in v)return v.timestampValue;if(v.mapValue)return Object.fromEntries(Object.entries(v.mapValue.fields||{}).map(([k,x])=>[k,decode(x)]));if(v.arrayValue)return (v.arrayValue.values||[]).map(decode);return null;}
@@ -70,7 +70,7 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
     if(!html){try{html=await readFile(new URL('../dist/apps/content-creator/index.html',import.meta.url),'utf8');}catch{html=await readFile(new URL('../apps/content-creator/index.html',import.meta.url),'utf8');}}
     const title=`Për ${page.name} · MNYRA`,description=`Foto të përgatitura posaçërisht për ${page.name}. Përmbajtje për rrjetet tuaja sociale nga MNYRA.`;
     const origin='https://www.mnyra.com',image=`${origin}/api/content-creator?id=${id}&image=1&display=3&photo=${encodeURIComponent(last || '')}&v=${encodeURIComponent(safePage.updatedAt || String(safePage.createdMs))}`;
-    html=html.replace(/<title>[^<]*<\/title>/,()=>`<title>${esc(title)}</title>`).replace('</head>',()=>`<meta property="og:type" content="website"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><meta property="og:url" content="${origin}/content-creator/${id}"><meta name="twitter:card" content="summary_large_image">${last?`<meta property="og:image" content="${esc(image)}"><meta name="twitter:image" content="${esc(image)}">`:''}</head>`);
+    html=html.replace(/<title>[^<]*<\/title>/,()=>`<title>${esc(title)}</title>`).replace('</head>',()=>`<meta property="og:type" content="website"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><meta property="og:url" content="${esc(contentLink(id,false,origin))}"><meta name="twitter:card" content="summary_large_image">${last?`<meta property="og:image" content="${esc(image)}"><meta name="twitter:image" content="${esc(image)}">`:''}</head>`);
     // The first screen is useful without JavaScript. Already-prepared covers
     // are embedded in HTML; cold preparation is bounded so it cannot stall it.
     if(safePage.kind==='shop'){

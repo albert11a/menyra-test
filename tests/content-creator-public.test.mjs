@@ -10,7 +10,7 @@ const contentFactory=new Function('esc','ccImage','mountCreatorShop','document',
 const visitsSource=(await readFile(new URL('../apps/content-creator/visits.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export (async )?function /g,'$1function ');
 const visitsFactory=new Function('db','doc','getDoc','setDoc','serverTimestamp','CC_VISITS','localStorage','globalThis','document','fetch',`${visitsSource}\nreturn installCreatorVisits;`);
 const id='a'.repeat(32);
-async function setup({preview=false,previous=null,failAnswer=false,storage=new Map(),avatar=true,kind='promo'}={}){
+async function setup({preview=false,previous=null,failAnswer=false,storage=new Map(),avatar=true,kind='promo',pathname=`/content-creator/${id}`}={}){
  const page={id,published:true,name:'Bistro <One>',avatar:avatar?'data:image/jpeg;base64,AAAA':'',photoIds:['000'],products:[],kind};
  const {document,window}=parseHTML(`<html><head><script type="application/json" id="creator-page-data">${JSON.stringify(page)}</script></head><body><main id="content-app"></main></body></html>`);
  const writes=[],listeners={},timers=[],viewport={scrollY:0,innerHeight:800,setTimeout:fn=>timers.push(fn),setInterval:()=>0,addEventListener:(name,fn)=>{listeners[name]=fn;}};
@@ -25,7 +25,7 @@ async function setup({preview=false,previous=null,failAnswer=false,storage=new M
   const data={...input,opened:true,scrolled:input.event==='scroll'||previous?.scrolled===true,answer:['yes','no'].includes(input.event)?input.event:previous?.answer||''};
   writes.push({path:`contentCreatorVisits/${id}_${input.visitorId}`,data});return {ok:true,json:async()=>data};
  });
- const start=contentFactory(ccEscape,ccImage,async({root,page})=>{root.innerHTML=creatorHowTo(page);},document,{pathname:`/content-creator/${id}`,search:preview?'?still=1':''},localStorage,viewport,async()=>{sdkLoads++;return {installCreatorVisits:install};},async()=>{fetches++;throw Error('Unexpected duplicate page request');},renderCreatorPromo);
+ const start=contentFactory(ccEscape,ccImage,async({root,page})=>{root.innerHTML=creatorHowTo(page);},document,{pathname,search:preview?'?still=1':''},localStorage,viewport,async()=>{sdkLoads++;return {installCreatorVisits:install};},async()=>{fetches++;throw Error('Unexpected duplicate page request');},renderCreatorPromo);
  await start();const firstLoads=sdkLoads;
  async function settle(){for(let i=0;i<10;i++)await new Promise(r=>setImmediate(r));}
  for(const timer of timers)timer();await settle();
@@ -35,6 +35,18 @@ async function click(ctx,selector){ctx.document.querySelector(selector).dispatch
 test('First frame reuses the server page, with no Firebase or duplicate read before rendering',async()=>{
  const ctx=await setup();assert.equal(ctx.firstLoads,0);assert.equal(ctx.stats().fetches,0);assert.equal(ctx.document.querySelectorAll('.photo img').length,1);
  assert.match(ctx.document.querySelector('.photo img').getAttribute('src'),/asset=1/);
+});
+test('Direct name route hydrates without a request and tracks the original page ID',async()=>{
+ const ctx=await setup({pathname:'/bistro-one'});
+ assert.equal(ctx.firstLoads,0);assert.equal(ctx.stats().fetches,0);
+ assert.equal(ctx.document.querySelectorAll('.photo img').length,1);
+ assert.equal(ctx.writes[0].data.pageId,id);
+ await click(ctx,'[data-answer="yes"]');assert.equal(ctx.writes.at(-1).data.answer,'yes');
+});
+test('Direct name route preserves silent preview mode',async()=>{
+ const ctx=await setup({pathname:'/bistro-one',preview:true});
+ assert.equal(ctx.stats().fetches,0);assert.equal(ctx.stats().sdkLoads,0);
+ assert.equal(ctx.writes.length,0);
 });
 test('Besuch, 50%-Scroll und Antwort werden weiterhin gespeichert',async()=>{
  const ctx=await setup();assert.equal(ctx.writes[0].data.opened,true);assert.equal(ctx.document.querySelector('h1').textContent,'Përshëndetje,Bistro <One>.');

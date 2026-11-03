@@ -2,7 +2,8 @@ import { ccEscape as esc, ccImage } from '../../shared/content-creator.js';
 import {renderCreatorPromo} from '../../shared/content-creator-view.js';
 import { mountCreatorShop } from './shop.js';
 const root=document.getElementById('content-app');
-const id=location.pathname.split('/').filter(Boolean).at(-1);
+const pathId=location.pathname.split('/').filter(Boolean).at(-1);
+let id=pathId;
 const params=new URLSearchParams(location.search);
 let still=params.get('still')==='1'||params.get('preview')==='1';
 try{
@@ -18,10 +19,13 @@ function visits(){
 }
 async function start(){
   try{
-    if(!/^[a-f0-9]{32}$/.test(id))throw Error('Faqja nuk u gjet.');
     let page;
     const initial=document.getElementById('creator-page-data');
     try{if(initial)page=JSON.parse(initial.textContent);}catch{}
+    // A direct name route receives the canonical ID in the same HTML response.
+    // Retain the path ID on legacy URLs; never re-query a name in the browser.
+    if(!/^[a-f0-9]{32}$/.test(pathId)&&/^[a-f0-9]{32}$/.test(page?.id||'')&&page.published)id=page.id;
+    if(!/^[a-f0-9]{32}$/.test(id))throw Error('Faqja nuk u gjet.');
     if(!page||page.id!==id||!page.published){
       const response=await fetch(`/api/content-creator?${new URLSearchParams({id,format:'json'})}`,{signal:AbortSignal.timeout(15000)});
       if(!response.ok)throw Error('Faqja nuk u gjet.');page=await response.json();

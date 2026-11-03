@@ -240,6 +240,15 @@
     }
   ],
   "rewrites": [
+    {"source": "/shpija-e-vjeter-content", "destination": "/api/content-creator?id=eaecf4ff0c464c969d1c2505b82a0e35"},
+    {"source": "/gjinolli-bar-grill", "destination": "/api/content-creator?id=c1698d697bdd47d1b0a10b68d84da8c2"},
+    {"source": "/kosova-man-wear", "destination": "/api/content-creator?id=3343487d22a6488493d25e066b69a128"},
+    {"source": "/piano-parfum", "destination": "/api/content-creator?id=766557c4bfe44d82b5c0b16bb85c96e6"},
+    {"source": "/gingershotks", "destination": "/api/content-creator?id=5fb0df341abf40b9bb265b9fafcf0bc0"},
+    {"source": "/mama-mantia-content", "destination": "/api/content-creator?id=9acbfe65d90d4ff98e89708ecd50f2ca"},
+    {"source": "/fishop-prishtina", "destination": "/api/content-creator?id=066ccd992f684c3b81413d133081a569"},
+    {"source": "/boutique-77", "destination": "/api/content-creator?id=2f1cbd75727746748cdd8dd8f627547c"},
+    {"source": "/butiku-beni", "destination": "/api/content-creator?id=b63131a03c5449deaf748c29256a276a"},
     { "source": "/content-creator/:id", "destination": "/api/content-creator?id=:id" },
     {
       "source": "/lifeskinshop/p/:id",
