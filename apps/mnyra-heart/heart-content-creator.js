@@ -1,3 +1,4 @@
+import {CREATOR_DIRECT_ROUTES} from '../../shared/creator-direct-routes.js';
 import {unlockCreatorVideoAudio} from './heart-creator-video-audio.js';
 import {creatorBusinessMatches} from '../../shared/creator-analytics.js';
 import {normalizeCreatorCrop,creatorHeroCropStyle,creatorHeroFormat} from '../../shared/creator-hero.js';
@@ -192,7 +193,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     function listen(name,key){
       subscriptions.push(onSnapshot(collection(db,name),snap=>{
         delete errors[key];
-        patch({[key]:snap.docs.map(d=>({id:d.id,...d.data()})),status:"ready",error:Object.values(errors).join(' ')});
+        patch({[key]:snap.docs.map(d=>({id:d.id,...d.data()})).filter(row=>key!=='pages'||row.kind!=='creator-route'),status:"ready",error:Object.values(errors).join(' ')});
         if(key==='pages'||key==='orders')void preparePackageDeliveries();
         if(key==='pages'){void activateCompletedEmptyShops(store.getState().contentCreator.pages);void migrateExisting();}
       },error=>{errors[key]=`${key}: ${error.message}`;patch({error:Object.values(errors).join(' ')});}));
@@ -443,7 +444,22 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         photoIds.push(imageId);
       }
       const completed={kind,name:draftName.trim(),avatar,createdMs,...(kind==='shop'?{products:product?[{...product,imageIds:photoIds}]:[]}:{}),photoIds,published:true,workflow:'working'};
-      const batch=writeBatch(db);batch.update(page,{...completed,updatedAt:serverTimestamp()});await batch.commit();
+      const nameSlug=draftName.trim().normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,70).replace(/^-+|-+$/g,'')||'biznes';
+      // Only new pages reserve a route; existing links keep their original IDs.
+      await runTransaction(db,async transaction=>{
+        for(let attempt=0;attempt<20;attempt++){
+          const slug=attempt?`${nameSlug}-${attempt+1}`:nameSlug;
+          if(Object.hasOwn(CREATOR_DIRECT_ROUTES,slug)||['feed','search','discover','map','heart','hub','api','apps','shared','assets','lifeskin','login','register','go','menu','profile','restaurants','orders','waiter','admin','settings','location','dashboard','notifications','upload','leads','ceo','owner','staff','kitchen','customers','business-accounts','businessaccounts','chat','analysetemplateastra','lifeskinlifeskintesttest','landingpagetemplate','lifeskintemplate','lifeskintrichter','ndjekja','120992','dergesat','lifeskinshop','lifeskin2','social'].includes(slug)||slug.endsWith('-fotot')||/^[a-f0-9]{32}$/.test(slug))continue;
+          const alias=doc(db,CC_PAGES,slug);
+          const [existing,businessRoute]=await Promise.all([transaction.get(alias),transaction.get(doc(db,'publicRoutes',slug))]);
+          if(existing.exists()||businessRoute.exists())continue;
+          completed.slug=slug;
+          transaction.set(alias,{published:true,kind:'creator-route',pageId:pendingId});
+          transaction.update(page,{...completed,updatedAt:serverTimestamp()});
+          return;
+        }
+        throw Error('Für diesen Namen konnte kein kurzer Link erstellt werden.');
+      });
       const completedId=pendingId;
       const pages=store.getState().contentCreator.pages||[];
       patch({pages:[...pages.filter(p=>p.id!==completedId),{id:completedId,...completed}],images:{}});
@@ -513,7 +529,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       });
       if(action==='followup-copy'){
         const page=store.getState().contentCreator.pages.find(page=>page.id===id);
-        await navigator.clipboard.writeText(`Përshëndetje ${page?.name||''}, pakot tuaja të fotove janë gati. Mund t’i shikoni dhe ta përfundoni porosinë këtu: ${contentLink(id)}`);notice('Nachfass-Nachricht kopiert.');
+        await navigator.clipboard.writeText(`Përshëndetje ${page?.name||''}, pakot tuaja të fotove janë gati. Mund t’i shikoni dhe ta përfundoni porosinë këtu: ${contentLink(id,false,undefined,page?.slug)}`);notice('Nachfass-Nachricht kopiert.');
       }
       if(action==="new") {if(busy)return;captions={};patch({pendingPhotos:[],pendingCaptions:{},pageKind:"shop",shopTitle:"",shopPrice:"",selectedId:""});createdMs=0;pendingId="";avatarFile=null;photoFiles=[];draftAvatar="";draftName="";patch({editor:true,draftName:"",avatarName:"",photoNames:"",editorError:""});queueMicrotask(()=>root.querySelector('#cc-create-form [name="name"]')?.focus());}
       if(action==="close" && !busy) patch({editor:false});
@@ -573,11 +589,11 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       if(action==="detail") await detail(id);
       if(action==="back") {imageEpoch++;patch({selectedId:"",images:{},captionDrafts:{}});}
       if(action==="preview") {
-        const url=contentLink(id,true);
+        const url=contentLink(id,true,undefined,store.getState().contentCreator.pages.find(page=>page.id===id)?.slug);
         // Keep Heart in its tab/PWA and avoid iOS standalone navigation replacing it.
         const link=document.createElement("a");link.href=url;link.target="_blank";link.rel="noopener noreferrer external";document.body.appendChild(link);link.click();link.remove();
       }
-      if(action==="still") {await navigator.clipboard.writeText(contentLink(id,true));notice("Still-Link kopiert · auch im externen Browser ohne Stats.");}
+      if(action==="still") {await navigator.clipboard.writeText(contentLink(id,true,undefined,store.getState().contentCreator.pages.find(page=>page.id===id)?.slug));notice("Still-Link kopiert · auch im externen Browser ohne Stats.");}
       if(["caption","move","delete"].includes(action)) await mediaTask(async()=>{
         const pageRef=doc(db,CC_PAGES,id),snapshot=await getDoc(pageRef),page=snapshot.data();
         if(!page)throw new Error("Lokal wurde nicht gefunden.");
@@ -686,7 +702,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         });
         dialog.showModal();
       }
-      if(action==="copy") {await navigator.clipboard.writeText(contentLink(id));notice("Link kopiert.");}
+      if(action==="copy") {await navigator.clipboard.writeText(contentLink(id,false,undefined,store.getState().contentCreator.pages.find(page=>page.id===id)?.slug));notice("Link kopiert.");}
       if(action==="sent") {
         const ref=doc(db,CC_PAGES,id),snapshot=await getDoc(ref),page=snapshot.data();
         if(!page)throw Error('Business wurde nicht gefunden.');

@@ -7,7 +7,7 @@ export async function startCreatorVideo(video,audio,{documentObj=globalThis.docu
   let timer;
   const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Video oder Tonverarbeitung reagiert nicht. Bitte erneut hochladen.')),20000);});
   return Promise.race([Promise.all([resumed,started]),timeout]).then(()=>{
-   if(audio.state&&audio.state!=='running')throw new DOMException('Tonverarbeitung benötigt einen direkten Tipp.','NotAllowedError');
+   if(audio.state&&audio.state!=='running')throw new globalThis.DOMException('Tonverarbeitung benötigt einen direkten Tipp.','NotAllowedError');
   }).finally(()=>clearTimeout(timer));
  };
  try{await play();return;}catch(error){if(error.name!=='NotAllowedError')throw error;}

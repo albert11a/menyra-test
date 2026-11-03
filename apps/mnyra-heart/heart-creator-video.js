@@ -17,7 +17,7 @@ export async function prepareCreatorVideo(file,{free=false,watermark=()=>{}}={})
  // Audio is diverted into the recording, without playing through speakers.
  const source=audio.createMediaElementSource(video),destination=audio.createMediaStreamDestination();source.connect(destination);
  let recorder,timer,frame,onVisibility;
- const cleanupRecorder=()=>{clearTimeout(timer);cancelAnimationFrame(frame);if(onVisibility)document.removeEventListener('visibilitychange',onVisibility);if(recorder?.state&&recorder.state!=='inactive'){recorder.onstop=null;recorder.stop();}};
+ const cleanupRecorder=()=>{clearTimeout(timer);globalThis.cancelAnimationFrame(frame);if(onVisibility)document.removeEventListener('visibilitychange',onVisibility);if(recorder?.state&&recorder.state!=='inactive'){recorder.onstop=null;recorder.stop();}};
  async function record(stream,bitrate,start,{singleChunk=false}={}){
   // Some browsers advertise a codec but reject its recorder configuration.
   // Retry the established formats before failing a working upload path.

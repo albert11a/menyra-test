@@ -586,7 +586,7 @@
     },
     {
       "source": "/:landingSlug",
-      "destination": "/apps/menyra-social/index.html"
+      "destination": "/api/content-creator?creatorSlug=:landingSlug"
     }
   ],
   "headers": [
@@ -1233,6 +1233,9 @@
     }
   ],
   "functions": {
+    "api/content-creator.js": {
+      "includeFiles": "{dist/apps/menyra-social/index.html,apps/menyra-social/index.html}"
+    },
     "api/oferta.js": {
       "includeFiles": "apps/menyra-social/lead-landing/index.html"
     },

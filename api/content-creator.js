@@ -36,7 +36,23 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
   res.setHeader('X-Content-Type-Options','nosniff');
   if(!['GET','HEAD'].includes(req.method)){res.statusCode=405;res.setHeader('Allow','GET, HEAD');res.end();return;}
   const url=new URL(req.url || '/', 'https://www.mnyra.com');
-  const id=String(req.query?.id || url.searchParams.get('id') || '');
+  let id=String(req.query?.id || url.searchParams.get('id') || '');
+  const creatorSlug=String(req.query?.creatorSlug||url.searchParams.get('creatorSlug')||'');
+  if(creatorSlug){
+    let route;
+    if(/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(creatorSlug)&&creatorSlug.length<=80){
+      try{route=await read(`contentCreatorPages/${creatorSlug}`);}catch{}
+    }
+    if(route?.kind==='creator-route'&&/^[a-f0-9]{32}$/.test(route.pageId))id=route.pageId;
+    else{
+      let html;
+      try{html=await readFile(new URL('../dist/apps/menyra-social/index.html',import.meta.url),'utf8');}
+      catch{html=await readFile(new URL('../apps/menyra-social/index.html',import.meta.url),'utf8');}
+      res.setHeader('Content-Type','text/html; charset=utf-8');
+      res.setHeader('Cache-Control','no-store');
+      res.end(req.method==='HEAD'?undefined:html);return;
+    }
+  }
   if(String(req.query?.photos || url.searchParams.get('photos') || '')==='1'){
     let html=shell;
     if(!html){try{html=await readFile(new URL('../dist/apps/content-creator/index.html',import.meta.url),'utf8');}catch{html=await readFile(new URL('../apps/content-creator/index.html',import.meta.url),'utf8');}}
@@ -107,7 +123,7 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
     if(!html){try{html=await readFile(new URL('../dist/apps/content-creator/index.html',import.meta.url),'utf8');}catch{html=await readFile(new URL('../apps/content-creator/index.html',import.meta.url),'utf8');}}
     const title=`Për ${page.name} · MNYRA`,description=`Foto të përgatitura posaçërisht për ${page.name}. Përmbajtje për rrjetet tuaja sociale nga MNYRA.`;
     const origin='https://www.mnyra.com',image=`${origin}/api/content-creator?id=${id}&image=1&display=3&photo=${encodeURIComponent(last || '')}&v=${encodeURIComponent(safePage.updatedAt || String(safePage.createdMs))}`;
-    html=html.replace(/<title>[^<]*<\/title>/,()=>`<title>${esc(title)}</title>`).replace('</head>',()=>`<meta property="og:type" content="website"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><meta property="og:url" content="${esc(contentLink(id,false,origin))}"><meta name="twitter:card" content="summary_large_image">${last?`<meta property="og:image" content="${esc(image)}"><meta name="twitter:image" content="${esc(image)}">`:''}</head>`);
+    html=html.replace(/<title>[^<]*<\/title>/,()=>`<title>${esc(title)}</title>`).replace('</head>',()=>`<meta property="og:type" content="website"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><meta property="og:url" content="${esc(contentLink(id,false,origin,page.slug))}"><meta name="twitter:card" content="summary_large_image">${last?`<meta property="og:image" content="${esc(image)}"><meta name="twitter:image" content="${esc(image)}">`:''}</head>`);
     // The first screen is useful without JavaScript. Already-prepared covers
     // are embedded in HTML; cold preparation is bounded so it cannot stall it.
     if(safePage.kind==='shop'){

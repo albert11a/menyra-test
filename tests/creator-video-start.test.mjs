@@ -7,7 +7,7 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
 function processing(){
  const {document}=parseHTML('<html><body></body></html>');
  let gesture=false,plays=0,resumes=0;
- const video={muted:false,play(){plays++;return gesture?Promise.resolve():Promise.reject(new DOMException('Gesture required','NotAllowedError'));}};
+ const video={muted:false,play(){plays++;return gesture?Promise.resolve():Promise.reject(new globalThis.DOMException('Gesture required','NotAllowedError'));}};
  const audio={resume(){resumes++;return Promise.resolve();}};
  return {document,video,audio,tap(button){gesture=true;button.onclick();gesture=false;},get plays(){return plays;},get resumes(){return resumes;}};
 }
@@ -22,7 +22,7 @@ test('Allowed playback starts directly without a second tap or modal',async()=>{
  const c=processing();c.video.play=()=>Promise.resolve();await startCreatorVideo(c.video,c.audio,{documentObj:c.document});assert.equal(c.document.body.children.length,0);
 });
 test('Unsupported codecs fail without displaying a misleading tap-to-start action',async()=>{
- const c=processing();c.video.play=()=>Promise.reject(new DOMException('Codec unsupported','NotSupportedError'));
+ const c=processing();c.video.play=()=>Promise.reject(new globalThis.DOMException('Codec unsupported','NotSupportedError'));
  await assert.rejects(startCreatorVideo(c.video,c.audio,{documentObj:c.document}),{name:'NotSupportedError'});assert.equal(c.document.body.children.length,0);
 });
 test('Cancel and backgrounding release the pending processing promise and remove the start action',async()=>{
@@ -68,7 +68,7 @@ test('Actual encoder waits for playback permission before recording, retains aud
  }
  const raf=callback=>setImmediate(()=>{if(!video.paused){video.currentTime+=.04;if(video.currentTime>video.duration){video.onended?.();return;}}callback();});
  const create=new Function('creatorVideoFile','CREATOR_VIDEO_PREVIEW_LIMIT','creatorVideoAudioContext','startCreatorVideo','globalThis','document','URL','requestAnimationFrame','cancelAnimationFrame','performance',`${source}\nreturn prepareCreatorVideo;`);
- const prepare=create(()=>true,48*1024*1024,()=>audio,async()=>{requested=true;await new Promise(resolve=>{permit=resolve;});video.paused=false;},{MediaRecorder:Recorder},document,{createObjectURL:()=> 'blob:source',revokeObjectURL(){}},raf,clearImmediate,{now:()=>clock+=40});
+ const prepare=create(()=>true,48*1024*1024,()=>audio,async()=>{requested=true;await new Promise(resolve=>{permit=resolve;});video.paused=false;},{MediaRecorder:Recorder,cancelAnimationFrame:globalThis.clearImmediate},document,{createObjectURL:()=> 'blob:source',revokeObjectURL(){}},raf,globalThis.clearImmediate,{now:()=>clock+=40});
  const pending=prepare(new File(['original'],'reel.mov',{type:'video/quicktime'}));
  await flush();assert.equal(requested,true);assert.equal(recordings.length,0);
  permit();const result=await pending;

@@ -5,19 +5,20 @@ import {parseHTML} from 'linkedom';
 import {createHeartStore,createHeartInitialState} from '../apps/mnyra-heart/heart-state.js';
 import {renderContentCreator} from '../apps/mnyra-heart/heart-content-creator-render.js';
 import {initialShopProduct,priceCents} from '../shared/content-creator-shop.js';
+import {CREATOR_DIRECT_ROUTES} from '../shared/creator-direct-routes.js';
 import {contentLink} from '../shared/content-creator.js';
 
 // Isolate browser SDK imports while exercising the production controller and events.
 const source=(await readFile(new URL('../apps/mnyra-heart/heart-content-creator.js',import.meta.url),'utf8'))
  .replace(/^import .*;\n/gm,'').replace(/export (async )?function /g,'$1function ');
-const factory=new Function('db','collection','doc','onSnapshot','setDoc','updateDoc','writeBatch','serverTimestamp','CC_PAGES','CC_VISITS','contentLink','initialShopProduct','getDoc','priceCents',`const CC_CARTS='contentCreatorCarts',CC_ORDERS='contentCreatorOrders'; const creatorCdnEnabled=async()=>false; const savePromoAsset=async(pageId,imageId,file,data)=>setDoc(doc(db,CC_PAGES,pageId,'images',imageId),{data,caption:''});\n${source}\nreturn createContentCreator;`);
+const factory=new Function('db','collection','doc','onSnapshot','setDoc','updateDoc','writeBatch','serverTimestamp','CC_PAGES','CC_VISITS','contentLink','initialShopProduct','getDoc','priceCents','runTransaction','CREATOR_DIRECT_ROUTES',`const CC_CARTS='contentCreatorCarts',CC_ORDERS='contentCreatorOrders'; const creatorCdnEnabled=async()=>false; const savePromoAsset=async(pageId,imageId,file,data)=>setDoc(doc(db,CC_PAGES,pageId,'images',imageId),{data,caption:''});\n${source}\nreturn createContentCreator;`);
 function setup(failImage=false,shop=false,empty=false){
  const {document,window}=parseHTML('<div id="app"></div>'),root=document.getElementById('app');
  const store=createHeartStore(createHeartInitialState());store.actions.patchContentCreator({editor:true,draftName:'Bistro & Co',pageKind:shop?'shop':'promo',shopPrice:'29',shopTitle:'4 Fotos'});
  const writes=[],publications=[],docs=new Map(),listeners=new Map();let fail=failImage;
  const setDoc=async(ref,data)=>{if(fail&&ref.includes('/images/'))throw Error('Upload interrupted');writes.push({ref,data});docs.set(ref,{...docs.get(ref),...data});};
  const doc=(...args)=>args.filter(a=>typeof a==='string').join('/');
- const create=factory({},(_db,name)=>name,doc,(name,callback)=>{listeners.set(name,callback);return ()=>listeners.delete(name);},setDoc,async(ref,data)=>docs.set(ref,{...docs.get(ref),...data}),()=>({update:(ref,data)=>{publications.push({ref,data});docs.set(ref,{...docs.get(ref),...data});},commit:async()=>{}}),()=>({server:true}),'contentCreatorPages','contentCreatorVisits',contentLink,initialShopProduct,async ref=>({data:()=>docs.get(ref)}),priceCents);
+ const create=factory({},(_db,name)=>name,doc,(name,callback)=>{listeners.set(name,callback);return ()=>listeners.delete(name);},setDoc,async(ref,data)=>docs.set(ref,{...docs.get(ref),...data}),()=>({update:(ref,data)=>{publications.push({ref,data});docs.set(ref,{...docs.get(ref),...data});},commit:async()=>{}}),()=>({server:true}),'contentCreatorPages','contentCreatorVisits',contentLink,initialShopProduct,async ref=>({data:()=>docs.get(ref)}),priceCents,async(_db,work)=>work({get:async ref=>({exists:()=>docs.has(ref)}),set:(ref,data)=>docs.set(ref,data),update:(ref,data)=>{publications.push({ref,data});docs.set(ref,{...docs.get(ref),...data});}}),CREATOR_DIRECT_ROUTES);
  store.subscribe(state=>{root.innerHTML=renderContentCreator(state.contentCreator);});root.innerHTML=renderContentCreator(store.getState().contentCreator);
  const assets=[];const controller=create({root,store,prepareImage:async()=> 'data:image/jpeg;base64,AAAA',saveAsset:async(...args)=>assets.push(args)});
  function change(name,files){const input=root.querySelector(`[name="${name}"]`);Object.defineProperty(input,'files',{value:files,configurable:true});input.dispatchEvent(new window.Event('change',{bubbles:true}));}
@@ -32,6 +33,7 @@ test('Mehrfachupload veröffentlicht erst nach allen Bildschreibvorgängen',asyn
  assert.equal(ctx.writes.filter(w=>w.ref.includes('/images/')).length,2);
  assert.equal(ctx.writes[0].data.published,false);assert.equal(ctx.writes[0].data.workflow,'working');
  assert.equal(ctx.publications.length,1);assert.deepEqual(ctx.publications[0].data.photoIds,['000','001']);
+ assert.equal(ctx.publications[0].data.slug,'bistro-co');assert.equal(ctx.docs.get('contentCreatorPages/bistro-co').kind,'creator-route');
  assert.equal(ctx.publications[0].data.published,true);assert.equal(ctx.publications[0].data.workflow,'working');
  assert.equal(ctx.store.getState().contentCreator.editor,false);
 });

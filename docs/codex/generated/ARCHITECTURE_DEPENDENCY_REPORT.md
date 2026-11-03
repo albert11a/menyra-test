@@ -1,5 +1,5 @@
 # Architecture Dependency Report
-Generated: 2026-10-12T10:20:04.534Z
+Generated: 2026-11-03T21:26:36.013Z
 Scope: static relative-import scan plus Dependency Cruiser/Madge tooling baseline.
 ## Direct imports from social-app.js
 - `apps/menyra-social/_shared/image-compressor.js`
@@ -184,7 +184,7 @@ Scope: static relative-import scan plus Dependency Cruiser/Madge tooling baselin
 - `apps/menyra-social/core/notifications/notification-item-utils.js`
 - `apps/menyra-social/core/notifications/notification-native-push-utils.js`
 - `apps/menyra-social/core/notifications/notification-query-utils.js`
-- ... 59 more
+- ... 60 more
 ## Circular dependencies
 - No cycles found by the built-in static scan. Run `npm run arch:cycles` for Madge output.
 ## QR/Menu unnecessary dependency candidates
@@ -230,6 +230,21 @@ Scope: static relative-import scan plus Dependency Cruiser/Madge tooling baselin
 - `apps/mnyra-heart/heart-bestellung-neu.js`
 - `apps/mnyra-heart/heart-chat-render.js`
 - `apps/mnyra-heart/heart-chat.js`
+- `apps/mnyra-heart/heart-content-creator-hero.js`
+- `apps/mnyra-heart/heart-content-creator-render.js`
+- `apps/mnyra-heart/heart-content-creator-shop-render.js`
+- `apps/mnyra-heart/heart-content-creator-shop.js`
+- `apps/mnyra-heart/heart-content-creator.js`
+- `apps/mnyra-heart/heart-creator-business-delete.js`
+- `apps/mnyra-heart/heart-creator-cdn.js`
+- `apps/mnyra-heart/heart-creator-components.js`
+- `apps/mnyra-heart/heart-creator-overview.js`
+- `apps/mnyra-heart/heart-creator-reset.js`
+- `apps/mnyra-heart/heart-creator-styles.js`
+- `apps/mnyra-heart/heart-creator-video-audio.js`
+- `apps/mnyra-heart/heart-creator-video-optimize.js`
+- `apps/mnyra-heart/heart-creator-video-start.js`
+- `apps/mnyra-heart/heart-creator-video.js`
 - `apps/mnyra-heart/heart-crm-admin-read-loaders.js`
 - `apps/mnyra-heart/heart-crm-admin-read-view.js`
 - `apps/mnyra-heart/heart-crm-admin-shell-consumer.js`
@@ -252,30 +267,15 @@ Scope: static relative-import scan plus Dependency Cruiser/Madge tooling baselin
 - `apps/mnyra-heart/heart-lifeskin-dergesat-render.js`
 - `apps/mnyra-heart/heart-lifeskin-dergesat.js`
 - `apps/mnyra-heart/heart-lifeskin-entwurf.js`
+- `apps/mnyra-heart/heart-lifeskin-fast.js`
+- `apps/mnyra-heart/heart-lifeskin-gewinn-dialog.js`
+- `apps/mnyra-heart/heart-lifeskin-gewinn.js`
 - `apps/mnyra-heart/heart-lifeskin-klapp.js`
 - `apps/mnyra-heart/heart-lifeskin-kosten.js`
 - `apps/mnyra-heart/heart-lifeskin-live.js`
 - `apps/mnyra-heart/heart-lifeskin-medien.js`
 - `apps/mnyra-heart/heart-lifeskin-ndjekja-adapter.js`
-- `apps/mnyra-heart/heart-lifeskin-ndjekja-render.js`
-- `apps/mnyra-heart/heart-lifeskin-ndjekja.js`
-- `apps/mnyra-heart/heart-lifeskin-prompt.js`
-- `apps/mnyra-heart/heart-lifeskin-raste.js`
-- `apps/mnyra-heart/heart-lifeskin-render.js`
-- `apps/mnyra-heart/heart-lifeskin-rutina.js`
-- `apps/mnyra-heart/heart-lifeskin-schnitt.js`
-- `apps/mnyra-heart/heart-lifeskin-shopnachrichten.js`
-- `apps/mnyra-heart/heart-lifeskin-shopsets.js`
-- `apps/mnyra-heart/heart-lifeskin-vorschau.js`
-- `apps/mnyra-heart/heart-lifeskin-weg.js`
-- `apps/mnyra-heart/heart-monitoring-adapter.js`
-- `apps/mnyra-heart/heart-morph.js`
-- `apps/mnyra-heart/heart-push-utils.js`
-- `apps/mnyra-heart/heart-push.js`
-- `apps/mnyra-heart/heart-render.js`
-- `apps/mnyra-heart/heart-route-view-resolver.js`
-- `apps/mnyra-heart/heart-settings-render.js`
-- ... 11 more
+- ... 30 more
 ## Safe extraction order
 1. Freeze route, public visibility and Firestore read/write contracts.
 2. Extract pure normalize/state helpers that have no DOM or Firebase ownership.
