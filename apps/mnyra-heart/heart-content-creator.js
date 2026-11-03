@@ -142,34 +142,49 @@ export function createContentCreator({root, store, prepareImage = prepareContent
   }
   const deliveryAttempts=new Map();
   let preparingDeliveries=false;
-  async function preparePackageDeliveries(){
+  async function preparePackageDeliveries(manual=false){
     if(preparingDeliveries||stopped||busy||mediaBusy)return;
-    preparingDeliveries=true;
-    try{
-      const {orders,pages}=store.getState().contentCreator;
-      for(const page of pages){
-        if(!page.published||page.deleting||page.kind!=='shop')continue;
-        const released=(orders||[]).filter(order=>order.pageId===page.id&&(order.downloadsReleased===true||(order.approved===true&&order.paymentConfirmed===true&&order.status==='released')));
-        const soldFiles=released.flatMap(order=>(order.lines||[]).filter(line=>line.priceCents>0).flatMap(line=>line.imageIds||[]));
-        const media=creatorPublicMedia(page);
-        for(const file of new Set([...soldFiles,...creatorDeliveryPhotos(page)])){
-          if(media[file]?.download)continue;
-          if(stopped||busy||mediaBusy)return;
-          const key=`${page.id}:${file}`;
-          if((deliveryAttempts.get(key)||0)>Date.now())continue;
-          deliveryAttempts.set(key,Infinity);
-          try{
-            const ref=doc(db,CC_PAGES,page.id,'originals',file);
-            const original=(await getDoc(ref)).data();
-            if(!original||creatorMediaUrl(original.deliveryCdn?.url)||!['image/jpeg','image/png','image/webp'].includes(original.mime)||original.size>15*1024*1024)continue;
-            const image=await savedCreatorFile(page.id,file);
-            const preview=await (await fetch(await prepareContentImage(image,true))).blob();
-            const url=await uploadCreatorDeliveryOriginal(image,preview);
-            await updateDoc(ref,{deliveryCdn:{url,thumb:true,name:image.name,size:image.size}});
-          }catch{deliveryAttempts.set(key,Date.now()+60000); /* Firestore remains available. */}
-        }
+    if(manual)deliveryAttempts.clear();
+    const {orders,pages}=store.getState().contentCreator;
+    const tasks=[];
+    for(const page of pages){
+      if(!page.published||page.deleting||page.kind!=='shop')continue;
+      const released=(orders||[]).filter(order=>order.pageId===page.id&&(order.downloadsReleased===true||(order.approved===true&&order.paymentConfirmed===true&&order.status==='released')));
+      const soldFiles=new Set(released.flatMap(order=>(order.lines||[]).filter(line=>line.priceCents>0).flatMap(line=>line.imageIds||[])));
+      const media=creatorPublicMedia(page);
+      for(const file of new Set([...soldFiles,...creatorDeliveryPhotos(page)])){
+        const key=`${page.id}:${file}`;
+        if(!media[file]?.download&&(deliveryAttempts.get(key)||0)<=Date.now())tasks.push({pageId:page.id,file,key,sold:soldFiles.has(file)});
       }
-    }finally{preparingDeliveries=false;}
+    }
+    if(!tasks.length){if(manual)patch({deliveryStatus:'Keine weiteren Paketfotos zum Nachziehen.'});return;}
+    tasks.sort((a,b)=>Number(b.sold)-Number(a.sold));
+    preparingDeliveries=true;
+    let done=0,uploaded=0,failed=0,firestore=0;
+    const progress=()=>patch({deliverySyncing:true,deliveryStatus:`R2-Abgleich: ${done} / ${tasks.length} geprüft · ${uploaded} hochgeladen`});
+    progress();
+    try{
+      for(const {pageId,file,key} of tasks){
+        if(stopped||busy||mediaBusy)break;
+        deliveryAttempts.set(key,Infinity);
+        try{
+          const ref=doc(db,CC_PAGES,pageId,'originals',file);
+          const original=(await getDoc(ref)).data();
+          if(creatorMediaUrl(original?.deliveryCdn?.url))continue;
+          if(!original||!['image/jpeg','image/png','image/webp'].includes(original.mime)||original.size>15*1024*1024){firestore++;continue;}
+          const image=await savedCreatorFile(pageId,file);
+          const preview=await (await fetch(await prepareContentImage(image,true))).blob();
+          const url=await uploadCreatorDeliveryOriginal(image,preview);
+          await updateDoc(ref,{deliveryCdn:{url,thumb:true,name:image.name,size:image.size}});
+          uploaded++;
+        }catch{failed++;deliveryAttempts.set(key,Date.now()+60000);}
+        finally{done++;if(!stopped)progress();}
+      }
+    }finally{
+      preparingDeliveries=false;
+      const summary=done===tasks.length?'R2-Abgleich abgeschlossen.':'R2-Abgleich pausiert.';
+      patch({deliverySyncing:false,deliveryStatus:`${summary} ${uploaded} neu hochgeladen.${firestore?' '+firestore+' bleiben in Firestore.':''}${failed?' '+failed+' fehlgeschlagen. Erneut versuchen möglich.':''}`});
+    }
   }
   function load() {
     if (!stopped) return;
@@ -504,6 +519,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       if(action==="new") {if(busy)return;captions={};patch({pendingPhotos:[],pendingCaptions:{},pageKind:"shop",shopTitle:"",shopPrice:"",selectedId:""});createdMs=0;pendingId="";avatarFile=null;photoFiles=[];draftAvatar="";draftName="";patch({editor:true,draftName:"",avatarName:"",photoNames:"",editorError:""});queueMicrotask(()=>root.querySelector('#cc-create-form [name="name"]')?.focus());}
       if(action==="close" && !busy) patch({editor:false});
       if(action==="filter") patch({filter:button.dataset.key,selectedIds:[],businessLimit:20});
+      if(action==='sync-deliveries'){void preparePackageDeliveries(true);return;}
       if(action==='retry-migration'){migrationAttempts.clear();void migrateExisting();}
       if(action==='hero-crop-save'){
         const image=button.dataset.image,card=button.closest('[data-cc-hero-card]'),crop=cropFromCard(card);

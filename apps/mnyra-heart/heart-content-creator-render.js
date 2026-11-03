@@ -11,6 +11,8 @@ export function renderContentCreator(state = {}) {
   const selected = businessRows.filter(row=>creatorBusinessMatches(row,state));
   const error = state.error ? `<p class="cc-error" role="alert">${esc(state.error)}</p>` : "";
   return `<section class="cc-workspace">
+    <div class="cc-row-actions"><button type="button" data-cc-action="sync-deliveries" ${state.deliverySyncing||state.mediaBusy?'disabled':''}>Alle Paketfotos nach R2 ziehen</button></div>
+    ${state.deliveryStatus?`<p class="cc-muted" role="status">${esc(state.deliveryStatus)}</p>`:''}
     ${state.migrationProgress ? `<p class="cc-muted" role="status">${esc(state.migrationProgress)}</p>` : ''}
     ${state.migrationError ? `<p class="cc-error" role="alert">${esc(state.migrationError)} <button type="button" data-cc-action="retry-migration">Übernahme wiederholen</button></p>` : ''}
     ${detail ? renderDetail(detail,state) : ""}
