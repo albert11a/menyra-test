@@ -70,3 +70,15 @@ test('Live shop sends an empty response for an unchanged version and refreshes w
  assert.notEqual(changed.version,first.version);
  assert.deepEqual(changed.sold,sold);
 });
+
+test('Creator route preloads only the bundle needed for the first interaction',async()=>{
+ const shell='<html><head><template data-creator-preload="shop"><link rel="modulepreload" href="/shop.js"></template><template data-creator-preload="photo-gallery"><link rel="modulepreload" href="/photos.js"></template></head><body><main id="content-app"></main></body></html>';
+ for(const kind of ['shop','promo','photo-gallery']){
+  const res=response();
+  const url=kind==='photo-gallery'?'/api/content-creator?photos=1':`/api/content-creator?id=${id}`;
+  await serveContentCreator({method:'GET',url},res,{shell,read:async()=>({published:true,kind,photoIds:[],products:[]})});
+  assert.equal(res.body.includes('href="/shop.js"'),kind==='shop');
+  assert.equal(res.body.includes('href="/photos.js"'),kind==='photo-gallery');
+  assert.doesNotMatch(res.body,/<template/);
+ }
+});

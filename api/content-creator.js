@@ -5,6 +5,9 @@ import {publicCreatorPage,creatorSoldCards,renderCreatorCatalog,creatorPhoto,cre
 const BASE='https://firestore.googleapis.com/v1/projects/menyra-c0e68/databases/(default)/documents';
 function decode(v){if(!v)return null;if('stringValue'in v)return v.stringValue;if('booleanValue'in v)return v.booleanValue;if('integerValue'in v)return Number(v.integerValue);if('doubleValue'in v)return Number(v.doubleValue);if('timestampValue'in v)return v.timestampValue;if(v.mapValue)return Object.fromEntries(Object.entries(v.mapValue.fields||{}).map(([k,x])=>[k,decode(x)]));if(v.arrayValue)return (v.arrayValue.values||[]).map(decode);return null;}
 let creatorStyles;
+function creatorPreloads(html,feature){
+  return html.replace(/<template data-creator-preload="([^"]+)">([\s\S]*?)<\/template>/g,(_,name,links)=>name===feature?links:'');
+}
 async function loadCreatorStyles(){
  return creatorStyles ||= Promise.all(['content','shop'].map(async name=>{
   try{return await readFile(new URL(`../dist/apps/content-creator/${name}.css`,import.meta.url),'utf8');}
@@ -71,7 +74,7 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
         res.statusCode=503;res.end('Provoni përsëri.');return;
       }
     }
-    res.end(req.method==='HEAD'?undefined:html.replace(/<p class="loading">[^<]*<\/p>/,''));return;
+    res.end(req.method==='HEAD'?undefined:creatorPreloads(html,'photo-gallery').replace(/<p class="loading">[^<]*<\/p>/,''));return;
   }
   if(!/^[a-f0-9]{32}$/.test(id)){res.statusCode=404;res.end();return;}
   const assetMode=String(req.query?.asset || url.searchParams.get('asset') || '')==='1';
@@ -136,6 +139,7 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
     html=html.replace(/<title>[^<]*<\/title>/,()=>`<title>${esc(title)}</title>`).replace('</head>',()=>`<meta property="og:type" content="website"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><meta property="og:url" content="${esc(contentLink(id,false,origin,page.slug))}"><meta name="twitter:card" content="summary_large_image">${last?`<meta property="og:image" content="${esc(image)}"><meta name="twitter:image" content="${esc(image)}">`:''}</head>`);
     // The first screen is useful without JavaScript. Already-prepared covers
     // are embedded in HTML; cold preparation is bounded so it cannot stall it.
+    html=creatorPreloads(html,safePage.kind);
     if(safePage.kind==='shop'){
       const covers={};
       if(req.method!=='HEAD' && !creatorHeroFiles(safePage).every(key=>safePage.media?.[key]||safePage.heroImages.some(image=>image.id===key))){

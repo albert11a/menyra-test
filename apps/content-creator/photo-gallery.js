@@ -1,7 +1,7 @@
 import {ccEscape as esc} from '../../shared/content-creator.js';
 import {euro} from '../../shared/content-creator-shop.js';
 import {creatorIcon} from '../../shared/content-creator-view.js';
-import {creatorVisitorId} from './visits.js';
+import {creatorVisitorId} from './visitor-id.js';
 
 export async function mountCreatorPhotoGallery({root,pageId,token,track}){
  const visitorId=creatorVisitorId(pageId);

@@ -1,7 +1,7 @@
 import {createCreatorVideoPreload} from '../../shared/creator-video-preload.js';
 import {createCreatorVideoPlayback} from '../../shared/creator-video-playback.js';
 import {creatorIsVideo,creatorAssetCount,creatorVideoFirst,creatorVideoUrl} from '../../shared/creator-video.js';
-import {creatorVisitorId} from './visits.js';
+import {creatorVisitorId} from './visitor-id.js';
 import {ccEscape as esc,ccImage} from '../../shared/content-creator.js';
 import {euro,shopQuote,validShopId} from '../../shared/content-creator-shop.js';
 import {creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,creatorSoldCards,creatorPurchasePhotos,creatorPurchaseDate,renderCreatorCatalog,creatorHowTo,creatorFooter} from '../../shared/content-creator-view.js';

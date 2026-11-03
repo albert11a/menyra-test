@@ -2,6 +2,7 @@ import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promi
 import { dirname, extname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build, transform } from "esbuild";
+import { build as viteBuild } from "vite";
 import { inlineShopFirstPaint } from "./lifeskin-shop-first-paint.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -97,6 +98,44 @@ const copied = [];
 for (const pathFromRoot of [...deployablePaths, ...optionalRootFiles]) {
   if (await copyIfPresent(pathFromRoot)) copied.push(pathFromRoot);
 }
+
+// Keep the Creator entry and its optional features separate in production.
+const creatorPath = "apps/content-creator";
+const creatorBase = `/${creatorPath}/bundled/`;
+const creatorOutput = resolve(distRoot, creatorPath, "bundled");
+await viteBuild({
+  configFile: false,
+  root: repoRoot,
+  base: creatorBase,
+  publicDir: false,
+  build: {
+    outDir: creatorOutput,
+    emptyOutDir: true,
+    target: "es2020",
+    manifest: "manifest.json",
+    modulePreload: { polyfill: false },
+    rollupOptions: { input: resolve(repoRoot, creatorPath, "content.js") }
+  }
+});
+const creatorManifest = JSON.parse(await readFile(resolve(creatorOutput, "manifest.json"), "utf8"));
+const creatorEntry = creatorManifest[`${creatorPath}/content.js`];
+const creatorFeatures = ["shop", "photo-gallery"].map((name) => {
+  const chunk = creatorManifest[`${creatorPath}/${name}.js`];
+  if (!chunk?.file) throw new Error(`Creator build is missing the ${name} chunk`);
+  const files = [chunk.file, ...(chunk.imports || []).map((key) => creatorManifest[key].file)];
+  const links = [...new Set(files)].filter((file) => file !== creatorEntry?.file)
+    .map((file) => `<link rel="modulepreload" href="${creatorBase}${file}">`).join("");
+  return `<template data-creator-preload="${name}">${links}</template>`;
+});
+const creatorHtmlPath = resolve(distRoot, creatorPath, "index.html");
+const creatorHtml = await readFile(creatorHtmlPath, "utf8");
+const creatorScript = /src="\/apps\/content-creator\/content\.js[^"]*"/;
+if (!creatorEntry?.file || !creatorScript.test(creatorHtml)) {
+  throw new Error("Creator build is missing its entry or HTML script");
+}
+await writeFile(creatorHtmlPath, creatorHtml
+  .replace(creatorScript, `src="${creatorBase}${creatorEntry.file}"`)
+  .replace("</head>", `${creatorFeatures.join("")}</head>`));
 
 // ---------- Kommentare aus dem Ausgelieferten entfernen ----------
 //
@@ -245,7 +284,6 @@ const inlinedManifest = await inlineSocialBundleManifest();
 // sind reine Werte/Funktionen), jedes Buendel darf also seine eigene Kopie
 // tragen.
 const EINZEL_EINSTIEGE = [
-  "apps/content-creator/content.js",
   "apps/lifeskin-astra/astra.js",
   "apps/lifeskin-verkauf/terapia.js",
   "apps/lifeskin/lifeskin-app.js",
@@ -268,7 +306,6 @@ for (const einstieg of EINZEL_EINSTIEGE) {
     const ergebnis = await build({
       entryPoints: [quelle],
       bundle: true,
-      ...(einstieg === "apps/content-creator/content.js" ? {external:["./visits.js"]} : {}),
       format: "esm",
       platform: "browser",
       target: "es2020",

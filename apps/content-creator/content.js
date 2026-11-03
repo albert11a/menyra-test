@@ -1,6 +1,5 @@
 import { ccEscape as esc, ccImage, creatorPhotoLinkKeys } from '../../shared/content-creator.js';
 import {renderCreatorPromo} from '../../shared/content-creator-view.js';
-import { mountCreatorShop } from './shop.js';
 const root=document.getElementById('content-app');
 const pathId=location.pathname.split('/').filter(Boolean).at(-1);
 let id=pathId;
@@ -39,8 +38,10 @@ async function start(){
       if(!response.ok)throw Error('Faqja nuk u gjet.');page=await response.json();
     }
     document.title=`Për ${page.name} · MNYRA`;
-    if(page.kind==='shop')await mountCreatorShop({root,page,still,track:(event,data)=>visits().then(tracker=>tracker.track?.(event,data))});
-    else {
+    if(page.kind==='shop'){
+      const {mountCreatorShop}=await import('./shop.js');
+      await mountCreatorShop({root,page,still,track:(event,data)=>visits().then(tracker=>tracker.track?.(event,data))});
+    }else if(!root.querySelector('.gallery')){
       root.innerHTML=renderCreatorPromo(page);
     }
     root.addEventListener('click',async event=>{

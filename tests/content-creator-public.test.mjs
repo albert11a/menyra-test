@@ -5,10 +5,12 @@ import {readFile} from 'node:fs/promises';
 import {parseHTML} from 'linkedom';
 import {ccEscape,ccImage} from '../shared/content-creator.js';
 
-const contentSource=(await readFile(new URL('../apps/content-creator/content.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace("import('./visits.js')","loadVisits()").replace(/void start\(\);\s*$/,'return start;');
-const contentFactory=new Function('esc','ccImage','mountCreatorShop','document','location','localStorage','globalThis','loadVisits','fetch',`const renderCreatorPromo=arguments[9];\n${contentSource}`);
+import {creatorVisitorId} from '../apps/content-creator/visitor-id.js';
+
+const contentSource=(await readFile(new URL('../apps/content-creator/content.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace("import('./visits.js')","loadVisits()").replace("import('./shop.js')","{mountCreatorShop:mountShop}").replace(/void start\(\);\s*$/,'return start;');
+const contentFactory=new Function('esc','ccImage','mountShop','document','location','localStorage','globalThis','loadVisits','fetch',`const renderCreatorPromo=arguments[9];\n${contentSource}`);
 const visitsSource=(await readFile(new URL('../apps/content-creator/visits.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export (async )?function /g,'$1function ');
-const visitsFactory=new Function('db','doc','getDoc','setDoc','serverTimestamp','CC_VISITS','localStorage','globalThis','document','fetch',`${visitsSource}\nreturn installCreatorVisits;`);
+const visitsFactory=new Function('db','doc','getDoc','setDoc','serverTimestamp','CC_VISITS','localStorage','globalThis','document','fetch','creatorVisitorId',`${visitsSource}\nreturn installCreatorVisits;`);
 const id='a'.repeat(32);
 async function setup({preview=false,previous=null,failAnswer=false,storage=new Map(),avatar=true,kind='promo',pathname=`/content-creator/${id}`}={}){
  const page={id,published:true,name:'Bistro <One>',avatar:avatar?'data:image/jpeg;base64,AAAA':'',photoIds:['000'],products:[],kind};
@@ -24,7 +26,7 @@ async function setup({preview=false,previous=null,failAnswer=false,storage=new M
   const input=JSON.parse(options.body);if(failAnswer&&['yes','no'].includes(input.event))return {ok:false};
   const data={...input,opened:true,scrolled:input.event==='scroll'||previous?.scrolled===true,answer:['yes','no'].includes(input.event)?input.event:previous?.answer||''};
   writes.push({path:`contentCreatorVisits/${id}_${input.visitorId}`,data});return {ok:true,json:async()=>data};
- });
+ },creatorVisitorId);
  const start=contentFactory(ccEscape,ccImage,async({root,page})=>{root.innerHTML=creatorHowTo(page);},document,{pathname,search:preview?'?still=1':''},localStorage,viewport,async()=>{sdkLoads++;return {installCreatorVisits:install};},async()=>{fetches++;throw Error('Unexpected duplicate page request');},renderCreatorPromo);
  await start();const firstLoads=sdkLoads;
  async function settle(){for(let i=0;i<10;i++)await new Promise(r=>setImmediate(r));}

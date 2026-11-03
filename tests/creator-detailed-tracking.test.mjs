@@ -86,11 +86,11 @@ test('An unload snapshot retains older media totals; concurrent visitor writes r
 });
 test('Lifecycle flush starts while a preceding normal request is blocked, with a bounded keepalive body',async()=>{
  const {readFile}=await import('node:fs/promises');
- const source=(await readFile(new URL('../apps/content-creator/visits.js',import.meta.url),'utf8')).replace(/export (async )?function /g,'$1function ');
+ const source=(await readFile(new URL('../apps/content-creator/visits.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export (async )?function /g,'$1function ');
  const {document}=parseHTML('<html><body><main id="content-app"></main></body></html>');
  const listeners={},calls=[];let release;
  const viewport={setInterval:()=>0,addEventListener:(name,fn)=>{listeners[name]=fn;}};
- const install=new Function('globalThis','document','localStorage','fetch',`${source}\nreturn installCreatorVisits;`)(viewport,document,{getItem:()=>visitorId},async(url,options)=>{calls.push(options);if(calls.length===1)await new Promise(resolve=>{release=resolve;});return {ok:true,json:async()=>({ok:true})};});
+ const install=new Function('globalThis','document','localStorage','fetch','creatorVisitorId',`${source}\nreturn installCreatorVisits;`)(viewport,document,{getItem:()=>visitorId},async(url,options)=>{calls.push(options);if(calls.length===1)await new Promise(resolve=>{release=resolve;});return {ok:true,json:async()=>({ok:true})};},()=>visitorId);
  const tracker=await install({id:pageId});await new Promise(resolve=>setImmediate(resolve));
  const pending=tracker.track('cart',{ids:['pack'],stage:'cart'});
  listeners.pagehide({persisted:true});assert.equal(calls.length,2);assert.equal(calls[1].keepalive,true);assert.ok(Buffer.byteLength(calls[1].body)<48000);
