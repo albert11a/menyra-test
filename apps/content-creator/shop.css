@@ -71,3 +71,7 @@ summary{border-radius:16px}#shop-faq{scroll-margin-top:76px}.shop-intro-copy{pad
 .creator-photo-message { color: #9b2020; margin: .5rem; }
 .creator-photo-message:empty { display: none; }
 .creator-photo-grid button[data-saved="1"] { background: #d7f28a; color: #20362b; }
+.creator-delivery-copy { margin: 0 0 1rem; }
+.creator-delivery-copy h1 { margin-top: 0; }
+.creator-delivery-total { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem; padding: .8rem .9rem; background: #edf0e6; border-radius: .75rem; color: #20362b; }
+.creator-delivery-total strong { font-size: 1.15rem; white-space: nowrap; }

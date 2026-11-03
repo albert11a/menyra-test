@@ -22,9 +22,11 @@ export async function mountCreatorPhotoGallery({root,pageId,token,track}){
  document.title=`Fotot për ${name} · MNYRA`;
  root.innerHTML=`<div class="shop-shell"><section class="creator-photo-delivery">
   <a class="brand shop-logo" href="/">MNYRA<span class="shop-logo-dot"></span></a>
-  <h1>Faleminderit që zgjodhët MNYRA-n!</h1>
-  <p>Për pagesën, ju informojmë paraprakisht se kur dikush nga ekipi ynë do të vijë për ta marrë pagesën.</p>
-  ${Number.isSafeInteger(totalCents)?`<p><strong>Pagesa totale për fotot: ${esc(euro(totalCents))}</strong></p>`:''}
+  <div class="shop-intro-copy creator-delivery-copy">
+  <h1>Faleminderit që zgjodhët MNYRE-n!</h1>
+  <p>Ju njoftojmë paraprakisht kur dikush nga ekipi ynë do të vijë për ta marrë pagesën.</p>
+  ${Number.isSafeInteger(totalCents)?`<div class="creator-delivery-total"><span>Pagesa totale</span><strong>${esc(euro(totalCents))}</strong></div>`:''}
+  </div>
   <div class="creator-photo-grid">${photos.map(({file,cdn,clean},i)=>`<article>
    <img ${cdn?`src="${esc(cdn)}" loading="${i<2?'eager':'lazy'}"`: ''} data-clean="${clean?'1':'0'}" data-cdn="${esc(cdn||'')}" data-photo="${esc(file)}" alt="Foto ${i+1}">
    <button type="button" data-download-photo="${esc(file)}">${creatorIcon('save')} ${saveLabel}</button>

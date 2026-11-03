@@ -1,4 +1,4 @@
-import { ccEscape as esc, ccImage } from '../../shared/content-creator.js';
+import { ccEscape as esc, ccImage, creatorPhotoLinkKeys } from '../../shared/content-creator.js';
 import {renderCreatorPromo} from '../../shared/content-creator-view.js';
 import { mountCreatorShop } from './shop.js';
 const root=document.getElementById('content-app');
@@ -23,9 +23,10 @@ async function start(){
   try{
     if(photoGallery){
       const {mountCreatorPhotoGallery}=await import('./photo-gallery.js');
-      const [first,second]=location.hash.slice(1).split('.');
-      if(namedGallery)id=first;
-      await mountCreatorPhotoGallery({root,pageId:id,token:namedGallery?second:first,track:()=>{void visits().catch(()=>{});}});
+      const fragment=location.hash.slice(1);
+      const keys=namedGallery?creatorPhotoLinkKeys(pathId,fragment):{pageId:id,token:fragment};
+      id=keys.pageId;
+      await mountCreatorPhotoGallery({root,...keys,track:()=>{void visits().catch(()=>{});}});
       return;
     }
     let page;

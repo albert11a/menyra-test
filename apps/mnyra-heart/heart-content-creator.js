@@ -9,7 +9,7 @@ import { auth, db } from "/shared/firebase-config.js";
 import { createCreatorReset } from "./heart-creator-reset.js";
 import { createCreatorBusinessDeletion } from "./heart-creator-business-delete.js";
 import { collection, doc, getDoc, onSnapshot, setDoc, updateDoc, writeBatch, runTransaction, serverTimestamp } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
-import { CC_PAGES, CC_VISITS, contentLink, creatorDeliveryPhotos, ccEscape as esc } from "../../shared/content-creator.js";
+import { CC_PAGES, CC_VISITS, contentLink, creatorDeliveryPhotos, creatorPhotoLink, ccEscape as esc } from "../../shared/content-creator.js";
 
 export async function prepareContentImage(file, avatar = false) {
   if(!avatar&&['video/mp4','video/quicktime','video/webm'].includes(file?.type)){
@@ -615,7 +615,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
               transaction.set(doc(ref,'originals',`photo-delivery-${token}`),{files:selected,originals,totalCents});
             });
             const slug=String(page.name||'').normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,70).replace(/^-+|-+$/g,'')||'mnyra';
-            const link=`${location.origin}/${slug}-fotot#${id}.${token}`;
+            const link=creatorPhotoLink(id,token,slug);
             try{await navigator.clipboard.writeText(link);notice('Foto-Link kopiert.');}
             catch{globalThis.prompt('Foto-Link kopieren',link);}
             dialog.close();
