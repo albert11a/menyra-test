@@ -142,9 +142,8 @@ export function createContentCreator({root, store, prepareImage = prepareContent
   }
   const deliveryAttempts=new Map();
   let preparingDeliveries=false;
-  async function preparePackageDeliveries(manual=false){
+  async function preparePackageDeliveries(){
     if(preparingDeliveries||stopped||busy||mediaBusy)return;
-    if(manual)deliveryAttempts.clear();
     const {orders,pages}=store.getState().contentCreator;
     const tasks=[];
     for(const page of pages){
@@ -157,7 +156,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         if(!media[file]?.download&&(deliveryAttempts.get(key)||0)<=Date.now())tasks.push({pageId:page.id,file,key,sold:soldFiles.has(file)});
       }
     }
-    if(!tasks.length){if(manual)patch({deliveryStatus:'Keine weiteren Paketfotos zum Nachziehen.'});return;}
+    if(!tasks.length)return;
     tasks.sort((a,b)=>Number(b.sold)-Number(a.sold));
     preparingDeliveries=true;
     let done=0,uploaded=0,failed=0,firestore=0;
@@ -519,7 +518,6 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       if(action==="new") {if(busy)return;captions={};patch({pendingPhotos:[],pendingCaptions:{},pageKind:"shop",shopTitle:"",shopPrice:"",selectedId:""});createdMs=0;pendingId="";avatarFile=null;photoFiles=[];draftAvatar="";draftName="";patch({editor:true,draftName:"",avatarName:"",photoNames:"",editorError:""});queueMicrotask(()=>root.querySelector('#cc-create-form [name="name"]')?.focus());}
       if(action==="close" && !busy) patch({editor:false});
       if(action==="filter") patch({filter:button.dataset.key,selectedIds:[],businessLimit:20});
-      if(action==='sync-deliveries'){void preparePackageDeliveries(true);return;}
       if(action==='retry-migration'){migrationAttempts.clear();void migrateExisting();}
       if(action==='hero-crop-save'){
         const image=button.dataset.image,card=button.closest('[data-cc-hero-card]'),crop=cropFromCard(card);
