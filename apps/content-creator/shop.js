@@ -29,6 +29,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
  let ids=Array.isArray(saved.ids)?saved.ids.filter(id=>(page.products||[]).some(p=>p.id===id&&p.priceCents!==0)):[];
  let cartId=validShopId(saved.cartId)?saved.cartId:crypto.randomUUID().replaceAll('-','');
  let orderId=validShopId(saved.pendingOrderId)?saved.pendingOrderId:'',panel='',error='',notice='',submitting=false,downloadBusy='';
+ let syncing=false,liveVersion='',lastFullSync=0;
  let viewer=null,backgroundLock=null,sheetLock=null,photoSave=null,downloadCancelled=false,fileAbort=null;
  function canDownload(order){return order?.downloadsAvailable===true||order?.approved===true;}
  const originalTheme=document.querySelector('meta[name="theme-color"]')?.getAttribute('content')||'#f7f6f2';
@@ -348,32 +349,35 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
     const tell=message=>{feedback.textContent=message;feedback.hidden=!message;};
     const saved=()=>{button.dataset.saved='1';button.innerHTML=`${creatorIcon('save')} Ruaje prapë`;};
     button.disabled=true;tell('');
+    const busyLabel='Duke shkarkuar…';
+    let readyToShare=false;
     try{
      const key=`${order}:${product}:${file}`;
      const cached=prepared.get(key);
-     if(!cached)button.textContent='Duke shkarkuar…';
+     if(!cached){button.textContent=busyLabel;tell(busyLabel);}
      const task=cached?null:prepareFiles(order,product,undefined,file);
      if(!cached&&!task)throw Error('Provoni përsëri.');
      const entry=cached||await task.promise;
      if(navigator.share&&navigator.canShare?.({files:entry.shareFiles})){
+      readyToShare=true;tell('');
       if(cached||navigator.userActivation?.isActive){
        try{await navigator.share({files:entry.shareFiles});saved();}
-       catch(error){if(error.name==='NotAllowedError')tell('Prekni përsëri “Ruaj foton”.');else if(error.name!=='AbortError')throw error;}
-      }else tell('Fotoja është gati. Prekni përsëri “Ruaj foton”.');
+       catch(error){if(error.name==='NotAllowedError')tell('Fotoja është gati. Prekni për ta ruajtur.');else if(error.name!=='AbortError')throw error;}
+      }else tell('Fotoja është gati. Prekni për ta ruajtur.');
      }else{
       const link=document.createElement('a');link.href=entry.urls[0];link.download=entry.shareFiles[0].name;
-      root.append(link);link.click();link.remove();saved();
+      root.append(link);link.click();link.remove();tell('');saved();
      }
     }catch(error){tell(error.message);}
     finally{
      button.disabled=false;
-     if(!button.dataset.saved)button.innerHTML=`${creatorIcon('save')} Ruaj foton`;
+     if(!button.dataset.saved)button.innerHTML=`${creatorIcon('save')} ${readyToShare?'Ruaj foton tani':'Ruaj foton'}`;
     }
     return;
    }
    if(action==='free-save'||action==='save-photos'){const ready=prepared.get(`${button.dataset.order||''}:${product}`)?.shareFiles;if(ready?.length&&navigator.share&&navigator.canShare?.({files:ready})){try{await navigator.share({files:ready});}catch(error){if(error.name!=='AbortError')throw error;}return;}if(viewer)closeViewer();await download(button.dataset.order||'',product,'photos');return;}
    if(action==='view'){openViewer(product,button.dataset.index);return;}
-   if(action==='viewer-close'){closeViewer();return;}
+   if(action==='viewer-close'){closeViewer();void syncShop();return;}
    if(action==='viewer-step'){moveViewer((viewer?.index||0)+Number(button.dataset.step));return;}
    if(action==='viewer-dot'){moveViewer(Number(button.dataset.index));return;}
    if(action==='slide'||action==='dot'){
@@ -384,7 +388,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
    error='';
    if(action==='add'){if(purchasedIds.has(product))return;if(page.products.find(p=>p.id===product)?.priceCents===0){await download('',product,'photos');return;}if(!ids.includes(product)){ids.push(product);activity('add',{productId:product});flash('Pakoja u shtua në shportë.');render();saveCart();}}
    if(action==='cart'){panel='cart';activity('cart');render();}
-   if(action==='close'&&!submitting){panel='';activity('close');render();}
+   if(action==='close'&&!submitting){panel='';activity('close');render();void syncShop();}
    if(action==='checkout'){panel='checkout';activity('checkout');saveCheckout();render();root.querySelector('#shop-name')?.focus();}
    if(action==='remove'&&!submitting){ids=ids.filter(id=>id!==product);activity('remove',{productId:product});render();saveCart();}
    if(action==='refresh')await refreshOrder(button.dataset.order);
@@ -398,7 +402,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
    return;
   }
   if(viewer){
-   if(event.key==='Escape'){event.preventDefault();closeViewer();return;}
+   if(event.key==='Escape'){event.preventDefault();closeViewer();void syncShop();return;}
    if(event.key==='ArrowLeft'||event.key==='ArrowRight'){event.preventDefault();moveViewer(viewer.index+(event.key==='ArrowLeft'?-1:1));return;}
    if(event.key==='Tab'){
     const fields=[...root.querySelectorAll('.shop-viewer button:not(:disabled)')];
@@ -408,7 +412,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
    return;
   }
   if(!panel)return;
-  if(event.key==='Escape'&&!submitting){panel='';render();}
+  if(event.key==='Escape'&&!submitting){panel='';render();void syncShop();}
   if(event.key==='Tab'){
    const fields=[...root.querySelectorAll('.shop-drawer button:not(:disabled),.shop-drawer input,.shop-drawer textarea,.shop-drawer select')];
    if(event.shiftKey&&event.target===fields[0]){event.preventDefault();fields.at(-1)?.focus();}
@@ -545,19 +549,22 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
  }
  await Promise.all(tokens.map(id=>refreshOrder(id).catch(()=>{})));
  const heroTimer=globalThis.setInterval(()=>{const track=root.querySelector('[data-hero-track]');if(canPrefetch()&&!heroPaused&&!viewer&&!panel&&!photoSave&&document.visibilityState!=='hidden'&&track?.children.length>1)moveHero(heroIndex+1);},5500);
- let syncing=false;
- const paused=()=>still||document.visibilityState==='hidden'||submitting||panel||viewer||photoSave||activePreparation;
+ function paused(){return still||document.visibilityState==='hidden'||submitting||panel||viewer||photoSave||activePreparation;}
  async function syncShop(){
   if(syncing||paused())return;
   syncing=true;
   try{
-   const response=await fetch(`/api/content-creator?${new URLSearchParams({id:page.id,format:'live'})}`,{method:'GET',cache:'no-store',signal:AbortSignal.timeout(7000)});
-   if(!response.ok)return;
+   const query=new URLSearchParams({id:page.id,format:'live'});
+   if(liveVersion&&Date.now()-lastFullSync<60000)query.set('version',liveVersion);
+   const response=await fetch(`/api/content-creator?${query}`,{method:'GET',cache:'no-store',signal:AbortSignal.timeout(7000)});
+   if(!response.ok||response.status===204)return;
    const next=await response.json();
    if(paused()||next.id!==page.id||!Array.isArray(next.products)||!Array.isArray(next.photoIds)||!Array.isArray(next.sold))return;
    const fields=['products','photoIds','media','mediaTypes','heroImages','heroPhotoIds','heroFormat','heroCrop'];
    const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
    const changed=fields.filter(field=>!same(page[field],next[field]));
+   liveVersion=typeof next.version==='string'?next.version:'';
+   lastFullSync=Date.now();
    if(!changed.length&&same(sold,next.sold))return;
    const changedTracks=new Set();
    for(const product of next.products){

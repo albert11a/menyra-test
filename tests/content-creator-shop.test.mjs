@@ -231,3 +231,19 @@ test('Released public purchase reuses the delivery CDN and keeps an original fal
  assert.deepEqual((await shopAction({...input,source:'firestore'},repo)).bytes,Buffer.from('abc'));
  assert.deepEqual(await shopAction({...input,op:'sold-preview'},repo),{redirect:url+'?w=240'});
 });
+
+test('Checkout batches original metadata and rejects missing files before committing',async()=>{
+ const f=fixture();
+ let batches=0;
+ f.repo.readOriginalMetadata=async(page,ids)=>{
+  assert.equal(page,pageId);assert.deepEqual(ids,product.imageIds);batches++;
+  return new Map(ids.map(id=>[id,f.docs.get(`contentCreatorPages/${pageId}/originals/${id}`)]));
+ };
+ const path=`contentCreatorPages/${pageId}/originals/one`,original=f.docs.get(path);
+ f.docs.delete(path);
+ await assert.rejects(shopAction(request,f.repo),/ende gati/);
+ assert.equal(f.docs.has(`contentCreatorOrders/${orderId}`),false);
+ f.docs.set(path,original);
+ assert.equal((await shopAction(request,f.repo)).id,orderId);
+ assert.equal(batches,2);
+});

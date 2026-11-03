@@ -48,28 +48,36 @@ export async function shopRepository(){
     }
    }
    const result=[...lines.values()];
-   const ids=[...new Set(result.flatMap(line=>line.downloadIds))];
-   if(includeMedia&&ids.length){
-    const prefix=BASE.replace('https://firestore.googleapis.com/v1/','')+`/contentCreatorPages/${pageId}/originals/`;
-    const media=new Map();
-    try{
-     const lookup=await fetch(`${BASE}:batchGet`,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},signal:AbortSignal.timeout(1800),body:JSON.stringify({documents:ids.map(id=>prefix+id),mask:{fieldPaths:['deliveryCdn','name','size']}})});
-     if(lookup.ok)for(const {found} of await lookup.json()){
-      if(!found?.name?.startsWith(prefix))continue;
-      const delivery=wert(found.fields?.deliveryCdn),url=creatorMediaUrl(delivery?.url);
-      if(url)media.set(found.name.slice(prefix.length),{url,thumb:delivery.thumb===true,name:wert(found.fields.name),size:wert(found.fields.size)});
-     }
-    }catch{/* The purchase endpoints still serve originals if metadata lookup fails. */}
-    for(const line of result)line.deliveryMedia=Object.fromEntries(line.downloadIds.filter(id=>media.has(id)).map(id=>[id,media.get(id)]));
+   return includeMedia?this.withDeliveryMedia(pageId,result):result;
+  },
+  async readOriginalMetadata(pageId,ids,fields,timeout=7000){
+   const prefix=BASE.replace('https://firestore.googleapis.com/v1/','')+`/contentCreatorPages/${pageId}/originals/`;
+   const response=await fetch(`${BASE}:batchGet`,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},signal:AbortSignal.timeout(timeout),body:JSON.stringify({documents:ids.map(id=>prefix+id),mask:{fieldPaths:fields}})});
+   if(!response.ok)throw Error('Skedarët nuk u ngarkuan. Provoni përsëri.');
+   const result=new Map();
+   for(const {found} of await response.json()){
+    if(found?.name?.startsWith(prefix))result.set(found.name.slice(prefix.length),Object.fromEntries(Object.entries(found.fields||{}).map(([key,value])=>[key,wert(value)])));
    }
    return result;
+  },
+  async withDeliveryMedia(pageId,lines){
+   const ids=[...new Set(lines.flatMap(line=>line.downloadIds))];
+   if(!ids.length)return lines;
+   try{
+    const assets=await this.readOriginalMetadata(pageId,ids,['deliveryCdn','name','size'],1800);
+    return lines.map(line=>({...line,deliveryMedia:Object.fromEntries(line.downloadIds.flatMap(id=>{
+     const asset=assets.get(id),url=creatorMediaUrl(asset?.deliveryCdn?.url);
+     return url?[[id,{url,thumb:asset.deliveryCdn.thumb===true,name:asset.name,size:asset.size}]]:[];
+    }))}));
+   }catch{return lines;}
   },
   async createOrder(pageId,orderId,order){
    if(!pageGuard?.active||!pageGuard.version||pageGuard.path!==`contentCreatorPages/${pageId}`)throw Error('Faqja ka ndryshuar. Provoni përsëri.');
    const name=BASE.replace('https://firestore.googleapis.com/v1/','');
    const response=await fetch(`${BASE}:commit`,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},signal:AbortSignal.timeout(10000),body:JSON.stringify({writes:[
     {update:{name:`${name}/${CC_ORDERS}/${orderId}`,fields:Object.fromEntries(Object.entries(order).map(([key,value])=>[key,encodeValue(value)]))},currentDocument:{exists:false}},
-    {update:{name:`${name}/${pageGuard.path}`,fields:{lastOrderAt:{timestampValue:order.createdAt}}},updateMask:{fieldPaths:['lastOrderAt']},currentDocument:{updateTime:pageGuard.version}}
+    {update:{name:`${name}/${pageGuard.path}`,fields:{lastOrderAt:{timestampValue:order.createdAt}}},updateMask:{fieldPaths:['lastOrderAt']},currentDocument:{updateTime:pageGuard.version}},
+    {update:{name:`${name}/${CC_CARTS}/${order.cartId}`,fields:{status:{stringValue:'ordered'},orderId:{stringValue:orderId},updatedAt:{stringValue:order.createdAt}}},updateMask:{fieldPaths:['status','orderId','updatedAt']}}
    ]})});
    if([409,412].includes(response.status))return false;
    if(!response.ok)throw Error('Porosia nuk u ruajt. Provoni përsëri.');
@@ -294,17 +302,17 @@ export async function shopAction(input,repo,{streamPhoto=false}={}){
   return {...quote,notified};
  }
  if(op!=='order'||!validShopId(orderId))throw Error('Kërkesa nuk është e vlefshme.');
- const existing=await repo.read(`${CC_ORDERS}/${orderId}`);
- if(existing){if(existing.pageId!==pageId||existing.cartId!==cartId)throw Error('Porosia nuk është e vlefshme.');await repo.write(`${CC_CARTS}/${cartId}`,{status:'ordered',orderId,updatedAt:new Date().toISOString()});await repo.notify('order',orderId,existing).catch(()=>{});return publicOrder(existing,orderId);}
  const sold=await repo.sold?.(pageId)||[];
  if(quote.lines.some(line=>sold.some(item=>item.id===line.id)))return {sold};
  if(input.expectedTotalCents!==quote.totalCents)return {priceChanged:true,...quote};
  const customer=shopCustomer(input.customer);
  // Freeze original file identities; removing storefront photos never removes purchased assets.
  const files=purchasedFiles(quote),deliveryMedia={};
+ const fields=['parts','name','size','deliveryCdn'];
+ const assets=files.length&&repo.readOriginalMetadata?await repo.readOriginalMetadata(pageId,files,fields):null;
  for(let start=0;start<files.length;start+=12){
   await Promise.all(files.slice(start,start+12).map(async file=>{
-   const asset=await repo.read(`contentCreatorPages/${pageId}/originals/${file}`,['parts','name','size','deliveryCdn']);
+   const asset=assets?assets.get(file):await repo.read(`contentCreatorPages/${pageId}/originals/${file}`,fields);
    if(!asset?.parts)throw Error('Një skedar nuk është ende gati. Ju lutemi, provoni përsëri.');
    const url=creatorMediaUrl(asset.deliveryCdn?.url);
    if(url)deliveryMedia[file]={url,thumb:asset.deliveryCdn.thumb===true,name:asset.name,size:asset.size};
@@ -315,7 +323,7 @@ export async function shopAction(input,repo,{streamPhoto=false}={}){
  const persisted=created?order:await repo.read(`${CC_ORDERS}/${orderId}`);
  if(!persisted&&repo.sold){const latest=await repo.sold(pageId);if(quote.lines.some(line=>latest.some(item=>item.id===line.id)))return {sold:latest};throw Error('Oferta u përditësua. Provoni përsëri.');}
  if(!persisted||persisted.cartId!==cartId||persisted.pageId!==pageId)throw Error('Porosia nuk është e vlefshme.');
- await repo.write(`${CC_CARTS}/${cartId}`,{status:'ordered',orderId,updatedAt:now});
+ if(!repo.createOrder||!created)await repo.write(`${CC_CARTS}/${cartId}`,{status:'ordered',orderId,updatedAt:now});
  const notified=await repo.notify('order',orderId,persisted).catch(()=>false);
  return {...publicOrder(persisted,orderId),...(persisted.downloadsReleased===true?{deliveryMedia}:{}),notified};
 }

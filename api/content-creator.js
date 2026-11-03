@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { ccEscape as esc, ccImage, contentLink } from '../shared/content-creator.js';
 import {publicCreatorPage,creatorSoldCards,renderCreatorCatalog,creatorPhoto,creatorHowTo,creatorHeroFiles,renderCreatorPromo,creatorFooter} from '../shared/content-creator-view.js';
@@ -24,15 +25,11 @@ async function readCreatorCovers(safePage,page){
   }));
   return covers;
 }
-async function readSoldPackages(id){
-  const {shopRepository}=await import('../server/content-creator-shop.js');
-  return (await shopRepository()).sold(id,true);
-}
 async function readPhotoAlias(code){
   const {shopRepository}=await import('../server/content-creator-shop.js');
   return (await shopRepository()).read(`contentCreatorPages/photo-links/originals/${code}`);
 }
-export async function serveContentCreator(req,res,{read=publicDocument,shell,loadCovers=readCreatorCovers,readAlias=readPhotoAlias,loadSold=read===publicDocument?readSoldPackages:async()=>[]}={}){
+export async function serveContentCreator(req,res,{read=publicDocument,shell,loadCovers=readCreatorCovers,readAlias=readPhotoAlias,loadSold}={}){
   res.setHeader('X-Content-Type-Options','nosniff');
   if(!['GET','HEAD'].includes(req.method)){res.statusCode=405;res.setHeader('Allow','GET, HEAD');res.end();return;}
   const url=new URL(req.url || '/', 'https://www.mnyra.com');
@@ -91,10 +88,23 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
         safePage.avatar=`data:image/jpeg;base64,${bytes.toString('base64')}`;
       }catch{}
     }
-    if(safePage.kind==='shop'&&!assetMode&&!imageMode)safePage.sold=await loadSold(id);
+    let soldRepository;
+    if(safePage.kind==='shop'&&!assetMode&&!imageMode){
+      if(loadSold)safePage.sold=await loadSold(id);
+      else if(read===publicDocument){
+        const {shopRepository}=await import('../server/content-creator-shop.js');
+        soldRepository=await shopRepository();
+        safePage.sold=await soldRepository.sold(id,format==='json');
+      }else safePage.sold=[];
+    }
     if(format==='live'){
       const {products,photoIds,media,mediaTypes,heroImages,heroPhotoIds,heroFormat,heroCrop,sold}=safePage;
-      res.statusCode=200;res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');res.end(req.method==='HEAD'?undefined:JSON.stringify({id,products,photoIds,media,mediaTypes,heroImages,heroPhotoIds,heroFormat,heroCrop,sold}));return;
+      const snapshot={id,products,photoIds,media,mediaTypes,heroImages,heroPhotoIds,heroFormat,heroCrop,sold};
+      const version=createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');
+      res.setHeader('Cache-Control','no-store');
+      if(url.searchParams.get('version')===version){res.statusCode=204;res.end();return;}
+      if(soldRepository&&req.method!=='HEAD')snapshot.sold=await soldRepository.withDeliveryMedia(id,sold);
+      res.statusCode=200;res.setHeader('Content-Type','application/json');res.end(req.method==='HEAD'?undefined:JSON.stringify({...snapshot,version}));return;
     }
     if(format==='json'){
       res.statusCode=200;res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');res.end(req.method==='HEAD'?undefined:JSON.stringify(safePage));return;

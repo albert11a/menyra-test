@@ -51,3 +51,22 @@ test('An active empty Working shop renders public HTML and JSON without photos, 
   else {assert.match(res.body,/id="creator-page-data"/);assert.doesNotMatch(res.body,/>Loading<|src="undefined"/);}
  }
 });
+
+test('Live shop sends an empty response for an unchanged version and refreshes when a sale changes',async()=>{
+ const page={published:true,kind:'shop',name:'Bistro',photoIds:['one'],products:[]};
+ let sold=[];
+ const options={read:async()=>page,loadSold:async()=>sold};
+ async function live(version=''){
+  const res=response();
+  await serveContentCreator({method:'GET',url:`/api/content-creator?id=${id}&format=live&version=${version}`},res,options);
+  return res;
+ }
+ const first=JSON.parse((await live()).body);
+ const unchanged=await live(first.version);
+ assert.equal(unchanged.statusCode,204);
+ assert.equal(unchanged.body,undefined);
+ sold=[{id:'pack',imageIds:['one'],downloadIds:['one']}];
+ const changed=JSON.parse((await live(first.version)).body);
+ assert.notEqual(changed.version,first.version);
+ assert.deepEqual(changed.sold,sold);
+});
