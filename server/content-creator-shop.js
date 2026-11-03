@@ -2,7 +2,7 @@ import {creatorDeliveryPhotos} from '../shared/content-creator.js';
 import {creatorVideoPreview} from './creator-video-preview.js';
 import {creatorActivity} from './creator-activity.js';
 import {guardedCreatorWrite} from './creator-guarded-write.js';
-import {creatorPublicMedia} from '../shared/creator-media.js';
+import {creatorPublicMedia,creatorMediaUrl} from '../shared/creator-media.js';
 import {createHash} from 'node:crypto';
 import {optimizedShopImage,creatorDisplayImage,creatorDeliveryPreview} from './content-creator-images.js';
 import {schluessel,zugangHolen,lies,wert,empfaenger,meldungAnlegen,schicken,zustellungAendern} from '../api/lifeskin-meldung.js';
@@ -65,22 +65,28 @@ async function originalFile(path,metadata,repo){
 export async function shopAction(input,repo,{streamPhoto=false}={}){
  const {op,pageId,cartId,orderId}=input;
  if(op==='visit'){for(let attempt=0;;attempt++){try{return await creatorActivity(input,repo);}catch(error){if(error.code!=='CREATOR_VISIT_CONFLICT'||attempt>=3)throw error;}}}
- if(op==='photo-gallery'||op==='photo-preview'||op==='photo-download'){
+ if(op==='photo-gallery'||op==='photo-preview'||op==='photo-download'||op==='photo-record'){
   if(!validShopId(pageId)||!validShopId(input.token))throw Error('Linku nuk është i vlefshëm.');
   const pagePath=`contentCreatorPages/${pageId}`;
-  const [page,access]=await Promise.all([repo.read(pagePath),repo.read(`${pagePath}/originals/photo-delivery`)]);
-  if(!page?.published||page.deleting||!page.photoDeliveryEnabled||access?.token!==input.token)throw Error('Linku nuk është më aktiv.');
-  const files=creatorDeliveryPhotos(page).filter(file=>access.files?.includes(file));
+  const [page,delivery]=await Promise.all([repo.read(pagePath),repo.read(`${pagePath}/originals/photo-delivery-${input.token}`)]);
+  const access=delivery||await repo.read(`${pagePath}/originals/photo-delivery`);
+  if(!page?.published||page.deleting||(!delivery&&(!page.photoDeliveryEnabled||access?.token!==input.token)))throw Error('Linku nuk është më aktiv.');
+  const files=delivery?delivery.files:creatorDeliveryPhotos(page).filter(file=>access.files?.includes(file));
   if(op==='photo-gallery'){
    const media=creatorPublicMedia(page);
-   return {name:page.name,photos:files.map(file=>({file,cdn:media[file]?.thumb||'',clean:media[file]?.mode==='clean'}))};
+   return {name:page.name,photos:files.map(file=>{
+    const original=delivery?.originals?.[file],download=creatorMediaUrl(original?.url);
+    return {file,cdn:media[file]?.thumb||'',clean:media[file]?.mode==='clean',...(download?{download,name:original.name,size:original.size}:{})};
+   })};
   }
   const {file,visitorId}=input;
   if(!files.includes(file))throw Error('Fotoja nuk është e disponueshme.');
   const path=`${pagePath}/originals/${file}`;
   if(op==='photo-preview')return creatorDeliveryPreview(path,repo);
-  const metadata=await repo.read(path,['name','mime','size','parts']);
-  if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!['image/jpeg','image/png','image/webp'].includes(metadata.mime))throw Error('Origjinali nuk është i disponueshëm.');
+  const directRecord=op==='photo-record'?delivery?.originals?.[file]:null;
+  if(op==='photo-record'&&!creatorMediaUrl(directRecord?.url))throw Error('Fotoja nuk është e disponueshme.');
+  const metadata=directRecord||await repo.read(path,['name','mime','size','parts']);
+  if(!directRecord&&(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!['image/jpeg','image/png','image/webp'].includes(metadata.mime)))throw Error('Origjinali nuk është i disponueshëm.');
   if(!validShopId(visitorId))throw Error('Fotoja nuk është e disponueshme.');
   const recordDownload=async()=>{
   const visitPath=`contentCreatorVisits/${pageId}_${visitorId}`;
@@ -94,6 +100,7 @@ export async function shopAction(input,repo,{streamPhoto=false}={}){
    }catch(error){if(error.code!=='CREATOR_VISIT_CONFLICT'||attempt>=3)throw error;}
   }
   };
+  if(directRecord){await recordDownload();return {ok:true};}
   if(streamPhoto)return {chunks:originalChunks(path,metadata,repo),...metadata,recordDownload};
   const result=await originalFile(path,metadata,repo);
   await recordDownload();

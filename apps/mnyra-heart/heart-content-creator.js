@@ -2,14 +2,14 @@ import {unlockCreatorVideoAudio} from './heart-creator-video-audio.js';
 import {creatorBusinessMatches} from '../../shared/creator-analytics.js';
 import {normalizeCreatorCrop,creatorHeroCropStyle,creatorHeroFormat} from '../../shared/creator-hero.js';
 import {saveShopAsset,initialShopProduct,releaseShopOrder,refreshShopPreviews,savePromoAsset,migrateCreatorPage,optimizeCreatorPageVideos,saveCreatorCdnAsset,savedCreatorFile} from "./heart-content-creator-shop.js";
-import {creatorCdnEnabled} from './heart-creator-cdn.js';
+import {creatorCdnEnabled,uploadCreatorDeliveryOriginal} from './heart-creator-cdn.js';
 import {creatorPublicMedia} from '../../shared/creator-media.js';
 import {CC_CARTS,CC_ORDERS,priceCents} from "../../shared/content-creator-shop.js";
 import { auth, db } from "/shared/firebase-config.js";
 import { createCreatorReset } from "./heart-creator-reset.js";
 import { createCreatorBusinessDeletion } from "./heart-creator-business-delete.js";
 import { collection, doc, getDoc, onSnapshot, setDoc, updateDoc, writeBatch, runTransaction, serverTimestamp } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
-import { CC_PAGES, CC_VISITS, contentLink, creatorDeliveryPhotos } from "../../shared/content-creator.js";
+import { CC_PAGES, CC_VISITS, contentLink, creatorDeliveryPhotos, ccEscape as esc } from "../../shared/content-creator.js";
 
 export async function prepareContentImage(file, avatar = false) {
   if(!avatar&&['video/mp4','video/quicktime','video/webm'].includes(file?.type)){
@@ -567,26 +567,56 @@ export function createContentCreator({root, store, prepareImage = prepareContent
           await detail(id);
         }
       });
-      if(action==='photo-link'||action==='revoke-photo-link'){
-        const revoke=action==='revoke-photo-link';
-        if(!globalThis.confirm(revoke?'Foto-Link sperren?':'Alle aktuellen Paketfotos dieses Business über den Foto-Link im Original freigeben?'))return;
-        const ref=doc(db,CC_PAGES,id),access=doc(ref,'originals','photo-delivery');
-        const link=await runTransaction(db,async transaction=>{
-          const page=(await transaction.get(ref)).data(),previous=(await transaction.get(access)).data();
-          if(!page?.published||page.deleting)throw Error('Business ist nicht verfügbar.');
-          if(revoke){transaction.delete(access);transaction.update(ref,{photoDeliveryEnabled:false});return '';}
-          const files=creatorDeliveryPhotos(page);
-          if(!files.length)throw Error('Keine Paketfotos vorhanden.');
-          const token=previous?.token||crypto.randomUUID().replaceAll('-','');
-          transaction.set(access,{token,files});
-          transaction.update(ref,{photoDeliveryEnabled:true});
-          return `${location.origin}/content-creator/${id}?photos=1#${token}`;
+      if(action==='photo-link'){
+        const ref=doc(db,CC_PAGES,id),page=(await getDoc(ref)).data();
+        if(!page?.published||page.deleting)throw Error('Business ist nicht verfügbar.');
+        const files=creatorDeliveryPhotos(page),media=creatorPublicMedia(page);
+        if(!files.length)throw Error('Keine Paketfotos vorhanden.');
+        const dialog=document.createElement('dialog');
+        dialog.className='cc-dialog cc-delivery-dialog';
+        dialog.innerHTML=`<form method="dialog">
+          <h2>Bestellte Fotos auswählen</h2>
+          <p>Jeder mit dem Link kann die ausgewählten Originale dauerhaft herunterladen.</p>
+          <div class="cc-delivery-grid">${files.map((file,i)=>`<label>
+            <img loading="lazy" src="${esc(media[file]?.thumb||'/api/content-creator-shop?'+new URLSearchParams({op:'image',pageId:id,file,display:'3',size:'thumb'}))}" alt="">
+            <span><input type="checkbox" name="photo" value="${esc(file)}"> Foto ${i+1}</span>
+          </label>`).join('')}</div>
+          <p role="status"></p>
+          <div class="cc-row-actions"><button type="button" data-close>Schließen</button><button type="submit">Freigeben und Link kopieren</button></div>
+        </form>`;
+        document.body.append(dialog);
+        dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+        const form=dialog.querySelector('form'),submit=form.querySelector('[type=submit]'),status=form.querySelector('[role=status]');
+        form.querySelector('[data-close]').onclick=()=>dialog.close();
+        dialog.addEventListener('cancel',event=>{if(submit.disabled)event.preventDefault();});
+        form.addEventListener('submit',async event=>{
+          event.preventDefault();
+          if(submit.disabled)return;
+          const selected=new FormData(form).getAll('photo').filter(file=>files.includes(file));
+          if(!selected.length){status.textContent='Wähle mindestens ein Foto aus.';return;}
+          for(const control of form.elements)control.disabled=true;
+          try{
+            const originals={};
+            for(const [index,file] of selected.entries()){
+              status.textContent=`Foto ${index+1} von ${selected.length} wird vorbereitet …`;
+              const original=await savedCreatorFile(id,file);
+              const url=media[file]?.download||(original.size<=15*1024*1024?await uploadCreatorDeliveryOriginal(original):'');
+              originals[file]={url,name:original.name,size:original.size};
+            }
+            const token=crypto.randomUUID().replaceAll('-','');
+            await runTransaction(db,async transaction=>{
+              const latest=(await transaction.get(ref)).data();
+              if(!latest?.published||latest.deleting||!selected.every(file=>creatorDeliveryPhotos(latest).includes(file)))throw Error('Die Pakete wurden geändert. Bitte Fotos neu auswählen.');
+              transaction.set(doc(ref,'originals',`photo-delivery-${token}`),{files:selected,originals});
+            });
+            const link=`${location.origin}/content-creator/${id}?photos=1#${token}`;
+            try{await navigator.clipboard.writeText(link);notice('Foto-Link kopiert.');}
+            catch{globalThis.prompt('Foto-Link kopieren',link);}
+            dialog.close();
+          }catch(error){status.textContent=error.message;}
+          finally{for(const control of form.elements)control.disabled=false;}
         });
-        if(revoke)notice('Foto-Link gesperrt.');
-        else{
-          try{await navigator.clipboard.writeText(link);notice('Foto-Link kopiert.');}
-          catch{globalThis.prompt('Foto-Link kopieren',link);}
-        }
+        dialog.showModal();
       }
       if(action==="copy") {await navigator.clipboard.writeText(contentLink(id));notice("Link kopiert.");}
       if(action==="sent") {

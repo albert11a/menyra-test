@@ -184,3 +184,17 @@ test('Photo download streams original bytes before recording delivery',async()=>
  await result.recordDownload();
  assert.equal(docs.get(visitPath).photoDownloads.one.count,1);
 });
+
+test('Each delivery link returns only its own selected CDN originals',async()=>{
+ const {page,docs,repo}=fixture();
+ const url='https://menyra-media.alberthoti-vsa.workers.dev/media/social/owner/photo.jpg';
+ const gallery={op:'photo-gallery',pageId,token:other};
+ docs.set(`contentCreatorPages/${pageId}/originals/photo-delivery-${other}`,{files:['one'],originals:{one:{url,name:'one.jpg',size:3}}});
+ docs.set(`contentCreatorPages/${pageId}/originals/photo-delivery-${orderId}`,{files:['two'],originals:{}});
+ assert.deepEqual((await shopAction(gallery,repo)).photos.map(({file,download})=>[file,download]),[['one',url]]);
+ assert.deepEqual((await shopAction({...gallery,token:orderId},repo)).photos.map(({file})=>file),['two']);
+ const record={...gallery,op:'photo-record',visitorId:cartId};
+ await assert.rejects(shopAction({...record,file:'two'},repo));
+ assert.deepEqual(await shopAction({...record,file:'one'},repo),{ok:true});
+ assert.equal(docs.get(`contentCreatorVisits/${pageId}_${cartId}`).photoDownloads.one.count,1);
+});

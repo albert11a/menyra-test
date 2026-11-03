@@ -92,3 +92,7 @@ export async function uploadCreatorVideo(prepared) {
   }catch{console.warn('creator_video_optimization_pending');}
   return result;
 }
+
+export async function uploadCreatorDeliveryOriginal(file){
+  return uploadCreatorFile(await ticket(),file,file.name);
+}

@@ -77,7 +77,7 @@ ${creatorFollowupCard(state,page.id)}
 
 function renderPhotoLinks(page){
  if(page.kind!=='shop'||!page.published)return '';
- return `<div class="cc-link-actions heart-lifeskin-chips--shop"><button type="button" class="heart-lifeskin-chip" data-cc-action="photo-link" data-id="${esc(page.id)}">${icon('copy')}<span>Foto-Link kopieren</span></button>${page.photoDeliveryEnabled? `<button type="button" class="heart-lifeskin-chip" data-cc-action="revoke-photo-link" data-id="${esc(page.id)}">Foto-Link sperren</button>`:''}</div>`;
+ return `<div class="cc-link-actions heart-lifeskin-chips--shop"><button type="button" class="heart-lifeskin-chip" data-cc-action="photo-link" data-id="${esc(page.id)}">${icon('copy')}<span>Foto-Link erstellen</span></button></div>`;
 }
 function renderDownloads(page,visits,state){
  const totals=new Map();

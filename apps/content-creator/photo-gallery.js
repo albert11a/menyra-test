@@ -45,6 +45,7 @@ export async function mountCreatorPhotoGallery({root,pageId,token,track}){
   if(image.dataset.clean!=='1')previews.observe(image);
   else image.addEventListener('error',()=>{image.dataset.cdn='';previews.observe(image);},{once:true});
  });
+ const originals=new Map(photos.map(photo=>[photo.file,photo]));
  const ready=new WeakMap();
  track();
  root.addEventListener('click',async event=>{
@@ -58,8 +59,11 @@ export async function mountCreatorPhotoGallery({root,pageId,token,track}){
   }
   button.disabled=true;button.textContent='Duke shkarkuar…';status.textContent='';
   try{
-   const response=await request('photo-download',button.dataset.downloadPhoto);
-   const length=Number(response.headers.get('Content-Length'));
+   const id=button.dataset.downloadPhoto,original=originals.get(id);
+   const direct=original?.download;
+   const response=direct?await fetch(direct,{signal:AbortSignal.timeout(45000)}):await request('photo-download',id);
+   if(!response.ok)throw Error('Fotoja nuk u shkarkua. Provo përsëri.');
+   const length=direct?original.size:Number(response.headers.get('Content-Length'));
    const reader=response.body?.getReader();
    const chunks=[];
    let received=0;
@@ -73,7 +77,8 @@ export async function mountCreatorPhotoGallery({root,pageId,token,track}){
    }
    const blob=reader?new Blob(chunks,{type:response.headers.get('Content-Type')||''}):await response.blob();
    if(!blob.size||(length&&length!==blob.size))throw Error('Fotoja nuk u shkarkua e plotë.');
-   const file=new File([blob],decodeURIComponent(response.headers.get('X-File-Name')||'foto.jpg'),{type:blob.type});
+   const file=new File([blob],(direct?original.name:decodeURIComponent(response.headers.get('X-File-Name')||'foto.jpg')),{type:blob.type});
+   if(direct)void request('photo-record',id).catch(()=>{});
    if(navigator.share&&navigator.canShare?.({files:[file]})){
     ready.set(button,file);
     button.title='Hap menynë e iPhone për ta ruajtur foton.';
