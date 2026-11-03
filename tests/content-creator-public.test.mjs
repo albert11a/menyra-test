@@ -48,6 +48,13 @@ test('Direct name route preserves silent preview mode',async()=>{
  assert.equal(ctx.stats().fetches,0);assert.equal(ctx.stats().sdkLoads,0);
  assert.equal(ctx.writes.length,0);
 });
+test('Normal customer links track again after a silent preview in the same browser',async()=>{
+ const storage=new Map([['mnyra:content:still','1'],['mnyra:still','1']]);
+ const preview=await setup({pathname:'/bistro-one',preview:true,storage});
+ assert.equal(preview.writes.length,0);
+ const customer=await setup({pathname:'/bistro-one',storage});
+ assert.equal(customer.writes[0].data.pageId,id);
+});
 test('Besuch, 50%-Scroll und Antwort werden weiterhin gespeichert',async()=>{
  const ctx=await setup();assert.equal(ctx.writes[0].data.opened,true);assert.equal(ctx.document.querySelector('h1').textContent,'Përshëndetje,Bistro <One>.');
  ctx.viewport.scrollY=1100;ctx.listeners.scroll();await ctx.settle();assert.equal(ctx.writes.at(-1).data.scrolled,true);
@@ -61,9 +68,6 @@ test('Fehlgeschlagene Antwort bleibt wiederholbar',async()=>{
 });
 test('Gespeicherte Antwort bleibt nach erneutem Öffnen erhalten',async()=>{
  const ctx=await setup({previous:{scrolled:true,answer:'no'}});assert.equal(ctx.document.querySelectorAll('[data-answer]').length,0);assert.equal(ctx.writes[0].data.answer,'no');
-});
-test('Silent mode persists without changing presentation',async()=>{
- const storage=new Map();await setup({preview:true,storage});const ctx=await setup({storage});assert.equal(ctx.writes.length,0);assert.equal(ctx.stats().sdkLoads,0);assert.equal(ctx.document.querySelector('.preview'),null);
 });
 test('Kein leeres Logo, keine ZIP-Oberfläche',async()=>{
  const ctx=await setup({avatar:false});assert.equal(ctx.document.querySelector('.avatar'),null);assert.equal(ctx.document.querySelector('.download'),null);

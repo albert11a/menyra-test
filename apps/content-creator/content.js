@@ -8,12 +8,9 @@ const params=new URLSearchParams(location.search);
 const namedGallery=pathId?.endsWith('-fotot');
 const deliveryKeys=document.getElementById('creator-photo-keys');
 const photoGallery=deliveryKeys||namedGallery||params.get('photos')==='1';
-let still=params.get('still')==='1'||params.get('preview')==='1';
-try{
-  if(params.get('still')==='1')localStorage.setItem('mnyra:content:still','1');
-  if(params.get('still')==='0')localStorage.removeItem('mnyra:content:still');
-  if(params.get('still')!=='0')still ||= localStorage.getItem('mnyra:content:still')==='1'||localStorage.getItem('mnyra:still')==='1';
-}catch{}
+// Preview applies to this URL only; it must never hide a real receipt
+// when a normal customer link opens in the same browser later.
+const still=params.get('still')==='1'||params.get('preview')==='1';
 let tracking;
 function responseMessage(answer){const node=root.querySelector('.answer-content');if(node)node.innerHTML=`<p class="answer-message">${answer==='yes'?'Faleminderit për interesimin! E morëm përgjigjen tuaj. Mund të vazhdoni bisedën me ne aty ku ju dërguam linkun.':'Faleminderit për përgjigjen tuaj! Fotot shembull mbeten tuajat për t’i përdorur kur të dëshironi.'}</p>`;}
 function visits(){
