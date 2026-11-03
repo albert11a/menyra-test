@@ -43,17 +43,26 @@ export async function shopRepository(){
  };
 }
 function publicOrder(order,id){return {id,pageId:order.pageId,lines:order.lines,totalCents:order.totalCents,currency:'EUR',status:order.status,approved:order.approved===true,downloadsAvailable:order.downloadsReleased===true||order.approved===true,paymentDueDate:order.paymentDueDate||'',paymentSchedule:order.paymentSchedule||'',paymentMethod:'cod',createdAt:order.createdAt};}
-async function originalFile(path,metadata,repo){
+async function* originalChunks(path,metadata,repo){
  if(!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>30*1024*1024)throw Error('Skedari nuk është i disponueshëm.');
- const parts=[];let size=0;
- for(let start=0;start<metadata.parts;start+=8){
-  const rows=await Promise.all(Array.from({length:Math.min(8,metadata.parts-start)},(_,i)=>repo.read(`${path}/chunks/${String(start+i).padStart(3,'0')}`)));
-  for(const row of rows){if(!row?.data)throw Error('Shkarkimi u ndërpre.');const bytes=Buffer.from(row.data,'base64');size+=bytes.length;if(size>metadata.size)throw Error('Skedari nuk është i plotë.');parts.push(bytes);}
+ let size=0;
+ for(let start=0;start<metadata.parts;start+=12){
+  const rows=await Promise.all(Array.from({length:Math.min(12,metadata.parts-start)},(_,i)=>repo.read(`${path}/chunks/${String(start+i).padStart(3,'0')}`)));
+  for(const row of rows){
+   if(!row?.data)throw Error('Shkarkimi u ndërpre.');
+   const bytes=Buffer.from(row.data,'base64');size+=bytes.length;
+   if(size>metadata.size)throw Error('Skedari nuk është i plotë.');
+   yield bytes;
+  }
  }
  if(size!==metadata.size)throw Error('Skedari nuk është i plotë.');
- return {bytes:Buffer.concat(parts),mime:metadata.mime,name:metadata.name};
 }
-export async function shopAction(input,repo){
+async function originalFile(path,metadata,repo){
+ const chunks=[];
+ for await(const chunk of originalChunks(path,metadata,repo))chunks.push(chunk);
+ return {bytes:Buffer.concat(chunks),mime:metadata.mime,name:metadata.name};
+}
+export async function shopAction(input,repo,{streamPhoto=false}={}){
  const {op,pageId,cartId,orderId}=input;
  if(op==='visit'){for(let attempt=0;;attempt++){try{return await creatorActivity(input,repo);}catch(error){if(error.code!=='CREATOR_VISIT_CONFLICT'||attempt>=3)throw error;}}}
  if(op==='photo-gallery'||op==='photo-preview'||op==='photo-download'){
@@ -73,7 +82,7 @@ export async function shopAction(input,repo){
   const metadata=await repo.read(path,['name','mime','size','parts']);
   if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!['image/jpeg','image/png','image/webp'].includes(metadata.mime))throw Error('Origjinali nuk është i disponueshëm.');
   if(!validShopId(visitorId))throw Error('Fotoja nuk është e disponueshme.');
-  const result=await originalFile(path,metadata,repo);
+  const recordDownload=async()=>{
   const visitPath=`contentCreatorVisits/${pageId}_${visitorId}`;
   for(let attempt=0;;attempt++){
    const visit=await repo.read(visitPath),now=new Date().toISOString();
@@ -84,6 +93,10 @@ export async function shopAction(input,repo){
     break;
    }catch(error){if(error.code!=='CREATOR_VISIT_CONFLICT'||attempt>=3)throw error;}
   }
+  };
+  if(streamPhoto)return {chunks:originalChunks(path,metadata,repo),...metadata,recordDownload};
+  const result=await originalFile(path,metadata,repo);
+  await recordDownload();
   return result;
  }
  if(op==='video'){

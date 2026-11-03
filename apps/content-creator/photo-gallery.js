@@ -8,7 +8,7 @@ export async function mountCreatorPhotoGallery({root,pageId,token,track}){
   const response=await fetch('/api/content-creator-shop',{
    method:'POST',headers:{'content-type':'application/json'},
    body:JSON.stringify({op,pageId,token,visitorId,file}),
-   signal:AbortSignal.timeout(op==='photo-download'?90000:15000)
+   signal:AbortSignal.timeout(op==='photo-download'?45000:15000)
   });
   if(!response.ok){
    const error=await response.json().catch(()=>null);
@@ -58,13 +58,24 @@ export async function mountCreatorPhotoGallery({root,pageId,token,track}){
   button.disabled=true;button.textContent='Duke shkarkuar…';status.textContent='';
   try{
    const response=await request('photo-download',button.dataset.downloadPhoto);
-   const blob=await response.blob(),length=Number(response.headers.get('Content-Length'));
+   const length=Number(response.headers.get('Content-Length'));
+   const reader=response.body?.getReader();
+   const chunks=[];
+   let received=0;
+   if(reader){
+    while(true){
+     const {done,value}=await reader.read();
+     if(done)break;
+     chunks.push(value);received+=value.byteLength;
+     if(length)button.textContent=`Duke shkarkuar… ${Math.min(99,Math.floor(received/length*100))}%`;
+    }
+   }
+   const blob=reader?new Blob(chunks,{type:response.headers.get('Content-Type')||''}):await response.blob();
    if(!blob.size||(length&&length!==blob.size))throw Error('Fotoja nuk u shkarkua e plotë.');
    const file=new File([blob],decodeURIComponent(response.headers.get('X-File-Name')||'foto.jpg'),{type:blob.type});
    if(navigator.share&&navigator.canShare?.({files:[file]})){
     ready.set(button,file);
-    status.textContent='Prek “Ruaj foton” dhe zgjidh “Save Image”.';
-    button.after(status);
+    button.title='Hap menynë e iPhone për ta ruajtur foton.';
     return;
    }
    const url=URL.createObjectURL(file),link=document.createElement('a');

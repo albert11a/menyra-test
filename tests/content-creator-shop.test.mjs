@@ -169,3 +169,18 @@ test('Foto-Link delivers only explicitly shared current photos and counts byte-e
  docs.delete(accessPath);
  await assert.rejects(shopAction(gallery,repo));
 });
+
+test('Photo download streams original bytes before recording delivery',async()=>{
+ const {page,docs,repo}=fixture();
+ page.photoDeliveryEnabled=true;
+ docs.set(`contentCreatorPages/${pageId}/originals/photo-delivery`,{token:other,files:['one']});
+ const result=await shopAction({op:'photo-download',pageId,token:other,visitorId:cartId,file:'one'},repo,{streamPhoto:true});
+ const visitPath=`contentCreatorVisits/${pageId}_${cartId}`;
+ assert.equal(result.size,3);
+ const chunks=[];
+ for await(const bytes of result.chunks)chunks.push(bytes);
+ assert.deepEqual(Buffer.concat(chunks),Buffer.from('abc'));
+ assert.equal(docs.has(visitPath),false);
+ await result.recordDownload();
+ assert.equal(docs.get(visitPath).photoDownloads.one.count,1);
+});
