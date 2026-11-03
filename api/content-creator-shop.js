@@ -8,7 +8,7 @@ export async function serveCreatorShop(req,res,repository=shopRepository){
   const url=new URL(req.url||'/','https://www.mnyra.com');
   let input=req.method!=='POST'?Object.fromEntries(url.searchParams):req.body;
   if(typeof input==='string')input=JSON.parse(input);if(!input||typeof input!=='object')throw Error('Kërkesa mungon.');
-  if(req.method!=='POST'&&!['sold','sold-download','receipt','download','free-download','free-image','image','video'].includes(input.op))throw Error('Kërkesa nuk lejohet.');
+  if(req.method!=='POST'&&!['sold','sold-download','sold-preview','receipt','download','free-download','free-image','image','video'].includes(input.op))throw Error('Kërkesa nuk lejohet.');
   if(input.op==='video')input.range=req.headers?.range||'';
   if(input.op==='visit'){
    const decode=value=>{try{return decodeURIComponent(String(value||''));}catch{return '';}};

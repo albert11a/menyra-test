@@ -97,7 +97,7 @@ async function originalFile(path,metadata,repo){
 }
 export async function shopAction(input,repo,{streamPhoto=false}={}){
  const {op,pageId,cartId,orderId}=input;
- if(op==='sold'||op==='sold-download'){
+ if(op==='sold'||op==='sold-download'||op==='sold-preview'){
   if(!validShopId(pageId))throw Error('Faqja nuk u gjet.');
   const page=await repo.read(`contentCreatorPages/${pageId}`);
   if(!page?.published||page.deleting||page.kind!=='shop')throw Error('Faqja nuk u gjet.');
@@ -106,6 +106,7 @@ export async function shopAction(input,repo,{streamPhoto=false}={}){
   const {file,productId}=input;
   if(!/^[A-Za-z0-9_-]{1,64}$/.test(file||'')||!sold.some(line=>line.id===productId&&line.downloadIds?.includes(file)))throw Error('Fotoja nuk është e disponueshme për shkarkim.');
   const path=`contentCreatorPages/${pageId}/originals/${file}`;
+  if(op==='sold-preview')return creatorDeliveryPreview(path,repo);
   const metadata=await repo.read(path,['name','mime','size','parts']);
   if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!['image/jpeg','image/png','image/webp'].includes(metadata.mime))throw Error('Origjinali nuk është i disponueshëm.');
   return originalFile(path,metadata,repo);

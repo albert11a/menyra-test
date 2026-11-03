@@ -333,6 +333,6 @@ test('Pointer intent loads the chosen full video before click; opening/reopening
 test('A visitor without a receipt can save an individual released business photo',async()=>{
  const ctx=await setup(false,2900,{sold:[{id:'pack',title:'Social Set',imageIds:['one'],downloadIds:['one']}]});
  assert.equal(ctx.root.querySelectorAll('.shop-product').length,0);
- assert.match(ctx.root.querySelector('#shop-purchases').textContent,/Social Set.*E blerë/);
+ assert.match(ctx.root.querySelector('#shop-purchases').textContent,/Social Set/);
  assert.ok(ctx.root.querySelector('[data-shop="save-one-photo"]'));
 });

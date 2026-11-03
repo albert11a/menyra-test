@@ -77,3 +77,6 @@ summary{border-radius:16px}#shop-faq{scroll-margin-top:76px}.shop-intro-copy{pad
 .creator-delivery-total strong { font-size: 1.15rem; white-space: nowrap; }
 .shop-purchase-gallery time, .shop-order-title time { color: #526447; font-size: .85rem; }
 .shop-purchase-gallery .creator-photo-grid, .shop-order > .creator-photo-grid { margin: .75rem 0; }
+.shop-purchase-caption { display: grid; gap: .15rem; padding: .5rem .65rem; }
+.shop-purchase-caption time { font-size: .75rem; color: #526447; }
+#shop-purchases > .creator-photo-grid { margin: .75rem 0; }
