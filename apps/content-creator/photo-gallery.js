@@ -1,4 +1,5 @@
 import {ccEscape as esc} from '../../shared/content-creator.js';
+import {euro} from '../../shared/content-creator-shop.js';
 import {creatorIcon} from '../../shared/content-creator-view.js';
 import {creatorVisitorId} from './visits.js';
 
@@ -17,10 +18,13 @@ export async function mountCreatorPhotoGallery({root,pageId,token,track}){
   }
   return response;
  }
- const {name,photos}=await (await request('photo-gallery')).json();
+ const {name,photos,totalCents}=await (await request('photo-gallery')).json();
  document.title=`Fotot për ${name} · MNYRA`;
  root.innerHTML=`<div class="shop-shell"><section class="creator-photo-delivery">
-  <p class="brand">MNYRA</p><h1>Fotot për ${esc(name)}</h1><p>Shkarkoji fotot në cilësi origjinale.</p>
+  <a class="brand shop-logo" href="/">MNYRA<span class="shop-logo-dot"></span></a>
+  <h1>Faleminderit që zgjodhët MNYRA-n!</h1>
+  <p>Për pagesën, ju informojmë paraprakisht se kur dikush nga ekipi ynë do të vijë për ta marrë pagesën.</p>
+  ${Number.isSafeInteger(totalCents)?`<p><strong>Pagesa totale për fotot: ${esc(euro(totalCents))}</strong></p>`:''}
   <div class="creator-photo-grid">${photos.map(({file,cdn,clean},i)=>`<article>
    <img ${cdn?`src="${esc(cdn)}" loading="${i<2?'eager':'lazy'}"`: ''} data-clean="${clean?'1':'0'}" data-cdn="${esc(cdn||'')}" data-photo="${esc(file)}" alt="Foto ${i+1}">
    <button type="button" data-download-photo="${esc(file)}">${creatorIcon('save')} ${saveLabel}</button>
@@ -42,18 +46,22 @@ export async function mountCreatorPhotoGallery({root,pageId,token,track}){
   }
  },{rootMargin:'200px'});
  root.querySelectorAll('img[data-photo]').forEach(image=>{
-  if(image.dataset.clean!=='1')previews.observe(image);
+  if(!image.hasAttribute('src'))previews.observe(image);
   else image.addEventListener('error',()=>{image.dataset.cdn='';previews.observe(image);},{once:true});
  });
  const originals=new Map(photos.map(photo=>[photo.file,photo]));
  const ready=new WeakMap();
+ function saved(button){
+  button.dataset.saved='1';
+  button.innerHTML=`${creatorIcon('save')} Ruaje prapë`;
+ }
  track();
  root.addEventListener('click',async event=>{
   const button=event.target.closest('[data-download-photo]');
   if(!button||button.disabled)return;
   const status=root.querySelector('.creator-photo-message');
   if(ready.has(button)){
-   try{await navigator.share({files:[ready.get(button)]});}
+   try{await navigator.share({files:[ready.get(button)]});saved(button);}
    catch(error){if(error.name!=='AbortError'){status.textContent=error.message;button.after(status);}}
    return;
   }
@@ -83,16 +91,16 @@ export async function mountCreatorPhotoGallery({root,pageId,token,track}){
     ready.set(button,file);
     button.title='Hap menynë e iPhone për ta ruajtur foton.';
     if(navigator.userActivation?.isActive){
-     try{await navigator.share({files:[file]});}
+     try{await navigator.share({files:[file]});saved(button);}
      catch(error){if(!['AbortError','NotAllowedError'].includes(error.name))throw error;}
     }
     return;
    }
    const url=URL.createObjectURL(file),link=document.createElement('a');
    link.href=url;link.download=file.name;
-   root.append(link);link.click();link.remove();
+   root.append(link);link.click();link.remove();saved(button);
    setTimeout(()=>URL.revokeObjectURL(url),60000);
   }catch(error){status.textContent=error.message;button.after(status);}
-  finally{button.disabled=false;button.innerHTML=`${creatorIcon('save')} ${ready.has(button)?'Ruaj foton':saveLabel}`;}
+  finally{button.disabled=false;button.innerHTML=`${creatorIcon('save')} ${button.dataset.saved?'Ruaje prapë':ready.has(button)?'Ruaj foton':saveLabel}`;}
  });
 }

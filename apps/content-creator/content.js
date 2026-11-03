@@ -5,7 +5,8 @@ const root=document.getElementById('content-app');
 const pathId=location.pathname.split('/').filter(Boolean).at(-1);
 let id=pathId;
 const params=new URLSearchParams(location.search);
-const photoGallery=params.get('photos')==='1';
+const namedGallery=pathId?.endsWith('-fotot');
+const photoGallery=namedGallery||params.get('photos')==='1';
 let still=params.get('still')==='1'||params.get('preview')==='1';
 try{
   if(params.get('still')==='1')localStorage.setItem('mnyra:content:still','1');
@@ -22,7 +23,9 @@ async function start(){
   try{
     if(photoGallery){
       const {mountCreatorPhotoGallery}=await import('./photo-gallery.js');
-      await mountCreatorPhotoGallery({root,pageId:id,token:location.hash.slice(1),track:()=>{void visits().catch(()=>{});}});
+      const [first,second]=location.hash.slice(1).split('.');
+      if(namedGallery)id=first;
+      await mountCreatorPhotoGallery({root,pageId:id,token:namedGallery?second:first,track:()=>{void visits().catch(()=>{});}});
       return;
     }
     let page;

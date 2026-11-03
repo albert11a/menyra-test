@@ -18,8 +18,8 @@ async function ticket() {
   return {token:result.ticket,uid:user.uid};
 }
 // One upload implementation for photos, posters and correctly typed videos.
-async function uploadCreatorFile(access,blob,name){
-  const form=new FormData();form.set('restaurantId',access.uid);form.set('file',blob,name);
+async function uploadCreatorFile(access,blob,name,thumb){
+  const form=new FormData();form.set('restaurantId',access.uid);form.set('file',blob,name);if(thumb)form.set('thumb',thumb,'thumb.jpg');
   const response=await fetch(`${BUNNY_EDGE_BASE}/image/upload`,{
     method:'POST',headers:{Authorization:`Bearer ${access.token}`},body:form,signal:AbortSignal.timeout(120000)
   });
@@ -93,6 +93,6 @@ export async function uploadCreatorVideo(prepared) {
   return result;
 }
 
-export async function uploadCreatorDeliveryOriginal(file){
-  return uploadCreatorFile(await ticket(),file,file.name);
+export async function uploadCreatorDeliveryOriginal(file,thumb){
+  return uploadCreatorFile(await ticket(),file,file.name,thumb);
 }

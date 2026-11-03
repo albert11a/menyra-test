@@ -70,3 +70,4 @@ summary{border-radius:16px}#shop-faq{scroll-margin-top:76px}.shop-intro-copy{pad
 .creator-photo-grid button:disabled { opacity: .7; cursor: wait; }
 .creator-photo-message { color: #9b2020; margin: .5rem; }
 .creator-photo-message:empty { display: none; }
+.creator-photo-grid button[data-saved="1"] { background: #d7f28a; color: #20362b; }

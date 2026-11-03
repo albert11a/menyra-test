@@ -581,6 +581,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
             <img loading="lazy" src="${esc(media[file]?.thumb||'/api/content-creator-shop?'+new URLSearchParams({op:'image',pageId:id,file,display:'3',size:'thumb'}))}" alt="">
             <span><input type="checkbox" name="photo" value="${esc(file)}"> Foto ${i+1}</span>
           </label>`).join('')}</div>
+          <label>Gesamtpreis (€) <input name="total" type="number" min="0" max="100000" step="0.01" inputmode="decimal" required></label>
           <p role="status"></p>
           <div class="cc-row-actions"><button type="button" data-close>Schließen</button><button type="submit">Freigeben und Link kopieren</button></div>
         </form>`;
@@ -592,7 +593,9 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         form.addEventListener('submit',async event=>{
           event.preventDefault();
           if(submit.disabled)return;
-          const selected=new FormData(form).getAll('photo').filter(file=>files.includes(file));
+          const values=new FormData(form);
+          const totalCents=Math.round(Number(values.get('total'))*100);
+          const selected=values.getAll('photo').filter(file=>files.includes(file));
           if(!selected.length){status.textContent='Wähle mindestens ein Foto aus.';return;}
           for(const control of form.elements)control.disabled=true;
           try{
@@ -600,16 +603,19 @@ export function createContentCreator({root, store, prepareImage = prepareContent
             for(const [index,file] of selected.entries()){
               status.textContent=`Foto ${index+1} von ${selected.length} wird vorbereitet …`;
               const original=await savedCreatorFile(id,file);
-              const url=media[file]?.download||(original.size<=15*1024*1024?await uploadCreatorDeliveryOriginal(original):'');
-              originals[file]={url,name:original.name,size:original.size};
+              const existing=media[file]?.download;
+              const thumb=!existing&&original.size<=15*1024*1024?await (await fetch(await prepareContentImage(original,true))).blob():null;
+              const url=existing||(thumb?await uploadCreatorDeliveryOriginal(original,thumb):'');
+              originals[file]={url,name:original.name,size:original.size,thumb:!!thumb};
             }
             const token=crypto.randomUUID().replaceAll('-','');
             await runTransaction(db,async transaction=>{
               const latest=(await transaction.get(ref)).data();
               if(!latest?.published||latest.deleting||!selected.every(file=>creatorDeliveryPhotos(latest).includes(file)))throw Error('Die Pakete wurden geändert. Bitte Fotos neu auswählen.');
-              transaction.set(doc(ref,'originals',`photo-delivery-${token}`),{files:selected,originals});
+              transaction.set(doc(ref,'originals',`photo-delivery-${token}`),{files:selected,originals,totalCents});
             });
-            const link=`${location.origin}/content-creator/${id}?photos=1#${token}`;
+            const slug=String(page.name||'').normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,70).replace(/^-+|-+$/g,'')||'mnyra';
+            const link=`${location.origin}/${slug}-fotot#${id}.${token}`;
             try{await navigator.clipboard.writeText(link);notice('Foto-Link kopiert.');}
             catch{globalThis.prompt('Foto-Link kopieren',link);}
             dialog.close();

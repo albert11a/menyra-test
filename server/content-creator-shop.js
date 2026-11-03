@@ -74,9 +74,9 @@ export async function shopAction(input,repo,{streamPhoto=false}={}){
   const files=delivery?delivery.files:creatorDeliveryPhotos(page).filter(file=>access.files?.includes(file));
   if(op==='photo-gallery'){
    const media=creatorPublicMedia(page);
-   return {name:page.name,photos:files.map(file=>{
+   return {name:page.name,totalCents:delivery?.totalCents,photos:files.map(file=>{
     const original=delivery?.originals?.[file],download=creatorMediaUrl(original?.url);
-    return {file,cdn:media[file]?.thumb||'',clean:media[file]?.mode==='clean',...(download?{download,name:original.name,size:original.size}:{})};
+    return {file,cdn:download&&original.thumb?`${download}?w=240`:media[file]?.mode==='clean'?media[file].thumb:'',clean:true,...(download?{download,name:original.name,size:original.size}:{})};
    })};
   }
   const {file,visitorId}=input;
