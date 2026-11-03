@@ -26,7 +26,7 @@ async function readCreatorCovers(safePage,page){
 }
 async function readSoldPackages(id){
   const {shopRepository}=await import('../server/content-creator-shop.js');
-  return (await shopRepository()).sold(id);
+  return (await shopRepository()).sold(id,true);
 }
 async function readPhotoAlias(code){
   const {shopRepository}=await import('../server/content-creator-shop.js');

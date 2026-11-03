@@ -27,7 +27,7 @@ export async function shopRepository(){
    const r=await fetch(`${BASE}/${path}?${mask}`,{method:'PATCH',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},body:JSON.stringify({fields:Object.fromEntries(Object.entries(data).map(([k,v])=>[k,encodeValue(v)]))}),signal:AbortSignal.timeout(10000)});
    if((create&&(r.status===409||r.status===412))||(requireExisting&&[404,409,412].includes(r.status)))return false;if(!r.ok)throw Error('Speichern fehlgeschlagen.');return true;
   },
-  async sold(pageId){
+  async sold(pageId,includeMedia=false){
    const response=await fetch(`${BASE}:runQuery`,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},signal:AbortSignal.timeout(7000),body:JSON.stringify({structuredQuery:{
     from:[{collectionId:CC_ORDERS}],select:{fields:[{fieldPath:'lines'},{fieldPath:'createdAt'},{fieldPath:'downloadsReleased'},{fieldPath:'approved'},{fieldPath:'paymentConfirmed'},{fieldPath:'status'}]},
     where:{fieldFilter:{field:{fieldPath:'pageId'},op:'EQUAL',value:{stringValue:pageId}}}
@@ -47,7 +47,22 @@ export async function shopRepository(){
       downloadIds:[...new Set([...(previous?.downloadIds||[]),...(released?imageIds:[])])]});
     }
    }
-   return [...lines.values()];
+   const result=[...lines.values()];
+   const ids=[...new Set(result.flatMap(line=>line.downloadIds))];
+   if(includeMedia&&ids.length){
+    const prefix=BASE.replace('https://firestore.googleapis.com/v1/','')+`/contentCreatorPages/${pageId}/originals/`;
+    const media=new Map();
+    try{
+     const lookup=await fetch(`${BASE}:batchGet`,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},signal:AbortSignal.timeout(1800),body:JSON.stringify({documents:ids.map(id=>prefix+id),mask:{fieldPaths:['deliveryCdn','name','size']}})});
+     if(lookup.ok)for(const {found} of await lookup.json()){
+      if(!found?.name?.startsWith(prefix))continue;
+      const delivery=wert(found.fields?.deliveryCdn),url=creatorMediaUrl(delivery?.url);
+      if(url)media.set(found.name.slice(prefix.length),{url,thumb:delivery.thumb===true,name:wert(found.fields.name),size:wert(found.fields.size)});
+     }
+    }catch{/* The purchase endpoints still serve originals if metadata lookup fails. */}
+    for(const line of result)line.deliveryMedia=Object.fromEntries(line.downloadIds.filter(id=>media.has(id)).map(id=>[id,media.get(id)]));
+   }
+   return result;
   },
   async createOrder(pageId,orderId,order){
    if(!pageGuard?.active||!pageGuard.version||pageGuard.path!==`contentCreatorPages/${pageId}`)throw Error('Faqja ka ndryshuar. Provoni përsëri.');
@@ -104,7 +119,7 @@ export async function shopAction(input,repo,{streamPhoto=false}={}){
   const path=`contentCreatorPages/${pageId}/originals/${file}`;
   const [page,sold,metadata]=await Promise.all([
    repo.read(`contentCreatorPages/${pageId}`,op==='sold'?['published','deleting','kind']:['published','deleting','kind','products','photoIds','media']),
-   repo.sold(pageId),
+   repo.sold(pageId,op==='sold'),
    op==='sold'?null:repo.read(path,['name','mime','size','parts','deliveryCdn'])
   ]);
   if(!page?.published||page.deleting||page.kind!=='shop')throw Error('Faqja nuk u gjet.');

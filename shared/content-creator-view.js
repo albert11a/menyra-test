@@ -2,7 +2,7 @@ import {creatorIsVideo,creatorVideoUrl,creatorAssetCount,creatorVideoFirst} from
 import {creatorHeroFormat,creatorHeroCrop,creatorHeroCropStyle} from './creator-hero.js';
 import { ccEscape as esc, ccImage } from './content-creator.js';
 import { euro } from './content-creator-shop.js';
-import {creatorPublicMedia,creatorHeroImages} from './creator-media.js';
+import {creatorMediaUrl,creatorPublicMedia,creatorHeroImages} from './creator-media.js';
 
 // Lucide paths, rendered inline: no icon library/CDN request or hydration delay.
 const paths = {
@@ -101,11 +101,12 @@ export function creatorPurchasePhotos(page,line,{orderId='',enabled=false,photo,
  const cards=files.map((file,index)=>{
   const downloadable=line.downloadIds?.includes(file);
   const src=downloadable?`/api/content-creator-shop?${new URLSearchParams({op:'sold-preview',pageId:page.id,productId:line.id,file})}`:'';
+  const direct=downloadable&&line.deliveryMedia?.[file]?.thumb?creatorMediaUrl(line.deliveryMedia[file].url):'';
   const alt=`${line.title} · ${index+1}`;
   return `<article>
-   ${src?`<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy">`:page.photoIds.includes(file)?img(file,alt,{size:'thumb'}):''}
+   ${src?`<img src="${esc(direct?direct+'?w=240':src)}" data-photo="${esc(file)}" data-purchase-fallback="${esc(src)}" alt="${esc(alt)}" loading="lazy">`:page.photoIds.includes(file)?img(file,alt,{size:'thumb'}):''}
    <div class="shop-purchase-caption"><strong>${esc(line.title)}</strong>${creatorPurchaseDate(line.createdAt)}</div>
-   ${orderId||downloadable?`<button type="button" data-shop="save-one-photo" data-order="${esc(orderId)}" data-product="${esc(line.id)}" data-file="${esc(file)}" ${!orderId||enabled?'':'disabled'}>${creatorIcon('save')} Ruaj foton</button>`:''}
+   ${orderId||downloadable?`<button type="button" data-shop="save-one-photo" data-order="${esc(orderId)}" data-product="${esc(line.id)}" data-file="${esc(file)}" ${!orderId||enabled?'':'disabled'}>${creatorIcon('save')} Ruaj foton</button><small class="shop-purchase-feedback" role="status" hidden></small>`:''}
   </article>`;
  }).join('');
  return unwrapped?cards:cards?`<div class="creator-photo-grid">${cards}</div>`:'';

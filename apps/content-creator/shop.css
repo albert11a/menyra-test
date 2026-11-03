@@ -80,3 +80,4 @@ summary{border-radius:16px}#shop-faq{scroll-margin-top:76px}.shop-intro-copy{pad
 .shop-purchase-caption { display: grid; gap: .15rem; padding: .5rem .65rem; }
 .shop-purchase-caption time { font-size: .75rem; color: #526447; }
 #shop-purchases > .creator-photo-grid { margin: .75rem 0; }
+.shop-purchase-feedback:not([hidden]) { display: block; padding: .5rem .65rem; color: #526447; }
