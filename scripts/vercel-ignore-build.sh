@@ -10,6 +10,14 @@
 # vorige Stand, klappt git nicht oder ist irgendeine andere Datei dabei.
 set -u
 
+# Owner approved archiving this duplicate on 2026-11-04. Keep its existing
+# deployment online; only the primary project should build future pushes.
+# Match the immutable project ID, never a branch or a guessed project name.
+if [ "${VERCEL_PROJECT_ID:-}" = "prj_1x2Ui9BzMI6DVGLvFagryVOQHjab" ]; then
+  echo "Archiviertes recovered-Zweitprojekt - doppelten Build ueberspringen."
+  exit 0
+fi
+
 VORHER="${VERCEL_GIT_PREVIOUS_SHA:-}"
 if [ -z "$VORHER" ]; then echo "Kein vorheriger Deploy bekannt - bauen."; exit 1; fi
 if ! git cat-file -e "$VORHER^{commit}" 2>/dev/null; then

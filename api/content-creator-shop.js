@@ -24,6 +24,9 @@ export async function serveCreatorShop(req,res,repository=shopRepository){
   })));
   res.statusCode=input.op==='video'?(result.status||200):200;
   if(input.op==='video'){res.setHeader('Accept-Ranges','bytes');res.setHeader('Cache-Control','private, max-age=300');if(result.status===416){res.setHeader('Content-Range',`bytes */${result.total}`);res.end();return;}if(result.status===206)res.setHeader('Content-Range',`bytes ${result.start}-${result.end}/${result.total}`);}
+  // Cache only successful, authorized purchase previews in this browser.
+  // Receipts, errors and original downloads retain no-store.
+  if(input.op==='sold-preview'&&(result.redirect||result.bytes))res.setHeader('Cache-Control','private, max-age=300');
   if(result.redirect){res.statusCode=307;res.setHeader('Location',result.redirect);res.end();return;}
   if(result.chunks){
    res.setHeader('Content-Type',result.mime);

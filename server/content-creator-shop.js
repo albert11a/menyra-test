@@ -60,11 +60,11 @@ export async function shopRepository(){
    }
    return result;
   },
-  async withDeliveryMedia(pageId,lines){
+  async withDeliveryMedia(pageId,lines,timeout=1800){
    const ids=[...new Set(lines.flatMap(line=>line.downloadIds))];
    if(!ids.length)return lines;
    try{
-    const assets=await this.readOriginalMetadata(pageId,ids,['deliveryCdn','name','size'],1800);
+    const assets=await this.readOriginalMetadata(pageId,ids,['deliveryCdn','name','size'],timeout);
     return lines.map(line=>({...line,deliveryMedia:Object.fromEntries(line.downloadIds.flatMap(id=>{
      const asset=assets.get(id),url=creatorMediaUrl(asset?.deliveryCdn?.url);
      return url?[[id,{url,thumb:asset.deliveryCdn.thumb===true,name:asset.name,size:asset.size}]]:[];

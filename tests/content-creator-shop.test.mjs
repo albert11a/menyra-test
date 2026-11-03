@@ -232,6 +232,22 @@ test('Released public purchase reuses the delivery CDN and keeps an original fal
  assert.deepEqual(await shopAction({...input,op:'sold-preview'},repo),{redirect:url+'?w=240'});
 });
 
+test('Only authorized purchase previews are privately cached; originals and denials remain no-store',async()=>{
+ const {repo,docs}=fixture();
+ repo.sold=async()=>[{id:'pack',downloadIds:['one']}];
+ docs.get(`contentCreatorPages/${pageId}/originals/one`).deliveryCdn={url:'https://menyra-media.alberthoti-vsa.workers.dev/media/social/owner/photo.jpg',thumb:true};
+ docs.set(`contentCreatorPages/${pageId}/originals/one/displays/delivery-thumb`,{version:3,clean:'data:image/webp;base64,YWJj'});
+ async function requestPreview(extra={}){
+  const res={headers:{},setHeader(key,value){this.headers[key]=value;},write(){return true;},end(){}};
+  await serveCreatorShop({method:'GET',url:'/api/content-creator-shop?'+new URLSearchParams({op:'sold-preview',pageId,productId:'pack',file:'one',...extra})},res,async()=>repo);
+  return res;
+ }
+ const redirect=await requestPreview();assert.equal(redirect.statusCode,307);assert.equal(redirect.headers['Cache-Control'],'private, max-age=300');
+ const fallback=await requestPreview({source:'firestore'});assert.equal(fallback.statusCode,200);assert.equal(fallback.headers['Cache-Control'],'private, max-age=300');
+ const original=await requestPreview({op:'sold-download'});assert.equal(original.headers['Cache-Control'],'no-store');
+ const denied=await requestPreview({file:'two'});assert.equal(denied.statusCode,400);assert.equal(denied.headers['Cache-Control'],'no-store');
+});
+
 test('Checkout batches original metadata and rejects missing files before committing',async()=>{
  const f=fixture();
  let batches=0;

@@ -96,16 +96,30 @@ export function creatorPurchaseDate(value){
  const label=new Intl.DateTimeFormat('sq-AL',{timeZone:'Europe/Belgrade',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(date);
  return `<time datetime="${date.toISOString()}">${esc(label)}</time>`;
 }
+export function creatorPurchasePreview(page,line,file){
+ if(!line.downloadIds?.includes(file)||creatorIsVideo(page,file))return null;
+ const fallback=`/api/content-creator-shop?${new URLSearchParams({op:'sold-preview',pageId:page.id,productId:line.id,file})}`;
+ const direct=line.deliveryMedia?.[file]?.thumb?creatorMediaUrl(line.deliveryMedia[file].url):'';
+ return {src:direct?direct+'?w=240':fallback,fallback};
+}
+export function creatorPurchasePreloads(page,lines){
+ const sources=new Set();
+ purchases:for(const line of lines)for(const file of line.imageIds||[]){
+  const preview=creatorPurchasePreview(page,line,file);
+  if(preview)sources.add(preview.src);
+  if(sources.size===2)break purchases;
+ }
+ return [...sources].slice(0,2).map(src=>`<link rel="preload" as="image" href="${esc(src)}" fetchpriority="low">`).join('');
+}
 export function creatorPurchasePhotos(page,line,{orderId='',enabled=false,photo,unwrapped=false}={}){
  const img=photo||((id,alt,options)=>creatorPhoto(page,id,alt,options));
  const files=(line.imageIds||[]).filter(file=>!creatorIsVideo(page,file)&&(orderId||line.downloadIds?.includes(file)||page.photoIds.includes(file)));
  const cards=files.map((file,index)=>{
   const downloadable=line.downloadIds?.includes(file);
-  const src=downloadable?`/api/content-creator-shop?${new URLSearchParams({op:'sold-preview',pageId:page.id,productId:line.id,file})}`:'';
-  const direct=downloadable&&line.deliveryMedia?.[file]?.thumb?creatorMediaUrl(line.deliveryMedia[file].url):'';
+  const preview=creatorPurchasePreview(page,line,file);
   const alt=`${line.title} · ${index+1}`;
   return `<article>
-   <div class="shop-purchase-image">${src?`<img src="${esc(direct?direct+'?w=240':src)}" data-photo="${esc(file)}" data-purchase-fallback="${esc(src)}" alt="${esc(alt)}" loading="lazy">`:page.photoIds.includes(file)?img(file,alt,{size:'thumb'}):''}</div>
+   <div class="shop-purchase-image">${preview?`<img src="${esc(preview.src)}" data-photo="${esc(file)}" data-purchase-fallback="${esc(preview.fallback)}" alt="${esc(alt)}" width="360" height="450" decoding="async" loading="${index<2?'eager':'lazy'}">`:page.photoIds.includes(file)?img(file,alt,{size:'thumb',eager:index<2}):''}</div>
    ${orderId||downloadable?`<button type="button" data-shop="save-one-photo" data-order="${esc(orderId)}" data-product="${esc(line.id)}" data-file="${esc(file)}" ${!orderId||enabled?'':'disabled'}>${creatorIcon('save')} Ruaj foton</button><small class="shop-purchase-feedback" role="status" hidden></small>`:''}
   </article>`;
  }).join('');

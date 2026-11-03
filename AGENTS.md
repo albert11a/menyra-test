@@ -99,6 +99,23 @@ Older dated notes are archive context unless they are explicitly marked
 - If another task explicitly returns to the previous mainline flow, follow the
   branch rule in `docs/mnyra-current-phase.md` for that task.
 
+## Vercel cost reporting after pushes
+
+Owner instruction from 2026-11-04: after each future commit/push performed for
+this project, report the available Vercel cost status and the incremental cost
+of the resulting deployment(s). Follow `docs/vercel-cost-control.md`.
+
+- Git commits/pushes themselves are not Vercel build charges. Inspect deployments
+  for the exact pushed SHA, across linked projects, including previews and retries.
+- Report the billing period, currency and data timestamp. Never present old daily
+  billing as a live monthly total, or an estimate as a finalized invoice amount.
+- Separate fixed subscriptions, existing usage and incremental build estimates.
+  Vercel billing can lag and daily totals may not identify a single commit.
+- Prefer one reviewed push after local checks over intermediate pushes that each
+  trigger remote builds. Preserve GitHub deployment of the production project.
+- If a permission or login blocks settings or billing, state exactly what remains
+  unverified. Never claim a pricing setting changed based only on an attempted call.
+
 ## Architecture Rules
 
 - Website-first remains the direction, but visible UI stays stable unless the

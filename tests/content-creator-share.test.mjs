@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {serveContentCreator} from '../api/content-creator.js';
+import {parseHTML} from 'linkedom';
+import {creatorPurchasePreloads,creatorPurchasePreview} from '../shared/content-creator-view.js';
 const id='a'.repeat(32);
 function response(){return {headers:{},setHeader(k,v){this.headers[k]=v;},end(body){this.body=body;}};}
 test('Link preview includes last image and escaped locale name without recording a visit',async()=>{
@@ -81,4 +83,34 @@ test('Creator route preloads only the bundle needed for the first interaction',a
   assert.equal(res.body.includes('href="/photos.js"'),kind==='photo-gallery');
   assert.doesNotMatch(res.body,/<template/);
  }
+});
+
+test('First-visit HTML preloads the exact unchanged CDN previews before the purchase cards',async()=>{
+ const original='https://menyra-media.alberthoti-vsa.workers.dev/media/social/owner/photo.jpg';
+ const sold=[{id:'pack',title:'Photos',imageIds:['one','two','three'],downloadIds:['one','two','three'],deliveryMedia:{one:{url:original,thumb:true}}}];
+ const res=response();
+ await serveContentCreator({method:'GET',url:`/api/content-creator?id=${id}`},res,{
+  read:async()=>({published:true,kind:'shop',name:'Bistro',photoIds:[],products:[]}),loadSold:async()=>sold,
+  shell:'<html><head><title>Shop</title></head><body><main id="content-app"></main></body></html>'
+ });
+ const {document}=parseHTML(res.body),images=[...document.querySelectorAll('.shop-purchase-image img')],preloads=[...document.querySelectorAll('head link[rel="preload"][as="image"]')];
+ assert.equal(res.statusCode,200);assert.equal(preloads.length,2);
+ assert.deepEqual(preloads.map(node=>node.getAttribute('href')),images.slice(0,2).map(node=>node.getAttribute('src')));
+ assert.equal(images[0].getAttribute('src'),original+'?w=240');
+ assert.match(images[1].getAttribute('src'),/op=sold-preview/);
+ assert.match(images[0].getAttribute('data-purchase-fallback'),/op=sold-preview/);
+ const bootstrap=JSON.parse(document.getElementById('creator-page-data').textContent);
+ assert.deepEqual(bootstrap.sold,sold);
+});
+
+test('Purchase preload budget spans packages and excludes unreleased files, videos and untrusted URLs',()=>{
+ const page={id,mediaTypes:{video:'video'}};
+ const lines=[{id:'first',imageIds:['private','video','one'],downloadIds:['video','one'],deliveryMedia:{one:{url:'https://example.com/original.jpg',thumb:true}}},{id:'second',imageIds:['one','two','three'],downloadIds:['one','two','three']}];
+ assert.equal(creatorPurchasePreview(page,lines[0],'private'),null);
+ assert.equal(creatorPurchasePreview(page,lines[0],'video'),null);
+ const html=creatorPurchasePreloads(page,lines);
+ const {document}=parseHTML('<html><head>'+html+'</head></html>');
+ assert.equal(document.querySelectorAll('link').length,2);
+ assert.doesNotMatch(html,/example\.com|file=private|file=video|file=three/);
+ assert.match(html,/productId=first/);assert.match(html,/productId=second/);
 });
