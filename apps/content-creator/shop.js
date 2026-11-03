@@ -13,6 +13,12 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   const protectedImage=target.closest?.('[data-protected-preview]')||target.closest?.('.shop-slide,.shop-viewer-slide,.shop-hero-slide')?.querySelector('[data-protected-preview]');
   if(protectedImage)event.preventDefault();
  });
+ root.addEventListener('error',event=>{
+  const image=event.target;
+  if(image.tagName!=='IMG')return;
+  const source=image.getAttribute('src')||'';
+  if(source.startsWith('/api/content-creator-shop?op=sold-preview&')&&!source.includes('&source=firestore'))image.src=`${source}&source=firestore`;
+ },true);
  const videoPlayback=createCreatorVideoPlayback(root);
  const videoPreload=createCreatorVideoPreload(root.ownerDocument);
  const visitorId=still?'':creatorVisitorId(page.id);
@@ -438,12 +444,22 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
      const index=cursor++,file=selected[index];
      const direct=!receipt&&!publicPurchase&&line.priceCents===0?ccImage(page.media?.[file]?.download):'';
      const target=direct||`/api/content-creator-shop?${new URLSearchParams({op:operation,pageId:page.id,...access,file,format:'file'})}`;
-     const response=await fetch(target,{method:'GET',signal:controller.signal});
-     if(!response.ok){const result=await response.json();throw Error(result.error||'Ruajtja u ndërpre. Provoni përsëri.');}
-     const bytes=new Uint8Array(await response.arrayBuffer());if(controller.signal.aborted)throw Error('Ruajtja u ndërpre.');
+     const load=async url=>{
+      const response=await fetch(url,{method:'GET',signal:controller.signal});
+      if(!response.ok){const result=await response.json().catch(()=>({}));throw Error(result.error||'Ruajtja u ndërpre. Provoni përsëri.');}
+      const bytes=new Uint8Array(await response.arrayBuffer());
+      const expected=Number(response.headers.get('Content-Length'));
+      const mime=response.headers.get('Content-Type')||'image/jpeg';
+      if(!bytes.length||(expected>0&&expected!==bytes.length))throw Error('Fotoja nuk u ngarkua e plotë. Provoni përsëri.');
+      const extension=({'image/png':'png','image/webp':'webp'})[mime]||'jpg';
+      return {bytes,mime,name:decodeURIComponent(response.headers.get('X-File-Name')||`${file}.${extension}`)};
+     };
+     const {bytes,mime,name}=await load(target).catch(error=>{
+      if(!publicPurchase||controller.signal.aborted)throw error;
+      return load(`${target}&source=firestore`);
+     });
+     if(controller.signal.aborted)throw Error('Ruajtja u ndërpre.');
      bytesTotal+=bytes.length;if(bytesTotal>150*1024*1024)throw Error('Ruajini fotot veçmas në këtë pajisje.');
-     const expected=Number(response.headers.get('Content-Length'));if(expected>0&&expected!==bytes.length)throw Error('Fotoja nuk u ngarkua e plotë. Provoni përsëri.');
-     const mime=response.headers.get('Content-Type')||'image/jpeg',name=decodeURIComponent(response.headers.get('X-File-Name')||`${file}.jpg`);
      task.files[index]=new File([bytes],`${index+1}-${name}`,{type:mime});task.urls[index]=URL.createObjectURL(task.files[index]);
      for(const listener of task.listeners)listener(task);
     }

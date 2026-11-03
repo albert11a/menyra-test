@@ -3,7 +3,7 @@ import {creatorBusinessMatches} from '../../shared/creator-analytics.js';
 import {normalizeCreatorCrop,creatorHeroCropStyle,creatorHeroFormat} from '../../shared/creator-hero.js';
 import {saveShopAsset,initialShopProduct,releaseShopOrder,refreshShopPreviews,savePromoAsset,migrateCreatorPage,optimizeCreatorPageVideos,saveCreatorCdnAsset,savedCreatorFile} from "./heart-content-creator-shop.js";
 import {creatorCdnEnabled,uploadCreatorDeliveryOriginal} from './heart-creator-cdn.js';
-import {creatorPublicMedia} from '../../shared/creator-media.js';
+import {creatorPublicMedia,creatorMediaUrl} from '../../shared/creator-media.js';
 import {CC_CARTS,CC_ORDERS,priceCents} from "../../shared/content-creator-shop.js";
 import { auth, db } from "/shared/firebase-config.js";
 import { createCreatorReset } from "./heart-creator-reset.js";
@@ -602,11 +602,22 @@ export function createContentCreator({root, store, prepareImage = prepareContent
             const originals={};
             for(const [index,file] of selected.entries()){
               status.textContent=`Foto ${index+1} von ${selected.length} wird vorbereitet …`;
+              const originalRef=doc(ref,'originals',file);
+              const saved=(await getDoc(originalRef)).data();
+              const cached=creatorMediaUrl(saved?.deliveryCdn?.url);
+              if(cached){originals[file]={...saved.deliveryCdn,url:cached};continue;}
               const original=await savedCreatorFile(id,file);
               const existing=media[file]?.download;
-              const thumb=!existing&&original.size<=15*1024*1024?await (await fetch(await prepareContentImage(original,true))).blob():null;
-              const url=existing||(thumb?await uploadCreatorDeliveryOriginal(original,thumb):'');
-              originals[file]={url,name:original.name,size:original.size,thumb:!!thumb};
+              let url=existing||'',thumb=false;
+              if(!url&&original.size<=15*1024*1024){
+                try{
+                  const preview=await (await fetch(await prepareContentImage(original,true))).blob();
+                  url=await uploadCreatorDeliveryOriginal(original,preview);
+                  thumb=true;
+                }catch{/* Firestore remains available when the CDN upload fails. */}
+              }
+              originals[file]={url,name:original.name,size:original.size,thumb};
+              if(url)await updateDoc(originalRef,{deliveryCdn:originals[file]}).catch(()=>{});
             }
             const token=crypto.randomUUID().replaceAll('-','');
             const code=btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(9)))).replaceAll('+','-').replaceAll('/','_');

@@ -220,3 +220,14 @@ test('Public download accepts only released files in the purchased package on th
  await assert.rejects(shopAction({...input,productId:'wrong'},repo));
  await assert.rejects(shopAction({...input,pageId:other},repo));
 });
+
+test('Released public purchase reuses the delivery CDN and keeps an original fallback',async()=>{
+ const {repo,docs}=fixture();
+ repo.sold=async()=>[{id:'pack',downloadIds:['one']}];
+ const url='https://menyra-media.alberthoti-vsa.workers.dev/media/social/owner/photo.jpg';
+ docs.get(`contentCreatorPages/${pageId}/originals/one`).deliveryCdn={url,thumb:true};
+ const input={op:'sold-download',pageId,productId:'pack',file:'one'};
+ assert.deepEqual(await shopAction(input,repo),{redirect:url});
+ assert.deepEqual((await shopAction({...input,source:'firestore'},repo)).bytes,Buffer.from('abc'));
+ assert.deepEqual(await shopAction({...input,op:'sold-preview'},repo),{redirect:url+'?w=240'});
+});
