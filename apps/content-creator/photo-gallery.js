@@ -20,27 +20,52 @@ export async function mountCreatorPhotoGallery({root,pageId,token,track}){
  document.title=`Fotot për ${name} · MNYRA`;
  root.innerHTML=`<div class="shop-shell"><section class="creator-photo-delivery">
   <p class="brand">MNYRA</p><h1>Fotot për ${esc(name)}</h1><p>Shkarkoji fotot në cilësi origjinale.</p>
-  <div class="creator-photo-grid">${photos.map(({file,src},i)=>`<article>
-   <img src="${esc(src)}" data-photo="${esc(file)}" loading="${i<2?'eager':'lazy'}" alt="Foto ${i+1}">
+  <div class="creator-photo-grid">${photos.map(({file},i)=>`<article>
+   <img data-photo="${esc(file)}" alt="Foto ${i+1}">
    <button type="button" data-download-photo="${esc(file)}">${creatorIcon('save')} Shkarko</button>
   </article>`).join('')||'<p>Nuk ka foto për shkarkim.</p>'}</div>
   <p class="creator-photo-message" role="status"></p>
  </section></div>`;
+ const previews=new IntersectionObserver(entries=>{
+  for(const {target,isIntersecting} of entries){
+   if(!isIntersecting)continue;
+   previews.unobserve(target);
+   void request('photo-preview',target.dataset.photo).then(response=>response.blob()).then(blob=>{
+    const url=URL.createObjectURL(blob);
+    target.addEventListener('load',()=>URL.revokeObjectURL(url),{once:true});
+    target.src=url;
+   }).catch(()=>{target.alt='Fotoja nuk u ngarkua.';});
+  }
+ },{rootMargin:'200px'});
+ root.querySelectorAll('img[data-photo]').forEach(image=>previews.observe(image));
+ const ready=new WeakMap();
  track();
  root.addEventListener('click',async event=>{
   const button=event.target.closest('[data-download-photo]');
   if(!button||button.disabled)return;
   const status=root.querySelector('.creator-photo-message');
+  if(ready.has(button)){
+   try{await navigator.share({files:[ready.get(button)]});}
+   catch(error){if(error.name!=='AbortError'){status.textContent=error.message;button.after(status);}}
+   return;
+  }
   button.disabled=true;button.textContent='Duke shkarkuar…';status.textContent='';
   try{
    const response=await request('photo-download',button.dataset.downloadPhoto);
    const blob=await response.blob(),length=Number(response.headers.get('Content-Length'));
    if(!blob.size||(length&&length!==blob.size))throw Error('Fotoja nuk u shkarkua e plotë.');
-   const url=URL.createObjectURL(blob),link=document.createElement('a');
-   link.href=url;link.download=decodeURIComponent(response.headers.get('X-File-Name')||'foto.jpg');
+   const file=new File([blob],decodeURIComponent(response.headers.get('X-File-Name')||'foto.jpg'),{type:blob.type});
+   if(navigator.share&&navigator.canShare?.({files:[file]})){
+    ready.set(button,file);
+    status.textContent='Prek “Ruaj foton” dhe zgjidh “Save Image”.';
+    button.after(status);
+    return;
+   }
+   const url=URL.createObjectURL(file),link=document.createElement('a');
+   link.href=url;link.download=file.name;
    root.append(link);link.click();link.remove();
    setTimeout(()=>URL.revokeObjectURL(url),60000);
   }catch(error){status.textContent=error.message;button.after(status);}
-  finally{button.disabled=false;button.innerHTML=`${creatorIcon('save')} Shkarko`;}
+  finally{button.disabled=false;button.innerHTML=`${creatorIcon('save')} ${ready.has(button)?'Ruaj foton':'Shkarko'}`;}
  });
 }

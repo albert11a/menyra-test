@@ -1,5 +1,4 @@
 import {creatorDeliveryPhotos} from '../shared/content-creator.js';
-import {creatorImageUrl} from '../shared/content-creator-view.js';
 import {creatorVideoPreview} from './creator-video-preview.js';
 import {creatorActivity} from './creator-activity.js';
 import {guardedCreatorWrite} from './creator-guarded-write.js';
@@ -57,18 +56,20 @@ async function originalFile(path,metadata,repo){
 export async function shopAction(input,repo){
  const {op,pageId,cartId,orderId}=input;
  if(op==='visit'){for(let attempt=0;;attempt++){try{return await creatorActivity(input,repo);}catch(error){if(error.code!=='CREATOR_VISIT_CONFLICT'||attempt>=3)throw error;}}}
- if(op==='photo-gallery'||op==='photo-download'){
+ if(op==='photo-gallery'||op==='photo-preview'||op==='photo-download'){
   if(!validShopId(pageId)||!validShopId(input.token))throw Error('Linku nuk është i vlefshëm.');
   const pagePath=`contentCreatorPages/${pageId}`;
   const page=await repo.read(pagePath);
   const access=await repo.read(`${pagePath}/originals/photo-delivery`);
   if(!page?.published||page.deleting||!page.photoDeliveryEnabled||access?.token!==input.token)throw Error('Linku nuk është më aktiv.');
   const files=creatorDeliveryPhotos(page).filter(file=>access.files?.includes(file));
-  if(op==='photo-gallery')return {name:page.name,photos:files.map(file=>({file,src:creatorImageUrl({...page,id:pageId},file,'medium')}))};
+  if(op==='photo-gallery')return {name:page.name,photos:files.map(file=>({file}))};
   const {file,visitorId}=input;
-  if(!files.includes(file)||!validShopId(visitorId))throw Error('Fotoja nuk është e disponueshme.');
+  if(!files.includes(file))throw Error('Fotoja nuk është e disponueshme.');
   const path=`${pagePath}/originals/${file}`,metadata=await repo.read(path,['name','mime','size','parts']);
   if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!['image/jpeg','image/png','image/webp'].includes(metadata.mime))throw Error('Origjinali nuk është i disponueshëm.');
+  if(op==='photo-preview')return creatorDisplayImage(path,metadata,repo,{size:'thumb',free:true});
+  if(!validShopId(visitorId))throw Error('Fotoja nuk është e disponueshme.');
   const result=await originalFile(path,metadata,repo);
   const visitPath=`contentCreatorVisits/${pageId}_${visitorId}`;
   for(let attempt=0;;attempt++){
