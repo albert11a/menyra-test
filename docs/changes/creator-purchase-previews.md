@@ -20,3 +20,8 @@ is missing or slow; do not hold the entire shop behind cold image preparation.
 
 Verification: Node regression tests and production build. Real iPhone Safari
 reload timing and native share sheet still require a device check.
+
+Approved follow-up: check the open shop every 12 seconds instead of 5 seconds,
+matching the LifeSkin waiting-page interval. Existing hidden-tab and interaction
+pauses and immediate checks on returning to the page stay in place. No realtime
+listener or analytics changes are introduced.

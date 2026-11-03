@@ -583,7 +583,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   }catch{/* The open shop keeps its last valid state until the next check. */}
   finally{syncing=false;}
  }
- const poll=globalThis.setInterval(()=>{void syncShop();},5000);
+ const poll=globalThis.setInterval(()=>{void syncShop();},12000);
  const receiptPoll=globalThis.setInterval(()=>{if(paused())return;for(const order of orders.values())if(!order.approved)refreshOrder(order.id).catch(()=>{});},20000);
  globalThis.addEventListener?.('pageshow',()=>{void syncShop();});
  document.addEventListener?.('visibilitychange',syncShop);

@@ -363,7 +363,7 @@ test('An open shop picks up new packages and purchases without a reload',async()
  const intervals=[],newPack={id:'new',title:'New package',priceCents:900,imageIds:['two']};
  const ctx=await setup(false,2900,{intervals,live:()=>({id:pageId,products:[newPack],photoIds:['one','two'],sold:[{id:'pack',orderCode:'A1B2C3D4',imageIds:['one'],downloadIds:['one'],totalCents:2900}]})});
  assert.ok(ctx.root.querySelector('[data-track="pack"]'));
- intervals.find(timer=>timer.ms===5000).fn();
+ intervals.find(timer=>timer.ms===12000).fn();
  await ctx.settle();
  assert.ok(ctx.root.querySelector('[data-track="new"]'));
  assert.equal(ctx.root.querySelector('[data-track="pack"]'),null);
