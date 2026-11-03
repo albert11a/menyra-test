@@ -9,6 +9,7 @@ const paths = {
   'video': '<path d="m16 8 6-4v16l-6-4"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
   'pause': '<path d="M9 5v14M15 5v14"/>',
   'play': '<path d="m8 5 11 7-11 7Z"/>',
+  'history': '<path d="M3 12a9 9 0 1 1 9 9 9.75 9.75 0 0 1-6.74-2.74L3 15m0 4v-4h4m5-7v4l2 2"/>',
   'calendar': '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 11h18"/>',
   'message-circle': '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
   'shopping-bag': '<path d="M16 10V6a4 4 0 0 0-8 0v4"/><path d="M5 7h14l1 12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/>',
@@ -114,7 +115,9 @@ export function creatorSoldCards(page,sold,ownedIds=new Set(),owned=[]){
  const lines=[...sold.filter(line=>!ownedIds.has(line.id)),...owned];
  const summaries=new Map();
  for(const line of lines)if(line.orderCode)summaries.set(line.orderCode,line);
- const headers=[...summaries.values()].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).map(order=>`<article class="shop-order shop-public-order"><div class="shop-order-title"><b>Porosia #${esc(order.orderCode.slice(0,8))}</b>${creatorPurchaseDate(order.createdAt)}<strong>${euro(order.totalCents)}</strong></div><p class="shop-order-state">${order.paymentConfirmed?'Barazimi është konfirmuar':'Ende pa barazuar'}</p></article>`).join('');
+ const history=[...summaries.values()].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
+ const header=(order,featured=false)=>`<article class="shop-public-order ${featured?'shop-intro-copy shop-purchase-featured':'shop-order'}"><div class="shop-order-title"><b>Porosia #${esc(order.orderCode.slice(0,8))}</b>${creatorPurchaseDate(order.createdAt)}<strong>${euro(order.totalCents)}</strong></div><p class="shop-order-state">${order.paymentConfirmed?'Barazimi është konfirmuar':'Ende pa barazuar'}</p></article>`;
+ const headers=history.length?`<details class="shop-purchase-history" data-faq="purchase-history"><summary>${creatorIcon('history')} Historiku</summary><div class="shop-purchase-history-list">${history.map(order=>header(order)).join('')}</div></details>${header(history[0],true)}`:'';
  const cards=lines.map(line=>creatorPurchasePhotos(page,line,{...line,unwrapped:true})).join('');
  return headers+(cards?`<div class="creator-photo-grid">${cards}</div>`:'');
 }

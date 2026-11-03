@@ -86,3 +86,14 @@ summary{border-radius:16px}#shop-faq{scroll-margin-top:76px}.shop-intro-copy{pad
 .shop-public-order .shop-order-title { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .3rem .75rem; }
 .shop-public-order time { grid-row: 2; grid-column: 1; }
 .shop-public-order .shop-order-title strong { grid-column: 2; grid-row: 1; text-align: right; }
+#shop-purchases { position: relative; }
+#shop-purchases:has(.shop-purchase-history) > h2 { padding-right: 7rem; }
+.shop-purchase-history { position: absolute; top: 24px; right: 0; z-index: 2; }
+.shop-purchase-history summary { display: flex; align-items: center; justify-content: center; gap: .4rem; min-height: 44px; padding: 0 .7rem; background: #edf0e6; color: var(--cc-ink); font-size: .8rem; cursor: pointer; }
+.shop-purchase-history summary::-webkit-details-marker { display: none; }
+.shop-purchase-history summary svg { width: 16px; height: 16px; }
+.shop-purchase-history-list { position: absolute; right: 0; top: calc(100% + .4rem); width: min(310px, calc(100vw - 48px)); max-height: 55vh; overflow: auto; padding: .6rem; border: 1px solid #e8ece2; border-radius: 1rem; background: #f7f8f3; box-shadow: 0 8px 22px #20362b24; }
+.shop-purchase-history-list .shop-order { margin: 0 0 .5rem; }
+.shop-purchase-history-list .shop-order:last-child { margin-bottom: 0; }
+.shop-purchase-featured { margin: 0 0 1rem; }
+.shop-purchase-featured .shop-order-state { margin: .7rem 0 0; }

@@ -266,14 +266,15 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   const answerContent=root.querySelector('.answer-message')?.closest('.answer-content');
   const heroGallery=root.querySelector('.shop-hero-gallery');
   const carousels=new Map([...root.querySelectorAll('[data-track]')].map(track=>[track.dataset.track,track.parentElement]));
-  const retained=new Map();
+  const retained=new Map(),loadedPurchases=new Map();
   for(const image of root.querySelectorAll('img[data-photo],video[data-photo]')){
    if(image.closest('[data-track],[data-hero-track]'))continue;
+   if(image.dataset.purchaseFallback&&image.complete&&image.naturalWidth>0)loadedPurchases.set(image.dataset.photo,image);
    const key=image.tagName==='VIDEO'?`video:${image.dataset.photo}:${image.dataset.size||'thumb'}`:`${image.dataset.photo}:${image.dataset.size||'thumb'}:${image.getAttribute('src')||image.dataset.deferredSrc||''}`;
    if(!retained.has(key))retained.set(key,[]);retained.get(key).push(image);
   }
   root.innerHTML=`<div class="shop-shell">${renderCreatorCatalog(page,{ids,positions,offerButton,photo:img,purchasedIds})}<div id="shop-image-errors">${imageStatus()}</div>${creatorHowTo(page)}
-   <section class="shop-purchases" id="shop-purchases"><h2>Blerjet tuaja</h2>${([...orders.values()].filter(order=>still||order.totalCents===0||order.lines.some(line=>line.imageIds.some(file=>creatorIsVideo(page,file)))).map(order=>`<article class="shop-order"><div class="shop-order-title"><b>Porosia #${esc(order.id.slice(0,8).toUpperCase())}</b>${creatorPurchaseDate(order.createdAt)}<strong>${euro(order.totalCents)}</strong></div><p class="shop-order-state">${order.approved?(order.totalCents===0?'✓ Pako falas · Shkarkimet janë gati':'✓ Pagesa u konfirmua · Shkarkimet janë gati'):(canDownload(order)?order.paymentSchedule==='courier'?'✓ Fotot janë gati · Pagesa cash pas 2–3 ditësh':`✓ Fotot janë gati · Pagesa më ${order.paymentDueDate?esc(order.paymentDueDate.split('-').reverse().join('.')):'1 të muajit të ardhshëm'}`:(order.totalCents===0?'Në pritje të miratimit':'Në pritje të pagesës / miratimit'))}</p>${order.lines.map(line=>`<div class="shop-purchased-item">${img(line.imageIds[0],line.title)}<div><h3>${esc(line.title)}</h3><p>${creatorAssetCount(page,line.imageIds)} · ${euro(line.priceCents)}</p><button data-shop="save-photos" data-order="${order.id}" data-product="${line.id}" ${!canDownload(order)||downloadBusy?'disabled':''}>${creatorIcon(canDownload(order)?'save':'shield-check')}${canDownload(order)?(line.imageIds.some(id=>creatorIsVideo(page,id))?'Ruaj skedarët':'Ruaj fotot'):'Në pritje të konfirmimit'}</button></div></div>`).join('')}<div class="shop-order-actions"><button data-shop="refresh" data-order="${order.id}">Kontrollo statusin</button>${still?'':`<button data-shop="receipt-link" data-order="${order.id}">Kopjo linkun e porosisë</button>`}</div></article>`).join('')+creatorSoldCards(page,sold,ownedIds,[...orders.values()].flatMap(order=>order.lines.map(line=>({...line,createdAt:order.createdAt,orderCode:!still&&order.totalCents>0&&!order.lines.some(item=>item.imageIds.some(file=>creatorIsVideo(page,file)))?order.orderCode:'',totalCents:order.totalCents,paymentConfirmed:order.paymentConfirmed,downloadIds:sold.find(item=>item.id===line.id)?.downloadIds||(!still&&line.priceCents>0&&canDownload(order)?line.imageIds:[]),deliveryMedia:sold.find(item=>item.id===line.id)?.deliveryMedia,orderId:order.id,enabled:canDownload(order)&&!downloadBusy,photo:img})))))||'<p>Pas porosisë, artikujt tuaj do të shfaqen këtu.</p>'}</section>
+   <section class="shop-purchases" id="shop-purchases"><h2>Blerjet tuaja</h2>${([...orders.values()].filter(order=>still||order.totalCents===0||order.lines.some(line=>line.imageIds.some(file=>creatorIsVideo(page,file)))).map(order=>`<article class="shop-order"><div class="shop-order-title"><b>Porosia #${esc(order.id.slice(0,8).toUpperCase())}</b>${creatorPurchaseDate(order.createdAt)}<strong>${euro(order.totalCents)}</strong></div><p class="shop-order-state">${order.approved?(order.totalCents===0?'✓ Pako falas · Shkarkimet janë gati':'✓ Pagesa u konfirmua · Shkarkimet janë gati'):(canDownload(order)?order.paymentSchedule==='courier'?'✓ Fotot janë gati · Pagesa cash pas 2–3 ditësh':`✓ Fotot janë gati · Pagesa më ${order.paymentDueDate?esc(order.paymentDueDate.split('-').reverse().join('.')):'1 të muajit të ardhshëm'}`:(order.totalCents===0?'Në pritje të miratimit':'Në pritje të pagesës / miratimit'))}</p>${order.lines.map(line=>`<div class="shop-purchased-item">${img(line.imageIds[0],line.title)}<div><h3>${esc(line.title)}</h3><p>${creatorAssetCount(page,line.imageIds)} · ${euro(line.priceCents)}</p><button data-shop="save-photos" data-order="${order.id}" data-product="${line.id}" ${!canDownload(order)||downloadBusy?'disabled':''}>${creatorIcon(canDownload(order)?'save':'shield-check')}${canDownload(order)?(line.imageIds.some(id=>creatorIsVideo(page,id))?'Ruaj skedarët':'Ruaj fotot'):'Në pritje të konfirmimit'}</button></div></div>`).join('')}<div class="shop-order-actions"><button data-shop="refresh" data-order="${order.id}">Kontrollo statusin</button>${still?'':`<button data-shop="receipt-link" data-order="${order.id}">Kopjo linkun e porosisë</button>`}</div></article>`).join('')+creatorSoldCards(page,sold,ownedIds,[...orders.values()].flatMap(order=>order.lines.map(line=>({...line,createdAt:order.createdAt,orderCode:!still&&order.totalCents>0&&!order.lines.some(item=>item.imageIds.some(file=>creatorIsVideo(page,file)))?order.orderCode:'',totalCents:order.totalCents,paymentConfirmed:order.paymentConfirmed,downloadIds:sold.find(item=>item.id===line.id)?.downloadIds||(!still&&line.priceCents>0&&canDownload(order)?line.imageIds:[]),deliveryMedia:{...order.deliveryMedia,...sold.find(item=>item.id===line.id)?.deliveryMedia},orderId:order.id,enabled:canDownload(order)&&!downloadBusy,photo:img})))))||'<p>Pas porosisë, artikujt tuaj do të shfaqen këtu.</p>'}</section>
    ${creatorFooter(page)}
    ${notice?`<p class="shop-notice" role="status">${esc(notice)}</p>`:''}
    ${error&&panel!=='checkout'?`<p class="shop-error" role="alert">${esc(error)}</p>`:''}
@@ -285,7 +286,16 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   for(const image of root.querySelectorAll('img[data-photo],video[data-photo]')){
    if(image.closest('[data-track],[data-hero-track]'))continue;
    const key=image.tagName==='VIDEO'?`video:${image.dataset.photo}:${image.dataset.size||'thumb'}`:`${image.dataset.photo}:${image.dataset.size||'thumb'}:${image.getAttribute('src')||image.dataset.deferredSrc||''}`;
-   const previous=retained.get(key)?.shift();if(previous)image.replaceWith(previous);
+   const previous=retained.get(key)?.shift();
+   if(previous){image.replaceWith(previous);continue;}
+   const loaded=image.dataset.purchaseFallback&&loadedPurchases.get(image.dataset.photo);
+   if(loaded){
+    const next=image.cloneNode();
+    image.replaceWith(loaded);
+    if(typeof next.decode==='function')void next.decode().then(()=>{
+     if(root.contains(loaded))loaded.replaceWith(next);
+    }).catch(()=>{});
+   }
   }
   for(const track of root.querySelectorAll('[data-track]')){const old=carousels.get(track.dataset.track);if(old)track.parentElement.replaceWith(old);}
   if(answerContent)root.querySelector('.answer-content')?.replaceWith(answerContent);
@@ -307,7 +317,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   bindViewer();syncInert();videoPlayback.sync();watchSaveButtons();
   if(focusId){const field=root.querySelector(`#${focusId}`);if(field){field.focus({preventScroll:true});try{field.setSelectionRange(selection,selection);}catch{ /* select/tel */ }}}
  }
- async function refreshOrder(id){if(still)return;const order=await api('receipt',{orderId:id},true);if(order.pageId!==page.id)return;rememberOrder(order);remember();render();}
+ async function refreshOrder(id){if(still)return;const order=await api('receipt',{orderId:id},true);if(order.pageId!==page.id)return;const next={...orders.get(id),...order};if(JSON.stringify(next)===JSON.stringify(orders.get(id)))return;rememberOrder(next);remember();render();}
  const prepareVideoIntent=event=>{
   const button=event.target.closest('[data-shop="view"]');if(!button||viewer||panel||photoSave||document.visibilityState==='hidden')return;
   const id=packFiles(button.dataset.product)[Number(button.dataset.index)||0];if(!creatorIsVideo(page,id))return;
@@ -448,7 +458,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
    async function worker(){
     while(cursor<selected.length){
      const index=cursor++,file=selected[index];
-     const delivery=singleFile?sold.find(item=>item.id===product)?.deliveryMedia?.[file]:null;
+     const delivery=singleFile?(sold.find(item=>item.id===product)?.deliveryMedia?.[file]||order?.deliveryMedia?.[file]):null;
      const direct=ccImage(delivery?.url)||(!receipt&&!publicPurchase&&line.priceCents===0?ccImage(page.media?.[file]?.download):'');
      const target=`/api/content-creator-shop?${new URLSearchParams({op:operation,pageId:page.id,...access,file,format:'file'})}`;
      const load=async url=>{

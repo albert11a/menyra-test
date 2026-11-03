@@ -62,13 +62,13 @@ test('Shop bündelt vier Fotos und gibt Originale vor der Barzahlung beim Kurier
  const ctx=await setup();assert.equal(ctx.root.querySelectorAll('.shop-product').length,1);assert.equal(ctx.root.querySelectorAll('.shop-slide').length,4);assert.equal(ctx.root.querySelectorAll('.shop-dots button').length,4);
  await ctx.click('[data-shop="add"]');assert.equal(ctx.calls[0].op,'cart');assert.deepEqual(ctx.calls[0].ids,['pack']);
  await ctx.checkout();assert.match(ctx.root.querySelector('.shop-payment').textContent,/Pagesa bëhet cash te korrieri/);await ctx.submit();
- assert.equal(ctx.root.querySelectorAll('.shop-order').length,1);assert.equal(ctx.root.querySelectorAll('.shop-product').length,0);assert.equal(ctx.root.querySelector('[data-shop="save-one-photo"]').disabled,false);
+ assert.equal(ctx.root.querySelectorAll('.shop-order:not(.shop-purchase-history-list .shop-order),.shop-purchase-featured').length,1);assert.equal(ctx.root.querySelectorAll('.shop-product').length,0);assert.equal(ctx.root.querySelector('[data-shop="save-one-photo"]').disabled,false);
  const [path,order]=[...ctx.docs.entries()].find(([key])=>key.startsWith('contentCreatorOrders/'));ctx.docs.set(path,{...order,approved:true,paymentConfirmed:true,status:'released'});
  assert.equal(ctx.root.querySelector('[data-shop="save-one-photo"]').disabled,false);
 });
 test('Still-Modus lässt Checkout durchspielen und sendet keine Warenkorb-/Bestell-Requests',async()=>{
  const ctx=await setup(true);await ctx.click('[data-shop="add"]');await ctx.checkout();await ctx.submit();
- assert.equal(ctx.calls.length,0);assert.equal(ctx.root.querySelectorAll('.shop-order').length,1);assert.equal(ctx.root.querySelector('[data-shop="save-photos"]').disabled,false);
+ assert.equal(ctx.calls.length,0);assert.equal(ctx.root.querySelectorAll('.shop-order:not(.shop-purchase-history-list .shop-order),.shop-purchase-featured').length,1);assert.equal(ctx.root.querySelector('[data-shop="save-photos"]').disabled,false);
 });
 test('Preisänderung erfordert erneute Bestätigung; keine heimlich höhere Bestellung',async()=>{
  const ctx=await setup();await ctx.click('[data-shop="add"]');await ctx.checkout();ctx.docs.get(`contentCreatorPages/${pageId}`).products[0].priceCents=4000;
@@ -258,7 +258,7 @@ test('A committed order with a lost response is recovered without a second purch
  const ctx=await setup(false,2900,{lostOrderResponse:true});
  await ctx.click('[data-shop="add"]');await ctx.checkout();await ctx.submit();
  assert.equal([...ctx.docs.keys()].filter(key=>key.startsWith('contentCreatorOrders/')).length,1);
- assert.equal(ctx.root.querySelectorAll('.shop-order').length,1);
+ assert.equal(ctx.root.querySelectorAll('.shop-order:not(.shop-purchase-history-list .shop-order),.shop-purchase-featured').length,1);
  assert.ok(ctx.calls.some(call=>call.op==='receipt'));
  assert.doesNotMatch(ctx.root.textContent,/Response lost/);
 });

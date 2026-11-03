@@ -301,7 +301,15 @@ export async function shopAction(input,repo,{streamPhoto=false}={}){
  if(input.expectedTotalCents!==quote.totalCents)return {priceChanged:true,...quote};
  const customer=shopCustomer(input.customer);
  // Freeze original file identities; removing storefront photos never removes purchased assets.
- for(const file of purchasedFiles(quote)){const asset=await repo.read(`contentCreatorPages/${pageId}/originals/${file}`);if(!asset?.parts)throw Error('Një skedar nuk është ende gati. Ju lutemi, provoni përsëri.');}
+ const files=purchasedFiles(quote),deliveryMedia={};
+ for(let start=0;start<files.length;start+=12){
+  await Promise.all(files.slice(start,start+12).map(async file=>{
+   const asset=await repo.read(`contentCreatorPages/${pageId}/originals/${file}`,['parts','name','size','deliveryCdn']);
+   if(!asset?.parts)throw Error('Një skedar nuk është ende gati. Ju lutemi, provoni përsëri.');
+   const url=creatorMediaUrl(asset.deliveryCdn?.url);
+   if(url)deliveryMedia[file]={url,thumb:asset.deliveryCdn.thumb===true,name:asset.name,size:asset.size};
+  }));
+ }
  const order={pageId,pageName:page.name,cartId,...(validShopId(input.visitorId)?{visitorId:input.visitorId}:{}),...quote,customer,paymentMethod:'cod',status:'pending',approved:false,notificationPending:true,...(quote.totalCents>0?{downloadsReleased:true,paymentSchedule:'courier',paymentWindowDays:[2,3]}:{}),createdAt:now,updatedAt:now};
  const created=repo.createOrder?await repo.createOrder(pageId,orderId,order):await repo.write(`${CC_ORDERS}/${orderId}`,order,true);
  const persisted=created?order:await repo.read(`${CC_ORDERS}/${orderId}`);
@@ -309,6 +317,6 @@ export async function shopAction(input,repo,{streamPhoto=false}={}){
  if(!persisted||persisted.cartId!==cartId||persisted.pageId!==pageId)throw Error('Porosia nuk është e vlefshme.');
  await repo.write(`${CC_CARTS}/${cartId}`,{status:'ordered',orderId,updatedAt:now});
  const notified=await repo.notify('order',orderId,persisted).catch(()=>false);
- return {...publicOrder(persisted,orderId),notified};
+ return {...publicOrder(persisted,orderId),...(persisted.downloadsReleased===true?{deliveryMedia}:{}),notified};
 }
 
