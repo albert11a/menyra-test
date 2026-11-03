@@ -116,3 +116,27 @@ export async function creatorDisplayImage(path, metadata, repo, {size='thumb', f
  const data=record[free?'clean':'marked'];
  return {data,bytes:Buffer.from(data.split(',')[1],'base64'),mime:data.startsWith('data:image/webp')?'image/webp':'image/jpeg'};
 }
+
+// Gallery previews need one small clean image, independent of shop variants.
+const deliveryTasks=new Map();
+export async function creatorDeliveryPreview(path,repo){
+ const target=`${path}/displays/delivery-thumb`;
+ const stored=await repo.read(target);
+ if(validDisplay(stored,'clean'))return {bytes:Buffer.from(stored.clean.split(',')[1],'base64'),mime:'image/webp'};
+ let task=deliveryTasks.get(path);
+ if(!task){
+  task=displayLimited(async()=>{
+   const metadata=await repo.read(path,['mime','size','parts']);
+   if(!['image/jpeg','image/png','image/webp'].includes(metadata?.mime))throw Error('Fotoja nuk u gjet.');
+   const source=await originalDisplaySource(path,metadata,repo);
+   const {default:sharp}=await import('sharp');
+   const bytes=await sharp(source,{limitInputPixels:50000000}).rotate()
+    .resize({width:480,height:720,fit:'inside',withoutEnlargement:true}).webp({quality:74}).toBuffer();
+   await repo.write(target,{version:DISPLAY_IMAGE_VERSION,clean:`data:image/webp;base64,${bytes.toString('base64')}`}).catch(()=>{});
+   return {bytes,mime:'image/webp'};
+  });
+  deliveryTasks.set(path,task);
+  task.finally(()=>deliveryTasks.delete(path)).catch(()=>{});
+ }
+ return task;
+}

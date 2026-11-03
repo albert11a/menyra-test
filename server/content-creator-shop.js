@@ -4,7 +4,7 @@ import {creatorActivity} from './creator-activity.js';
 import {guardedCreatorWrite} from './creator-guarded-write.js';
 import {creatorPublicMedia} from '../shared/creator-media.js';
 import {createHash} from 'node:crypto';
-import {optimizedShopImage,creatorDisplayImage} from './content-creator-images.js';
+import {optimizedShopImage,creatorDisplayImage,creatorDeliveryPreview} from './content-creator-images.js';
 import {schluessel,zugangHolen,lies,wert,empfaenger,meldungAnlegen,schicken,zustellungAendern} from '../api/lifeskin-meldung.js';
 import {CC_CARTS,CC_ORDERS,validShopId,shopQuote,shopCustomer,purchasedFiles,euro} from '../shared/content-creator-shop.js';
 const BASE='https://firestore.googleapis.com/v1/projects/menyra-c0e68/databases/(default)/documents';
@@ -17,7 +17,7 @@ export async function shopRepository(){
  return {
   async read(path,fields){const target=fields?.length?`${path}?${fields.map(field=>`mask.fieldPaths=${encodeURIComponent(field)}`).join('&')}`:path;const raw=await lies(target,token);if(/^contentCreatorVisits\/[^/]+$/.test(path))visitVersions.set(path,raw?.updateTime||null);const data=raw?Object.fromEntries(Object.entries(raw.fields||{}).map(([k,v])=>[k,wert(v)])):null;if(/^contentCreatorPages\/[a-f0-9]{32}$/.test(path))pageGuard={path,active:data?.published===true&&!data?.deleting};return data;},
   async write(path,data,create=false,requireExisting=false){
-   if(pageGuard&&/^(contentCreatorVisits|contentCreatorCarts|contentCreatorOrders)\/[^/]+$/.test(path)){
+   if(pageGuard&&(/^(contentCreatorVisits|contentCreatorCarts|contentCreatorOrders)\/[^/]+$/.test(path)||path.startsWith(pageGuard.path+'/originals/')&&path.endsWith('/displays/delivery-thumb'))){
     if(!pageGuard.active)throw Error('Diese Business-Seite ist nicht mehr verfügbar.');
     const update={update:{name:BASE.replace('https://firestore.googleapis.com/v1/','')+'/'+path,fields:Object.fromEntries(Object.entries(data).map(([k,v])=>[k,encodeValue(v)]))},...(!create?{updateMask:{fieldPaths:Object.keys(data)}}:{}),...(create||requireExisting?{currentDocument:{exists:!create}}:{})};
     if(visitVersions.has(path))update.currentDocument=visitVersions.get(path)?{updateTime:visitVersions.get(path)}:{exists:false};
@@ -59,16 +59,16 @@ export async function shopAction(input,repo){
  if(op==='photo-gallery'||op==='photo-preview'||op==='photo-download'){
   if(!validShopId(pageId)||!validShopId(input.token))throw Error('Linku nuk është i vlefshëm.');
   const pagePath=`contentCreatorPages/${pageId}`;
-  const page=await repo.read(pagePath);
-  const access=await repo.read(`${pagePath}/originals/photo-delivery`);
+  const [page,access]=await Promise.all([repo.read(pagePath),repo.read(`${pagePath}/originals/photo-delivery`)]);
   if(!page?.published||page.deleting||!page.photoDeliveryEnabled||access?.token!==input.token)throw Error('Linku nuk është më aktiv.');
   const files=creatorDeliveryPhotos(page).filter(file=>access.files?.includes(file));
   if(op==='photo-gallery')return {name:page.name,photos:files.map(file=>({file}))};
   const {file,visitorId}=input;
   if(!files.includes(file))throw Error('Fotoja nuk është e disponueshme.');
-  const path=`${pagePath}/originals/${file}`,metadata=await repo.read(path,['name','mime','size','parts']);
+  const path=`${pagePath}/originals/${file}`;
+  if(op==='photo-preview')return creatorDeliveryPreview(path,repo);
+  const metadata=await repo.read(path,['name','mime','size','parts']);
   if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!['image/jpeg','image/png','image/webp'].includes(metadata.mime))throw Error('Origjinali nuk është i disponueshëm.');
-  if(op==='photo-preview')return creatorDisplayImage(path,metadata,repo,{size:'thumb',free:true});
   if(!validShopId(visitorId))throw Error('Fotoja nuk është e disponueshme.');
   const result=await originalFile(path,metadata,repo);
   const visitPath=`contentCreatorVisits/${pageId}_${visitorId}`;
