@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { ccEscape as esc, ccImage, contentLink } from '../shared/content-creator.js';
-import {publicCreatorPage,creatorSoldCards,renderCreatorCatalog,creatorPhoto,creatorHowTo,creatorHeroFiles,renderCreatorPromo,creatorFooter} from '../shared/content-creator-view.js';
+import {publicCreatorPage,creatorSoldCards,creatorPurchasePreloads,renderCreatorCatalog,creatorPhoto,creatorHowTo,creatorHeroFiles,renderCreatorPromo,creatorFooter} from '../shared/content-creator-view.js';
 const BASE='https://firestore.googleapis.com/v1/projects/menyra-c0e68/databases/(default)/documents';
 function decode(v){if(!v)return null;if('stringValue'in v)return v.stringValue;if('booleanValue'in v)return v.booleanValue;if('integerValue'in v)return Number(v.integerValue);if('doubleValue'in v)return Number(v.doubleValue);if('timestampValue'in v)return v.timestampValue;if(v.mapValue)return Object.fromEntries(Object.entries(v.mapValue.fields||{}).map(([k,x])=>[k,decode(x)]));if(v.arrayValue)return (v.arrayValue.values||[]).map(decode);return null;}
 let creatorStyles;
@@ -142,6 +142,9 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
     html=creatorPreloads(html,safePage.kind);
     if(safePage.kind==='shop'){
       const covers={};
+      // Resolve the existing CDN addresses once, alongside cover preparation,
+      // rather than sending every purchase image through a separate API read.
+      const purchaseMedia=req.method!=='HEAD'&&soldRepository?soldRepository.withDeliveryMedia(id,safePage.sold,350).then(lines=>{safePage.sold=lines;}).catch(()=>{}):Promise.resolve();
       if(req.method!=='HEAD' && !creatorHeroFiles(safePage).every(key=>safePage.media?.[key]||safePage.heroImages.some(image=>image.id===key))){
         let timer;
         await Promise.race([
@@ -151,6 +154,8 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
           new Promise(resolve=>{timer=setTimeout(resolve,1200);})
         ]).finally(()=>clearTimeout(timer));
       }
+      await purchaseMedia;
+      html=html.replace('</head>',()=>`${creatorPurchasePreloads(safePage,safePage.sold)}</head>`);
       const catalog=renderCreatorCatalog(safePage,{purchasedIds:new Set(safePage.sold.map(line=>line.id)),photo:(key,alt,options)=>creatorPhoto(safePage,key,alt,{...options,src:covers[key]})});
       const firstFrame=`<div class="shop-shell">${catalog}<div id="shop-image-errors"></div>${creatorHowTo(safePage)}<section class="shop-purchases" id="shop-purchases"><h2>Blerjet tuaja</h2>${creatorSoldCards(safePage,safePage.sold)||'<p>Pas porosisë, artikujt tuaj do të shfaqen këtu.</p>'}</section>${creatorFooter(safePage)}</div>`;
       html=html.replace(/(<main[^>]*id="content-app"[^>]*>)[\s\S]*?(<\/main>)/,(_,open,close)=>open+firstFrame+close);
