@@ -67,7 +67,8 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
     const page=await read(`contentCreatorPages/${id}`);
     if(!page?.published||page.deleting===true){res.statusCode=404;res.setHeader('Cache-Control','no-store');res.end();return;}
     const safePage=publicCreatorPage(page,id);
-    if(!imageMode&&!assetMode&&safePage.avatar){
+    const format=String(req.query?.format || url.searchParams.get('format') || '');
+    if(format!=='live'&&!imageMode&&!assetMode&&safePage.avatar){
       try{
         const {default:sharp}=await import('sharp');
         const bytes=await sharp(Buffer.from(safePage.avatar.split(',')[1],'base64'),{limitInputPixels:50000000}).rotate().resize({width:96,height:96,fit:'inside',withoutEnlargement:true}).jpeg({quality:64}).toBuffer();
@@ -75,7 +76,11 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
       }catch{}
     }
     if(safePage.kind==='shop'&&!assetMode&&!imageMode)safePage.sold=await loadSold(id);
-    if(String(req.query?.format || url.searchParams.get('format') || '')==='json'){
+    if(format==='live'){
+      const {products,photoIds,media,mediaTypes,heroImages,heroPhotoIds,heroFormat,heroCrop,sold}=safePage;
+      res.statusCode=200;res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');res.end(req.method==='HEAD'?undefined:JSON.stringify({id,products,photoIds,media,mediaTypes,heroImages,heroPhotoIds,heroFormat,heroCrop,sold}));return;
+    }
+    if(format==='json'){
       res.statusCode=200;res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');res.end(req.method==='HEAD'?undefined:JSON.stringify(safePage));return;
     }
     if(assetMode){

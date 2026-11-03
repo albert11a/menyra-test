@@ -20,6 +20,7 @@ async function setup(still=false,price=2900,options={}){
  for(const key of page.photoIds){docs.set(`contentCreatorPages/${pageId}/originals/${key}`,{parts:1,size:3,name:key+'.jpg',mime:'image/jpeg',cleanPreview:{version:1,data:'data:image/jpeg;base64,YWJj'}});docs.set(`contentCreatorPages/${pageId}/originals/${key}/chunks/000`,{data:'YWJj'});}
  const repo={read:async key=>docs.get(key),write:async(key,data)=>{docs.set(key,{...docs.get(key),...structuredClone(data)});return true;},notify:async()=>true};
  const fetch=async(url,requestOptions)=>{
+  if(options.live&&new URL(url,'https://www.mnyra.com').searchParams.get('format')==='live')return {ok:true,json:async()=>options.live()};
   const payload=requestOptions.method==='POST'?JSON.parse(requestOptions.body):Object.fromEntries(new URL(url,'https://www.mnyra.com').searchParams);if(new URL(url,'https://www.mnyra.com').pathname==='/creator/download')payload.op=payload.orderId?'download':'free-download';calls.push(payload);
   try{if(payload.op==='free-download'&&options.download)await options.download(payload);if(payload.op==='free-preview'&&options.preview){const result=await options.preview(payload);if(result)return result;}const result=await shopAction(payload,repo);if(payload.op==='order'&&options.lostOrderResponse)throw Error('Response lost after commit');return {ok:true,json:async()=>result,arrayBuffer:async()=>result.bytes,headers:{get:key=>key==='Content-Type'?result.mime:key==='X-File-Name'?encodeURIComponent(result.name):null}};}catch(error){return {ok:false,json:async()=>({error:error.message})};}
  };
@@ -335,4 +336,15 @@ test('A visitor without a receipt can save an individual released business photo
  assert.equal(ctx.root.querySelectorAll('.shop-product').length,0);
  assert.match(ctx.root.querySelector('#shop-purchases').textContent,/Ende pa barazuar/);
  assert.ok(ctx.root.querySelector('[data-shop="save-one-photo"]'));
+});
+
+test('An open shop picks up new packages and purchases without a reload',async()=>{
+ const intervals=[],newPack={id:'new',title:'New package',priceCents:900,imageIds:['two']};
+ const ctx=await setup(false,2900,{intervals,live:()=>({id:pageId,products:[newPack],photoIds:['one','two'],sold:[{id:'pack',orderCode:'A1B2C3D4',imageIds:['one'],downloadIds:['one'],totalCents:2900}]})});
+ assert.ok(ctx.root.querySelector('[data-track="pack"]'));
+ intervals.find(timer=>timer.ms===5000).fn();
+ await ctx.settle();
+ assert.ok(ctx.root.querySelector('[data-track="new"]'));
+ assert.equal(ctx.root.querySelector('[data-track="pack"]'),null);
+ assert.ok(ctx.root.querySelector('#shop-purchases [data-file="one"]'));
 });

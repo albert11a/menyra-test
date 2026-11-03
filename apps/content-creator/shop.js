@@ -257,14 +257,14 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   const track=root.querySelector('[data-view-track]');if(!viewer||!track)return;
   updateViewer(index);track.scrollTo({left:viewer.index*(track.clientWidth||1),behavior:'smooth'});
  }
- function render(){
+ function render(changedTracks=new Set(),replaceHero=false){
   const active=root.ownerDocument?.activeElement,focusId=active?.id,selection=active?.selectionStart;
   const cart=quote();
   const faqState=[...root.querySelectorAll('details[data-faq]')].map(node=>[node.dataset.faq,node.hasAttribute('open')]);
   // Retain decoded image nodes across cart/status changes; do not restart
   // image requests or show a blank frame every time the UI updates.
   const answerContent=root.querySelector('.answer-message')?.closest('.answer-content');
-  const heroGallery=root.querySelector('.shop-hero-gallery');
+  const heroGallery=replaceHero?null:root.querySelector('.shop-hero-gallery');
   const carousels=new Map([...root.querySelectorAll('[data-track]')].map(track=>[track.dataset.track,track.parentElement]));
   const retained=new Map(),loadedPurchases=new Map();
   for(const image of root.querySelectorAll('img[data-photo],video[data-photo]')){
@@ -297,7 +297,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
     }).catch(()=>{});
    }
   }
-  for(const track of root.querySelectorAll('[data-track]')){const old=carousels.get(track.dataset.track);if(old)track.parentElement.replaceWith(old);}
+  for(const track of root.querySelectorAll('[data-track]')){const old=carousels.get(track.dataset.track);if(old&&!changedTracks.has(track.dataset.track))track.parentElement.replaceWith(old);}
   if(answerContent)root.querySelector('.answer-content')?.replaceWith(answerContent);
   if(heroGallery)root.querySelector('.shop-hero-gallery')?.replaceWith(heroGallery);
   for(const [key,open] of faqState){const node=root.querySelector(`details[data-faq="${key}"]`);if(open)node?.setAttribute('open','');else node?.removeAttribute('open');}
@@ -545,12 +545,41 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
  }
  await Promise.all(tokens.map(id=>refreshOrder(id).catch(()=>{})));
  const heroTimer=globalThis.setInterval(()=>{const track=root.querySelector('[data-hero-track]');if(canPrefetch()&&!heroPaused&&!viewer&&!panel&&!photoSave&&document.visibilityState!=='hidden'&&track?.children.length>1)moveHero(heroIndex+1);},5500);
- const poll=globalThis.setInterval(()=>{if(still||document.visibilityState==='hidden')return;for(const order of orders.values())if(!order.approved)refreshOrder(order.id).catch(()=>{});
-  if(!submitting)api('sold',{},true).then(result=>{
-   if(submitting||JSON.stringify(result.sold)===JSON.stringify(sold))return;
-   applySold(result.sold);remember();render();
-  }).catch(()=>{});
- },20000);
- globalThis.addEventListener?.('pagehide',event=>{if(!event.persisted){videoPlayback.destroy();videoPreload.destroy();neighbourObserver?.disconnect();saveObserver?.disconnect();activePreparation?.controller.abort();globalThis.clearInterval(poll);globalThis.clearInterval(heroTimer);fileAbort?.abort();discardSave();for(const entry of prepared.values())for(const url of entry.urls||[])URL.revokeObjectURL(url);}});
+ let syncing=false;
+ const paused=()=>still||document.visibilityState==='hidden'||submitting||panel||viewer||photoSave||activePreparation;
+ async function syncShop(){
+  if(syncing||paused())return;
+  syncing=true;
+  try{
+   const response=await fetch(`/api/content-creator?${new URLSearchParams({id:page.id,format:'live'})}`,{method:'GET',cache:'no-store',signal:AbortSignal.timeout(7000)});
+   if(!response.ok)return;
+   const next=await response.json();
+   if(paused()||next.id!==page.id||!Array.isArray(next.products)||!Array.isArray(next.photoIds)||!Array.isArray(next.sold))return;
+   const fields=['products','photoIds','media','mediaTypes','heroImages','heroPhotoIds','heroFormat','heroCrop'];
+   const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+   const changed=fields.filter(field=>!same(page[field],next[field]));
+   if(!changed.length&&same(sold,next.sold))return;
+   const changedTracks=new Set();
+   for(const product of next.products){
+    const previous=page.products.find(item=>item.id===product.id);
+    if(!same(previous?.imageIds,product.imageIds)||product.imageIds.some(file=>!same(page.media?.[file],next.media?.[file])||page.mediaTypes?.[file]!==next.mediaTypes?.[file])){
+     changedTracks.add(product.id);positions[product.id]=0;
+    }
+   }
+   for(const file of next.photoIds)if(!same(page.media?.[file],next.media?.[file])){delete images[file];delete imageErrors[file];}
+   for(const field of changed)page[field]=next[field];
+   ids=ids.filter(id=>page.products.some(product=>product.id===id&&product.active!==false&&product.priceCents>0));
+   applySold(next.sold);remember();
+   const replaceHero=changed.some(field=>field.startsWith('hero'));
+   if(replaceHero)heroIndex=0;
+   render(changedTracks,replaceHero);
+  }catch{/* The open shop keeps its last valid state until the next check. */}
+  finally{syncing=false;}
+ }
+ const poll=globalThis.setInterval(()=>{void syncShop();},5000);
+ const receiptPoll=globalThis.setInterval(()=>{if(paused())return;for(const order of orders.values())if(!order.approved)refreshOrder(order.id).catch(()=>{});},20000);
+ globalThis.addEventListener?.('pageshow',()=>{void syncShop();});
+ document.addEventListener?.('visibilitychange',syncShop);
+ globalThis.addEventListener?.('pagehide',event=>{if(!event.persisted){videoPlayback.destroy();videoPreload.destroy();neighbourObserver?.disconnect();saveObserver?.disconnect();activePreparation?.controller.abort();globalThis.clearInterval(poll);globalThis.clearInterval(receiptPoll);document.removeEventListener?.('visibilitychange',syncShop);globalThis.clearInterval(heroTimer);fileAbort?.abort();discardSave();for(const entry of prepared.values())for(const url of entry.urls||[])URL.revokeObjectURL(url);}});
 }
 
