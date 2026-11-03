@@ -4,7 +4,7 @@ import {creatorIsVideo,creatorAssetCount,creatorVideoFirst,creatorVideoUrl} from
 import {creatorVisitorId} from './visits.js';
 import {ccEscape as esc,ccImage} from '../../shared/content-creator.js';
 import {euro,shopQuote,validShopId} from '../../shared/content-creator-shop.js';
-import {creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,creatorSoldCards,renderCreatorCatalog,creatorHowTo,creatorFooter} from '../../shared/content-creator-view.js';
+import {creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,creatorSoldCards,creatorPurchasePhotos,creatorPurchaseDate,renderCreatorCatalog,creatorHowTo,creatorFooter} from '../../shared/content-creator-view.js';
 export async function mountCreatorShop({root,page,still=false,track=async()=>{}}){
  // Block native image-save/drag actions on paid previews, including new viewer nodes.
  // Do not cancel touch/pointer gestures: scrolling, swiping and zoom stay native.
@@ -265,7 +265,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
    if(!retained.has(key))retained.set(key,[]);retained.get(key).push(image);
   }
   root.innerHTML=`<div class="shop-shell">${renderCreatorCatalog(page,{ids,positions,offerButton,photo:img,purchasedIds})}<div id="shop-image-errors">${imageStatus()}</div>${creatorHowTo(page)}
-   <section class="shop-purchases" id="shop-purchases"><h2>Blerjet tuaja</h2>${([...orders.values()].map(order=>`<article class="shop-order"><div class="shop-order-title"><b>Porosia #${esc(order.id.slice(0,8).toUpperCase())}</b><strong>${euro(order.totalCents)}</strong></div><p class="shop-order-state">${order.approved?(order.totalCents===0?'✓ Pako falas · Shkarkimet janë gati':'✓ Pagesa u konfirmua · Shkarkimet janë gati'):(canDownload(order)?order.paymentSchedule==='courier'?'✓ Fotot janë gati · Pagesa cash pas 2–3 ditësh':`✓ Fotot janë gati · Pagesa më ${order.paymentDueDate?esc(order.paymentDueDate.split('-').reverse().join('.')):'1 të muajit të ardhshëm'}`:(order.totalCents===0?'Në pritje të miratimit':'Në pritje të pagesës / miratimit'))}</p>${order.lines.map(line=>`<div class="shop-purchased-item">${img(line.imageIds[0],line.title)}<div><h3>${esc(line.title)}</h3><p>${creatorAssetCount(page,line.imageIds)} · ${euro(line.priceCents)}</p><button data-shop="save-photos" data-order="${order.id}" data-product="${line.id}" ${!canDownload(order)||downloadBusy?'disabled':''}>${creatorIcon(canDownload(order)?'save':'shield-check')}${canDownload(order)?(line.imageIds.some(id=>creatorIsVideo(page,id))?'Ruaj skedarët':'Ruaj fotot'):'Në pritje të konfirmimit'}</button></div></div>`).join('')}<div class="shop-order-actions"><button data-shop="refresh" data-order="${order.id}">Kontrollo statusin</button>${still?'':`<button data-shop="receipt-link" data-order="${order.id}">Kopjo linkun e porosisë</button>`}</div></article>`).join('')+creatorSoldCards(page,sold,ownedIds))||'<p>Pas porosisë, artikujt tuaj do të shfaqen këtu.</p>'}</section>
+   <section class="shop-purchases" id="shop-purchases"><h2>Blerjet tuaja</h2>${([...orders.values()].map(order=>`<article class="shop-order"><div class="shop-order-title"><b>Porosia #${esc(order.id.slice(0,8).toUpperCase())}</b>${creatorPurchaseDate(order.createdAt)}<strong>${euro(order.totalCents)}</strong></div><p class="shop-order-state">${order.approved?(order.totalCents===0?'✓ Pako falas · Shkarkimet janë gati':'✓ Pagesa u konfirmua · Shkarkimet janë gati'):(canDownload(order)?order.paymentSchedule==='courier'?'✓ Fotot janë gati · Pagesa cash pas 2–3 ditësh':`✓ Fotot janë gati · Pagesa më ${order.paymentDueDate?esc(order.paymentDueDate.split('-').reverse().join('.')):'1 të muajit të ardhshëm'}`:(order.totalCents===0?'Në pritje të miratimit':'Në pritje të pagesës / miratimit'))}</p>${order.lines.map(line=>`<div class="shop-purchased-item">${img(line.imageIds[0],line.title)}<div><h3>${esc(line.title)}</h3><p>${creatorAssetCount(page,line.imageIds)} · ${euro(line.priceCents)}</p><button data-shop="save-photos" data-order="${order.id}" data-product="${line.id}" ${!canDownload(order)||downloadBusy?'disabled':''}>${creatorIcon(canDownload(order)?'save':'shield-check')}${canDownload(order)?(line.imageIds.some(id=>creatorIsVideo(page,id))?'Ruaj skedarët':'Ruaj fotot'):'Në pritje të konfirmimit'}</button></div></div>${creatorPurchasePhotos(page,line,{orderId:order.id,enabled:canDownload(order)&&!downloadBusy,photo:img})}`).join('')}<div class="shop-order-actions"><button data-shop="refresh" data-order="${order.id}">Kontrollo statusin</button>${still?'':`<button data-shop="receipt-link" data-order="${order.id}">Kopjo linkun e porosisë</button>`}</div></article>`).join('')+creatorSoldCards(page,sold,ownedIds))||'<p>Pas porosisë, artikujt tuaj do të shfaqen këtu.</p>'}</section>
    ${creatorFooter(page)}
    ${notice?`<p class="shop-notice" role="status">${esc(notice)}</p>`:''}
    ${error&&panel!=='checkout'?`<p class="shop-error" role="alert">${esc(error)}</p>`:''}
@@ -322,6 +322,30 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
     if(!photoSave)return;
     if(typeof navigator!=='undefined'&&navigator.share&&navigator.canShare?.({files:photoSave.files})){try{await navigator.share({files:photoSave.files});}catch(error){if(error.name!=='AbortError'){photoSave.message='Prekni fotot veçmas më poshtë për t’i ruajtur.';render();}}}
     else{photoSave.message=photoSave.files.some(file=>file.type.startsWith('video/'))?'Hapni videon më poshtë dhe ruajeni në pajisjen tuaj.':'Hapni fotot veçmas më poshtë dhe zgjidhni ruajtjen e imazhit.';render();}
+    return;
+   }
+   if(action==='save-one-photo'){
+    const {order,file}=button.dataset;
+    const key=`${order}:${product}:${file}`;
+    const cached=prepared.get(key);
+    if(cached&&navigator.share&&navigator.canShare?.({files:cached.shareFiles})){
+     try{await navigator.share({files:cached.shareFiles});}catch(error){if(error.name!=='AbortError')throw error;}
+     return;
+    }
+    button.disabled=true;button.textContent='Duke shkarkuar…';
+    try{
+     const task=prepareFiles(order,product,undefined,file);
+     if(!task)throw Error('Provoni përsëri.');
+     const entry=await task.promise;
+     if(navigator.share&&navigator.canShare?.({files:entry.shareFiles})){
+      if(navigator.userActivation?.isActive){
+       try{await navigator.share({files:entry.shareFiles});}catch(error){if(!['AbortError','NotAllowedError'].includes(error.name))throw error;}
+      }
+     }else{
+      const link=document.createElement('a');link.href=entry.urls[0];link.download=entry.shareFiles[0].name;
+      root.append(link);link.click();link.remove();
+     }
+    }finally{render();}
     return;
    }
    if(action==='free-save'||action==='save-photos'){const ready=prepared.get(`${button.dataset.order||''}:${product}`)?.shareFiles;if(ready?.length&&navigator.share&&navigator.canShare?.({files:ready})){try{await navigator.share({files:ready});}catch(error){if(error.name!=='AbortError')throw error;}return;}if(viewer)closeViewer();await download(button.dataset.order||'',product,'photos');return;}
@@ -389,8 +413,8 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   }catch(e){error=e.message;}finally{submitting=false;render();}
  });
  let activePreparation=null;
- function prepareFiles(receipt,product,progress=()=>{}){
-  const key=`${receipt}:${product}`,cached=prepared.get(key);
+ function prepareFiles(receipt,product,progress=()=>{},singleFile=''){
+  const key=singleFile?`${receipt}:${product}:${singleFile}`:`${receipt}:${product}`,cached=prepared.get(key);
   if(cached)return {promise:Promise.resolve(cached),controller:null};
   if(activePreparation){
    if(activePreparation.key!==key)return null;
@@ -398,16 +422,18 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   }
   const order=orders.get(receipt),line=receipt?order?.lines.find(p=>p.id===product):page.products.find(p=>p.id===product&&p.active!==false&&p.priceCents===0);
   if(!line||(receipt&&!canDownload(order)))return null;
-  const keys=receipt?line.imageIds:packFiles(product),controller=new AbortController();
-  const task={key,controller,listeners:new Set([progress]),files:new Array(keys.length),urls:new Array(keys.length)};
+  const keys=receipt?line.imageIds:packFiles(product);
+  if(singleFile&&!keys.includes(singleFile))return null;
+  const selected=singleFile?[singleFile]:keys,controller=new AbortController();
+  const task={key,controller,listeners:new Set([progress]),files:new Array(selected.length),urls:new Array(selected.length)};
   activePreparation=task;
   const operation=receipt?'download':'free-download',access=receipt?{orderId:receipt}:{productId:product};
   const timer=setTimeout(()=>controller.abort(),120000);
   task.promise=(async()=>{
    let cursor=0,bytesTotal=0;
    async function worker(){
-    while(cursor<keys.length){
-     const index=cursor++,file=keys[index];
+    while(cursor<selected.length){
+     const index=cursor++,file=selected[index];
      const direct=!receipt&&line.priceCents===0?ccImage(page.media?.[file]?.download):'';
      const target=direct||`/api/content-creator-shop?${new URLSearchParams({op:operation,pageId:page.id,...access,file,format:'file'})}`;
      const response=await fetch(target,{method:'GET',signal:controller.signal});

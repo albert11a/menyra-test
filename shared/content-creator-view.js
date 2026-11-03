@@ -89,8 +89,22 @@ export function renderCreatorCatalog(page, {ids=[], positions={}, offerButton, p
       return `<article class="shop-product"><div class="shop-carousel"><div class="shop-track" data-track="${esc(product.id)}">${files.map((id,i)=>`<button type="button" class="shop-slide" data-shop="view" data-product="${esc(product.id)}" data-index="${i}" aria-label="Shiko foton ${i+1} të pakos ${esc(product.title)}">${img(id,`${product.title} · ${i+1}`,{active:i===position,eager:i===position&&creatorIsVideo(page,id)&&products.indexOf(product)<2,size:'thumb'})}</button>`).join('')}</div><span class="shop-photo-count" role="img" aria-label="${esc(creatorAssetCount(page,files))}">${creatorMediaBadge(page,files)}</span><span class="shop-expand">${creatorIcon('expand')}</span>${files.length>1?`<button class="shop-arrow shop-prev" data-shop="slide" data-product="${esc(product.id)}" data-step="-1" aria-label="Fotoja paraprake">${creatorIcon('chevron-left')}</button><button class="shop-arrow shop-next" data-shop="slide" data-product="${esc(product.id)}" data-step="1" aria-label="Fotoja tjetër">${creatorIcon('chevron-right')}</button><div class="shop-dots">${files.map((_,i)=>`<button data-shop="dot" data-product="${esc(product.id)}" data-index="${i}" aria-label="Foto ${i+1}" aria-pressed="${position===i}"></button>`).join('')}</div>`:''}</div><div class="shop-product-info"><div class="shop-price-row"><h3>${esc(product.title)}</h3><strong>${product.priceCents===0?'Falas':euro(product.priceCents)}</strong></div><p>${creatorAssetCount(page,files)} · Cilësi origjinale</p>${offer(product)}</div></article>`;
     }).join('')}</div></section>`).join('')}`;
 }
+export function creatorPurchaseDate(value){
+ const date=new Date(value||'');
+ if(!Number.isFinite(date.getTime()))return '';
+ const label=new Intl.DateTimeFormat('sq-AL',{timeZone:'Europe/Belgrade',dateStyle:'short',timeStyle:'short'}).format(date);
+ return `<time datetime="${date.toISOString()}">${esc(label)}</time>`;
+}
+export function creatorPurchasePhotos(page,line,{orderId='',enabled=false,photo}={}){
+ const img=photo||((id,alt,options)=>creatorPhoto(page,id,alt,options));
+ const files=(line.imageIds||[]).filter(file=>!creatorIsVideo(page,file)&&(orderId||page.photoIds.includes(file)));
+ return files.length?`<div class="creator-photo-grid">${files.map((file,index)=>`<article>
+ ${page.photoIds.includes(file)?img(file,`${line.title} · ${index+1}`,{size:'thumb'}):''}
+ ${orderId?`<button type="button" data-shop="save-one-photo" data-order="${esc(orderId)}" data-product="${esc(line.id)}" data-file="${esc(file)}" ${enabled?'':'disabled'}>${creatorIcon('save')} Ruaje foton</button>`:''}
+ </article>`).join('')}</div>`:'';
+}
 export function creatorSoldCards(page, sold, ownedIds=new Set()){
- return sold.filter(line=>!ownedIds.has(line.id)).map(line=>`<article class="shop-order"><div class="shop-purchased-item">${line.imageIds?.[0]&&page.photoIds.includes(line.imageIds[0])?creatorPhoto(page,line.imageIds[0],line.title,{size:'thumb'}):''}<div><h3>${esc(line.title)}</h3><p>✓ E blerë</p></div></div></article>`).join('');
+ return sold.filter(line=>!ownedIds.has(line.id)).map(line=>`<article class="shop-order shop-purchase-gallery"><h3>${esc(line.title)}</h3><p>✓ E blerë ${creatorPurchaseDate(line.createdAt)}</p>${creatorPurchasePhotos(page,line)}</article>`).join('');
 }
 export function creatorHowTo(page) {
  return `<section class="shop-how" id="shop-faq" aria-labelledby="shop-faq-title"><div class="shop-how-heading"><span class="shop-studio-tag">THJESHT DHE QARTË</span><h2 id="shop-faq-title">Pyetje të shpeshta<span>.</span></h2><p>Përgjigjet që ju duhen, në një vend.</p></div>

@@ -29,13 +29,13 @@ export async function shopRepository(){
   },
   async sold(pageId){
    const response=await fetch(`${BASE}:runQuery`,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},signal:AbortSignal.timeout(7000),body:JSON.stringify({structuredQuery:{
-    from:[{collectionId:CC_ORDERS}],select:{fields:[{fieldPath:'lines'}]},
+    from:[{collectionId:CC_ORDERS}],select:{fields:[{fieldPath:'lines'},{fieldPath:'createdAt'}]},
     where:{fieldFilter:{field:{fieldPath:'pageId'},op:'EQUAL',value:{stringValue:pageId}}}
    }})});
    if(!response.ok)throw Error('Blerjet nuk u ngarkuan. Provoni përsëri.');
    const lines=new Map();
    for(const row of await response.json())for(const line of wert(row.document?.fields?.lines)||[]){
-    if(typeof line.id==='string'&&line.priceCents>0)lines.set(line.id,{id:line.id,title:String(line.title||'Pako fotosh').slice(0,120),imageIds:(line.imageIds||[]).filter(id=>/^[A-Za-z0-9_-]{1,64}$/.test(id)).slice(0,100)});
+    if(typeof line.id==='string'&&line.priceCents>0)lines.set(line.id,{id:line.id,createdAt:wert(row.document.fields.createdAt)||'',title:String(line.title||'Pako fotosh').slice(0,120),imageIds:(line.imageIds||[]).filter(id=>/^[A-Za-z0-9_-]{1,64}$/.test(id)).slice(0,100)});
    }
    return [...lines.values()];
   },
