@@ -9,7 +9,7 @@ import { auth, db } from "/shared/firebase-config.js";
 import { createCreatorReset } from "./heart-creator-reset.js";
 import { createCreatorBusinessDeletion } from "./heart-creator-business-delete.js";
 import { collection, doc, getDoc, onSnapshot, setDoc, updateDoc, writeBatch, runTransaction, serverTimestamp } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
-import { CC_PAGES, CC_VISITS, contentLink, creatorDeliveryPhotos, creatorPhotoLink, ccEscape as esc } from "../../shared/content-creator.js";
+import { CC_PAGES, CC_VISITS, contentLink, creatorDeliveryPhotos, ccEscape as esc } from "../../shared/content-creator.js";
 
 export async function prepareContentImage(file, avatar = false) {
   if(!avatar&&['video/mp4','video/quicktime','video/webm'].includes(file?.type)){
@@ -609,13 +609,18 @@ export function createContentCreator({root, store, prepareImage = prepareContent
               originals[file]={url,name:original.name,size:original.size,thumb:!!thumb};
             }
             const token=crypto.randomUUID().replaceAll('-','');
+            const code=btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(9)))).replaceAll('+','-').replaceAll('/','_');
+            const slug=String(page.name||'').normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,70).replace(/^-+|-+$/g,'')||'mnyra';
+            const alias=doc(db,CC_PAGES,'photo-links','originals',code);
             await runTransaction(db,async transaction=>{
               const latest=(await transaction.get(ref)).data();
+              const existing=await transaction.get(alias);
+              if(existing.exists())throw Error('Bitte Link erneut erstellen.');
               if(!latest?.published||latest.deleting||!selected.every(file=>creatorDeliveryPhotos(latest).includes(file)))throw Error('Die Pakete wurden geändert. Bitte Fotos neu auswählen.');
               transaction.set(doc(ref,'originals',`photo-delivery-${token}`),{files:selected,originals,totalCents});
+              transaction.set(alias,{pageId:id,token,slug});
             });
-            const slug=String(page.name||'').normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,70).replace(/^-+|-+$/g,'')||'mnyra';
-            const link=creatorPhotoLink(id,token,slug);
+            const link=`${location.origin}/${slug}-fotot/${code}`;
             try{await navigator.clipboard.writeText(link);notice('Foto-Link kopiert.');}
             catch{globalThis.prompt('Foto-Link kopieren',link);}
             dialog.close();

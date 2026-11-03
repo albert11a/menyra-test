@@ -24,7 +24,11 @@ async function readCreatorCovers(safePage,page){
   }));
   return covers;
 }
-export async function serveContentCreator(req,res,{read=publicDocument,shell,loadCovers=readCreatorCovers}={}){
+async function readPhotoAlias(code){
+  const {shopRepository}=await import('../server/content-creator-shop.js');
+  return (await shopRepository()).read(`contentCreatorPages/photo-links/originals/${code}`);
+}
+export async function serveContentCreator(req,res,{read=publicDocument,shell,loadCovers=readCreatorCovers,readAlias=readPhotoAlias}={}){
   res.setHeader('X-Content-Type-Options','nosniff');
   if(!['GET','HEAD'].includes(req.method)){res.statusCode=405;res.setHeader('Allow','GET, HEAD');res.end();return;}
   const url=new URL(req.url || '/', 'https://www.mnyra.com');
@@ -33,6 +37,23 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
     let html=shell;
     if(!html){try{html=await readFile(new URL('../dist/apps/content-creator/index.html',import.meta.url),'utf8');}catch{html=await readFile(new URL('../apps/content-creator/index.html',import.meta.url),'utf8');}}
     res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','no-store');res.setHeader('Referrer-Policy','no-referrer');
+    const code=String(req.query?.code||url.searchParams.get('code')||'');
+    const slug=String(req.query?.slug||url.searchParams.get('slug')||'');
+    if(code){
+      try{
+        const alias=/^[A-Za-z0-9_-]{12}$/.test(code)?await readAlias(code):null;
+        if(!alias||alias.slug!==slug||!/^[-a-z0-9]{1,70}$/.test(slug)||!(/^[a-f0-9]{32}$/.test(alias.pageId)&&/^[a-f0-9]{32}$/.test(alias.token))){
+          res.statusCode=404;res.end('Linku nuk u gjet.');return;
+        }
+        const canonical=`https://mnyra.com/${slug}-fotot/${code}`;
+        const title='Fotot tuaja janë gati · MNYRA';
+        const description='Hapeni linkun për t’i ruajtur fotot në cilësi origjinale.';
+        const keys=JSON.stringify({pageId:alias.pageId,token:alias.token});
+        html=html.replace(/<title>[^<]*<\/title>/,`<title>${title}</title>`).replace('</head>',`<meta property="og:type" content="website"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:url" content="${canonical}"><meta property="og:image" content="https://mnyra.com/apps/mnyra-heart/assets/icon-512.png"><script id="creator-photo-keys" type="application/json">${keys}</script></head>`);
+      }catch{
+        res.statusCode=503;res.end('Provoni përsëri.');return;
+      }
+    }
     res.end(req.method==='HEAD'?undefined:html.replace(/<p class="loading">[^<]*<\/p>/,''));return;
   }
   if(!/^[a-f0-9]{32}$/.test(id)){res.statusCode=404;res.end();return;}

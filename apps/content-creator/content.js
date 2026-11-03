@@ -6,7 +6,8 @@ const pathId=location.pathname.split('/').filter(Boolean).at(-1);
 let id=pathId;
 const params=new URLSearchParams(location.search);
 const namedGallery=pathId?.endsWith('-fotot');
-const photoGallery=namedGallery||params.get('photos')==='1';
+const deliveryKeys=document.getElementById('creator-photo-keys');
+const photoGallery=deliveryKeys||namedGallery||params.get('photos')==='1';
 let still=params.get('still')==='1'||params.get('preview')==='1';
 try{
   if(params.get('still')==='1')localStorage.setItem('mnyra:content:still','1');
@@ -24,7 +25,7 @@ async function start(){
     if(photoGallery){
       const {mountCreatorPhotoGallery}=await import('./photo-gallery.js');
       const fragment=location.hash.slice(1);
-      const keys=namedGallery?creatorPhotoLinkKeys(pathId,fragment):{pageId:id,token:fragment};
+      const keys=deliveryKeys?JSON.parse(deliveryKeys.textContent):namedGallery?creatorPhotoLinkKeys(pathId,fragment):{pageId:id,token:fragment};
       id=keys.pageId;
       await mountCreatorPhotoGallery({root,...keys,track:()=>{void visits().catch(()=>{});}});
       return;

@@ -249,6 +249,7 @@
     {"source": "/fishop-prishtina", "destination": "/api/content-creator?id=066ccd992f684c3b81413d133081a569"},
     {"source": "/boutique-77", "destination": "/api/content-creator?id=2f1cbd75727746748cdd8dd8f627547c"},
     {"source": "/butiku-beni", "destination": "/api/content-creator?id=b63131a03c5449deaf748c29256a276a"},
+    { "source": "/:slug([a-z0-9-]+)-fotot/:code([A-Za-z0-9_-]{12})", "destination": "/api/content-creator?photos=1&slug=:slug&code=:code" },
     { "source": "/:slug([a-z0-9-]+)-fotot", "destination": "/api/content-creator?photos=1" },
     { "source": "/content-creator/:id", "destination": "/api/content-creator?id=:id" },
     {
