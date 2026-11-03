@@ -142,15 +142,18 @@ export function createContentCreator({root, store, prepareImage = prepareContent
   }
   const deliveryAttempts=new Set();
   let preparingDeliveries=false;
-  async function prepareReleasedDeliveries(){
+  async function preparePackageDeliveries(){
     if(preparingDeliveries||stopped||busy||mediaBusy)return;
     preparingDeliveries=true;
     try{
       const {orders,pages}=store.getState().contentCreator;
-      for(const order of orders||[]){
-        const page=pages.find(page=>page.id===order.pageId&&page.published&&!page.deleting);
-        if(!page||!(order.downloadsReleased===true||(order.approved===true&&order.paymentConfirmed===true&&order.status==='released')))continue;
-        for(const file of new Set((order.lines||[]).filter(line=>line.priceCents>0).flatMap(line=>line.imageIds||[]))){
+      for(const page of pages){
+        if(!page.published||page.deleting||page.kind!=='shop')continue;
+        const released=(orders||[]).filter(order=>order.pageId===page.id&&(order.downloadsReleased===true||(order.approved===true&&order.paymentConfirmed===true&&order.status==='released')));
+        const soldFiles=released.flatMap(order=>(order.lines||[]).filter(line=>line.priceCents>0).flatMap(line=>line.imageIds||[]));
+        const media=creatorPublicMedia(page);
+        for(const file of new Set([...creatorDeliveryPhotos(page),...soldFiles])){
+          if(media[file]?.download)continue;
           if(stopped||busy||mediaBusy)return;
           const key=`${page.id}:${file}`;
           if(deliveryAttempts.has(key))continue;
@@ -176,12 +179,12 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       subscriptions.push(onSnapshot(collection(db,name),snap=>{
         delete errors[key];
         patch({[key]:snap.docs.map(d=>({id:d.id,...d.data()})),status:"ready",error:Object.values(errors).join(' ')});
-        if(key==='pages'||key==='orders')void prepareReleasedDeliveries();
+        if(key==='pages'||key==='orders')void preparePackageDeliveries();
         if(key==='pages'){void activateCompletedEmptyShops(store.getState().contentCreator.pages);void migrateExisting();}
       },error=>{errors[key]=`${key}: ${error.message}`;patch({error:Object.values(errors).join(' ')});}));
     }
     listen(CC_PAGES,'pages');listen(CC_CARTS,'carts');listen(CC_ORDERS,'orders');listen(CC_VISITS,'visits');
-    let ticks=0;liveTimer=setInterval(()=>{if(!stopped){patch({now:Date.now()});if(++ticks%2===0){void retryNotifications();void prepareReleasedDeliveries();}}},30000);
+    let ticks=0;liveTimer=setInterval(()=>{if(!stopped){patch({now:Date.now()});if(++ticks%2===0){void retryNotifications();void preparePackageDeliveries();}}},30000);
     // Snapshots populate pending deliveries before the first retry pass.
     setTimeout(()=>{if(!stopped)void retryNotifications();},1500);
   }

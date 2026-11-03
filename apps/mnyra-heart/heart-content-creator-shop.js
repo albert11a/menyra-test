@@ -2,8 +2,8 @@ import {auth,db} from '/shared/firebase-config.js';
 import {doc,getDoc,setDoc,updateDoc,serverTimestamp,writeBatch,runTransaction} from '/shared/vendor/firebase/11.0.0/firebase-firestore.js';
 import {CC_PAGES} from '../../shared/content-creator.js';
 import {CC_ORDERS} from '../../shared/content-creator-shop.js';
-import {creatorCdnEnabled,uploadCreatorMedia,uploadCreatorVideo,creatorVideoOwner} from './heart-creator-cdn.js';
-import {creatorVariants,creatorPublicMedia} from '../../shared/creator-media.js';
+import {creatorCdnEnabled,uploadCreatorMedia,uploadCreatorVideo,creatorVideoOwner,uploadCreatorDeliveryOriginal} from './heart-creator-cdn.js';
+import {creatorVariants,creatorPublicMedia,creatorMediaUrl} from '../../shared/creator-media.js';
 const PART=400000;
 export function drawShopWatermark(ctx,width,height){
  const text='MNYRA · PREVIEW',fontSize=Math.max(7,width/42);
@@ -118,6 +118,16 @@ export async function saveCreatorCdnAsset(pageId,imageId,file,{free=false,hero=f
   const displays={};
   for(const [size,edge,quality] of [['thumb',480,.68],['medium',1080,.8],['large',1600,.86]])displays[size]=prepareBoundedShopDisplay(image,edge,quality);
   result=await uploadCreatorMedia(pageId,imageId,file,displays,{free,hero});
+  if(!free&&!hero&&publish&&file.size<=15*1024*1024){
+   try{
+    const ref=doc(db,CC_PAGES,pageId,'originals',imageId),saved=(await getDoc(ref)).data();
+    if(saved?.parts&&!creatorMediaUrl(saved.deliveryCdn?.url)){
+     const thumb=await (await fetch(displays.thumb.clean)).blob();
+     const url=await uploadCreatorDeliveryOriginal(file,thumb);
+     await updateDoc(ref,{deliveryCdn:{url,thumb:true,name:file.name,size:file.size}});
+    }
+   }catch{/* Original chunks remain available when the CDN upload fails. */}
+  }
  }finally{URL.revokeObjectURL(source);}
  // Original chunks stay in the existing protected Firestore collection.
  // Only prepared public image URLs are published after the upload completes.
