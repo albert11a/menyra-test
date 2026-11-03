@@ -92,7 +92,7 @@ export function renderCreatorCatalog(page, {ids=[], positions={}, offerButton, p
 export function creatorPurchaseDate(value){
  const date=new Date(value||'');
  if(!Number.isFinite(date.getTime()))return '';
- const label=new Intl.DateTimeFormat('sq-AL',{timeZone:'Europe/Belgrade',dateStyle:'short',timeStyle:'short'}).format(date);
+ const label=new Intl.DateTimeFormat('sq-AL',{timeZone:'Europe/Belgrade',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(date);
  return `<time datetime="${date.toISOString()}">${esc(label)}</time>`;
 }
 export function creatorPurchasePhotos(page,line,{orderId='',enabled=false,photo,unwrapped=false}={}){
@@ -104,16 +104,19 @@ export function creatorPurchasePhotos(page,line,{orderId='',enabled=false,photo,
   const direct=downloadable&&line.deliveryMedia?.[file]?.thumb?creatorMediaUrl(line.deliveryMedia[file].url):'';
   const alt=`${line.title} · ${index+1}`;
   return `<article>
-   ${src?`<img src="${esc(direct?direct+'?w=240':src)}" data-photo="${esc(file)}" data-purchase-fallback="${esc(src)}" alt="${esc(alt)}" loading="lazy">`:page.photoIds.includes(file)?img(file,alt,{size:'thumb'}):''}
-   <div class="shop-purchase-caption"><strong>${esc(line.title)}</strong>${creatorPurchaseDate(line.createdAt)}</div>
+   <div class="shop-purchase-image">${src?`<img src="${esc(direct?direct+'?w=240':src)}" data-photo="${esc(file)}" data-purchase-fallback="${esc(src)}" alt="${esc(alt)}" loading="lazy">`:page.photoIds.includes(file)?img(file,alt,{size:'thumb'}):''}</div>
    ${orderId||downloadable?`<button type="button" data-shop="save-one-photo" data-order="${esc(orderId)}" data-product="${esc(line.id)}" data-file="${esc(file)}" ${!orderId||enabled?'':'disabled'}>${creatorIcon('save')} Ruaj foton</button><small class="shop-purchase-feedback" role="status" hidden></small>`:''}
   </article>`;
  }).join('');
  return unwrapped?cards:cards?`<div class="creator-photo-grid">${cards}</div>`:'';
 }
 export function creatorSoldCards(page,sold,ownedIds=new Set(),owned=[]){
- const cards=[...sold.filter(line=>!ownedIds.has(line.id)).map(line=>creatorPurchasePhotos(page,line,{unwrapped:true})),...owned.map(line=>creatorPurchasePhotos(page,line,{...line,unwrapped:true}))].join('');
- return cards?`<div class="creator-photo-grid">${cards}</div>`:'';
+ const lines=[...sold.filter(line=>!ownedIds.has(line.id)),...owned];
+ const summaries=new Map();
+ for(const line of lines)if(line.orderCode)summaries.set(line.orderCode,line);
+ const headers=[...summaries.values()].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).map(order=>`<article class="shop-order shop-public-order"><div class="shop-order-title"><b>Porosia #${esc(order.orderCode.slice(0,8))}</b>${creatorPurchaseDate(order.createdAt)}<strong>${euro(order.totalCents)}</strong></div><p class="shop-order-state">${order.paymentConfirmed?'Barazimi është konfirmuar':'Ende pa barazuar'}</p></article>`).join('');
+ const cards=lines.map(line=>creatorPurchasePhotos(page,line,{...line,unwrapped:true})).join('');
+ return headers+(cards?`<div class="creator-photo-grid">${cards}</div>`:'');
 }
 export function creatorHowTo(page) {
  return `<section class="shop-how" id="shop-faq" aria-labelledby="shop-faq-title"><div class="shop-how-heading"><span class="shop-studio-tag">THJESHT DHE QARTË</span><h2 id="shop-faq-title">Pyetje të shpeshta<span>.</span></h2><p>Përgjigjet që ju duhen, në një vend.</p></div>

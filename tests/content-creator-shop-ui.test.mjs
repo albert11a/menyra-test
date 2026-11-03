@@ -62,9 +62,9 @@ test('Shop bündelt vier Fotos und gibt Originale vor der Barzahlung beim Kurier
  const ctx=await setup();assert.equal(ctx.root.querySelectorAll('.shop-product').length,1);assert.equal(ctx.root.querySelectorAll('.shop-slide').length,4);assert.equal(ctx.root.querySelectorAll('.shop-dots button').length,4);
  await ctx.click('[data-shop="add"]');assert.equal(ctx.calls[0].op,'cart');assert.deepEqual(ctx.calls[0].ids,['pack']);
  await ctx.checkout();assert.match(ctx.root.querySelector('.shop-payment').textContent,/Pagesa bëhet cash te korrieri/);await ctx.submit();
- assert.equal(ctx.root.querySelectorAll('.shop-order').length,1);assert.equal(ctx.root.querySelectorAll('.shop-product').length,0);assert.equal(ctx.root.querySelector('[data-shop="save-photos"]').disabled,false);
+ assert.equal(ctx.root.querySelectorAll('.shop-order').length,1);assert.equal(ctx.root.querySelectorAll('.shop-product').length,0);assert.equal(ctx.root.querySelector('[data-shop="save-one-photo"]').disabled,false);
  const [path,order]=[...ctx.docs.entries()].find(([key])=>key.startsWith('contentCreatorOrders/'));ctx.docs.set(path,{...order,approved:true,paymentConfirmed:true,status:'released'});
- await ctx.click('[data-shop="refresh"]');assert.equal(ctx.root.querySelector('[data-shop="save-photos"]').disabled,false);
+ assert.equal(ctx.root.querySelector('[data-shop="save-one-photo"]').disabled,false);
 });
 test('Still-Modus lässt Checkout durchspielen und sendet keine Warenkorb-/Bestell-Requests',async()=>{
  const ctx=await setup(true);await ctx.click('[data-shop="add"]');await ctx.checkout();await ctx.submit();
@@ -331,8 +331,8 @@ test('Pointer intent loads the chosen full video before click; opening/reopening
 });
 
 test('A visitor without a receipt can save an individual released business photo',async()=>{
- const ctx=await setup(false,2900,{sold:[{id:'pack',title:'Social Set',imageIds:['one'],downloadIds:['one']}]});
+ const ctx=await setup(false,2900,{sold:[{id:'pack',title:'Social Set',orderCode:'A1B2C3D4',totalCents:2900,imageIds:['one'],downloadIds:['one']}]});
  assert.equal(ctx.root.querySelectorAll('.shop-product').length,0);
- assert.match(ctx.root.querySelector('#shop-purchases').textContent,/Social Set/);
+ assert.match(ctx.root.querySelector('#shop-purchases').textContent,/Ende pa barazuar/);
  assert.ok(ctx.root.querySelector('[data-shop="save-one-photo"]'));
 });

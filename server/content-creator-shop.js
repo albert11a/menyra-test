@@ -29,7 +29,7 @@ export async function shopRepository(){
   },
   async sold(pageId,includeMedia=false){
    const response=await fetch(`${BASE}:runQuery`,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},signal:AbortSignal.timeout(7000),body:JSON.stringify({structuredQuery:{
-    from:[{collectionId:CC_ORDERS}],select:{fields:[{fieldPath:'lines'},{fieldPath:'createdAt'},{fieldPath:'downloadsReleased'},{fieldPath:'approved'},{fieldPath:'paymentConfirmed'},{fieldPath:'status'}]},
+    from:[{collectionId:CC_ORDERS}],select:{fields:[{fieldPath:'lines'},{fieldPath:'createdAt'},{fieldPath:'totalCents'},{fieldPath:'downloadsReleased'},{fieldPath:'approved'},{fieldPath:'paymentConfirmed'},{fieldPath:'status'}]},
     where:{fieldFilter:{field:{fieldPath:'pageId'},op:'EQUAL',value:{stringValue:pageId}}}
    }})});
    if(!response.ok)throw Error('Blerjet nuk u ngarkuan. Provoni përsëri.');
@@ -42,7 +42,7 @@ export async function shopRepository(){
      if(typeof line.id!=='string'||!(line.priceCents>0))continue;
      const imageIds=(line.imageIds||[]).filter(id=>/^[A-Za-z0-9_-]{1,64}$/.test(id)).slice(0,100);
      const previous=lines.get(line.id);
-     lines.set(line.id,{id:line.id,createdAt:wert(fields.createdAt)||'',title:String(line.title||'Pako fotosh').slice(0,120),
+     lines.set(line.id,{id:line.id,orderCode:publicOrderCode(row.document.name.split('/').at(-1)),totalCents:wert(fields.totalCents),paymentConfirmed:wert(fields.paymentConfirmed)===true,createdAt:wert(fields.createdAt)||'',title:String(line.title||'Pako fotosh').slice(0,120),
       imageIds:[...new Set([...(previous?.imageIds||[]),...imageIds])],
       downloadIds:[...new Set([...(previous?.downloadIds||[]),...(released?imageIds:[])])]});
     }
@@ -90,7 +90,8 @@ export async function shopRepository(){
   }
  };
 }
-function publicOrder(order,id){return {id,pageId:order.pageId,lines:order.lines,totalCents:order.totalCents,currency:'EUR',status:order.status,approved:order.approved===true,downloadsAvailable:order.downloadsReleased===true||order.approved===true,paymentDueDate:order.paymentDueDate||'',paymentSchedule:order.paymentSchedule||'',paymentMethod:'cod',createdAt:order.createdAt};}
+function publicOrderCode(id){return createHash('sha256').update(id).digest('hex').slice(0,12).toUpperCase();}
+function publicOrder(order,id){return {id,orderCode:publicOrderCode(id),paymentConfirmed:order.paymentConfirmed===true,pageId:order.pageId,lines:order.lines,totalCents:order.totalCents,currency:'EUR',status:order.status,approved:order.approved===true,downloadsAvailable:order.downloadsReleased===true||order.approved===true,paymentDueDate:order.paymentDueDate||'',paymentSchedule:order.paymentSchedule||'',paymentMethod:'cod',createdAt:order.createdAt};}
 async function* originalChunks(path,metadata,repo){
  if(!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>30*1024*1024)throw Error('Skedari nuk është i disponueshëm.');
  let size=0;
