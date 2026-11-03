@@ -76,8 +76,8 @@ export function creatorMediaBadge(page,files){
  const videos=files.filter(id=>creatorIsVideo(page,id)).length,photos=files.length-videos;
  return `${videos?`<span>${creatorIcon('video')}${videos}</span>`:''}${photos?`<span>${creatorIcon('images')}${photos}</span>`:''}`;
 }
-export function renderCreatorCatalog(page, {ids=[], positions={}, offerButton, photo} = {}) {
-  const products = (page.products || []).filter(p=>p.active!==false && p.imageIds?.some(id=>page.photoIds.includes(id))).sort((a,b)=>Number(b.imageIds.some(id=>creatorIsVideo(page,id)))-Number(a.imageIds.some(id=>creatorIsVideo(page,id))));
+export function renderCreatorCatalog(page, {ids=[], positions={}, offerButton, photo, purchasedIds} = {}) {
+  const products = (page.products || []).filter(p=>!purchasedIds?.has(p.id) && p.active!==false && p.imageIds?.some(id=>page.photoIds.includes(id))).sort((a,b)=>Number(b.imageIds.some(id=>creatorIsVideo(page,id)))-Number(a.imageIds.some(id=>creatorIsVideo(page,id))));
   const img = photo || ((id,alt,opts)=>creatorPhoto(page,id,alt,opts));
   const offer = offerButton || (product=>creatorOfferButton(product,{selected:ids.includes(product.id)}));
   return `<header class="shop-header"><a href="/" class="shop-logo" aria-label="MNYRA">MNYRA<span class="shop-logo-dot"></span></a><button type="button" data-shop="cart" class="shop-cart" aria-label="Hap shportën">${creatorIcon('shopping-bag')}<b ${ids.length?'':'hidden'}>${ids.length}</b></button></header>

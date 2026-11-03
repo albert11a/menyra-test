@@ -30,7 +30,13 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
  function canPrefetch(){const connection=navigator.connection;return !connection?.saveData&&!['slow-2g','2g','3g'].includes(connection?.effectiveType);}
  let neighbourObserver=null,heroIndex=0,heroPaused=!!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
  const images={},positions={},orders=new Map(),customer={name:'',address:'',country:'Kosovë',phone:''};
- const tokens=still?[]:(Array.isArray(saved.orders)?saved.orders:[]).filter(validShopId).slice(-10);
+ const purchasedIds=new Set();
+ function rememberOrder(order){
+  orders.set(order.id,order);
+  for(const line of order.lines)purchasedIds.add(line.id);
+  ids=ids.filter(id=>!purchasedIds.has(id));
+ }
+ const tokens=still?[]:(Array.isArray(saved.orders)?saved.orders:[]).filter(validShopId);
  const fromLink=new URLSearchParams(location.search).get('order');if(!still&&validShopId(fromLink)&&!tokens.includes(fromLink))tokens.push(fromLink);
  let cartQueue=Promise.resolve();
  function remember(){try{localStorage.setItem(storageKey,JSON.stringify({ids,cartId,orders:tokens,pendingOrderId:orderId}));}catch{}}
@@ -249,7 +255,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
    const key=image.tagName==='VIDEO'?`video:${image.dataset.photo}:${image.dataset.size||'thumb'}`:`${image.dataset.photo}:${image.dataset.size||'thumb'}:${image.getAttribute('src')||image.dataset.deferredSrc||''}`;
    if(!retained.has(key))retained.set(key,[]);retained.get(key).push(image);
   }
-  root.innerHTML=`<div class="shop-shell">${renderCreatorCatalog(page,{ids,positions,offerButton,photo:img})}<div id="shop-image-errors">${imageStatus()}</div>${creatorHowTo(page)}
+  root.innerHTML=`<div class="shop-shell">${renderCreatorCatalog(page,{ids,positions,offerButton,photo:img,purchasedIds})}<div id="shop-image-errors">${imageStatus()}</div>${creatorHowTo(page)}
    <section class="shop-purchases" id="shop-purchases"><h2>Blerjet tuaja</h2>${[...orders.values()].map(order=>`<article class="shop-order"><div class="shop-order-title"><b>Porosia #${esc(order.id.slice(0,8).toUpperCase())}</b><strong>${euro(order.totalCents)}</strong></div><p class="shop-order-state">${order.approved?(order.totalCents===0?'✓ Pako falas · Shkarkimet janë gati':'✓ Pagesa u konfirmua · Shkarkimet janë gati'):(canDownload(order)?order.paymentSchedule==='courier'?'✓ Fotot janë gati · Pagesa cash pas 2–3 ditësh':`✓ Fotot janë gati · Pagesa më ${order.paymentDueDate?esc(order.paymentDueDate.split('-').reverse().join('.')):'1 të muajit të ardhshëm'}`:(order.totalCents===0?'Në pritje të miratimit':'Në pritje të pagesës / miratimit'))}</p>${order.lines.map(line=>`<div class="shop-purchased-item">${img(line.imageIds[0],line.title)}<div><h3>${esc(line.title)}</h3><p>${creatorAssetCount(page,line.imageIds)} · ${euro(line.priceCents)}</p><button data-shop="save-photos" data-order="${order.id}" data-product="${line.id}" ${!canDownload(order)||downloadBusy?'disabled':''}>${creatorIcon(canDownload(order)?'save':'shield-check')}${canDownload(order)?(line.imageIds.some(id=>creatorIsVideo(page,id))?'Ruaj skedarët':'Ruaj fotot'):'Në pritje të konfirmimit'}</button></div></div>`).join('')}<div class="shop-order-actions"><button data-shop="refresh" data-order="${order.id}">Kontrollo statusin</button>${still?'':`<button data-shop="receipt-link" data-order="${order.id}">Kopjo linkun e porosisë</button>`}</div></article>`).join('')||'<p>Pas porosisë, artikujt tuaj do të shfaqen këtu.</p>'}</section>
    ${creatorFooter(page)}
    ${notice?`<p class="shop-notice" role="status">${esc(notice)}</p>`:''}
@@ -284,7 +290,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   bindViewer();syncInert();videoPlayback.sync();watchSaveButtons();
   if(focusId){const field=root.querySelector(`#${focusId}`);if(field){field.focus({preventScroll:true});try{field.setSelectionRange(selection,selection);}catch{ /* select/tel */ }}}
  }
- async function refreshOrder(id){if(still)return;const order=await api('receipt',{orderId:id},true);if(order.pageId!==page.id)return;orders.set(id,order);render();}
+ async function refreshOrder(id){if(still)return;const order=await api('receipt',{orderId:id},true);if(order.pageId!==page.id)return;rememberOrder(order);remember();render();}
  const prepareVideoIntent=event=>{
   const button=event.target.closest('[data-shop="view"]');if(!button||viewer||panel||photoSave||document.visibilityState==='hidden')return;
   const id=packFiles(button.dataset.product)[Number(button.dataset.index)||0];if(!creatorIsVideo(page,id))return;
@@ -320,7 +326,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
     positions[product]=target;activateImages(track,target);track.scrollTo({left:target*track.clientWidth,behavior:'smooth'});return;
    }
    error='';
-   if(action==='add'){if(page.products.find(p=>p.id===product)?.priceCents===0){await download('',product,'photos');return;}if(!ids.includes(product)){ids.push(product);activity('add',{productId:product});flash('Pakoja u shtua në shportë.');render();saveCart();}}
+   if(action==='add'){if(purchasedIds.has(product))return;if(page.products.find(p=>p.id===product)?.priceCents===0){await download('',product,'photos');return;}if(!ids.includes(product)){ids.push(product);activity('add',{productId:product});flash('Pakoja u shtua në shportë.');render();saveCart();}}
    if(action==='cart'){panel='cart';activity('cart');render();}
    if(action==='close'&&!submitting){panel='';activity('close');render();}
    if(action==='checkout'){panel='checkout';activity('checkout');saveCheckout();render();root.querySelector('#shop-name')?.focus();}
@@ -365,7 +371,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
     if(receipt?.pageId===page.id)return receipt;throw error;
    }})();
    if(result.priceChanged){applyQuote(result);throw Error('Çmimi u përditësua. Kontrolloni totalin dhe konfirmoni përsëri.');}
-   orders.set(result.id,result);if(!still&&!tokens.includes(result.id))tokens.push(result.id);
+   rememberOrder(result);if(!still&&!tokens.includes(result.id))tokens.push(result.id);
    if(result.notified===false)api('notify',{kind:'order',orderId:result.id}).catch(()=>{});
    activity('order',{stage:'ordered'});
    ids=[];cartId=crypto.randomUUID().replaceAll('-','');orderId='';remember();panel='';flash('Faleminderit! Porosia u pranua. Artikujt tuaj janë më poshtë.');
@@ -461,7 +467,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
  // A reload after a lost response must recover the committed order as well.
  if(!still&&orderId){
   const receipt=await api('receipt',{orderId},true).catch(()=>null);
-  if(receipt?.pageId===page.id){orders.set(receipt.id,receipt);if(!tokens.includes(receipt.id))tokens.push(receipt.id);ids=[];orderId='';cartId=crypto.randomUUID().replaceAll('-','');remember();render();}
+  if(receipt?.pageId===page.id){rememberOrder(receipt);if(!tokens.includes(receipt.id))tokens.push(receipt.id);ids=[];orderId='';cartId=crypto.randomUUID().replaceAll('-','');remember();render();}
  }
  await Promise.all(tokens.map(id=>refreshOrder(id).catch(()=>{})));
  const heroTimer=globalThis.setInterval(()=>{const track=root.querySelector('[data-hero-track]');if(canPrefetch()&&!heroPaused&&!viewer&&!panel&&!photoSave&&document.visibilityState!=='hidden'&&track?.children.length>1)moveHero(heroIndex+1);},5500);
