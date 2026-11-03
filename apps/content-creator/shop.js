@@ -348,13 +348,13 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
     const feedback=button.parentElement.querySelector('.shop-purchase-feedback');
     const tell=message=>{feedback.textContent=message;feedback.hidden=!message;};
     const saved=()=>{button.dataset.saved='1';button.innerHTML=`${creatorIcon('save')} Ruaje prapë`;};
-    button.disabled=true;tell('');
+    button.disabled=true;button.setAttribute('aria-busy','true');tell('');
     const busyLabel='Duke shkarkuar…';
     let readyToShare=false;
     try{
      const key=`${order}:${product}:${file}`;
      const cached=prepared.get(key);
-     if(!cached){button.textContent=busyLabel;tell(busyLabel);}
+     if(!cached)button.textContent=busyLabel;
      const task=cached?null:prepareFiles(order,product,undefined,file);
      if(!cached&&!task)throw Error('Provoni përsëri.');
      const entry=cached||await task.promise;
@@ -362,15 +362,15 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
       readyToShare=true;tell('');
       if(cached||navigator.userActivation?.isActive){
        try{await navigator.share({files:entry.shareFiles});saved();}
-       catch(error){if(error.name==='NotAllowedError')tell('Fotoja është gati. Prekni për ta ruajtur.');else if(error.name!=='AbortError')throw error;}
-      }else tell('Fotoja është gati. Prekni për ta ruajtur.');
+       catch(error){if(!['NotAllowedError','AbortError'].includes(error.name))throw error;}
+      }
      }else{
       const link=document.createElement('a');link.href=entry.urls[0];link.download=entry.shareFiles[0].name;
       root.append(link);link.click();link.remove();tell('');saved();
      }
     }catch(error){tell(error.message);}
     finally{
-     button.disabled=false;
+     button.disabled=false;button.removeAttribute('aria-busy');
      if(!button.dataset.saved)button.innerHTML=`${creatorIcon('save')} ${readyToShare?'Ruaj foton tani':'Ruaj foton'}`;
     }
     return;

@@ -105,7 +105,7 @@ export function creatorPurchasePhotos(page,line,{orderId='',enabled=false,photo,
   const direct=downloadable&&line.deliveryMedia?.[file]?.thumb?creatorMediaUrl(line.deliveryMedia[file].url):'';
   const alt=`${line.title} · ${index+1}`;
   return `<article>
-   <div class="shop-purchase-image">${src?`<img src="${esc(direct?direct+'?w=240':src)}" data-photo="${esc(file)}" data-purchase-fallback="${esc(src)}" alt="${esc(alt)}" loading="lazy">`:page.photoIds.includes(file)?img(file,alt,{size:'thumb'}):''}</div>
+   <div class="shop-purchase-image">${src?`<img src="${esc(direct?direct+'?w=240':src)}" data-photo="${esc(file)}" data-purchase-fallback="${esc(src)}" alt="${esc(alt)}" width="360" height="450" decoding="async" loading="${index<2?'eager':'lazy'}">`:page.photoIds.includes(file)?img(file,alt,{size:'thumb',eager:index<2}):''}</div>
    ${orderId||downloadable?`<button type="button" data-shop="save-one-photo" data-order="${esc(orderId)}" data-product="${esc(line.id)}" data-file="${esc(file)}" ${!orderId||enabled?'':'disabled'}>${creatorIcon('save')} Ruaj foton</button><small class="shop-purchase-feedback" role="status" hidden></small>`:''}
   </article>`;
  }).join('');

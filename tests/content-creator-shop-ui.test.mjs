@@ -338,6 +338,27 @@ test('A visitor without a receipt can save an individual released business photo
  assert.ok(ctx.root.querySelector('[data-shop="save-one-photo"]'));
 });
 
+test('First purchase thumbnails start immediately and survive a cart render',async()=>{
+ const sold=[{id:'pack',title:'Social Set',imageIds:['one','two','three','four'],downloadIds:['one','two','three','four']}];
+ const ctx=await setup(false,2900,{sold});
+ const images=[...ctx.root.querySelectorAll('.shop-purchase-image img')];
+ assert.deepEqual(images.map(image=>image.getAttribute('loading')),['eager','eager','lazy','lazy']);
+ await ctx.click('[data-shop="cart"]');
+ assert.equal(ctx.root.querySelector('.shop-purchase-image img'),images[0]);
+});
+
+test('Single-photo preparation stays in the button without showing a second status row',async()=>{
+ let release;const blocked=new Promise(resolve=>{release=resolve;});
+ // Exercise the real receipt-backed original download and hold the native share.
+ const purchased=await setup(false,2900,{navigator:{share:()=>blocked,canShare:()=>true,userActivation:{isActive:true}}});
+ await purchased.click('[data-shop="add"]');await purchased.checkout();await purchased.submit();
+ const button=purchased.root.querySelector('[data-shop="save-one-photo"]');
+ await purchased.click('[data-shop="save-one-photo"]');
+ assert.equal(button.disabled,true);assert.equal(button.getAttribute('aria-busy'),'true');assert.equal(button.textContent,'Duke shkarkuar…');
+ const feedback=button.parentElement.querySelector('.shop-purchase-feedback');assert.equal(feedback.hidden,true);assert.equal(feedback.textContent,'');
+ release();await purchased.settle();assert.equal(button.disabled,false);assert.equal(button.hasAttribute('aria-busy'),false);
+});
+
 test('An open shop picks up new packages and purchases without a reload',async()=>{
  const intervals=[],newPack={id:'new',title:'New package',priceCents:900,imageIds:['two']};
  const ctx=await setup(false,2900,{intervals,live:()=>({id:pageId,products:[newPack],photoIds:['one','two'],sold:[{id:'pack',orderCode:'A1B2C3D4',imageIds:['one'],downloadIds:['one'],totalCents:2900}]})});
