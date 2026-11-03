@@ -34,7 +34,16 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
  const fromLink=new URLSearchParams(location.search).get('order');if(!still&&validShopId(fromLink)&&!tokens.includes(fromLink))tokens.push(fromLink);
  let cartQueue=Promise.resolve();
  function remember(){try{localStorage.setItem(storageKey,JSON.stringify({ids,cartId,orders:tokens,pendingOrderId:orderId}));}catch{}}
- function flash(message){notice=message;setTimeout(()=>{notice='';render();},4500);}
+ let noticeTimer;
+ function flash(message){
+  clearTimeout(noticeTimer);
+  notice=message;
+  noticeTimer=setTimeout(()=>{
+   if(notice!==message)return;
+   notice='';
+   render();
+  },4500);
+ }
  function quote(){if(!ids.length)return {lines:[],totalCents:0,currency:'EUR'};try{return shopQuote(page,ids);}catch{return {lines:[],totalCents:0,currency:'EUR'};}}
  async function api(op,data={},get=false,keepalive=false){
   const payload={op,pageId:page.id,cartId,visitorId,...data};
@@ -359,7 +368,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
    orders.set(result.id,result);if(!still&&!tokens.includes(result.id))tokens.push(result.id);
    if(result.notified===false)api('notify',{kind:'order',orderId:result.id}).catch(()=>{});
    activity('order',{stage:'ordered'});
-   ids=[];cartId=crypto.randomUUID().replaceAll('-','');orderId='';remember();panel='';notice='Faleminderit! Porosia u pranua. Artikujt tuaj janë më poshtë.';
+   ids=[];cartId=crypto.randomUUID().replaceAll('-','');orderId='';remember();panel='';flash('Faleminderit! Porosia u pranua. Artikujt tuaj janë më poshtë.');
    render();root.querySelector('#shop-purchases')?.scrollIntoView({behavior:'smooth'});
   }catch(e){error=e.message;}finally{submitting=false;render();}
  });
