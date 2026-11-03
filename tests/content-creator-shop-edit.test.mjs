@@ -192,3 +192,28 @@ test('Video is selectable and can be added to an existing photo package without 
  assert.equal(page.products[0].priceCents,250);assert.equal(page.products[0].imageIds.length,3);
  assert.deepEqual(page.products[1].imageIds,['b','c']);
 });
+
+test('Heart lists bought packages only in Gekaufte Fotos and keeps their editors',async()=>{
+ const c=setup();
+ const page=c.docs.get('contentCreatorPages/shop');
+ const [sold,current]=page.products;
+ c.store.actions.patchContentCreator({orders:[
+  {id:'sale',pageId:page.id,lines:[sold]},
+  {id:'duplicate',pageId:page.id,lines:[sold]},
+  {id:'other',pageId:'another-shop',lines:[current]},
+ ]});
+ await c.click('[data-cc-action="detail"]');
+ const purchased=c.root.querySelector('.cc-purchased-packages');
+ assert.equal(purchased.children.length,1);
+ assert.match(purchased.textContent,/First/);
+ assert.match(purchased.textContent,/Preis:.*2,50/);
+ assert.match(purchased.textContent,/2 Dateien/);
+ assert.ok(purchased.querySelector('[data-cc-package="p"]'));
+ const editor=purchased.querySelector('.cc-package-editor');
+ editor.open=true;
+ editor.querySelector('summary').scrollIntoView=()=>{};
+ await c.click('.cc-purchased-packages [data-cc-action="close-package-editor"]');
+ assert.equal(editor.open,false);
+ assert.equal(c.root.querySelectorAll('[data-morph-key="package-p"]').length,1);
+ assert.ok(c.root.querySelector('.cc-detail > .cc-package-grid [data-cc-package="q"]'));
+});

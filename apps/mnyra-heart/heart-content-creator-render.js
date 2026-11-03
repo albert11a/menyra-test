@@ -1,5 +1,3 @@
-import {creatorImageUrl} from '../../shared/content-creator-view.js';
-import {creatorIsVideo} from '../../shared/creator-video.js';
 import {creatorCard,creatorSearch,creatorIcon as icon} from './heart-creator-components.js';
 import {creatorStats,creatorOrders,creatorFollowupCard,creatorJourney,creatorTime,creatorDuration} from './heart-creator-overview.js';
 import {CREATOR_STATUSES,creatorBusinessStatus,creatorBusinessMatches,creatorVisitStats} from '../../shared/creator-analytics.js';
@@ -51,21 +49,6 @@ export function renderBusinessDelete(page, state = {}) {
     state, { className: 'cc-business-delete' });
 }
 
-function renderPurchasedPhotos(page,state){
- const photos=new Map();
- for(const order of state.orders||[]){
-  if(order.pageId!==page.id)continue;
-  for(const line of order.lines||[]){
-   if(!(line.priceCents>0))continue;
-   for(const file of line.imageIds||[]){
-    if(!creatorIsVideo(page,file)&&!photos.has(file))photos.set(file,line.title||'Gekauftes Foto');
-   }
-  }
- }
- if(!photos.size)return '';
- return creatorCard(`purchased-photos-${page.id}`,'Gekaufte Fotos',`<div class="cc-purchased-photos">${[...photos].map(([file,title])=>`<figure>${page.photoIds?.includes(file)?`<img src="${esc(creatorImageUrl(page,file,'thumb'))}" alt="${esc(title)}" loading="lazy">`:''}<figcaption>${esc(title)}</figcaption></figure>`).join('')}</div>`,state,{count:photos.size});
-}
-
 function renderDetail(page,state) {
   if (page.deleting) return `<section class="cc-detail"><h2>${esc(page.name)}</h2>${renderBusinessDelete(page,state)}</section>`;
   const visits=(state.visits || []).filter(v=>v.pageId===page.id);
@@ -74,7 +57,6 @@ function renderDetail(page,state) {
   return `<section class="cc-detail">
 
   ${shopAdmin(page,state)}
-  ${renderPurchasedPhotos(page,state)}
   ${creatorOrders(state,page.id)}
   ${renderCreatorHeroEditor(page,state)}
   ${creatorCard(`stats-${page.id}`,'Besuche',`<div class="cc-stats">${values.map(([label,n])=>`<div class="cc-stat"><strong>${n}</strong><span>${label}</span></div>`).join('')}</div><p class="cc-muted">Letzter Besuch: ${creatorTime(attendance.lastSeen)} · Sichtbare Zeit: ${creatorDuration(attendance.activeMs)}</p>`,state)}

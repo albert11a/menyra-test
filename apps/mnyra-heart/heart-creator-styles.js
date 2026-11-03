@@ -1,7 +1,7 @@
 // Both public Heart entries must load the same Creator stylesheet. The runtime
 // also repairs older cached HTML before Heart starts, without touching auth/data.
 export const CREATOR_STYLE_PATH='/apps/mnyra-heart/heart-content-creator.css';
-export const CREATOR_STYLE_HREF=`${CREATOR_STYLE_PATH}?v=b0ee1d84d48e`;
+export const CREATOR_STYLE_HREF=`${CREATOR_STYLE_PATH}?v=bcb17154dc63`;
 export function ensureCreatorStyles(document=globalThis.document){
  if(!document?.head)return null;
  const existing=document.getElementById('heart-content-creator-style')||[...document.querySelectorAll('link[rel="stylesheet"]')].find(link=>link.getAttribute('href')?.split('?')[0]===CREATOR_STYLE_PATH);

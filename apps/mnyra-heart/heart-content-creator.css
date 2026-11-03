@@ -164,3 +164,7 @@
 .cc-package-card video::-webkit-media-controls,.cc-package-editor video::-webkit-media-controls{display:none!important}
 
 .cc-package-photos figure video{height:auto;aspect-ratio:4/5}
+
+.cc-purchased-packages{padding-top:16px}
+.cc-package-editor:not([open]) .cc-package-close-label,.cc-package-editor[open] .cc-package-edit-label{display:none}
+.cc-purchased-packages .cc-purchased-package-name{padding:10px 10px 0;font-size:13px;overflow-wrap:anywhere}

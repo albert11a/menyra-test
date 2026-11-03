@@ -1,5 +1,5 @@
 # Architecture Dependency Report
-Generated: 2026-11-03T21:26:36.013Z
+Generated: 2026-11-03T21:39:32.054Z
 Scope: static relative-import scan plus Dependency Cruiser/Madge tooling baseline.
 ## Direct imports from social-app.js
 - `apps/menyra-social/_shared/image-compressor.js`

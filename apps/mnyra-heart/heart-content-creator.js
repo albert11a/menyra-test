@@ -483,6 +483,16 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       if (action === 'reset-data') { await creatorReset().reset(); return; }
       if (action === 'cancel-reset') { creatorReset().cancel(); return; }
       if (store.getState().contentCreator.resetRunning || store.getState().contentCreator.deletingBusinessId) return;
+      if(action==='close-package-editor'){
+        const editor=button.closest('.cc-package-editor');
+        if(editor){
+          editor.open=false;
+          const summary=editor.querySelector('summary');
+          summary.focus({preventScroll:true});
+          summary.scrollIntoView({block:'nearest'});
+        }
+        return;
+      }
       if(action==='collapse'){toggleCard(button.dataset.key);return;}
       if(action==='toggle-links'){
         const state=store.getState().contentCreator;
