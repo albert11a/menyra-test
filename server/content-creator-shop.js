@@ -62,7 +62,10 @@ export async function shopAction(input,repo){
   const [page,access]=await Promise.all([repo.read(pagePath),repo.read(`${pagePath}/originals/photo-delivery`)]);
   if(!page?.published||page.deleting||!page.photoDeliveryEnabled||access?.token!==input.token)throw Error('Linku nuk është më aktiv.');
   const files=creatorDeliveryPhotos(page).filter(file=>access.files?.includes(file));
-  if(op==='photo-gallery')return {name:page.name,photos:files.map(file=>({file}))};
+  if(op==='photo-gallery'){
+   const media=creatorPublicMedia(page);
+   return {name:page.name,photos:files.map(file=>({file,cdn:media[file]?.thumb||'',clean:media[file]?.mode==='clean'}))};
+  }
   const {file,visitorId}=input;
   if(!files.includes(file))throw Error('Fotoja nuk është e disponueshme.');
   const path=`${pagePath}/originals/${file}`;

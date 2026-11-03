@@ -20,8 +20,8 @@ export async function mountCreatorPhotoGallery({root,pageId,token,track}){
  document.title=`Fotot për ${name} · MNYRA`;
  root.innerHTML=`<div class="shop-shell"><section class="creator-photo-delivery">
   <p class="brand">MNYRA</p><h1>Fotot për ${esc(name)}</h1><p>Shkarkoji fotot në cilësi origjinale.</p>
-  <div class="creator-photo-grid">${photos.map(({file},i)=>`<article>
-   <img data-photo="${esc(file)}" alt="Foto ${i+1}">
+  <div class="creator-photo-grid">${photos.map(({file,cdn,clean},i)=>`<article>
+   <img ${cdn?`src="${esc(cdn)}" loading="${i<2?'eager':'lazy'}"`: ''} data-clean="${clean?'1':'0'}" data-cdn="${esc(cdn||'')}" data-photo="${esc(file)}" alt="Foto ${i+1}">
    <button type="button" data-download-photo="${esc(file)}">${creatorIcon('save')} Shkarko</button>
   </article>`).join('')||'<p>Nuk ka foto për shkarkim.</p>'}</div>
   <p class="creator-photo-message" role="status"></p>
@@ -34,10 +34,16 @@ export async function mountCreatorPhotoGallery({root,pageId,token,track}){
     const url=URL.createObjectURL(blob);
     target.addEventListener('load',()=>URL.revokeObjectURL(url),{once:true});
     target.src=url;
-   }).catch(()=>{target.alt='Fotoja nuk u ngarkua.';});
+   }).catch(()=>{
+    if(target.dataset.cdn)target.src=target.dataset.cdn;
+    else target.alt='Fotoja nuk u ngarkua.';
+   });
   }
  },{rootMargin:'200px'});
- root.querySelectorAll('img[data-photo]').forEach(image=>previews.observe(image));
+ root.querySelectorAll('img[data-photo]').forEach(image=>{
+  if(image.dataset.clean!=='1')previews.observe(image);
+  else image.addEventListener('error',()=>{image.dataset.cdn='';previews.observe(image);},{once:true});
+ });
  const ready=new WeakMap();
  track();
  root.addEventListener('click',async event=>{
