@@ -4,6 +4,7 @@ import {creatorVisitorId} from './visits.js';
 
 export async function mountCreatorPhotoGallery({root,pageId,token,track}){
  const visitorId=creatorVisitorId(pageId);
+ const saveLabel=navigator.share&&navigator.canShare?'Ruaj foton':'Shkarko';
  async function request(op,file){
   const response=await fetch('/api/content-creator-shop',{
    method:'POST',headers:{'content-type':'application/json'},
@@ -22,7 +23,7 @@ export async function mountCreatorPhotoGallery({root,pageId,token,track}){
   <p class="brand">MNYRA</p><h1>Fotot për ${esc(name)}</h1><p>Shkarkoji fotot në cilësi origjinale.</p>
   <div class="creator-photo-grid">${photos.map(({file,cdn,clean},i)=>`<article>
    <img ${cdn?`src="${esc(cdn)}" loading="${i<2?'eager':'lazy'}"`: ''} data-clean="${clean?'1':'0'}" data-cdn="${esc(cdn||'')}" data-photo="${esc(file)}" alt="Foto ${i+1}">
-   <button type="button" data-download-photo="${esc(file)}">${creatorIcon('save')} Shkarko</button>
+   <button type="button" data-download-photo="${esc(file)}">${creatorIcon('save')} ${saveLabel}</button>
   </article>`).join('')||'<p>Nuk ka foto për shkarkim.</p>'}</div>
   <p class="creator-photo-message" role="status"></p>
  </section></div>`;
@@ -76,6 +77,10 @@ export async function mountCreatorPhotoGallery({root,pageId,token,track}){
    if(navigator.share&&navigator.canShare?.({files:[file]})){
     ready.set(button,file);
     button.title='Hap menynë e iPhone për ta ruajtur foton.';
+    if(navigator.userActivation?.isActive){
+     try{await navigator.share({files:[file]});}
+     catch(error){if(!['AbortError','NotAllowedError'].includes(error.name))throw error;}
+    }
     return;
    }
    const url=URL.createObjectURL(file),link=document.createElement('a');
@@ -83,6 +88,6 @@ export async function mountCreatorPhotoGallery({root,pageId,token,track}){
    root.append(link);link.click();link.remove();
    setTimeout(()=>URL.revokeObjectURL(url),60000);
   }catch(error){status.textContent=error.message;button.after(status);}
-  finally{button.disabled=false;button.innerHTML=`${creatorIcon('save')} ${ready.has(button)?'Ruaj foton':'Shkarko'}`;}
+  finally{button.disabled=false;button.innerHTML=`${creatorIcon('save')} ${ready.has(button)?'Ruaj foton':saveLabel}`;}
  });
 }
