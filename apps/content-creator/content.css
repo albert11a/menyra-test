@@ -4,3 +4,6 @@
 
 /* Keep every creator flow at a real phone-sized reading width. */
 html{background:#f7f6f2}main{max-width:480px;padding:0 20px 24px;min-height:100dvh}.brand{padding-top:25px;display:block;padding-bottom:30px}.gallery{gap:12px}.photo img{-webkit-touch-callout:default}.photo{align-self:start}.loading{padding:35px 0}.shop-shell .avatar{border-radius:50%}
+
+.creator-studio-entry { display:flex; justify-content:center; padding:8px 12px; background:#101112; }
+.creator-studio-entry a { color:#fff6e0; background:#272522; padding:9px 16px; border-radius:20px; font:650 14px system-ui,sans-serif; text-decoration:none; }

@@ -43,6 +43,12 @@ async function start(){
       if(!response.ok)throw Error('Faqja nuk u gjet.');page=await response.json();
     }
     document.title=`Për ${page.name} · MNYRA`;
+    if (page.photoStudioEnabled && !still) {
+      const studio = document.createElement('nav');
+      studio.className = 'creator-studio-entry';
+      studio.innerHTML = `<a href="/apps/content-creator/photo-studio.html?page=${id}">MNYRA PHOTO STUDIO · 0,25 € / foto</a>`;
+      root.before(studio);
+    }
     photoViews();
     if(page.kind==='shop'){
       const {mountCreatorShop}=await import('./shop.js');

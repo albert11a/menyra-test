@@ -554,6 +554,9 @@ self.addEventListener('fetch', (event) => {
   // Langlaeufer/Streams duerfen weder Timeout noch Cache sehen.
   if (isSameOrigin && url.pathname.startsWith('/api/')) return;
 
+  // Short-lived private studio grants must never enter the public image cache.
+  if (host.endsWith('.r2.cloudflarestorage.com') && url.searchParams.has('X-Amz-Signature')) return;
+
   // Media/video streams: range requests must reach the network untouched.
   if (req.headers.get('range')) return;
 

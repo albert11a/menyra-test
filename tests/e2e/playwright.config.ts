@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 // Der Header-Stabilitaetstest laeuft auf eigenen Geraeten und beiden Engines;
 // die uebrigen e2e-Faelle bleiben unveraendert auf ihren beiden Projekten.
+const STUDIO_SPEC = /photo-studio\.spec\.ts/;
 const SMART_HEADER_SPEC = /smart-header-stability\.spec\.ts/;
 
 // Der Scroll-Test bringt seine Geraetegroessen selbst mit - fuenf Telefone,
@@ -67,7 +68,7 @@ export default defineConfig({
     // in Chrome.
     {
       name: "webkit-iphone-13",
-      testMatch: SMART_HEADER_SPEC,
+      testMatch: [SMART_HEADER_SPEC, STUDIO_SPEC],
       use: { ...devices["iPhone 13"] },
     },
     {

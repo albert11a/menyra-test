@@ -1,3 +1,4 @@
+import { studioOverview } from './heart-photo-studio-render.js';
 import {creatorCard,creatorSearch,creatorIcon as icon} from './heart-creator-components.js';
 import {creatorStats,creatorOrders,creatorFollowupCard,creatorJourney,creatorTime,creatorDuration} from './heart-creator-overview.js';
 import {CREATOR_STATUSES,creatorBusinessStatus,creatorBusinessMatches,creatorVisitStats} from '../../shared/creator-analytics.js';
@@ -17,7 +18,7 @@ export function renderContentCreator(state = {}) {
     ${!detail?creatorStats(state):''}
     ${error}
     ${!detail?renderBusinesses(businessRows,selected,state):''}
-    ${!detail?creatorSearch(state)+creatorOrders(state)+creatorFollowupCard(state):''}
+    ${!detail?creatorSearch(state)+creatorOrders(state)+studioOverview(state)+creatorFollowupCard(state):''}
     ${state.editor ? `<div class="cc-overlay"><section class="cc-dialog" role="dialog" aria-modal="true" aria-labelledby="cc-dialog-title">
       <div class="cc-dialog-head"><h2 id="cc-dialog-title">Betrieb erstellen</h2><button data-cc-action="close" aria-label="Schließen" ${state.saving ? "disabled" : ""}>×</button></div>
       <form id="cc-create-form"><label>Seitenart<select name="kind" id="cc-page-kind" ${state.saving?'disabled':''}><option value="promo" ${state.pageKind!=='shop'?'selected':''}>Content Creator · Vorschau</option><option value="shop" ${state.pageKind==='shop'?'selected':''}>Shop · Fotopakete verkaufen</option></select></label>
@@ -58,6 +59,7 @@ function renderDetail(page,state) {
 
   ${shopAdmin(page,state)}
   ${creatorOrders(state,page.id)}
+  ${studioOverview(state,page)}
   ${renderCreatorHeroEditor(page,state)}
   ${creatorCard(`stats-${page.id}`,'Besuche',`<div class="cc-stats">${values.map(([label,n])=>`<div class="cc-stat"><strong>${n}</strong><span>${label}</span></div>`).join('')}</div><p class="cc-muted">Letzter Besuch: ${creatorTime(attendance.lastSeen)} · Sichtbare Zeit: ${creatorDuration(attendance.activeMs)}</p>`,state)}
 ${creatorFollowupCard(state,page.id)}

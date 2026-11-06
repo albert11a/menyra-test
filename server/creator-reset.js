@@ -10,13 +10,17 @@ const CEO = 'aklBkkIuZ7Nrpx266TJn63rrxX62';
 const API_KEY = 'AIzaSyAq5kzdGITDekgajC0uUBny63JjS1DIPEU';
 const google = (url, options) => fetch(url, { ...options, signal: AbortSignal.timeout(15000) });
 
-export async function isCreatorResetAdmin(req) {
+export async function creatorAuthUid(req) {
   const token = /^Bearer\s+(.+)$/i.exec(String(req.headers?.authorization || ''))?.[1];
-  if (!token) return false;
+  if (!token) return null;
   const response = await google(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${API_KEY}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: token })
   });
-  return response.ok && (await response.json()).users?.[0]?.localId === CEO;
+  return response.ok ? (await response.json()).users?.[0]?.localId || null : null;
+}
+
+export async function isCreatorResetAdmin(req) {
+  return (await creatorAuthUid(req)) === CEO;
 }
 
 export async function creatorResetRepository() {

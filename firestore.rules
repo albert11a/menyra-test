@@ -967,6 +967,17 @@ service cloud.firestore {
         && request.resource.data.paymentConfirmed == true
         && request.resource.data.status == 'released';
     }
+    match /photoStudioOrders/{orderId} {
+      allow read: if isCeoActor();
+      allow write: if false;
+    }
+    // Upload reservations and rate-limit counters are server-only.
+    match /photoStudioUploads/{id} {
+      allow read, write: if false;
+    }
+    match /photoStudioLimits/{id} {
+      allow read, write: if false;
+    }
     match /contentCreatorVisits/{visitId} {
       function validVisit() {
         let d = request.resource.data;

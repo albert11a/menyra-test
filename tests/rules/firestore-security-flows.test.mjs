@@ -1,4 +1,5 @@
 import test, { after, before, beforeEach } from "node:test";
+import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -1001,4 +1002,41 @@ test("only the ceo account can set the paid plan on a restaurant", async () => {
 
   // Das CEO-Konto darf in beide Richtungen.
   await assertSucceeds(ceoDb.doc(restaurantPath).set({ plan: "free" }, { merge: true }));
+});
+
+test('Photo Studio order documents are read-only for Heart and private from guests and businesses', async () => {
+  await seedFirestore([
+    { path: 'photoStudioOrders/studio-demo', data: { pageId: 'page-a', totalCents: 25, paymentStatus: 'unpaid' } },
+    { path: 'photoStudioUploads/studio-upload', data: { key: 'prepared/private' } },
+    { path: 'photoStudioLimits/studio-limit', data: { count: 1 } },
+  ]);
+  const heart = firestoreFor(testEnv, AUTH_FIXTURES.heart);
+  await assertSucceeds(heart.doc('photoStudioOrders/studio-demo').get());
+  await assertSucceeds(heart.collection('photoStudioOrders').get());
+  for (const fixture of [AUTH_FIXTURES.guest, AUTH_FIXTURES.owner, AUTH_FIXTURES.outsider]) {
+    const db = firestoreFor(testEnv, fixture);
+    await assertFails(db.doc('photoStudioOrders/studio-demo').get());
+    await assertFails(db.collection('photoStudioOrders').get());
+  }
+  await assertFails(heart.doc('photoStudioOrders/studio-demo').update({ paymentStatus: 'paid', downloadsReleased: true }));
+  await assertFails(heart.doc('photoStudioOrders/fake').set({ totalCents: 0 }));
+  await assertFails(heart.doc('photoStudioUploads/studio-upload').get());
+  await assertFails(heart.doc('photoStudioLimits/studio-limit').get());
+});
+
+test('Studio REST transactions reject stale guards and simultaneous duplicate creation', async () => {
+  const { createPhotoStudioRepository } = await import('../../server/photo-studio-repository.js');
+  const rest = createPhotoStudioRepository(`http://${firestoreHost}/v1/projects/${projectId}/databases/(default)/documents`, 'owner');
+  const pagePath = 'contentCreatorPages/studio-tx', orderPath = 'photoStudioOrders/studio-tx';
+  assert.equal(await rest.write(pagePath, { published: true, photoStudioEnabled: true }), true);
+  const guard = await rest.read(pagePath);
+  assert.equal(await rest.write(pagePath, { photoStudioEnabled: false }, guard, [], { patch: true }), true);
+  assert.equal(await rest.write(orderPath, { totalCents: 25 }, null, [guard]), false);
+  const current = await rest.read(pagePath);
+  const results = await Promise.all([1, 2].map(() => rest.write(orderPath, { totalCents: 25 }, null, [current])));
+  assert.deepEqual(results.sort(), [false, true]);
+  const order = await rest.read(orderPath);
+  assert.equal(order.data.totalCents, 25);
+  assert.equal(await rest.write(orderPath, { paymentStatus: 'paid' }, order, [], { patch: true }), true);
+  assert.equal(await rest.write(orderPath, { paymentStatus: 'unpaid' }, order, [], { patch: true }), false);
 });

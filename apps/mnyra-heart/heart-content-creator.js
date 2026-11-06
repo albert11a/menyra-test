@@ -1,3 +1,4 @@
+import { STUDIO_ORDERS } from '../../shared/photo-studio.js';
 import {bindCreatorPhotoOrder} from './heart-creator-photo-order.js';
 import {CREATOR_DIRECT_ROUTES} from '../../shared/creator-direct-routes.js';
 import {unlockCreatorVideoAudio} from './heart-creator-video-audio.js';
@@ -39,6 +40,12 @@ export async function prepareContentImage(file, avatar = false) {
 
 export function createContentCreator({root, store, prepareImage = prepareContentImage, saveAsset}) {
   const patch = fields => store.actions.patchContentCreator(fields);
+  async function studioAdminRequest(op, data) {
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) throw Error('Bitte erneut anmelden.');
+    const { studioRequest } = await import('../../shared/photo-studio-client.js');
+    return studioRequest(op, data, token);
+  }
   const sortTasks=new Set(),sortRetries=new Map();
   const editSort=(key,value)=>{
     const next={...store.getState().contentCreator.photoSort};
@@ -278,6 +285,9 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       },error=>{errors[key]=`${key}: ${error.message}`;patch({error:Object.values(errors).join(' ')});}));
     }
     listen(CC_PAGES,'pages');listen(CC_CARTS,'carts');listen(CC_ORDERS,'orders');listen(CC_VISITS,'visits');
+    subscriptions.push(onSnapshot(collection(db, STUDIO_ORDERS), snap => {
+      patch({ studioOrders: snap.docs.map(row => ({ ...row.data(), id: row.id })), studioError: '' });
+    }, () => patch({ studioOrders: [], studioError: 'Photo-Studio-Aufträge konnten nicht geladen werden.' })));
     let ticks=0;liveTimer=setInterval(()=>{if(!stopped){patch({now:Date.now()});if(++ticks%2===0){void retryNotifications();void preparePackageDeliveries();}}},30000);
     // Snapshots populate pending deliveries before the first retry pass.
     setTimeout(()=>{if(!stopped)void retryNotifications();},1500);
@@ -358,6 +368,9 @@ export function createContentCreator({root, store, prepareImage = prepareContent
   function cropFromCard(card){
     return normalizeCreatorCrop(Object.fromEntries(['x','y','fit'].map(axis=>[axis,card.querySelector(`[data-cc-hero-adjust="${axis}"]`)?.value])));
   }
+  root.addEventListener('change', event => {
+    if (event.target.hasAttribute('data-studio-filter')) patch({ studioFilter: event.target.value, studioLimit: 20 });
+  });
   root.addEventListener("change",event=>{if(event.target.hasAttribute('data-cc-watermark')){patch({watermarkDraft});const options=root.querySelector('[data-cc-watermark-page]');if(options)void paintWatermarkSample(options);}});
   root.addEventListener("input", event => {
     if(event.target.hasAttribute('data-cc-watermark')){
@@ -366,6 +379,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       options.querySelector('[data-cc-watermark-value]').textContent=`${value} %`;
       void paintWatermarkSample(options);return;
     }
+    if(event.target.hasAttribute('data-studio-search')){patch({studioSearch:event.target.value,studioLimit:20});return;}
     if(event.target.hasAttribute('data-cc-search')){patch({search:event.target.value,businessLimit:20,selectedIds:[]});return;}
     if(event.target.hasAttribute('data-cc-hero-adjust')){
       const card=event.target.closest('[data-cc-hero-card]');if(!card)return;
@@ -570,6 +584,27 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       if (action === 'reset-data') { await creatorReset().reset(); return; }
       if (action === 'cancel-reset') { creatorReset().cancel(); return; }
       if (store.getState().contentCreator.resetRunning || store.getState().contentCreator.deletingBusinessId) return;
+      if (action === 'studio-order-filter') { patch({ orderTypeFilter: button.dataset.key, orderLimit: 20 }); return; }
+      if (action === 'studio-toggle') {
+        const page = store.getState().contentCreator.pages.find(row => row.id === id);
+        if (!page) return;
+        button.disabled = true;
+        try {
+          const { enabled } = await studioAdminRequest('admin-toggle', { pageId: id, enabled: page.photoStudioEnabled !== true });
+          notice(enabled ? 'Photo Studio aktiviert.' : 'Photo Studio deaktiviert.');
+        } finally { button.disabled = false; }
+        return;
+      }
+      if (action === 'studio-open') {
+        const initial = store.getState().contentCreator.studioOrders?.find(row => row.id === id);
+        if (!initial) return;
+        button.disabled = true;
+        try {
+          const { openHeartStudio } = await import('./heart-photo-studio.js');
+          if (!document.querySelector('.studio-admin[open]')) openHeartStudio({ store, initial, request: studioAdminRequest });
+        } finally { button.disabled = false; }
+        return;
+      }
       if(action==='close-package-editor'){
         const editor=button.closest('.cc-package-editor');
         if(editor){
@@ -598,7 +633,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         updateGallery(gallery);return;
       }
       if(action==='refresh'){stop();load();notice('Wird aktualisiert …');}
-      if(action==='more'&&['businessLimit','orderLimit','visitLimit'].includes(button.dataset.key))patch({[button.dataset.key]:(store.getState().contentCreator[button.dataset.key]||20)+20});
+      if(action==='more'&&['businessLimit','orderLimit','visitLimit','studioLimit'].includes(button.dataset.key))patch({[button.dataset.key]:(store.getState().contentCreator[button.dataset.key]||20)+20});
       if(action==='date-picker')patch({datePicker:!store.getState().contentCreator.datePicker});
       if(action==='period')patch({period:button.dataset.key,datePicker:false});
       if(action==='settings')patch({selecting:!store.getState().contentCreator.selecting,selectedIds:[]});
