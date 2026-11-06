@@ -3,12 +3,30 @@ export const CC_ORDERS='contentCreatorOrders';
 export const euro=cents=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format((Number(cents)||0)/100);
 export const validShopId=id=>typeof id==='string'&&/^[a-f0-9]{32}$/.test(id);
 export function priceCents(value){const n=Number(String(value??'').trim().replace(',','.'));if(!String(value??'').trim()||!Number.isFinite(n)||n<0||n>10000)throw Error('Bitte einen Preis zwischen 0 und 10.000 € angeben.');const cents=Math.round(n*100);if(n>0&&cents<1)throw Error("Der Mindestpreis ist 0,01 €.");return cents;}
+export const creatorWatermarkOpacity = value => Number.isInteger(value)&&value>=0&&value<=100 ? value : 20;
+export function creatorPackageFiles(page, product, files = (page.photoIds||[]).filter(id=>product?.imageIds?.includes(id))){
+ const order=page.packagePhotoOrder?.[product?.id];
+ if(!Array.isArray(order))return files;
+ const remaining=new Set(files);
+ return [...order.filter(id=>remaining.delete(id)),...remaining];
+}
+export function creatorOrderedDelivery(page, files){
+ let ordered=files;
+ for(const product of page.products||[]){
+  if(!Array.isArray(page.packagePhotoOrder?.[product.id]))continue;
+  const members=new Set(product.imageIds||[]);
+  const next=creatorPackageFiles(page,product,ordered.filter(id=>members.has(id)));
+  let index=0;
+  ordered=ordered.map(id=>members.has(id)?next[index++]:id);
+ }
+ return ordered;
+}
 export function shopQuote(page,ids){
  if(!page?.published||page.deleting===true||page.kind!=='shop')throw Error('Ky dyqan nuk është i disponueshëm.');
  if(!Array.isArray(ids)||!ids.length||ids.length>100||new Set(ids).size!==ids.length)throw Error('Shporta nuk është e vlefshme.');
  const lines=ids.map(id=>{
   const product=(page.products||[]).find(p=>p.id===id&&p.active!==false);
-  const images=(page.photoIds||[]).filter(key=>product?.imageIds?.includes(key));
+  const images=creatorPackageFiles(page,product);
   if(!product||!Number.isSafeInteger(product.priceCents)||product.priceCents<0||product.priceCents>1000000||!images.length)throw Error('Një pako nuk është më e disponueshme.');
   return {id,title:String(product.title||'Pako fotosh').slice(0,120),priceCents:product.priceCents,imageIds:images};
  });

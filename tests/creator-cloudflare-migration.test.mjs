@@ -1,3 +1,4 @@
+import {creatorWatermarkOpacity} from '../shared/content-creator-shop.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -26,8 +27,8 @@ function setup({failSecond=false,archived=false}={}){
  const context={save(){},restore(){},translate(){},rotate(){},measureText:()=>({width:40}),fillText(){},fillRect(){},drawImage(){}};
  const document={createElement:()=>({getContext:()=>context,toDataURL:()=> 'data:image/webp;base64,YWJj'})};
  class Image{constructor(){this.width=100;this.height=150;}async decode(){}}
- const factory=new Function('db','doc','getDoc','getDocs','collection','setDoc','updateDoc','serverTimestamp','writeBatch','CC_PAGES','CC_ORDERS','creatorCdnEnabled','uploadCreatorMedia','readCreatorOriginal','creatorVariants','creatorPublicMedia','Image','document',`${source}\nreturn {migrateCreatorPage,saveCreatorCdnAsset};`);
- const api=factory({},doc,async path=>({data:()=>docs.get(path)}),async path=>({docs:[...docs].filter(([key])=>key.startsWith(path+'/')&&key.slice(path.length+1).indexOf('/')<0).map(([key,data])=>({id:key.split('/').at(-1),data:()=>data}))}),doc,async(path,data)=>update(path,data),async(path,data)=>update(path,data),()=> 'now',writeBatch,'contentCreatorPages','contentCreatorOrders',async()=>true,upload,async record=>new File(['original'],record.name,{type:record.mime}),creatorVariants,creatorPublicMedia,Image,document);
+ const factory=new Function('creatorWatermarkOpacity','runTransaction','db','doc','getDoc','getDocs','collection','setDoc','updateDoc','serverTimestamp','writeBatch','CC_PAGES','CC_ORDERS','creatorCdnEnabled','uploadCreatorMedia','readCreatorOriginal','creatorVariants','creatorPublicMedia','Image','document',`${source}\nreturn {migrateCreatorPage,saveCreatorCdnAsset};`);
+ const api=factory(creatorWatermarkOpacity,async(_db,work)=>{const tx=writeBatch();await work({...tx,get:async path=>({data:()=>docs.get(path)})});await tx.commit();},{},doc,async path=>({data:()=>docs.get(path)}),async path=>({docs:[...docs].filter(([key])=>key.startsWith(path+'/')&&key.slice(path.length+1).indexOf('/')<0).map(([key,data])=>({id:key.split('/').at(-1),data:()=>data}))}),doc,async(path,data)=>update(path,data),async(path,data)=>update(path,data),()=> 'now',writeBatch,'contentCreatorPages','contentCreatorOrders',async()=>true,upload,async record=>new File(['original'],record.name,{type:record.mime}),creatorVariants,creatorPublicMedia,Image,document);
  return {api,docs,uploads,setFailure:value=>{fail=value;}};
 }
 test('Existing assets migrate without re-upload, preserve original chunks/captions, and resume a partial failure',async()=>{

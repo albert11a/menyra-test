@@ -1,3 +1,5 @@
+import {bindCreatorPhotoOrder} from '../apps/mnyra-heart/heart-creator-photo-order.js';
+import {creatorPackageFiles,creatorWatermarkOpacity} from '../shared/content-creator-shop.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -6,7 +8,7 @@ import {createHeartStore,createHeartInitialState} from '../apps/mnyra-heart/hear
 import {renderContentCreator} from '../apps/mnyra-heart/heart-content-creator-render.js';
 import {contentLink} from '../shared/content-creator.js';
 const source=(await readFile(new URL('../apps/mnyra-heart/heart-content-creator.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export (async )?function /g,'$1function ');
-const factory=new Function('db','collection','doc','getDoc','onSnapshot','setDoc','updateDoc','writeBatch','serverTimestamp','CC_PAGES','CC_VISITS','contentLink',`const creatorCdnEnabled=async()=>false; const savePromoAsset=async(pageId,imageId,file,data)=>setDoc(doc(db,CC_PAGES,pageId,'images',imageId),{data,caption:''});\n${source}\nreturn createContentCreator;`);
+const factory=new Function('bindCreatorPhotoOrder','creatorPackageFiles','creatorWatermarkOpacity','db','collection','doc','getDoc','onSnapshot','setDoc','updateDoc','writeBatch','serverTimestamp','CC_PAGES','CC_VISITS','contentLink',`const creatorCdnEnabled=async()=>false; const savePromoAsset=async(pageId,imageId,file,data)=>setDoc(doc(db,CC_PAGES,pageId,'images',imageId),{data,caption:''});\n${source}\nreturn createContentCreator;`);
 test('Lokal öffnen, Unterschrift speichern, Reihenfolge ändern, löschen und hinzufügen',async()=>{
  const {document,window}=parseHTML('<div id="app"></div>'),root=document.getElementById('app');
  const store=createHeartStore(createHeartInitialState());
@@ -15,7 +17,7 @@ test('Lokal öffnen, Unterschrift speichern, Reihenfolge ändern, löschen und h
  const doc=(...args)=>args.filter(x=>typeof x==='string').join('/');
  const getDoc=async path=>({exists:()=>docs.has(path),data:()=>docs.get(path)});
  const update=async(path,data)=>docs.set(path,{...docs.get(path),...data});
- const create=factory({},()=>'',doc,getDoc,()=>()=>{},async(path,data)=>docs.set(path,data),update,()=>{
+ const create=factory(bindCreatorPhotoOrder,creatorPackageFiles,creatorWatermarkOpacity,{},()=>'',doc,getDoc,()=>()=>{},async(path,data)=>docs.set(path,data),update,()=>{
  const writes=[];return {update:(...args)=>writes.push(()=>update(...args)),delete:path=>writes.push(()=>docs.delete(path)),commit:async()=>{for(const write of writes)await write();}};
  },()=>'', 'contentCreatorPages','contentCreatorVisits',contentLink);
  store.actions.patchContentCreator({pages:[page],visits:[{pageId:'a',opened:true,scrolled:true,answer:'yes'}]});

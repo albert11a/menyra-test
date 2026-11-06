@@ -1,3 +1,5 @@
+import {bindCreatorPhotoOrder} from '../apps/mnyra-heart/heart-creator-photo-order.js';
+import {creatorPackageFiles,creatorWatermarkOpacity} from '../shared/content-creator-shop.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -31,8 +33,8 @@ test('Heart preview sliders update without a request, then explicitly save the e
  const {document,window}=parseHTML('<main></main>'),root=document.querySelector('main'),store=createHeartStore(createHeartInitialState()),page=fixture();
  let stored=structuredClone(page);const writes=[];
  store.actions.patchContentCreator({pages:[page],selectedId:pageId});store.subscribe(state=>{root.innerHTML=renderContentCreator(state.contentCreator);});root.innerHTML=renderContentCreator(store.getState().contentCreator);
- const factory=new Function('db','doc','getDoc','updateDoc','serverTimestamp','CC_PAGES','creatorCdnEnabled','normalizeCreatorCrop','creatorHeroCropStyle','creatorHeroFormat',`${source}\nreturn createContentCreator;`);
- factory({},(...args)=>args.filter(value=>typeof value==='string').join('/'),async()=>({data:()=>stored}),async(path,fields)=>{writes.push(fields);for(const [key,value] of Object.entries(fields)){if(key.startsWith('heroCrop.'))stored.heroCrop={...stored.heroCrop,[key.slice(9)]:value};else stored[key]=value;}},()=> 'now','contentCreatorPages',async()=>true,normalizeCreatorCrop,creatorHeroCropStyle,creatorHeroFormat)({root,store});
+ const factory=new Function('bindCreatorPhotoOrder','creatorPackageFiles','creatorWatermarkOpacity','db','doc','getDoc','updateDoc','serverTimestamp','CC_PAGES','creatorCdnEnabled','normalizeCreatorCrop','creatorHeroCropStyle','creatorHeroFormat',`${source}\nreturn createContentCreator;`);
+ factory(bindCreatorPhotoOrder,creatorPackageFiles,creatorWatermarkOpacity,{},(...args)=>args.filter(value=>typeof value==='string').join('/'),async()=>({data:()=>stored}),async(path,fields)=>{writes.push(fields);for(const [key,value] of Object.entries(fields)){if(key.startsWith('heroCrop.'))stored.heroCrop={...stored.heroCrop,[key.slice(9)]:value};else stored[key]=value;}},()=> 'now','contentCreatorPages',async()=>true,normalizeCreatorCrop,creatorHeroCropStyle,creatorHeroFormat)({root,store});
  const settle=async()=>{for(let i=0;i<15;i++)await new Promise(resolve=>setImmediate(resolve));};
  for(const [axis,value] of [['x','82'],['y','14'],['fit','contain']]){
   const input=root.querySelector(`[data-cc-hero-adjust="${axis}"]`);if(input.tagName==='SELECT'){for(const option of input.querySelectorAll('option'))option.toggleAttribute('selected',option.value===value);}else input.value=value;input.dispatchEvent(new window.Event('input',{bubbles:true}));

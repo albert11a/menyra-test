@@ -11,6 +11,10 @@ const photoGallery=deliveryKeys||namedGallery||params.get('photos')==='1';
 // when a normal customer link opens in the same browser later.
 const still=params.get('still')==='1'||params.get('preview')==='1';
 let tracking;
+function photoViews(token){
+  if(still)return;
+  void import('./photo-views.js').then(({installCreatorPhotoViews})=>installCreatorPhotoViews({root,pageId:id,token})).catch(()=>{});
+}
 function responseMessage(answer){const node=root.querySelector('.answer-content');if(node)node.innerHTML=`<p class="answer-message">${answer==='yes'?'Faleminderit për interesimin! E morëm përgjigjen tuaj. Mund të vazhdoni bisedën me ne aty ku ju dërguam linkun.':'Faleminderit për përgjigjen tuaj! Fotot shembull mbeten tuajat për t’i përdorur kur të dëshironi.'}</p>`;}
 function visits(){
   if(still&&!photoGallery)return Promise.resolve({answer:async value=>responseMessage(value)});
@@ -23,7 +27,8 @@ async function start(){
       const fragment=location.hash.slice(1);
       const keys=deliveryKeys?JSON.parse(deliveryKeys.textContent):namedGallery?creatorPhotoLinkKeys(pathId,fragment):{pageId:id,token:fragment};
       id=keys.pageId;
-      await mountCreatorPhotoGallery({root,...keys,track:()=>{void visits().catch(()=>{});}});
+      photoViews(keys.token);
+      await mountCreatorPhotoGallery({root,...keys,track:()=>{if(!still)void visits().catch(()=>{});}});
       return;
     }
     let page;
@@ -38,6 +43,7 @@ async function start(){
       if(!response.ok)throw Error('Faqja nuk u gjet.');page=await response.json();
     }
     document.title=`Për ${page.name} · MNYRA`;
+    photoViews();
     if(page.kind==='shop'){
       const {mountCreatorShop}=await import('./shop.js');
       await mountCreatorShop({root,page,still,track:(event,data)=>visits().then(tracker=>tracker.track?.(event,data))});

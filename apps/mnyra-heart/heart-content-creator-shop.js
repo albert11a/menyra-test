@@ -1,15 +1,16 @@
 import {auth,db} from '/shared/firebase-config.js';
-import {doc,getDoc,setDoc,updateDoc,serverTimestamp,writeBatch,runTransaction} from '/shared/vendor/firebase/11.0.0/firebase-firestore.js';
+import {doc,getDoc,setDoc,updateDoc,serverTimestamp,writeBatch,runTransaction,deleteField} from '/shared/vendor/firebase/11.0.0/firebase-firestore.js';
 import {CC_PAGES} from '../../shared/content-creator.js';
-import {CC_ORDERS} from '../../shared/content-creator-shop.js';
+import {CC_ORDERS,creatorWatermarkOpacity} from '../../shared/content-creator-shop.js';
 import {creatorCdnEnabled,uploadCreatorMedia,uploadCreatorVideo,creatorVideoOwner,uploadCreatorDeliveryOriginal} from './heart-creator-cdn.js';
 import {creatorVariants,creatorPublicMedia,creatorMediaUrl} from '../../shared/creator-media.js';
 const PART=400000;
-export function drawShopWatermark(ctx,width,height){
+export function drawShopWatermark(ctx,width,height,opacity=20){
+ if(opacity===0)return;
  const text='MNYRA · PREVIEW',fontSize=Math.max(7,width/42);
  ctx.save();ctx.translate(width/2,height/2);ctx.rotate(-.35);
  ctx.font=`400 ${fontSize}px Arial`;ctx.textAlign='center';ctx.textBaseline='middle';
- ctx.fillStyle='rgba(255,255,255,.20)';ctx.shadowColor='rgba(0,0,0,.04)';ctx.shadowBlur=.5;
+ ctx.fillStyle=opacity===20?'rgba(255,255,255,.20)':`rgba(255,255,255,${opacity/100})`;ctx.shadowColor='rgba(0,0,0,.04)';ctx.shadowBlur=.5;
  const stepX=Math.ceil(ctx.measureText(text).width+fontSize*3),stepY=Math.ceil(fontSize*4.7);
  const radius=Math.hypot(width,height)/2;
  for(let row=-Math.ceil(radius/stepY);row<=Math.ceil(radius/stepY);row++){
@@ -17,7 +18,7 @@ export function drawShopWatermark(ctx,width,height){
  }
  ctx.restore();
 }
-export function prepareBoundedShopDisplay(image,edge,quality){
+export function prepareBoundedShopDisplay(image,edge,quality,opacity=20){
  let scale=Math.min(1,edge/image.width,edge*1.5/image.height);
  for(let attempt=0;attempt<6;attempt++){
   const frame=document.createElement('canvas');
@@ -25,8 +26,8 @@ export function prepareBoundedShopDisplay(image,edge,quality){
   const context=frame.getContext('2d');context.fillStyle='#f1f2ed';context.fillRect?.(0,0,frame.width,frame.height);context.drawImage(image,0,0,frame.width,frame.height);
   const q=attempt===0?quality:Math.max(.5,quality-.06);
   const encode=()=>{const webp=frame.toDataURL('image/webp',q);return webp.startsWith('data:image/webp')?webp:frame.toDataURL('image/jpeg',q);};
-  const clean=encode();drawShopWatermark(context,frame.width,frame.height);
-  const record={version:3,width:frame.width,height:frame.height,clean,marked:encode()};
+  const clean=encode();drawShopWatermark(context,frame.width,frame.height,opacity);
+  const record={version:3,opacity,width:frame.width,height:frame.height,clean,marked:encode()};
   const bytes=JSON.stringify(record).length;
   if(bytes<=950000)return record;
   // Always redraw from the original; never recompress a previous preview.
@@ -94,7 +95,10 @@ export async function saveShopAsset(pageId,imageId,file,display,options={}){
  try{await saveShopPreview(pageId,imageId,source);}finally{URL.revokeObjectURL(source);}
 }
 
-export async function saveCreatorCdnAsset(pageId,imageId,file,{free=false,hero=false,publish=true}={}){
+export async function saveCreatorCdnAsset(pageId,imageId,file,{free=false,hero=false,publish=true,videoPoster=false}={}){
+ const pageRef=doc(db,CC_PAGES,pageId);
+ const photo=!file.type.startsWith('video/');
+ const opacity=photo&&!videoPoster&&!free&&!hero?creatorWatermarkOpacity((await getDoc(pageRef)).data()?.watermarkOpacity):20;
  if(file.type.startsWith('video/')){
   if(hero)throw Error('Bitte Videos als Paket hochladen. Titelbilder bleiben Fotos.');
   const {prepareCreatorVideo}=await import('./heart-creator-video.js');
@@ -102,7 +106,7 @@ export async function saveCreatorCdnAsset(pageId,imageId,file,{free=false,hero=f
   // Public R2 contains only baked-watermark derivatives of paid videos.
   // The byte-exact original, including its sound, remains private.
   const video=await uploadCreatorVideo(prepared);
-  const poster=await saveCreatorCdnAsset(pageId,imageId,prepared.poster,{free,hero:false,publish:false});
+  const poster=await saveCreatorCdnAsset(pageId,imageId,prepared.poster,{free,hero:false,publish:false,videoPoster:true});
   const {id:unused,download:unusedDownload,...variants}=poster;
   const media={...variants,...video,videoVersion:2,mediaType:'video',bytes:file.size};
   await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId),{mediaType:'video',duration:prepared.duration},{merge:true});
@@ -116,7 +120,7 @@ export async function saveCreatorCdnAsset(pageId,imageId,file,{free=false,hero=f
  try{
   const image=new Image();image.src=source;await image.decode();
   const displays={};
-  for(const [size,edge,quality] of [['thumb',480,.68],['medium',1080,.8],['large',1600,.86]])displays[size]=prepareBoundedShopDisplay(image,edge,quality);
+  for(const [size,edge,quality] of [['thumb',480,.68],['medium',1080,.8],['large',1600,.86]])displays[size]=prepareBoundedShopDisplay(image,edge,quality,opacity);
   result=await uploadCreatorMedia(pageId,imageId,file,displays,{free,hero});
   if(!free&&!hero&&publish&&file.size<=15*1024*1024){
    try{
@@ -131,12 +135,59 @@ export async function saveCreatorCdnAsset(pageId,imageId,file,{free=false,hero=f
  }finally{URL.revokeObjectURL(source);}
  // Original chunks stay in the existing protected Firestore collection.
  // Only prepared public image URLs are published after the upload completes.
- const batch=writeBatch(db),pageRef=doc(db,CC_PAGES,pageId);
-
- batch.set(doc(pageRef,'images',imageId),{cdn:result.media},{merge:true});
- if(!hero&&publish)batch.update(pageRef,{[`media.${imageId}`]:result.media,updatedAt:serverTimestamp()});
- await batch.commit();
+ if(!hero&&publish)await runTransaction(db,async transaction=>{
+  const latest=(await transaction.get(pageRef)).data();
+  if(!latest||latest.deleting||(!free&&creatorWatermarkOpacity(latest.watermarkOpacity)!==opacity))throw Error('Die Deckkraft hat sich geändert. Bitte erneut hochladen.');
+  transaction.set(doc(pageRef,'images',imageId),{cdn:result.media},{merge:true});
+  transaction.update(pageRef,{[`media.${imageId}`]:result.media,updatedAt:serverTimestamp()});
+ });
+ else await setDoc(doc(pageRef,'images',imageId),{cdn:result.media},{merge:true});
  return {id:imageId,...result.media};
+}
+
+const pendingWatermarks=new Map();
+// Stage fresh immutable CDN URLs first, then publish the complete Business change.
+export async function applyShopWatermark(pageId,value,{sold=new Set(),progress=()=>{}}={}){
+ const ref=doc(db,CC_PAGES,pageId),page=(await getDoc(ref)).data();
+ if(page?.kind!=='shop'||page.deleting)throw Error('Shop wurde nicht gefunden.');
+ const opacity=creatorWatermarkOpacity(value);
+ const changed=page.watermarkOpacity!==(value??undefined);
+ if(!changed)return;
+ const signature=p=>JSON.stringify([p.watermarkOpacity,p.previewRevision,p.photoIds,p.products,p.media,p.mediaTypes]);
+ const before=signature(page),key=JSON.stringify([before,opacity]);
+ const pending=pendingWatermarks.get(pageId),media=pending?.key===key?pending.media:Object.create(null);
+ pendingWatermarks.set(pageId,{key,media});
+ if(pendingWatermarks.size>4)pendingWatermarks.delete(pendingWatermarks.keys().next().value);
+ const ids=(page.photoIds||[]).filter(id=>{
+  const products=(page.products||[]).filter(p=>p.active!==false&&p.imageIds?.includes(id));
+  return page.mediaTypes?.[id]!=='video'&&page.media?.[id]?.mediaType!=='video'&&products.some(p=>p.priceCents>0&&!sold.has(p.id))&&!products.some(p=>p.priceCents===0);
+ });
+ const effectiveChange=creatorWatermarkOpacity(page.watermarkOpacity)!==opacity;
+ if(effectiveChange){
+  for(const id of ids){
+   if(media[id])continue;
+   const file=await savedCreatorFile(pageId,id),url=URL.createObjectURL(file);
+   try{
+    const image=new Image();image.src=url;await image.decode();
+    const displays=Object.fromEntries([['thumb',480,.68],['medium',1080,.8],['large',1600,.86]].map(([size,edge,quality])=>[size,prepareBoundedShopDisplay(image,edge,quality,opacity)]));
+    media[id]=(await uploadCreatorMedia(pageId,id,file,displays,{previewOnly:true})).media;
+    progress(Object.keys(media).length,ids.length);
+   }finally{URL.revokeObjectURL(url);}
+  }
+ }
+ await runTransaction(db,async transaction=>{
+  const latest=(await transaction.get(ref)).data();
+  if(!latest||latest.deleting||signature(latest)!==before)throw Error('Das Business wurde inzwischen geändert. Bitte erneut anwenden.');
+  const updates={watermarkOpacity:value??deleteField(),updatedAt:serverTimestamp()};
+  if(effectiveChange&&ids.length)updates.previewRevision=crypto.randomUUID();
+  for(const [id,cdn] of Object.entries(media)){
+   if(!ids.includes(id))continue;
+   updates[`media.${id}`]=cdn;
+   transaction.set(doc(ref,'images',id),{cdn},{merge:true});
+  }
+  transaction.update(ref,updates);
+ });
+ pendingWatermarks.delete(pageId);
 }
 
 export async function savedCreatorFile(pageId,imageId){

@@ -9,6 +9,10 @@ export async function serveCreatorShop(req,res,repository=shopRepository){
   let input=req.method!=='POST'?Object.fromEntries(url.searchParams):req.body;
   if(typeof input==='string')input=JSON.parse(input);if(!input||typeof input!=='object')throw Error('Kërkesa mungon.');
   if(req.method!=='POST'&&!['sold','sold-download','sold-preview','receipt','download','free-download','free-image','image','video'].includes(input.op))throw Error('Kërkesa nuk lejohet.');
+  if(input.op==='photo-views'){
+   const site=req.headers?.['sec-fetch-site'],agent=String(req.headers?.['user-agent']||'');
+   if((site&&site!=='same-origin')||!agent||/bot\b|crawl|spider|headless|preview/i.test(agent)){res.statusCode=200;res.end('{"ok":true}');return;}
+  }
   if(input.op==='video')input.range=req.headers?.range||'';
   if(input.op==='visit'){
    const decode=value=>{try{return decodeURIComponent(String(value||''));}catch{return '';}};

@@ -48,8 +48,8 @@ async function displayLimited(task){
 const displayCache = new Map();
 export const DISPLAY_IMAGE_VERSION = 3;
 export function displaySize(value) { return ['thumb','medium','large'].includes(value) ? value : 'thumb'; }
-function validDisplay(record, mode) {
-  return record?.version === DISPLAY_IMAGE_VERSION && (mode ? [mode] : ['clean','marked']).every(mode => /^data:image\/(?:webp|jpeg);base64,[A-Za-z0-9+/=]+$/.test(record[mode] || ''));
+function validDisplay(record, mode, opacity=20) {
+  return record?.version === DISPLAY_IMAGE_VERSION && (mode==='clean'||(record.opacity??20)===opacity) && (mode ? [mode] : ['clean','marked']).every(mode => /^data:image\/(?:webp|jpeg);base64,[A-Za-z0-9+/=]+$/.test(record[mode] || ''));
 }
 async function originalDisplaySource(path,metadata,repo){
  if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>30*1024*1024)throw Error('Fotoja nuk u gjet.');
@@ -61,26 +61,27 @@ async function originalDisplaySource(path,metadata,repo){
  if(total!==metadata.size)throw Error('Skedari nuk është i plotë.');
  return Buffer.concat(chunks);
 }
-function watermarkSvg(width,height) {
+function watermarkSvg(width,height,opacity) {
   const font=Math.max(7,width/42),stepX=font*13.5,stepY=font*4.7,radius=Math.ceil(Math.hypot(width,height));
   let words='';
   for(let y=-radius;y<radius;y+=stepY)for(let x=-radius;x<radius;x+=stepX)words+=`<text x="${x.toFixed(1)}" y="${y.toFixed(1)}">MNYRA · PREVIEW</text>`;
-  return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><g transform="translate(${width/2} ${height/2}) rotate(-20)" font-family="Arial,sans-serif" font-size="${font}" font-weight="400" fill="white" fill-opacity=".20">${words}</g></svg>`);
+  return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><g transform="translate(${width/2} ${height/2}) rotate(-20)" font-family="Arial,sans-serif" font-size="${font}" font-weight="400" fill="white" fill-opacity="${opacity/100}">${words}</g></svg>`);
 }
-export async function creatorDisplayImage(path, metadata, repo, {size='thumb', free=false, persist=false}={}) {
+export async function creatorDisplayImage(path, metadata, repo, {size='thumb', free=false, persist=false,opacity=20}={}) {
  size=displaySize(size);
  const recordPath=label=>`${path}/displays/${label}`;
  const mode=free?'clean':'marked';
- let record=await repo.read(recordPath(size),persist?undefined:['version',mode]);
- if(persist&&validDisplay(record)){
+ let record=await repo.read(recordPath(size),persist?undefined:['version','opacity',mode]);
+ if(persist&&validDisplay(record,undefined,opacity)){
   const siblings=await Promise.all(['thumb','medium','large'].filter(label=>label!==size).map(label=>repo.read(recordPath(label))));
-  if(!siblings.every(row=>validDisplay(row)))record=null;
+  if(!siblings.every(row=>validDisplay(row,undefined,opacity)))record=null;
  }
- if(!validDisplay(record,persist?undefined:mode)){
-  const cached=displayCache.get(path);
+ if(!validDisplay(record,persist?undefined:mode,opacity)){
+  const key=path+':'+opacity;
+  const cached=displayCache.get(key);
   let set=cached&&Date.now()-cached.at<120000?cached.set:null;
   if(!set){
-   let task=displayTasks.get(path);
+   let task=displayTasks.get(key);
    if(!task){
     task=displayLimited(async()=>{
      const meta=metadata||await repo.read(path,['name','mime','size','parts']);
@@ -94,8 +95,8 @@ export async function creatorDisplayImage(path, metadata, repo, {size='thumb', f
        const image=()=>sharp(resized.data,{raw:{width:resized.info.width,height:resized.info.height,channels:resized.info.channels}});
        const q=attempt===0?quality:Math.max(78,quality-6);
        const clean=await image().webp({quality:q,smartSubsample:true,effort:5}).toBuffer();
-       const marked=await image().composite([{input:watermarkSvg(resized.info.width,resized.info.height)}]).webp({quality:q,smartSubsample:true,effort:5}).toBuffer();
-       entry={version:DISPLAY_IMAGE_VERSION,width:resized.info.width,height:resized.info.height,clean:`data:image/webp;base64,${clean.toString('base64')}`,marked:`data:image/webp;base64,${marked.toString('base64')}`};
+       const marked=await image().composite([{input:watermarkSvg(resized.info.width,resized.info.height,opacity)}]).webp({quality:q,smartSubsample:true,effort:5}).toBuffer();
+       entry={version:DISPLAY_IMAGE_VERSION,opacity,width:resized.info.width,height:resized.info.height,clean:`data:image/webp;base64,${clean.toString('base64')}`,marked:`data:image/webp;base64,${marked.toString('base64')}`};
        const length=JSON.stringify(entry).length;
        if(length<=950000)break;
        if(attempt===5)throw Error('Fotoja nuk mund te pergatitet. Provoni perseri.');
@@ -103,10 +104,10 @@ export async function creatorDisplayImage(path, metadata, repo, {size='thumb', f
       }
       result[label]=entry;
      }
-     displayCache.set(path,{set:result,at:Date.now()});if(displayCache.size>16)displayCache.delete(displayCache.keys().next().value);
+     displayCache.set(key,{set:result,at:Date.now()});if(displayCache.size>16)displayCache.delete(displayCache.keys().next().value);
      return result;
     });
-    displayTasks.set(path,task);task.finally(()=>{if(displayTasks.get(path)===task)displayTasks.delete(path);}).catch(()=>{});
+    displayTasks.set(key,task);task.finally(()=>{if(displayTasks.get(key)===task)displayTasks.delete(key);}).catch(()=>{});
    }
    set=await task;
   }

@@ -1,11 +1,12 @@
 import {creatorIsVideo,creatorVideoUrl,creatorAssetCount,creatorVideoFirst} from './creator-video.js';
 import {creatorHeroFormat,creatorHeroCrop,creatorHeroCropStyle} from './creator-hero.js';
 import { ccEscape as esc, ccImage } from './content-creator.js';
-import { euro } from './content-creator-shop.js';
+import { euro, creatorPackageFiles } from './content-creator-shop.js';
 import {creatorMediaUrl,creatorPublicMedia,creatorHeroImages} from './creator-media.js';
 
 // Lucide paths, rendered inline: no icon library/CDN request or hydration delay.
 const paths = {
+  'eye': '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
   'video': '<path d="m16 8 6-4v16l-6-4"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
   'pause': '<path d="M9 5v14M15 5v14"/>',
   'play': '<path d="m8 5 11 7-11 7Z"/>',
@@ -33,13 +34,13 @@ export const DISPLAY_VERSION = 3;
 export function creatorImageUrl(page, file, size = 'thumb') {
   const media = creatorPublicMedia(page)[file] || creatorHeroImages(page).find(image=>image.id===file);
   if (media?.[size]) return media[size];
-  return `/api/content-creator-shop?${new URLSearchParams({op:'image',pageId:page.id,file,size,display:String(DISPLAY_VERSION),v:String(page.updatedAt || page.createdMs || '')})}`;
+  return `/api/content-creator-shop?${new URLSearchParams({op:'image',pageId:page.id,file,size,display:String(DISPLAY_VERSION),v:String(page.previewRevision || page.updatedAt || page.createdMs || '')})}`;
 }
 export function publicCreatorPage(page, id) {
   const photoIds = [...new Set((page.photoIds || []).filter(key => /^[a-zA-Z0-9_-]{1,64}$/.test(key)))].slice(0,page.kind==='shop'?100:30);
-  return {id, published:true, mediaTypes:Object.fromEntries(photoIds.filter(key=>creatorIsVideo(page,key)).map(key=>[key,'video'])), media:creatorPublicMedia(page),heroImages:creatorHeroImages(page),heroFormat:creatorHeroFormat(page),heroCrop:Object.fromEntries(creatorHeroFiles(page).map(id=>[id,creatorHeroCrop(page,id)])),kind:page.kind === 'shop' ? 'shop' : 'promo', name:String(page.name || '').slice(0,160),
+  return {id, published:true, mediaTypes:Object.fromEntries(photoIds.filter(key=>creatorIsVideo(page,key)).map(key=>[key,'video'])), media:creatorPublicMedia(page),heroImages:creatorHeroImages(page),heroFormat:creatorHeroFormat(page),heroCrop:Object.fromEntries(creatorHeroFiles(page).map(id=>[id,creatorHeroCrop(page,id)])),packagePhotoOrder:Object.fromEntries((page.products||[]).filter(p=>Array.isArray(page.packagePhotoOrder?.[p.id])).map(p=>[p.id,creatorPackageFiles(page,p,photoIds.filter(id=>p.imageIds?.includes(id)))])), previewRevision:typeof page.previewRevision==='string'?page.previewRevision.slice(0,64):'', kind:page.kind === 'shop' ? 'shop' : 'promo', name:String(page.name || '').slice(0,160),
     avatar:ccImage(page.avatar), heroPhotoIds:[...new Set((Array.isArray(page.heroPhotoIds)?page.heroPhotoIds:[]).filter(id=>photoIds.includes(id)))].slice(0,6), updatedAt:typeof page.updatedAt === 'string' ? page.updatedAt : '', createdMs:Number(page.createdMs)||0, photoIds,
-    products:(page.products || []).filter(p => p.active !== false && /^[a-zA-Z0-9_-]{1,64}$/.test(p.id) && Number.isSafeInteger(p.priceCents) && p.priceCents >= 0).slice(0,100).map(p=>({id:p.id,title:String(p.title || 'Pako fotosh').slice(0,120),priceCents:p.priceCents,active:true,imageIds:photoIds.filter(key=>p.imageIds?.includes(key))}))};
+    products:(page.products || []).filter(p => p.active !== false && /^[a-zA-Z0-9_-]{1,64}$/.test(p.id) && Number.isSafeInteger(p.priceCents) && p.priceCents >= 0).slice(0,100).map(p=>({id:p.id,title:String(p.title || 'Pako fotosh').slice(0,120),priceCents:p.priceCents,active:true,imageIds:creatorPackageFiles(page,p,photoIds.filter(key=>p.imageIds?.includes(key)))}))};
 }
 export function creatorOfferButton(product, {busy = '', selected = false} = {}) {
   const free = product.priceCents === 0;
@@ -62,10 +63,10 @@ export function creatorHeroFiles(page) {
   const defaults=(page.products||[]).filter(p=>p.active!==false).map(p=>p.imageIds?.find(id=>allowed.includes(id))).filter(Boolean);
   return [...new Set(chosen.length?chosen:defaults.length?defaults:allowed.slice(0,3))].slice(0,6);
 }
-export function creatorIntroduction(page, photo) {
+export function creatorIntroduction(page, photo, position=0) {
   const files=creatorHeroFiles(page),hasVideo=files.some(id=>creatorIsVideo(page,id));
   return `<section class="shop-introduction">
-    ${files.length?`<div class="shop-hero-gallery" aria-label="Shembuj te punes sone" aria-roledescription="carousel"><div class="shop-hero-track" data-hero-track data-format="${creatorHeroFormat(page)}">${files.map((id,i)=>`<div class="shop-hero-slide">${photo(id,`Foto per ${page.name} · ${i+1}`,{size:'medium',hero:true,active:i===0,eager:i===0})}</div>`).join('')}</div>${files.length>1?`<div class="shop-hero-controls"><div class="shop-hero-dots">${files.map((_,i)=>`<button type="button" data-shop="hero-dot" data-index="${i}" aria-label="Foto e prezantimit ${i+1}" aria-pressed="${i===0}"></button>`).join('')}</div>${hasVideo?'':`<button type="button" data-shop="hero-toggle" aria-label="Ndalo nderrimin automatik">${creatorIcon('pause')}</button>`}</div>`:''}</div>`:''}
+    ${files.length?`<div class="shop-hero-gallery" aria-label="Shembuj te punes sone" aria-roledescription="carousel"><div class="shop-hero-track" data-hero-track data-format="${creatorHeroFormat(page)}">${files.map((id,i)=>`<div class="shop-hero-slide">${photo(id,`Foto per ${page.name} · ${i+1}`,{size:'medium',hero:true,active:i===position,eager:i===position})}</div>`).join('')}</div>${files.length>1?`<div class="shop-hero-controls"><div class="shop-hero-dots">${files.map((_,i)=>`<button type="button" data-shop="hero-dot" data-index="${i}" aria-label="Foto e prezantimit ${i+1}" aria-pressed="${i===position}"></button>`).join('')}</div>${hasVideo?'':`<button type="button" data-shop="hero-toggle" aria-label="Ndalo nderrimin automatik">${creatorIcon('pause')}</button>`}</div>`:''}</div>`:''}
     <div class="shop-intro-copy"><span class="shop-studio-tag"><span class="studio-mark">mnyra<span>•</span></span><span class="studio-cross">×</span> ${esc(page.name)}</span>
     <h1>Biznesi yt meriton<br>me u pa<span class="headline-dot">.</span></h1>
     <p>Ne krijojmë foto dhe video që e prezantojnë bukur biznesin tuaj. Zgjidhni fotot që ju pëlqejnë dhe përdorini menjëherë pas porosisë.</p>
@@ -77,16 +78,16 @@ export function creatorMediaBadge(page,files){
  const videos=files.filter(id=>creatorIsVideo(page,id)).length,photos=files.length-videos;
  return `${videos?`<span>${creatorIcon('video')}${videos}</span>`:''}${photos?`<span>${creatorIcon('images')}${photos}</span>`:''}`;
 }
-export function renderCreatorCatalog(page, {ids=[], positions={}, offerButton, photo, purchasedIds} = {}) {
+export function renderCreatorCatalog(page, {ids=[], positions={}, heroPosition=0, offerButton, photo, purchasedIds} = {}) {
   const products = (page.products || []).filter(p=>!purchasedIds?.has(p.id) && p.active!==false && p.imageIds?.some(id=>page.photoIds.includes(id))).sort((a,b)=>Number(b.imageIds.some(id=>creatorIsVideo(page,id)))-Number(a.imageIds.some(id=>creatorIsVideo(page,id))));
   const img = photo || ((id,alt,opts)=>creatorPhoto(page,id,alt,opts));
   const offer = offerButton || (product=>creatorOfferButton(product,{selected:ids.includes(product.id)}));
   return `<header class="shop-header"><a href="/" class="shop-logo" aria-label="MNYRA">MNYRA<span class="shop-logo-dot"></span></a><button type="button" data-shop="cart" class="shop-cart" aria-label="Hap shportën">${creatorIcon('shopping-bag')}<b ${ids.length?'':'hidden'}>${ids.length}</b></button></header>
     <div class="shop-weekly">${creatorIcon('calendar')}<span>Çdo javë, foto të reja për ju.</span></div>
-    ${creatorIntroduction(page,img)}
+    ${creatorIntroduction(page,img,heroPosition)}
     ${[{title:'Video per biznesin tend',items:products.filter(p=>p.imageIds.some(id=>creatorIsVideo(page,id)))},{title:'Falas për ty',items:products.filter(p=>p.priceCents===0&&!p.imageIds.some(id=>creatorIsVideo(page,id)))},{title:'Fotot per biznesin tend',items:products.filter(p=>p.priceCents>0&&!p.imageIds.some(id=>creatorIsVideo(page,id)))}].filter(group=>group.items.length).map(group=>`<section class="shop-collection"><div class="shop-section-title"><h2>${group.title}</h2><span>${group.items.length} pako ${creatorIcon('images')}</span></div>
     <div class="shop-products">${group.items.map((product)=>{
-      const files=creatorVideoFirst(page,page.photoIds.filter(id=>product.imageIds.includes(id))),position=positions[product.id]||0;
+      const files=(page.packagePhotoOrder?.[product.id]?creatorPackageFiles(page,product):creatorVideoFirst(page,creatorPackageFiles(page,product))),position=positions[product.id]||0;
       return `<article class="shop-product"><div class="shop-carousel"><div class="shop-track" data-track="${esc(product.id)}">${files.map((id,i)=>`<button type="button" class="shop-slide" data-shop="view" data-product="${esc(product.id)}" data-index="${i}" aria-label="Shiko foton ${i+1} të pakos ${esc(product.title)}">${img(id,`${product.title} · ${i+1}`,{active:i===position,eager:i===position&&creatorIsVideo(page,id)&&products.indexOf(product)<2,size:'thumb'})}</button>`).join('')}</div><span class="shop-photo-count" role="img" aria-label="${esc(creatorAssetCount(page,files))}">${creatorMediaBadge(page,files)}</span><span class="shop-expand">${creatorIcon('expand')}</span>${files.length>1?`<button class="shop-arrow shop-prev" data-shop="slide" data-product="${esc(product.id)}" data-step="-1" aria-label="Fotoja paraprake">${creatorIcon('chevron-left')}</button><button class="shop-arrow shop-next" data-shop="slide" data-product="${esc(product.id)}" data-step="1" aria-label="Fotoja tjetër">${creatorIcon('chevron-right')}</button><div class="shop-dots">${files.map((_,i)=>`<button data-shop="dot" data-product="${esc(product.id)}" data-index="${i}" aria-label="Foto ${i+1}" aria-pressed="${position===i}"></button>`).join('')}</div>`:''}</div><div class="shop-product-info"><div class="shop-price-row"><h3>${esc(product.title)}</h3><strong>${product.priceCents===0?'Falas':euro(product.priceCents)}</strong></div><p>${creatorAssetCount(page,files)} · Cilësi origjinale</p>${offer(product)}</div></article>`;
     }).join('')}</div></section>`).join('')}`;
 }
@@ -113,7 +114,7 @@ export function creatorPurchasePreloads(page,lines){
 }
 export function creatorPurchasePhotos(page,line,{orderId='',enabled=false,photo,unwrapped=false}={}){
  const img=photo||((id,alt,options)=>creatorPhoto(page,id,alt,options));
- const files=(line.imageIds||[]).filter(file=>!creatorIsVideo(page,file)&&(orderId||line.downloadIds?.includes(file)||page.photoIds.includes(file)));
+ const files=creatorPackageFiles(page,line,line.imageIds||[]).filter(file=>!creatorIsVideo(page,file)&&(orderId||line.downloadIds?.includes(file)||page.photoIds.includes(file)));
  const cards=files.map((file,index)=>{
   const downloadable=line.downloadIds?.includes(file);
   const preview=creatorPurchasePreview(page,line,file);

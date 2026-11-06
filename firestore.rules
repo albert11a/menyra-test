@@ -943,6 +943,10 @@ service cloud.firestore {
         allow list, create, update, delete: if isCeoActor();
       }
     }
+    match /contentCreatorPages/{pageId}/photoStats/{photoId} {
+      allow read: if isCeoActor();
+      allow write: if false;
+    }
     match /contentCreatorPages/{pageId}/previews/{imageId} {
       allow get: if isCeoActor() || get(/databases/$(database)/documents/contentCreatorPages/$(pageId)).data.published == true;
       allow list, write: if isCeoActor();

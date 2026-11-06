@@ -1,3 +1,4 @@
+import {countCreatorPhotoViews,recordCreatorPhotoViews} from './creator-photo-views.js';
 import {creatorDeliveryPhotos} from '../shared/content-creator.js';
 import {creatorVideoPreview} from './creator-video-preview.js';
 import {creatorActivity} from './creator-activity.js';
@@ -6,7 +7,7 @@ import {creatorPublicMedia,creatorMediaUrl} from '../shared/creator-media.js';
 import {createHash} from 'node:crypto';
 import {optimizedShopImage,creatorDisplayImage,creatorDeliveryPreview} from './content-creator-images.js';
 import {schluessel,zugangHolen,lies,wert,empfaenger,meldungAnlegen,schicken,zustellungAendern} from '../api/lifeskin-meldung.js';
-import {CC_CARTS,CC_ORDERS,validShopId,shopQuote,shopCustomer,purchasedFiles,euro} from '../shared/content-creator-shop.js';
+import {CC_CARTS,CC_ORDERS,validShopId,shopQuote,shopCustomer,purchasedFiles,euro,creatorOrderedDelivery,creatorWatermarkOpacity} from '../shared/content-creator-shop.js';
 const BASE='https://firestore.googleapis.com/v1/projects/menyra-c0e68/databases/(default)/documents';
 let tokenRequest;
 export function encodeValue(v){if(v===null)return {nullValue:null};if(Array.isArray(v))return {arrayValue:{values:v.map(encodeValue)}};if(typeof v==='object')return {mapValue:{fields:Object.fromEntries(Object.entries(v).map(([k,x])=>[k,encodeValue(x)]))}};if(typeof v==='boolean')return {booleanValue:v};if(typeof v==='number')return {integerValue:String(v)};return {stringValue:String(v)};}
@@ -26,6 +27,10 @@ export async function shopRepository(){
    const mask=create?'currentDocument.exists=false':Object.keys(data).map(k=>`updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&')+(requireExisting?'&currentDocument.exists=true':'');
    const r=await fetch(`${BASE}/${path}?${mask}`,{method:'PATCH',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},body:JSON.stringify({fields:Object.fromEntries(Object.entries(data).map(([k,v])=>[k,encodeValue(v)]))}),signal:AbortSignal.timeout(10000)});
    if((create&&(r.status===409||r.status===412))||(requireExisting&&[404,409,412].includes(r.status)))return false;if(!r.ok)throw Error('Speichern fehlgeschlagen.');return true;
+  },
+  countPhotoViews(pagePath,sessionKey,files,now,pageId){
+   const headers={authorization:`Bearer ${token}`,'content-type':'application/json'};
+   return countCreatorPhotoViews({base:BASE,headers,pagePath,sessionKey,files,now,pageId,read:path=>lies(path,token)});
   },
   async sold(pageId,includeMedia=false){
    const response=await fetch(`${BASE}:runQuery`,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},signal:AbortSignal.timeout(7000),body:JSON.stringify({structuredQuery:{
@@ -144,14 +149,20 @@ export async function shopAction(input,repo,{streamPhoto=false}={}){
   if(streamPhoto)return {chunks:originalChunks(path,metadata,repo),...metadata};
   return originalFile(path,metadata,repo);
  }
+ if(op==='photo-views')return recordCreatorPhotoViews(input,repo);
  if(op==='visit'){for(let attempt=0;;attempt++){try{return await creatorActivity(input,repo);}catch(error){if(error.code!=='CREATOR_VISIT_CONFLICT'||attempt>=3)throw error;}}}
- if(op==='photo-gallery'||op==='photo-preview'||op==='photo-download'||op==='photo-record'){
+ if(['photo-gallery','photo-gallery-order','photo-preview','photo-download','photo-record'].includes(op)){
   if(!validShopId(pageId)||!validShopId(input.token))throw Error('Linku nuk është i vlefshëm.');
   const pagePath=`contentCreatorPages/${pageId}`;
-  const [page,delivery]=await Promise.all([repo.read(pagePath),repo.read(`${pagePath}/originals/photo-delivery-${input.token}`)]);
-  const access=delivery||await repo.read(`${pagePath}/originals/photo-delivery`);
+  const orderOnly=op==='photo-gallery-order';
+  const [page,delivery]=await Promise.all([
+   repo.read(pagePath,orderOnly?['published','deleting','kind','photoDeliveryEnabled','photoIds','products','packagePhotoOrder','mediaTypes','media']:undefined),
+   repo.read(`${pagePath}/originals/photo-delivery-${input.token}`,orderOnly?['files']:undefined)
+  ]);
+  const access=delivery||await repo.read(`${pagePath}/originals/photo-delivery`,orderOnly?['token','files']:undefined);
   if(!page?.published||page.deleting||(!delivery&&(!page.photoDeliveryEnabled||access?.token!==input.token)))throw Error('Linku nuk është më aktiv.');
-  const files=delivery?delivery.files:creatorDeliveryPhotos(page).filter(file=>access.files?.includes(file));
+  const files=creatorOrderedDelivery(page,delivery?delivery.files:creatorDeliveryPhotos(page).filter(file=>access.files?.includes(file)));
+  if(orderOnly)return {files};
   if(op==='photo-gallery'){
    const media=creatorPublicMedia(page);
    return {name:page.name,totalCents:delivery?.totalCents,photos:files.map(file=>{
@@ -209,9 +220,9 @@ export async function shopAction(input,repo,{streamPhoto=false}={}){
    if(!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(poster?.data||''))throw Error('Video-Titelbild fehlt.');
    return {bytes:Buffer.from(poster.data.split(',')[1],'base64'),mime:'image/jpeg'};
   }
-  if(['2','3'].includes(String(input.display))||op==='prepare-image'){
+  if(['2','3'].includes(String(input.display))||op==='prepare-image'||(!free&&page.previewRevision)){
    const path=`contentCreatorPages/${pageId}/originals/${input.file}`;
-   const display=await creatorDisplayImage(path,null,repo,{size:input.size,free:!!free,persist:op==='prepare-image'});
+   const display=await creatorDisplayImage(path,null,repo,{size:input.size,free:!!free,persist:op==='prepare-image',opacity:creatorWatermarkOpacity(page.watermarkOpacity)});
    // Explicit cache preparation only; never returns private clean variants.
    return op==='prepare-image'?{ok:true}:{bytes:display.bytes,mime:display.mime};
   }

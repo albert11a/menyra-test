@@ -51,6 +51,27 @@ export async function mountCreatorPhotoGallery({root,pageId,token,track}){
   if(!image.hasAttribute('src'))previews.observe(image);
   else image.addEventListener('error',()=>{image.dataset.cdn='';previews.observe(image);},{once:true});
  });
+ const grid=root.querySelector('.creator-photo-grid');
+ const cards=new Map([...grid.querySelectorAll('[data-download-photo]')].map(button=>[button.dataset.downloadPhoto,button.closest('article')]));
+ let syncing=false,order=photos.map(photo=>photo.file).join(',');
+ const sync=async()=>{
+  if(syncing||document.visibilityState==='hidden')return;
+  syncing=true;
+  try{
+   const {files:next}=await (await request('photo-gallery-order')).json();
+   if(next.length!==cards.size||next.some(file=>!cards.has(file))||next.join(',')===order)return;
+   next.forEach((file,i)=>{
+    const card=cards.get(file);
+    if(grid.children[i]!==card)grid.insertBefore(card,grid.children[i]||null);
+    card.querySelector('img').alt=`Foto ${i+1}`;
+   });
+   order=next.join(',');
+  }catch{/* Preserve the open gallery during a temporary connection failure. */}
+  finally{syncing=false;}
+ };
+ const syncTimer=setInterval(()=>void sync(),12000);
+ document.addEventListener('visibilitychange',sync);
+ globalThis.addEventListener('pagehide',event=>{if(!event.persisted){clearInterval(syncTimer);document.removeEventListener('visibilitychange',sync);}});
  const originals=new Map(photos.map(photo=>[photo.file,photo]));
  const ready=new WeakMap();
  function saved(button){

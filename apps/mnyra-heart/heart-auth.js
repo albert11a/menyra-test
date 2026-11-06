@@ -61,6 +61,7 @@ export function createHeartAuthController({ store }) {
 
   async function evaluateAccess(user) {
     if (!user) {
+      try { localStorage.removeItem("mnyra:heart-internal-until"); } catch {}
       actions.setAuthGuest();
       return;
     }
@@ -71,6 +72,7 @@ export function createHeartAuthController({ store }) {
       actions.setAuthDenied(user, profile, "CEO-Zugang erforderlich.");
       return;
     }
+    try { localStorage.setItem("mnyra:heart-internal-until", String(Date.now() + 8 * 3600000)); } catch {}
     actions.setAuthReady(user, profile, user.uid === ALBERT_CEO_UID ? "global-ceo" : "role-ceo");
   }
 

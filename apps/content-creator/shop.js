@@ -3,8 +3,8 @@ import {createCreatorVideoPlayback} from '../../shared/creator-video-playback.js
 import {creatorIsVideo,creatorAssetCount,creatorVideoFirst,creatorVideoUrl} from '../../shared/creator-video.js';
 import {creatorVisitorId} from './visitor-id.js';
 import {ccEscape as esc,ccImage} from '../../shared/content-creator.js';
-import {euro,shopQuote,validShopId} from '../../shared/content-creator-shop.js';
-import {creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,creatorSoldCards,creatorPurchasePhotos,creatorPurchaseDate,renderCreatorCatalog,creatorHowTo,creatorFooter} from '../../shared/content-creator-view.js';
+import {euro,shopQuote,validShopId,creatorPackageFiles} from '../../shared/content-creator-shop.js';
+import {creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,creatorSoldCards,creatorPurchasePhotos,creatorPurchaseDate,creatorHeroFiles,renderCreatorCatalog,creatorHowTo,creatorFooter} from '../../shared/content-creator-view.js';
 export async function mountCreatorShop({root,page,still=false,track=async()=>{}}){
  // Block native image-save/drag actions on paid previews, including new viewer nodes.
  // Do not cancel touch/pointer gestures: scrolling, swiping and zoom stay native.
@@ -177,11 +177,12 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
  }
  function photoSaveMarkup(){
   if(!photoSave)return '';
-  const files=photoSave.receipt?orders.get(photoSave.receipt)?.lines.find(p=>p.id===photoSave.product)?.imageIds:packFiles(photoSave.product);
+  const files=photoSave.receipt?orderedFiles(photoSave.product,orders.get(photoSave.receipt)?.lines.find(p=>p.id===photoSave.product)?.imageIds):packFiles(photoSave.product);
   const hasVideo=(files||[]).some(id=>creatorIsVideo(page,id));
   return `<div class="shop-save-overlay"><section class="shop-drawer shop-save-sheet" role="dialog" aria-modal="true" aria-labelledby="shop-save-title"><div class="shop-sheet-handle"></div><div class="shop-drawer-head"><div><span class="eyebrow">${creatorIcon('save')} ${hasVideo?'Skedarët tuaj':'Fotot tuaja'}</span><h2 id="shop-save-title">Ruajini në telefon.</h2></div><button type="button" data-shop="save-close" aria-label="Mbyll">${creatorIcon('x')}</button></div><p class="shop-save-description">${photoSave.loading?`Duke përgatitur origjinalet · ${photoSave.files.length} / ${photoSave.total}`:hasVideo?'Videot janë gati. Hapni skedarin ose përdorni butonin më poshtë për ta ruajtur.':'Fotot janë gati. Prekni butonin dhe zgjidhni “Ruaj imazhet” në menynë e telefonit.'}</p><div class="shop-save-files">${(files||[]).map((id,i)=>{const ready=photoSave.files.find(f=>f.name.startsWith(`${i+1}-`)),index=photoSave.files.indexOf(ready);return `<a ${ready?`href="${photoSave.urls[index]}" target="_blank" rel="noopener"`:'aria-disabled="true"'}>${creatorIsVideo(page,id)?`<img src="${esc(imageUrl(id))}" alt="Video ${i+1}">`:img(id,`Foto ${i+1}`)}<span>${creatorIsVideo(page,id)?'Video':'Foto'} ${i+1}${ready?creatorIcon('check'):''}</span></a>`;}).join('')}</div><button type="button" class="shop-buy" data-shop="save-ready" ${photoSave.loading||!photoSave.files.length?'disabled':''}>${creatorIcon('save')}<span>${photoSave.loading?'Duke përgatitur…':hasVideo?'Ruaj skedarët':'Ruaj fotot në album'}</span></button><p class="shop-save-tip">${hasVideo?'Videot origjinale ruhen me zërin dhe cilësinë origjinale.':'Mund ta hapni edhe një foto veçmas dhe ta mbani të shtypur për ta ruajtur.'}</p>${photoSave.message?`<p role="status">${esc(photoSave.message)}</p>`:''}</section></div>`;
  }
- function packFiles(product){return creatorVideoFirst(page,page.photoIds.filter(id=>(page.products.find(p=>p.id===product)?.imageIds||[]).includes(id)));}
+ function orderedFiles(id,files){return creatorPackageFiles(page,{id},files||[]);}
+ function packFiles(product){const files=creatorPackageFiles(page,page.products.find(p=>p.id===product));return page.packagePhotoOrder?.[product]?files:creatorVideoFirst(page,files);}
  function viewerMarkup(){
   if(!viewer)return '';
   const product=page.products.find(p=>p.id===viewer.product),files=packFiles(viewer.product);
@@ -267,14 +268,21 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   const answerContent=root.querySelector('.answer-message')?.closest('.answer-content');
   const heroGallery=replaceHero?null:root.querySelector('.shop-hero-gallery');
   const carousels=new Map([...root.querySelectorAll('[data-track]')].map(track=>[track.dataset.track,track.parentElement]));
-  const retained=new Map(),loadedPurchases=new Map();
+  const retained=new Map(),loadedPurchases=new Map(),visiblePreviews=new Map();
   for(const image of root.querySelectorAll('img[data-photo],video[data-photo]')){
-   if(image.closest('[data-track],[data-hero-track]'))continue;
+   const carousel=image.closest('[data-track],[data-hero-track]');
+   const viewerSlide=image.closest('[data-view-track]');
+   if((carousel||viewerSlide)&&image.tagName==='IMG'&&image.complete&&image.naturalWidth>0){
+    const scope=carousel?.dataset.track||(carousel?'hero':'viewer');
+    const key=`${scope}:${image.dataset.photo}:${image.dataset.size}`;
+    if(!visiblePreviews.has(key))visiblePreviews.set(key,image);
+   }
+   if(carousel)continue;
    if(image.dataset.purchaseFallback&&image.complete&&image.naturalWidth>0)loadedPurchases.set(image.dataset.photo,image);
    const key=image.tagName==='VIDEO'?`video:${image.dataset.photo}:${image.dataset.size||'thumb'}`:`${image.dataset.photo}:${image.dataset.size||'thumb'}:${image.getAttribute('src')||image.dataset.deferredSrc||''}`;
    if(!retained.has(key))retained.set(key,[]);retained.get(key).push(image);
   }
-  root.innerHTML=`<div class="shop-shell">${renderCreatorCatalog(page,{ids,positions,offerButton,photo:img,purchasedIds})}<div id="shop-image-errors">${imageStatus()}</div>${creatorHowTo(page)}
+  root.innerHTML=`<div class="shop-shell">${renderCreatorCatalog(page,{ids,positions,heroPosition:heroIndex,offerButton,photo:img,purchasedIds})}<div id="shop-image-errors">${imageStatus()}</div>${creatorHowTo(page)}
    <section class="shop-purchases" id="shop-purchases"><h2>Blerjet tuaja</h2>${([...orders.values()].filter(order=>still||order.totalCents===0||order.lines.some(line=>line.imageIds.some(file=>creatorIsVideo(page,file)))).map(order=>`<article class="shop-order"><div class="shop-order-title"><b>Porosia #${esc(order.id.slice(0,8).toUpperCase())}</b>${creatorPurchaseDate(order.createdAt)}<strong>${euro(order.totalCents)}</strong></div><p class="shop-order-state">${order.approved?(order.totalCents===0?'✓ Pako falas · Shkarkimet janë gati':'✓ Pagesa u konfirmua · Shkarkimet janë gati'):(canDownload(order)?order.paymentSchedule==='courier'?'✓ Fotot janë gati · Pagesa cash pas 2–3 ditësh':`✓ Fotot janë gati · Pagesa më ${order.paymentDueDate?esc(order.paymentDueDate.split('-').reverse().join('.')):'1 të muajit të ardhshëm'}`:(order.totalCents===0?'Në pritje të miratimit':'Në pritje të pagesës / miratimit'))}</p>${order.lines.map(line=>`<div class="shop-purchased-item">${img(line.imageIds[0],line.title)}<div><h3>${esc(line.title)}</h3><p>${creatorAssetCount(page,line.imageIds)} · ${euro(line.priceCents)}</p><button data-shop="save-photos" data-order="${order.id}" data-product="${line.id}" ${!canDownload(order)||downloadBusy?'disabled':''}>${creatorIcon(canDownload(order)?'save':'shield-check')}${canDownload(order)?(line.imageIds.some(id=>creatorIsVideo(page,id))?'Ruaj skedarët':'Ruaj fotot'):'Në pritje të konfirmimit'}</button></div></div>`).join('')}<div class="shop-order-actions"><button data-shop="refresh" data-order="${order.id}">Kontrollo statusin</button>${still?'':`<button data-shop="receipt-link" data-order="${order.id}">Kopjo linkun e porosisë</button>`}</div></article>`).join('')+creatorSoldCards(page,sold,ownedIds,[...orders.values()].flatMap(order=>order.lines.map(line=>({...line,createdAt:order.createdAt,orderCode:!still&&order.totalCents>0&&!order.lines.some(item=>item.imageIds.some(file=>creatorIsVideo(page,file)))?order.orderCode:'',totalCents:order.totalCents,paymentConfirmed:order.paymentConfirmed,downloadIds:sold.find(item=>item.id===line.id)?.downloadIds||(!still&&line.priceCents>0&&canDownload(order)?line.imageIds:[]),deliveryMedia:{...order.deliveryMedia,...sold.find(item=>item.id===line.id)?.deliveryMedia},orderId:order.id,enabled:canDownload(order)&&!downloadBusy,photo:img})))))||'<p>Pas porosisë, artikujt tuaj do të shfaqen këtu.</p>'}</section>
    ${creatorFooter(page)}
    ${notice?`<p class="shop-notice" role="status">${esc(notice)}</p>`:''}
@@ -301,6 +309,21 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   for(const track of root.querySelectorAll('[data-track]')){const old=carousels.get(track.dataset.track);if(old&&!changedTracks.has(track.dataset.track))track.parentElement.replaceWith(old);}
   if(answerContent)root.querySelector('.answer-content')?.replaceWith(answerContent);
   if(heroGallery)root.querySelector('.shop-hero-gallery')?.replaceWith(heroGallery);
+  for(const next of root.querySelectorAll('[data-track] img[src],[data-hero-track] img[src],[data-view-track] img[src]')){
+   const track=next.closest('[data-track],[data-hero-track],[data-view-track]');
+   const scope=track.dataset.track||(track.hasAttribute('data-hero-track')?'hero':'viewer');
+   const previous=visiblePreviews.get(`${scope}:${next.dataset.photo}:${next.dataset.size}`);
+   if(!previous||root.contains(previous))continue;
+   const sameSource=previous.getAttribute('src')===next.getAttribute('src')&&previous.getAttribute('srcset')===next.getAttribute('srcset');
+   if(!sameSource&&typeof next.decode!=='function')continue;
+   next.replaceWith(previous);
+   if(!sameSource)void next.decode().then(()=>{
+    if(!root.contains(previous))return;
+    const current=creatorImageUrl(page,next.dataset.photo,next.dataset.size);
+    if(next.getAttribute('src')!==current&&next.getAttribute('src')!==images[next.dataset.photo])return;
+    previous.replaceWith(next);watchImages();
+   }).catch(()=>{});
+  }
   for(const [key,open] of faqState){const node=root.querySelector(`details[data-faq="${key}"]`);if(open)node?.setAttribute('open','');else node?.removeAttribute('open');}
   bindHero();syncBrowserChrome();watchImages();
   for(const track of root.querySelectorAll('[data-track]')){
@@ -450,7 +473,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   const publicPurchase=!receipt&&singleFile;
   const order=orders.get(receipt),line=publicPurchase?sold.find(p=>p.id===product&&p.downloadIds?.includes(singleFile)):receipt?order?.lines.find(p=>p.id===product):page.products.find(p=>p.id===product&&p.active!==false&&p.priceCents===0);
   if(!line||(receipt&&!canDownload(order)))return null;
-  const keys=receipt||publicPurchase?line.imageIds:packFiles(product);
+  const keys=receipt||publicPurchase?orderedFiles(product,line.imageIds):packFiles(product);
   if(singleFile&&!keys.includes(singleFile))return null;
   const selected=singleFile?[singleFile]:keys,controller=new AbortController();
   const task={key,controller,listeners:new Set([progress]),files:new Array(selected.length),urls:new Array(selected.length)};
@@ -504,7 +527,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   if(!product||button.disabled)return;
   if(!intent){
    if(still||!canPrefetch())return;
-   const keys=receipt?orders.get(receipt)?.lines.find(line=>line.id===product)?.imageIds:packFiles(product);
+   const keys=receipt?orderedFiles(product,orders.get(receipt)?.lines.find(line=>line.id===product)?.imageIds):packFiles(product);
    if(!keys?.length||keys.some(id=>creatorIsVideo(page,id)||!page.media?.[id]?.bytes))return;
    if(keys.reduce((sum,id)=>sum+page.media[id].bytes,0)>12*1024*1024)return;
   }
@@ -549,7 +572,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
  }
  await Promise.all(tokens.map(id=>refreshOrder(id).catch(()=>{})));
  const heroTimer=globalThis.setInterval(()=>{const track=root.querySelector('[data-hero-track]');if(canPrefetch()&&!heroPaused&&!viewer&&!panel&&!photoSave&&document.visibilityState!=='hidden'&&track?.children.length>1)moveHero(heroIndex+1);},5500);
- function paused(){return still||document.visibilityState==='hidden'||submitting||panel||viewer||photoSave||activePreparation;}
+ function paused(){return still||document.visibilityState==='hidden'||submitting||panel||photoSave||activePreparation||!!viewer&&creatorIsVideo(page,packFiles(viewer.product)[viewer.index]);}
  async function syncShop(){
   if(syncing||paused())return;
   syncing=true;
@@ -560,25 +583,42 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
    if(!response.ok||response.status===204)return;
    const next=await response.json();
    if(paused()||next.id!==page.id||!Array.isArray(next.products)||!Array.isArray(next.photoIds)||!Array.isArray(next.sold))return;
-   const fields=['products','photoIds','media','mediaTypes','heroImages','heroPhotoIds','heroFormat','heroCrop'];
+   const fields=['products','photoIds','media','mediaTypes','heroImages','heroPhotoIds','heroFormat','heroCrop','packagePhotoOrder','previewRevision'];
    const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
    const changed=fields.filter(field=>!same(page[field],next[field]));
    liveVersion=typeof next.version==='string'?next.version:'';
    lastFullSync=Date.now();
    if(!changed.length&&same(sold,next.sold))return;
+   const viewed=viewer?packFiles(viewer.product)[viewer.index]:null;
+   const previousHeroFiles=creatorHeroFiles(page);
+   const heroFile=root.querySelector('[data-hero-track]')?.children[heroIndex]?.querySelector('[data-photo]')?.dataset.photo;
    const changedTracks=new Set();
+   for(const [key,entry] of prepared){
+    const [,product,file]=key.split(':');
+    if(file||same(page.packagePhotoOrder?.[product],next.packagePhotoOrder?.[product]))continue;
+    for(const url of entry.urls||[])URL.revokeObjectURL(url);
+    prepared.delete(key);
+   }
    for(const product of next.products){
     const previous=page.products.find(item=>item.id===product.id);
-    if(!same(previous?.imageIds,product.imageIds)||product.imageIds.some(file=>!same(page.media?.[file],next.media?.[file])||page.mediaTypes?.[file]!==next.mediaTypes?.[file])){
-     changedTracks.add(product.id);positions[product.id]=0;
+    if(!same(page.packagePhotoOrder?.[product.id],next.packagePhotoOrder?.[product.id])||!same(previous?.imageIds,product.imageIds)||product.imageIds.some(file=>!same(page.media?.[file],next.media?.[file])||page.mediaTypes?.[file]!==next.mediaTypes?.[file]||(!next.media?.[file]&&page.previewRevision!==next.previewRevision))){
+     const old=packFiles(product.id)[positions[product.id]||0];
+     const files=next.packagePhotoOrder?.[product.id]?product.imageIds:creatorVideoFirst(next,product.imageIds);
+     changedTracks.add(product.id);positions[product.id]=Math.max(0,files.indexOf(old));
     }
    }
-   for(const file of next.photoIds)if(!same(page.media?.[file],next.media?.[file])){delete images[file];delete imageErrors[file];}
+   for(const file of next.photoIds)if(!same(page.media?.[file],next.media?.[file])||(!next.media?.[file]&&page.previewRevision!==next.previewRevision)){delete images[file];delete imageErrors[file];largeImages.delete(file);}
+   const nextHeroFiles=creatorHeroFiles({...page,...next});
+   const replaceHero=changed.some(field=>field.startsWith('hero'))||!same(previousHeroFiles,nextHeroFiles)||nextHeroFiles.some(file=>!same(page.media?.[file],next.media?.[file])||(!next.media?.[file]&&page.previewRevision!==next.previewRevision));
    for(const field of changed)page[field]=next[field];
+   if(viewer){
+    const files=packFiles(viewer.product);
+    if(files.length)viewer.index=Math.max(0,files.indexOf(viewed));
+    else closeViewer();
+   }
    ids=ids.filter(id=>page.products.some(product=>product.id===id&&product.active!==false&&product.priceCents>0));
    applySold(next.sold);remember();
-   const replaceHero=changed.some(field=>field.startsWith('hero'));
-   if(replaceHero)heroIndex=0;
+   if(replaceHero)heroIndex=Math.max(0,creatorHeroFiles(page).indexOf(heroFile));
    render(changedTracks,replaceHero);
   }catch{/* The open shop keeps its last valid state until the next check. */}
   finally{syncing=false;}

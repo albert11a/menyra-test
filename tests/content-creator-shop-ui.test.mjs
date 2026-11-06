@@ -6,11 +6,11 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {parseHTML} from 'linkedom';
 import {ccEscape,ccImage} from '../shared/content-creator.js';
-import {euro,shopQuote,validShopId} from '../shared/content-creator-shop.js';
-import {creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,creatorSoldCards,creatorPurchasePhotos,creatorPurchaseDate,renderCreatorCatalog,creatorHowTo,creatorFooter} from '../shared/content-creator-view.js';
+import {euro,shopQuote,validShopId,creatorPackageFiles} from '../shared/content-creator-shop.js';
+import {creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,creatorSoldCards,creatorPurchasePhotos,creatorPurchaseDate,creatorHeroFiles,renderCreatorCatalog,creatorHowTo,creatorFooter} from '../shared/content-creator-view.js';
 import {shopAction} from '../server/content-creator-shop.js';
 const source=(await readFile(new URL('../apps/content-creator/shop.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace('export async function mountCreatorShop','async function mountCreatorShop');
-const factory=new Function('creatorVisitorId','db','doc','getDoc','esc','ccImage','CC_PAGES','euro','shopQuote','validShopId','zipBlob','localStorage','location','fetch','document','globalThis','setTimeout','navigator','creatorIcon','creatorImageUrl','creatorOfferButton','creatorPhoto','creatorSoldCards','creatorPurchasePhotos','creatorPurchaseDate','renderCreatorCatalog','creatorHowTo','creatorFooter','createCreatorVideoPlayback','creatorIsVideo','creatorAssetCount','creatorVideoFirst','creatorVideoUrl','createCreatorVideoPreload',`${source}\nreturn mountCreatorShop;`);
+const factory=new Function('creatorVisitorId','db','doc','getDoc','esc','ccImage','CC_PAGES','euro','shopQuote','validShopId','creatorPackageFiles','zipBlob','localStorage','location','fetch','document','globalThis','setTimeout','navigator','creatorIcon','creatorImageUrl','creatorOfferButton','creatorPhoto','creatorSoldCards','creatorPurchasePhotos','creatorPurchaseDate','creatorHeroFiles','renderCreatorCatalog','creatorHowTo','creatorFooter','createCreatorVideoPlayback','creatorIsVideo','creatorAssetCount','creatorVideoFirst','creatorVideoUrl','createCreatorVideoPreload',`${source}\nreturn mountCreatorShop;`);
 const pageId='a'.repeat(32);
 async function setup(still=false,price=2900,options={}){
  const {document,window}=parseHTML('<html><head><meta name="theme-color" content="#f7f6f2"><meta name="color-scheme" content="light"></head><body><main id="app"></main></body></html>'),root=document.getElementById('app');window.HTMLElement.prototype.scrollIntoView=()=>{};window.HTMLElement.prototype.scrollTo=function(options){this.scrollLeft=options.left;this.dispatchEvent(new window.Event('scroll'));};
@@ -24,7 +24,7 @@ async function setup(still=false,price=2900,options={}){
   const payload=requestOptions.method==='POST'?JSON.parse(requestOptions.body):Object.fromEntries(new URL(url,'https://www.mnyra.com').searchParams);if(new URL(url,'https://www.mnyra.com').pathname==='/creator/download')payload.op=payload.orderId?'download':'free-download';calls.push(payload);
   try{if(payload.op==='free-download'&&options.download)await options.download(payload);if(payload.op==='free-preview'&&options.preview){const result=await options.preview(payload);if(result)return result;}const result=await shopAction(payload,repo);if(payload.op==='order'&&options.lostOrderResponse)throw Error('Response lost after commit');return {ok:true,json:async()=>result,arrayBuffer:async()=>result.bytes,headers:{get:key=>key==='Content-Type'?result.mime:key==='X-File-Name'?encodeURIComponent(result.name):null}};}catch(error){return {ok:false,json:async()=>({error:error.message})};}
  };
- const mount=factory(()=>'e'.repeat(32),{},(...args)=>args.filter(x=>typeof x==='string').join('/'),async()=>({data:()=>({data:'data:image/jpeg;base64,YWJj'})}),ccEscape,ccImage,'contentCreatorPages',euro,shopQuote,validShopId,files=>{zipFiles.push(files);return new Blob(['zip']);}, {getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)}, {origin:'https://www.mnyra.com',search:''},fetch,document,{setInterval:(fn,ms)=>{options.intervals?.push({fn,ms});return 0;},addEventListener:()=>{},Image:options.Image,IntersectionObserver:options.IntersectionObserver,matchMedia:()=>({matches:!!options.reducedMotion})},()=>0,options.navigator||{},creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,creatorSoldCards,creatorPurchasePhotos,creatorPurchaseDate,renderCreatorCatalog,creatorHowTo,creatorFooter,(node)=>createCreatorVideoPlayback(node,{windowObj:options.playbackWindow||globalThis}),creatorIsVideo,creatorAssetCount,creatorVideoFirst,creatorVideoUrl,createCreatorVideoPreload);
+ const mount=factory(()=>'e'.repeat(32),{},(...args)=>args.filter(x=>typeof x==='string').join('/'),async()=>({data:()=>({data:'data:image/jpeg;base64,YWJj'})}),ccEscape,ccImage,'contentCreatorPages',euro,shopQuote,validShopId,creatorPackageFiles,files=>{zipFiles.push(files);return new Blob(['zip']);}, {getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)}, {origin:'https://www.mnyra.com',search:''},fetch,document,{setInterval:(fn,ms)=>{options.intervals?.push({fn,ms});return 0;},addEventListener:()=>{},Image:options.Image,IntersectionObserver:options.IntersectionObserver,matchMedia:()=>({matches:!!options.reducedMotion})},()=>0,options.navigator||{},creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,creatorSoldCards,creatorPurchasePhotos,creatorPurchaseDate,creatorHeroFiles,renderCreatorCatalog,creatorHowTo,creatorFooter,(node)=>createCreatorVideoPlayback(node,{windowObj:options.playbackWindow||globalThis}),creatorIsVideo,creatorAssetCount,creatorVideoFirst,creatorVideoUrl,createCreatorVideoPreload);
  await mount({root,page,still});
  async function settle(){for(let i=0;i<15;i++)await new Promise(r=>setImmediate(r));}
  async function click(selector){const button=root.querySelector(selector);assert.ok(button,selector);button.dispatchEvent(new window.Event('click',{bubbles:true}));await settle();}
@@ -368,4 +368,25 @@ test('An open shop picks up new packages and purchases without a reload',async()
  assert.ok(ctx.root.querySelector('[data-track="new"]'));
  assert.equal(ctx.root.querySelector('[data-track="pack"]'),null);
  assert.ok(ctx.root.querySelector('#shop-purchases [data-file="one"]'));
+});
+
+test('An open shop keeps its decoded preview until the new revision is ready and syncs package order',async()=>{
+ const intervals=[];
+ const files=['one','three','four','two'];
+ const next={id:pageId,products:[{id:'pack',title:'Social Set',priceCents:2900,imageIds:files}],photoIds:['one','two','three','four'],sold:[],packagePhotoOrder:{pack:files},previewRevision:'new'};
+ const ctx=await setup(false,2900,{intervals,live:()=>next});
+ const track=()=>ctx.root.querySelector('[data-track="pack"]');
+ const image=track().querySelector('img[src]');
+ const previous=image.getAttribute('src');
+ Object.defineProperties(image,{complete:{value:true},naturalWidth:{value:360}});
+ let release;
+ const ready=new Promise(resolve=>{release=resolve;});
+ ctx.window.HTMLImageElement.prototype.decode=()=>ready;
+ intervals.find(timer=>timer.ms===12000).fn();
+ await ctx.settle();
+ assert.deepEqual([...track().querySelectorAll('img[data-photo]')].map(node=>node.dataset.photo),files);
+ assert.equal(track().querySelector('img[src]'),image);
+ assert.equal(image.getAttribute('src'),previous);
+ release();await ctx.settle();
+ assert.match(track().querySelector('img[src]').getAttribute('src'),/v=new/);
 });

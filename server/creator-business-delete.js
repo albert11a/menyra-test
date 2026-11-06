@@ -94,6 +94,12 @@ export async function deleteCreatorBusinessStep(input, repo) {
     prefix = `${path}/${step === 4 ? 'images' : 'previews'}`;
     documents = await repo.list(prefix);
   } else {
+    for(const collection of ['photoStats','photoViewSessions']){
+      const children=await repo.list(`${path}/${collection}`);
+      if(!children.length)continue;
+      await repo.commit(deleteWrites(children,`${path}/${collection}`));
+      return {ok:true,done:false,deleted:children.length};
+    }
     await repo.commit([{ delete: name, currentDocument: { updateTime: page.updateTime } }]);
     return { ok: true, done: true, deleted: 1 };
   }

@@ -1,4 +1,5 @@
 import test,{before,beforeEach,after} from 'node:test';
+import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {initializeTestEnvironment,assertSucceeds,assertFails} from '@firebase/rules-unit-testing';
 import {serverTimestamp} from 'firebase/firestore';
@@ -62,4 +63,48 @@ test('Shop: Originale und Bestellungen bleiben privat; nur Vorschauen sind öffe
  await assertFails(ceo.doc(`contentCreatorOrders/${id}`).update({approved:true,status:'released'}));
  await assertSucceeds(ceo.doc(`contentCreatorOrders/${id}`).update({approved:true,status:'released',paymentConfirmed:true}));
  await assertFails(ceo.doc(`contentCreatorOrders/${id}`).update({totalCents:1}));
+});
+
+test('Only Heart can read photo counters, and browser clients cannot write counters or sessions',async()=>{
+ const stats=`contentCreatorPages/${id}/photoStats/000`,session=`contentCreatorPages/${id}/photoViewSessions/test`;
+ await env.withSecurityRulesDisabled(async ctx=>{
+  await ctx.firestore().doc(stats).set({viewCount:1});
+  await ctx.firestore().doc(session).set({files:['000']});
+ });
+ const ceo=env.authenticatedContext('ceo-test').firestore();
+ await assertSucceeds(ceo.doc(stats).get());
+ await assertFails(guest().doc(stats).get());
+ await assertFails(guest().doc(stats).set({viewCount:20}));
+ await assertFails(ceo.doc(stats).update({viewCount:20}));
+ await assertFails(guest().doc(session).get());
+ await assertFails(ceo.doc(session).get());
+});
+
+test('Concurrent, overlapping sessions and retries persist one Seen per photo and session',async()=>{
+ const {countCreatorPhotoViews}=await import('../../server/creator-photo-views.js');
+ const base=`http://${host}:${port}/v1/projects/mnyra-local-content-creator/databases/(default)/documents`;
+ const headers={authorization:'Bearer owner','content-type':'application/json'};
+ const pagePath=`contentCreatorPages/${id}`;
+ const read=async path=>{
+  const response=await fetch(`${base}/${path}`,{headers});
+  if(response.status===404)return null;
+  assert.equal(response.ok,true,await response.clone().text());
+  return response.json();
+ };
+ const submit=(sessionKey,files)=>countCreatorPhotoViews({base,headers,pagePath,sessionKey,files,now:new Date(),pageId:id,read});
+ await Promise.all([submit('one',['001','002']),submit('one',['001','003']),submit('two',['001','002'])]);
+ await submit('one',['001','002','003']);
+ const db=env.authenticatedContext('ceo-test').firestore();
+ const rows=await db.collection(`${pagePath}/photoStats`).get();
+ assert.deepEqual(Object.fromEntries(rows.docs.map(row=>[row.id,row.data().viewCount])),{'001':2,'002':2,'003':1});
+ const photos=Array.from({length:100},(_,i)=>`photo-${i}`);
+ await Promise.all(['a','b','c','d','e','e'].map(async session=>{
+  for(let offset=0;offset<photos.length;offset+=25)await submit(session,photos.slice(offset,offset+25));
+ }));
+ const loadStats=(await db.collection(`${pagePath}/photoStats`).get()).docs.filter(row=>row.id.startsWith('photo-'));
+ assert.equal(loadStats.length,100);
+ assert.ok(loadStats.every(row=>row.data().viewCount===5));
+ await env.withSecurityRulesDisabled(ctx=>ctx.firestore().doc(pagePath).update({deleting:true}));
+ await assert.rejects(submit('three',['001']));
+ assert.equal((await db.doc(`${pagePath}/photoStats/001`).get()).data().viewCount,2);
 });

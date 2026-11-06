@@ -168,3 +168,23 @@
 .cc-purchased-packages{padding-top:16px}
 .cc-package-editor:not([open]) .cc-package-close-label,.cc-package-editor[open] .cc-package-edit-label{display:none}
 .cc-purchased-packages .cc-purchased-package-name{padding:10px 10px 0;font-size:13px;overflow-wrap:anywhere}
+
+.cc-package-photos.cc-photo-sort{grid-template-columns:repeat(auto-fill,minmax(min(100%,135px),1fr));gap:12px}
+.cc-photo-sort figure{width:auto;transition:transform .15s ease,background-color .15s ease}
+.cc-photo-sort figure.cc-sort-target{background:#87958c35;transform:scale(.96)}
+.cc-package-photos .cc-sort-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.cc-sort-controls [data-cc-action="delete"]{grid-column:1/-1}
+.cc-sort-controls button{min-height:44px;padding:2px}
+.cc-sort-controls [data-cc-drag-photo]{touch-action:none;cursor:grab;font-size:1.3rem}
+.cc-sorting .cc-sort-controls [data-cc-drag-photo]{cursor:grabbing}
+.cc-photo-seen{display:flex;align-items:center;gap:5px;font-size:.82rem}
+.cc-photo-seen svg{width:16px;height:16px}
+.cc-watermark-options{display:grid;gap:8px;margin-bottom:12px}
+.cc-watermark-options label{display:grid;gap:4px}
+.cc-watermark-options output{font-variant-numeric:tabular-nums}
+.cc-watermark-options canvas{max-width:100%;height:auto;border-radius:10px}
+.cc-package-slide{position:relative}
+.cc-package-slide>.cc-photo-seen{position:absolute;bottom:9px;left:9px;padding:4px 8px;border-radius:8px;background:#111b;color:#fff;pointer-events:none}
+.cc-sort-source{opacity:.55}
+.cc-sort-ghost{position:fixed;top:0;left:0;width:68px;height:82px;object-fit:cover;border-radius:8px;pointer-events:none;z-index:5000;opacity:.9}
+@media(prefers-reduced-motion:reduce){.cc-photo-sort figure{transition:none}}

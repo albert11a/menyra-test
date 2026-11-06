@@ -1,11 +1,12 @@
+import {bindCreatorPhotoOrder} from './heart-creator-photo-order.js';
 import {CREATOR_DIRECT_ROUTES} from '../../shared/creator-direct-routes.js';
 import {unlockCreatorVideoAudio} from './heart-creator-video-audio.js';
 import {creatorBusinessMatches} from '../../shared/creator-analytics.js';
 import {normalizeCreatorCrop,creatorHeroCropStyle,creatorHeroFormat} from '../../shared/creator-hero.js';
-import {saveShopAsset,initialShopProduct,releaseShopOrder,refreshShopPreviews,savePromoAsset,migrateCreatorPage,optimizeCreatorPageVideos,saveCreatorCdnAsset,savedCreatorFile} from "./heart-content-creator-shop.js";
+import {saveShopAsset,initialShopProduct,releaseShopOrder,applyShopWatermark,refreshShopPreviews,drawShopWatermark,savePromoAsset,migrateCreatorPage,optimizeCreatorPageVideos,saveCreatorCdnAsset,savedCreatorFile} from "./heart-content-creator-shop.js";
 import {creatorCdnEnabled,uploadCreatorDeliveryOriginal} from './heart-creator-cdn.js';
 import {creatorPublicMedia,creatorMediaUrl} from '../../shared/creator-media.js';
-import {CC_CARTS,CC_ORDERS,priceCents} from "../../shared/content-creator-shop.js";
+import {CC_CARTS,CC_ORDERS,priceCents,creatorPackageFiles,creatorWatermarkOpacity} from "../../shared/content-creator-shop.js";
 import { auth, db } from "/shared/firebase-config.js";
 import { createCreatorReset } from "./heart-creator-reset.js";
 import { createCreatorBusinessDeletion } from "./heart-creator-business-delete.js";
@@ -38,6 +39,84 @@ export async function prepareContentImage(file, avatar = false) {
 
 export function createContentCreator({root, store, prepareImage = prepareContentImage, saveAsset}) {
   const patch = fields => store.actions.patchContentCreator(fields);
+  const sortTasks=new Set(),sortRetries=new Map();
+  const editSort=(key,value)=>{
+    const next={...store.getState().contentCreator.photoSort};
+    if(value)next[key]=value;else delete next[key];
+    patch({photoSort:next});
+  };
+  const sameOrder=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+  bindCreatorPhotoOrder(root,async(track,before,after)=>{
+    const {page:pageId,product:productId}=track.dataset;
+    if(sortTasks.has(productId)||store.getState().contentCreator.mediaBusy)return;
+    if(!before){
+      const retry=sortRetries.get(productId);
+      if(!retry)return;
+      const page=store.getState().contentCreator.pages.find(p=>p.id===pageId);
+      if(!page)return;
+      before=creatorPackageFiles(page,page.products?.find(p=>p.id===productId));
+      const remaining=new Set(before);
+      after=[...retry.filter(id=>remaining.delete(id)),...remaining];
+    }
+    if(sameOrder(before,after)){editSort(productId);return;}
+    sortTasks.add(productId);editSort(productId,{pending:after});
+    try{
+      const ref=doc(db,CC_PAGES,pageId);
+      await runTransaction(db,async transaction=>{
+        const page=(await transaction.get(ref)).data(),product=page?.products?.find(p=>p.id===productId);
+        if(!product||page.deleting||!sameOrder(creatorPackageFiles(page,product),before))throw Error('Das Paket wurde inzwischen geändert. Bitte erneut versuchen.');
+        transaction.update(ref,`packagePhotoOrder.${productId}`,after,'updatedAt',serverTimestamp());
+      });
+      const state=store.getState().contentCreator;
+      patch({pages:state.pages.map(p=>p.id===pageId?{...p,packagePhotoOrder:{...p.packagePhotoOrder,[productId]:after}}:p)});
+      sortRetries.delete(productId);editSort(productId);
+    }catch(error){sortRetries.set(productId,after);editSort(productId,{error:error.message||'Reihenfolge konnte nicht gespeichert werden.'});}
+    finally{sortTasks.delete(productId);}
+  });
+
+  let sampleKey='',samplePromise,watermarkDraft;
+  async function paintWatermarkSample(options){
+    const canvas=options.querySelector('[data-cc-watermark-canvas]');
+    if(!canvas||options.closest('[hidden]'))return;
+    const page=options.dataset.ccWatermarkPage,file=options.dataset.ccWatermarkSample,key=`${page}/${file}`;
+    const status=options.querySelector('[data-cc-watermark-status]');
+    if(key!==sampleKey||!samplePromise){
+      sampleKey=key;
+      status.textContent='Beispielfoto wird geladen …';
+      samplePromise=savedCreatorFile(page,file).then(async original=>{
+        const url=URL.createObjectURL(original),image=new Image();
+        try{image.src=url;await image.decode();return image;}
+        finally{URL.revokeObjectURL(url);}
+      }).catch(()=>null);
+    }
+    const image=await samplePromise;
+    if(!root.contains(options)||key!==sampleKey)return;
+    status.textContent=image?'':'Beispielfoto konnte nicht geladen werden.';
+    if(!image){samplePromise=undefined;return;}
+    const scale=Math.min(320/image.width,320/image.height);
+    canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));
+    const context=canvas.getContext('2d');
+    context.drawImage(image,0,0,canvas.width,canvas.height);
+    drawShopWatermark(context,canvas.width,canvas.height,Number(options.querySelector('input').value));
+    canvas.hidden=false;
+  }
+  let statsPage='',stopPhotoStats;
+  function subscribePhotoStats(){
+    if(stopped)return;
+    const {selectedId,pages=[]}=store.getState().contentCreator;
+    const next=pages.some(p=>p.id===selectedId&&p.kind==='shop')?selectedId:'';
+    if(next===statsPage)return;
+    statsPage=next;stopPhotoStats?.();stopPhotoStats=undefined;
+    patch({photoViews:{},photoViewsPageId:next,photoViewsUnavailable:!!next});
+    if(next)stopPhotoStats=onSnapshot(collection(db,CC_PAGES,next,'photoStats'),snapshot=>{
+      if(statsPage===next)patch({photoViews:Object.fromEntries(snapshot.docs.map(row=>[row.id,row.data().viewCount||0])),photoViewsUnavailable:false});
+    },()=>{if(statsPage===next)patch({photoViews:{},photoViewsUnavailable:true});});
+  }
+  store.subscribe(()=>queueMicrotask(()=>{
+    subscribePhotoStats();
+    const options=root.querySelector('[data-cc-watermark-page]');
+    if(samplePromise&&options?.querySelector('[data-cc-watermark-canvas][hidden]'))void paintWatermarkSample(options);
+  }));
   let videoPlayback,videoPlaybackLoading;
   function syncVideoPreviews(){
     if(videoPlayback){videoPlayback.sync();return;}
@@ -127,7 +206,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       }
     }finally{migrating=false;finishMigration();patch({migrationProgress:''});}
   }
-  function stop() { videoPlayback?.destroy();videoPlayback=null;subscriptions.forEach(unsubscribe => unsubscribe()); subscriptions = []; stopped = true; clearInterval(liveTimer);liveTimer=null; }
+  function stop() { statsPage='';stopPhotoStats?.();stopPhotoStats=undefined; videoPlayback?.destroy();videoPlayback=null;subscriptions.forEach(unsubscribe => unsubscribe()); subscriptions = []; stopped = true; clearInterval(liveTimer);liveTimer=null; }
   const activationAttempts=new Set();
   async function activateCompletedEmptyShops(pages){
     for(const page of pages){
@@ -188,7 +267,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
   }
   function load() {
     if (!stopped) return;
-    stopped = false; activationAttempts.clear(); migrationAttempts.clear(); deliveryAttempts.clear(); patch({status:"loading",error:""});
+    stopped = false; queueMicrotask(subscribePhotoStats); activationAttempts.clear(); migrationAttempts.clear(); deliveryAttempts.clear(); patch({status:"loading",error:""});
     const errors={};
     function listen(name,key){
       subscriptions.push(onSnapshot(collection(db,name),snap=>{
@@ -220,6 +299,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     // Package options start closed; all other cards start expanded.
     const current=state.collapsedCards?.[key]??key.startsWith('package-options-');
     patch({collapsedCards:{...state.collapsedCards,[key]:!current}});
+    if(current&&key.startsWith('package-options-'))queueMicrotask(()=>{const options=root.querySelector('[data-cc-watermark-page]');if(options)void paintWatermarkSample(options);});
   }
   let previousTap=null,lastTouchCollapse=0;
   function cardFromEvent(event){
@@ -261,7 +341,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
   async function detail(id) {
     const epoch=++imageEpoch;
     const previous=store.getState().contentCreator;
-    patch({selectedId:id,newPackage:false,images:{},captionDrafts:previous.selectedId===id ? previous.captionDrafts : {},mediaError:"",deletePackageConfirm:""});
+    patch({selectedId:id,watermarkDraft:watermarkDraft?.id===id?watermarkDraft:null,newPackage:false,images:{},captionDrafts:previous.selectedId===id ? previous.captionDrafts : {},mediaError:"",deletePackageConfirm:""});
     const page=store.getState().contentCreator.pages.find(p=>p.id===id);
     if(!page)return;
     const result=await Promise.all((page.photoIds || []).map(async key=>{
@@ -278,7 +358,14 @@ export function createContentCreator({root, store, prepareImage = prepareContent
   function cropFromCard(card){
     return normalizeCreatorCrop(Object.fromEntries(['x','y','fit'].map(axis=>[axis,card.querySelector(`[data-cc-hero-adjust="${axis}"]`)?.value])));
   }
+  root.addEventListener("change",event=>{if(event.target.hasAttribute('data-cc-watermark')){patch({watermarkDraft});const options=root.querySelector('[data-cc-watermark-page]');if(options)void paintWatermarkSample(options);}});
   root.addEventListener("input", event => {
+    if(event.target.hasAttribute('data-cc-watermark')){
+      const options=event.target.closest('[data-cc-watermark-page]'),value=Number(event.target.value);
+      watermarkDraft={id:options.dataset.ccWatermarkPage,value};
+      options.querySelector('[data-cc-watermark-value]').textContent=`${value} %`;
+      void paintWatermarkSample(options);return;
+    }
     if(event.target.hasAttribute('data-cc-search')){patch({search:event.target.value,businessLimit:20,selectedIds:[]});return;}
     if(event.target.hasAttribute('data-cc-hero-adjust')){
       const card=event.target.closest('[data-cc-hero-card]');if(!card)return;
@@ -567,10 +654,27 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       });
       if(action==='cancel-package-delete')patch({deletePackageConfirm:''});
       if(action==='refresh-previews')await mediaTask(async()=>{
-        const snap=await getDoc(doc(db,CC_PAGES,id)),page=snap.data();
+        const page=(await getDoc(doc(db,CC_PAGES,id))).data();
         if(page?.kind!=='shop')throw Error('Shop wurde nicht gefunden.');
-        await refreshShopPreviews(id,page.photoIds||[]);await detail(id);notice('Vorschauen mit dezentem Wasserzeichen aktualisiert.');
+        await refreshShopPreviews(id,page.photoIds||[]);await detail(id);notice('Vorschauen wurden aktualisiert.');
       });
+      if(['watermark-apply','watermark-reset'].includes(action)){
+        const current=store.getState().contentCreator.pages.find(p=>p.id===id);
+        const value=action==='watermark-reset'?null:watermarkDraft?.id===id?watermarkDraft.value:creatorWatermarkOpacity(current?.watermarkOpacity);
+        await mediaTask(async()=>{
+          let sold=[];
+          if(current?.published){
+            const response=await fetch(`/api/content-creator-shop?${new URLSearchParams({op:'sold',pageId:id})}`,{signal:AbortSignal.timeout(10000)});
+            if(!response.ok)throw Error('Kaufstatus konnte nicht geprüft werden. Bitte erneut versuchen.');
+            ({sold}=await response.json());
+          }
+          await applyShopWatermark(id,value,{sold:new Set(sold.map(line=>line.id)),progress:(done,total)=>patch({notice:`Vorschauen werden vorbereitet · ${done}/${total}`})});
+          watermarkDraft=undefined;
+          patch({watermarkDraft:null});
+          await detail(id);notice('Deckkraft gespeichert. Die Vorschauen wurden aktualisiert.');
+          queueMicrotask(()=>{const options=root.querySelector('[data-cc-watermark-page]');if(options)void paintWatermarkSample(options);});
+        });
+      }
       if(action==='delete-package'){
         if(mediaBusy||store.getState().contentCreator.deletingBusinessId)return;
         const productId=button.dataset.product;

@@ -1,3 +1,5 @@
+import {bindCreatorPhotoOrder} from '../apps/mnyra-heart/heart-creator-photo-order.js';
+import {creatorPackageFiles,creatorWatermarkOpacity} from '../shared/content-creator-shop.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -17,8 +19,8 @@ test('Heart uploads, sorts and removes independent title images with no package 
  store.actions.patchContentCreator({pages:[page],selectedId:pageId});
  store.subscribe(state=>{root.innerHTML=renderContentCreator(state.contentCreator);});root.innerHTML=renderContentCreator(store.getState().contentCreator);
  const doc=(...args)=>args.filter(x=>typeof x==='string').join('/');
- const factory=new Function('db','doc','getDoc','updateDoc','serverTimestamp','CC_PAGES','creatorCdnEnabled','saveCreatorCdnAsset','creatorPublicMedia',`${source}\nreturn createContentCreator;`);
- factory({},doc,async path=>({data:()=>docs.get(path)}),async(path,data)=>docs.set(path,{...docs.get(path),...data}),()=> 'now','contentCreatorPages',async()=>true,async(id,imageId)=>({id:imageId,...variants}),creatorPublicMedia)({root,store});
+ const factory=new Function('bindCreatorPhotoOrder','creatorPackageFiles','creatorWatermarkOpacity','db','doc','getDoc','updateDoc','serverTimestamp','CC_PAGES','creatorCdnEnabled','saveCreatorCdnAsset','creatorPublicMedia',`${source}\nreturn createContentCreator;`);
+ factory(bindCreatorPhotoOrder,creatorPackageFiles,creatorWatermarkOpacity,{},doc,async path=>({data:()=>docs.get(path)}),async(path,data)=>docs.set(path,{...docs.get(path),...data}),()=> 'now','contentCreatorPages',async()=>true,async(id,imageId)=>({id:imageId,...variants}),creatorPublicMedia)({root,store});
  const settle=async()=>{for(let i=0;i<15;i++)await new Promise(resolve=>setImmediate(resolve));};
  const input=root.querySelector('[data-cc-hero-upload]');Object.defineProperty(input,'files',{value:[new File(['a'],'a.jpg',{type:'image/jpeg'}),new File(['b'],'b.jpg',{type:'image/jpeg'})]});
  input.dispatchEvent(new window.Event('change',{bubbles:true}));await settle();

@@ -1,3 +1,5 @@
+import {bindCreatorPhotoOrder} from '../apps/mnyra-heart/heart-creator-photo-order.js';
+import {creatorPackageFiles,creatorWatermarkOpacity} from '../shared/content-creator-shop.js';
 import {creatorBusinessStatus,creatorBusinessMatches} from '../shared/creator-analytics.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -7,7 +9,7 @@ import {createHeartStore,createHeartInitialState} from '../apps/mnyra-heart/hear
 import {renderContentCreator} from '../apps/mnyra-heart/heart-content-creator-render.js';
 import {contentLink} from '../shared/content-creator.js';
 const source=(await readFile(new URL('../apps/mnyra-heart/heart-content-creator.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export (async )?function /g,'$1function ');
-const factory=new Function('db','collection','doc','getDoc','onSnapshot','setDoc','updateDoc','writeBatch','serverTimestamp','CC_PAGES','CC_VISITS','contentLink','creatorBusinessStatus','creatorBusinessMatches',`const creatorCdnEnabled=async()=>false; const savePromoAsset=async(pageId,imageId,file,data)=>setDoc(doc(db,CC_PAGES,pageId,'images',imageId),{data,caption:''});\nconst unlockCreatorVideoAudio=()=>{};\n${source}\nreturn createContentCreator;`);
+const factory=new Function('bindCreatorPhotoOrder','creatorPackageFiles','creatorWatermarkOpacity','db','collection','doc','getDoc','onSnapshot','setDoc','updateDoc','writeBatch','serverTimestamp','CC_PAGES','CC_VISITS','contentLink','creatorBusinessStatus','creatorBusinessMatches','runTransaction',`const creatorCdnEnabled=async()=>false; const savePromoAsset=async(pageId,imageId,file,data)=>setDoc(doc(db,CC_PAGES,pageId,'images',imageId),{data,caption:''});\nconst unlockCreatorVideoAudio=()=>{};\n${source}\nreturn createContentCreator;`);
 function setup(options={}){
  const {document,window}=parseHTML('<div id="app"></div>'),root=document.getElementById('app');
  const store=createHeartStore(createHeartInitialState());
@@ -17,9 +19,16 @@ function setup(options={}){
  const doc=(...args)=>args.filter(x=>typeof x==='string').join('/');
  const update=async(path,data)=>docs.set(path,{...docs.get(path),...data});
  let fail=false;
- const create=factory({},()=>'',doc,async path=>({data:()=>docs.get(path)}),()=>()=>{},async()=>{},update,()=>{
+ const create=factory(bindCreatorPhotoOrder,creatorPackageFiles,creatorWatermarkOpacity,{},()=>'',doc,async path=>({data:()=>docs.get(path)}),()=>()=>{},async()=>{},update,()=>{
  const writes=[];return {update:(...args)=>writes.push(()=>update(...args)),delete:path=>writes.push(()=>docs.delete(path)),commit:async()=>{if(fail)throw Error('Offline');for(const write of writes)await write();}};
- },()=>'', 'contentCreatorPages','contentCreatorVisits',contentLink,creatorBusinessStatus,creatorBusinessMatches);
+ },()=>'', 'contentCreatorPages','contentCreatorVisits',contentLink,creatorBusinessStatus,creatorBusinessMatches,async(_db,callback)=>callback({
+  get:async path=>({data:()=>docs.get(path)}),
+  update(path,field,value){
+   if(fail)throw Error('Offline');
+   const [,id]=field.split('.'),page=docs.get(path);
+   docs.set(path,{...page,packagePhotoOrder:{...page.packagePhotoOrder,[id]:value}});
+  }
+ }));
  store.actions.patchContentCreator({pages:[page]});store.subscribe(state=>{root.innerHTML=renderContentCreator(state.contentCreator);});root.innerHTML=renderContentCreator(store.getState().contentCreator);
  const uploads=[];
  create({root,store,prepareImage:async file=>'preview:'+file.name,saveAsset:async(pageId,key,file,data,config)=>{
@@ -47,8 +56,10 @@ test('Paket löschen bestätigt und atomar; gemeinsame Fotos und gekaufte Origin
 });
 test('Paketfotos entfernen behält gemeinsame Fotos und ein erneut befüllbares leeres Paket',async()=>{
  const c=setup();await c.click('[data-cc-action="detail"]');
- await c.click('[data-cc-action="move"][data-image="b"][data-direction="-1"]');
- assert.deepEqual(c.docs.get('contentCreatorPages/shop').products[0].imageIds,['b','a']);
+ await c.click('[data-cc-package="p"] [data-cc-sort-file="b"] [data-cc-sort-step="-1"]');
+ assert.deepEqual(c.docs.get('contentCreatorPages/shop').packagePhotoOrder.p,['b','a']);
+ assert.deepEqual(c.docs.get('contentCreatorPages/shop').products[0].imageIds,['a','b']);
+ assert.deepEqual(c.root.querySelector('[data-cc-package="q"]').querySelector('[data-cc-sort-file]').dataset.ccSortFile,'b');
  await c.click('[data-cc-action="delete"][data-image="b"]');
  assert.deepEqual(c.docs.get('contentCreatorPages/shop').products.map(p=>p.imageIds),[['a'],['b','c']]);
  await c.click('[data-cc-action="delete"][data-image="a"]');
@@ -216,4 +227,16 @@ test('Heart lists bought packages only in Gekaufte Fotos and keeps their editors
  assert.equal(editor.open,false);
  assert.equal(c.root.querySelectorAll('[data-morph-key="package-p"]').length,1);
  assert.ok(c.root.querySelector('.cc-detail > .cc-package-grid [data-cc-package="q"]'));
+});
+
+test('A failed package reorder restores the last order and can be saved with one retry',async()=>{
+ const c=setup();await c.click('[data-cc-action="detail"]');
+ const figureOrder=()=>[...c.root.querySelectorAll('[data-cc-package="p"] [data-cc-sort-file]')].map(node=>node.dataset.ccSortFile);
+ c.setFailure(true);
+ await c.click('[data-cc-package="p"] [data-cc-sort-file="b"] [data-cc-sort-step="-1"]');
+ assert.deepEqual(figureOrder(),['a','b']);
+ assert.match(c.root.querySelector('[data-cc-package="p"] [role="alert"]').textContent,/Offline/);
+ c.setFailure(false);await c.click('[data-cc-package="p"] [data-cc-sort-retry]');
+ assert.deepEqual(figureOrder(),['b','a']);
+ assert.deepEqual(c.docs.get('contentCreatorPages/shop').packagePhotoOrder.p,['b','a']);
 });

@@ -28,7 +28,7 @@ async function uploadCreatorFile(access,blob,name,thumb){
   if(!response.ok||!url)throw Error(result.error||'Cloudflare-Upload unvollständig. Bitte wiederholen.');
   return url;
 }
-export async function uploadCreatorMedia(pageId,imageId,file,displays,{free=false,hero=false}={}) {
+export async function uploadCreatorMedia(pageId,imageId,file,displays,{free=false,hero=false,previewOnly=false}={}) {
   const access=await ticket(),mode=free||hero?'clean':'marked',media={mode,bytes:file.size};
   const upload=(blob,name)=>uploadCreatorFile(access,blob,name);
   // Only the selected public variant leaves the browser. In particular a paid
@@ -41,7 +41,7 @@ export async function uploadCreatorMedia(pageId,imageId,file,displays,{free=fals
   // Free originals may be public, just like normal MNYRA images. Large files
   // retain the established protected Firestore download path. A failure here
   // must not invalidate already uploaded previews or the protected original.
-  if(free&&!hero&&file.size<=15*1024*1024){
+  if(!previewOnly&&free&&!hero&&file.size<=15*1024*1024){
     try{media.download=await upload(file,file.name||'photo.jpg');}catch{}
   }
   return {media};
