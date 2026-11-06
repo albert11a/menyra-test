@@ -59,6 +59,7 @@ test('Watermark stages only unsold paid photos and publishes together, reusing w
   .replace(/^import .*;\n/gm,'').replace(/^export \{.*\n/gm,'').replace(/export (async )?function /g,'$1function ');
  const a=samplePage();a.watermarkOpacity=15;
  const b={...samplePage(),watermarkOpacity:15};
+ let latest=a;
  const calls=[],writes=[];
  const doc=(...args)=>args.filter(arg=>typeof arg==='string').join('/');
  const getDoc=async name=>({data:()=>name===path?a:name.endsWith('/chunks/000')?{data:btoa('x')}:{parts:1,size:1,mime:'image/jpeg'}});
@@ -73,18 +74,27 @@ test('Watermark stages only unsold paid photos and publishes together, reusing w
  const document={createElement:()=>({getContext:()=>ctx,toDataURL:()=> 'data:image/webp;base64,eA=='})};
  const apply=new Function('db','CC_PAGES','doc','getDoc','Image','document','uploadCreatorMedia','runTransaction','serverTimestamp','deleteField','creatorWatermarkOpacity',`${source}\nreturn applyShopWatermark;`)(
   {},'contentCreatorPages',doc,getDoc,TestImage,document,upload,async (_db,work)=>work({
-   get:getDoc,set:(...args)=>writes.push(args),update:(name,data)=>{assert.equal(name,path);writes.push([name,data]);}
+   get:async()=>({data:()=>latest}),set:(...args)=>writes.push(args),update:(name,data)=>{assert.equal(name,path);writes.push([name,data]);}
   }),()=>0,()=>null,creatorWatermarkOpacity);
  await assert.rejects(apply(id,45,{sold:new Set(['sold'])}),/Offline/);
  assert.equal(writes.length,0);
- fail=false;await apply(id,45,{sold:new Set(['sold'])});
- assert.deepEqual(calls.map(call=>call[0]),['one','two','two']);
+ fail=false;
+ // A differently ordered Firestore map and a background CDN write must not
+ // prevent the save. The newly added paid photo must join the atomic update.
+ latest={...a,photoIds:['two','one','three','video','new'],media:{two:{thumb:'new-cdn'}},
+  products:[{imageIds:['one','two','video','new'],priceCents:300,id:'paid'},a.products[1]]};
+ await apply(id,45,{sold:new Set(['sold'])});
+ assert.deepEqual(calls.map(call=>call[0]),['one','two','two','new']);
  assert.ok(calls.every(([,opacity,options])=>opacity===45&&options.previewOnly));
- assert.deepEqual(writes.slice(0,2).map(([name])=>name),[`${path}/images/one`,`${path}/images/two`]);
+ assert.deepEqual(writes.slice(0,-1).map(([name])=>name),[`${path}/images/two`,`${path}/images/one`,`${path}/images/new`]);
  assert.equal(writes.at(-1)[1].watermarkOpacity,45);
  assert.equal(b.watermarkOpacity,15);
  assert.equal(creatorWatermarkOpacity(0),0);
  assert.equal(creatorWatermarkOpacity(),20);
+ writes.length=0;
+ latest={...a,watermarkOpacity:55};
+ await assert.rejects(apply(id,61,{sold:new Set(['sold'])}),/Deckkraft wurde inzwischen geändert/);
+ assert.equal(writes.length,0);
 });
 
 test('Photo tracking requires a continuous second and deduplicates catalogue and fullscreen',async t=>{

@@ -146,24 +146,31 @@ export async function saveCreatorCdnAsset(pageId,imageId,file,{free=false,hero=f
 }
 
 const pendingWatermarks=new Map();
+function eligibleWatermarkPhotos(page,sold){
+ const products=(page.products||[]).filter(product=>product.active!==false);
+ return (page.photoIds||[]).filter(id=>{
+  if(page.mediaTypes?.[id]==='video'||page.media?.[id]?.mediaType==='video')return false;
+  const packages=products.filter(product=>product.imageIds?.includes(id));
+  return packages.some(product=>product.priceCents>0&&!sold.has(product.id))&&!packages.some(product=>product.priceCents===0);
+ });
+}
+
 // Stage fresh immutable CDN URLs first, then publish the complete Business change.
 export async function applyShopWatermark(pageId,value,{sold=new Set(),progress=()=>{}}={}){
  const ref=doc(db,CC_PAGES,pageId),page=(await getDoc(ref)).data();
  if(page?.kind!=='shop'||page.deleting)throw Error('Shop wurde nicht gefunden.');
- const opacity=creatorWatermarkOpacity(value);
- const changed=page.watermarkOpacity!==(value??undefined);
- if(!changed)return;
- const signature=p=>JSON.stringify([p.watermarkOpacity,p.previewRevision,p.photoIds,p.products,p.media,p.mediaTypes]);
- const before=signature(page),key=JSON.stringify([before,opacity]);
+ const target=value??undefined;
+ if(page.watermarkOpacity===target)return;
+ const opacity=creatorWatermarkOpacity(target);
+ const effectiveChange=creatorWatermarkOpacity(page.watermarkOpacity)!==opacity;
+ const key=JSON.stringify([page.watermarkOpacity,opacity]);
  const pending=pendingWatermarks.get(pageId),media=pending?.key===key?pending.media:Object.create(null);
  pendingWatermarks.set(pageId,{key,media});
  if(pendingWatermarks.size>4)pendingWatermarks.delete(pendingWatermarks.keys().next().value);
- const ids=(page.photoIds||[]).filter(id=>{
-  const products=(page.products||[]).filter(p=>p.active!==false&&p.imageIds?.includes(id));
-  return page.mediaTypes?.[id]!=='video'&&page.media?.[id]?.mediaType!=='video'&&products.some(p=>p.priceCents>0&&!sold.has(p.id))&&!products.some(p=>p.priceCents===0);
- });
- const effectiveChange=creatorWatermarkOpacity(page.watermarkOpacity)!==opacity;
- if(effectiveChange){
+
+ let ids=effectiveChange?eligibleWatermarkPhotos(page,sold):[];
+ for(let attempt=0;attempt<3;attempt++){
+  let prepared=ids.filter(id=>media[id]).length;
   for(const id of ids){
    if(media[id])continue;
    const file=await savedCreatorFile(pageId,id),url=URL.createObjectURL(file);
@@ -171,23 +178,34 @@ export async function applyShopWatermark(pageId,value,{sold=new Set(),progress=(
     const image=new Image();image.src=url;await image.decode();
     const displays=Object.fromEntries([['thumb',480,.68],['medium',1080,.8],['large',1600,.86]].map(([size,edge,quality])=>[size,prepareBoundedShopDisplay(image,edge,quality,opacity)]));
     media[id]=(await uploadCreatorMedia(pageId,id,file,displays,{previewOnly:true})).media;
-    progress(Object.keys(media).length,ids.length);
+    progress(++prepared,ids.length);
    }finally{URL.revokeObjectURL(url);}
   }
+
+  const latestIds=await runTransaction(db,async transaction=>{
+   const latest=(await transaction.get(ref)).data();
+   if(latest?.kind!=='shop'||latest.deleting)throw Error('Shop wurde nicht gefunden.');
+   if(latest.watermarkOpacity===target)return null;
+   if(latest.watermarkOpacity!==page.watermarkOpacity)throw Error('Die Deckkraft wurde inzwischen geändert. Bitte erneut anwenden.');
+   // Only eligibility and the watermark setting matter. Firestore map order,
+   // package edits and background CDN updates can differ between snapshots.
+   const current=effectiveChange?eligibleWatermarkPhotos(latest,sold):[];
+   if(current.some(id=>!media[id]))return current;
+
+   const updates={watermarkOpacity:target??deleteField(),updatedAt:serverTimestamp()};
+   if(current.length)updates.previewRevision=crypto.randomUUID();
+   for(const id of current){
+    const cdn=media[id];
+    updates[`media.${id}`]=cdn;
+    transaction.set(doc(ref,'images',id),{cdn},{merge:true});
+   }
+   transaction.update(ref,updates);
+   return null;
+  });
+  if(!latestIds){pendingWatermarks.delete(pageId);return;}
+  ids=latestIds;
  }
- await runTransaction(db,async transaction=>{
-  const latest=(await transaction.get(ref)).data();
-  if(!latest||latest.deleting||signature(latest)!==before)throw Error('Das Business wurde inzwischen geändert. Bitte erneut anwenden.');
-  const updates={watermarkOpacity:value??deleteField(),updatedAt:serverTimestamp()};
-  if(effectiveChange&&ids.length)updates.previewRevision=crypto.randomUUID();
-  for(const [id,cdn] of Object.entries(media)){
-   if(!ids.includes(id))continue;
-   updates[`media.${id}`]=cdn;
-   transaction.set(doc(ref,'images',id),{cdn},{merge:true});
-  }
-  transaction.update(ref,updates);
- });
- pendingWatermarks.delete(pageId);
+ throw Error('Während der Vorbereitung wurden weitere Fotos hinzugefügt. Bitte erneut anwenden.');
 }
 
 export async function savedCreatorFile(pageId,imageId){
