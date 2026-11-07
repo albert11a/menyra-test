@@ -12,7 +12,7 @@ export async function studioRequest(op, data = {}, auth = '') {
 
 export function putStudioFile(url, file, progress) {
   return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
+    const xhr = new globalThis.XMLHttpRequest();
     xhr.open('PUT', url);
     xhr.timeout = 600000;
     xhr.setRequestHeader('If-None-Match', '*');

@@ -10,7 +10,7 @@ const givenToken = /^#studio=([a-f0-9]{64})$/.exec(location.hash)?.[1];
 const storageKey = 'mnyra-studio-pending-' + pageId;
 const readPending = () => { try { return sessionStorage.getItem(storageKey); } catch { return null; } };
 const token = givenToken || readPending() || [...crypto.getRandomValues(new Uint8Array(32))].map(byte => byte.toString(16).padStart(2, '0')).join('');
-const displaySize = matchMedia('(max-width: 480px)').matches && (navigator.connection?.saveData || devicePixelRatio <= 1) ? 'thumb' : 'large';
+const displaySize = matchMedia('(max-width: 480px)').matches && (navigator.connection?.saveData || globalThis.devicePixelRatio <= 1) ? 'thumb' : 'large';
 const call = (op, data) => studioRequest(op, { pageId, token, ...data });
 const link = new URL(location.pathname + location.search + '#studio=' + token, location.origin);
 const localeTime = value => new Intl.DateTimeFormat('sq-AL', { timeZone: 'Europe/Vienna', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
@@ -269,7 +269,7 @@ function openReceipt(initial, justPlaced = false) {
   }
   const schedule = () => { clearTimeout(timer); if (!document.hidden) void refresh(); };
   document.addEventListener('visibilitychange', schedule);
-  addEventListener('online', schedule);
+  globalThis.addEventListener('online', schedule);
   void paint();
   schedule();
 }
