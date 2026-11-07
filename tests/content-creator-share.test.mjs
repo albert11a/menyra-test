@@ -114,3 +114,38 @@ test('Purchase preload budget spans packages and excludes unreleased files, vide
  assert.doesNotMatch(html,/example\.com|file=private|file=video|file=three/);
  assert.match(html,/productId=first/);assert.match(html,/productId=second/);
 });
+
+test('Enabled Studio is in the first HTML response on shop and promo pages, including Heart preview',async()=>{
+ const shell='<html><head><title>Default</title></head><body><main id="content-app">Loading</main></body></html>';
+ for(const kind of ['shop','promo']){
+  for(const enabled of [true,false]){
+   const res=response();
+   await serveContentCreator({method:'GET',url:`/api/content-creator?id=${id}&still=1`},res,{
+    shell,read:async()=>({published:true,kind,name:'Studio Bistro',photoIds:[],products:[],photoStudioEnabled:enabled})
+   });
+   assert.equal(res.statusCode,200);
+   const {document}=parseHTML(res.body);
+   const entry=document.querySelector('.creator-studio-entry');
+   assert.equal(!!entry,enabled);
+   if(entry)assert.equal(entry.querySelector('a').getAttribute('href'),'/apps/content-creator/photo-studio.html?page='+id);
+  }
+ }
+});
+
+test('Studio activation and deactivation invalidate the existing live shop version',async()=>{
+ const page={published:true,kind:'shop',name:'Bistro',photoIds:[],products:[]};
+ const live=async version=>{
+  const res=response();
+  await serveContentCreator({method:'GET',url:`/api/content-creator?id=${id}&format=live&version=${version}`},res,{read:async()=>page});
+  assert.equal(res.statusCode,200);
+  return JSON.parse(res.body);
+ };
+ const initial=await live('');
+ assert.equal(initial.photoStudioEnabled,false);
+ page.photoStudioEnabled=true;
+ const enabled=await live(initial.version);
+ assert.equal(enabled.photoStudioEnabled,true);
+ page.photoStudioEnabled=false;
+ const disabled=await live(enabled.version);
+ assert.equal(disabled.photoStudioEnabled,false);
+});

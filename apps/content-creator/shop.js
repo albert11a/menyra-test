@@ -5,7 +5,7 @@ import {creatorVisitorId} from './visitor-id.js';
 import {ccEscape as esc,ccImage} from '../../shared/content-creator.js';
 import {euro,shopQuote,validShopId,creatorPackageFiles} from '../../shared/content-creator-shop.js';
 import {creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,creatorSoldCards,creatorPurchasePhotos,creatorPurchaseDate,creatorHeroFiles,renderCreatorCatalog,creatorHowTo,creatorFooter} from '../../shared/content-creator-view.js';
-export async function mountCreatorShop({root,page,still=false,track=async()=>{}}){
+export async function mountCreatorShop({root,page,still=false,syncStudioEntry,track=async()=>{}}){
  // Block native image-save/drag actions on paid previews, including new viewer nodes.
  // Do not cancel touch/pointer gestures: scrolling, swiping and zoom stay native.
  for(const name of ['contextmenu','dragstart'])root.addEventListener(name,event=>{
@@ -588,6 +588,7 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
    const changed=fields.filter(field=>!same(page[field],next[field]));
    liveVersion=typeof next.version==='string'?next.version:'';
    lastFullSync=Date.now();
+   syncStudioEntry?.(next.photoStudioEnabled===true);
    if(!changed.length&&same(sold,next.sold))return;
    const viewed=viewer?packFiles(viewer.product)[viewer.index]:null;
    const previousHeroFiles=creatorHeroFiles(page);

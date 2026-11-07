@@ -36,6 +36,11 @@ export function creatorImageUrl(page, file, size = 'thumb') {
   if (media?.[size]) return media[size];
   return `/api/content-creator-shop?${new URLSearchParams({op:'image',pageId:page.id,file,size,display:String(DISPLAY_VERSION),v:String(page.previewRevision || page.updatedAt || page.createdMs || '')})}`;
 }
+export function renderCreatorStudioEntry(page) {
+  if (page.photoStudioEnabled !== true || !/^[a-f0-9]{32}$/.test(page.id)) return '';
+  return `<nav class="creator-studio-entry" aria-label="MNYRA Photo Studio"><a href="/apps/content-creator/photo-studio.html?page=${page.id}">MNYRA PHOTO STUDIO · 0,25 € / foto</a></nav>`;
+}
+
 export function publicCreatorPage(page, id) {
   const photoIds = [...new Set((page.photoIds || []).filter(key => /^[a-zA-Z0-9_-]{1,64}$/.test(key)))].slice(0,page.kind==='shop'?100:30);
   return {id, published:true, ...(page.photoStudioEnabled === true ? { photoStudioEnabled: true } : {}), mediaTypes:Object.fromEntries(photoIds.filter(key=>creatorIsVideo(page,key)).map(key=>[key,'video'])), media:creatorPublicMedia(page),heroImages:creatorHeroImages(page),heroFormat:creatorHeroFormat(page),heroCrop:Object.fromEntries(creatorHeroFiles(page).map(id=>[id,creatorHeroCrop(page,id)])),packagePhotoOrder:Object.fromEntries((page.products||[]).filter(p=>Array.isArray(page.packagePhotoOrder?.[p.id])).map(p=>[p.id,creatorPackageFiles(page,p,photoIds.filter(id=>p.imageIds?.includes(id)))])), previewRevision:typeof page.previewRevision==='string'?page.previewRevision.slice(0,64):'', kind:page.kind === 'shop' ? 'shop' : 'promo', name:String(page.name || '').slice(0,160),

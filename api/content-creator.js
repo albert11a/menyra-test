@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { ccEscape as esc, ccImage, contentLink } from '../shared/content-creator.js';
-import {publicCreatorPage,creatorSoldCards,creatorPurchasePreloads,renderCreatorCatalog,creatorPhoto,creatorHowTo,creatorHeroFiles,renderCreatorPromo,creatorFooter} from '../shared/content-creator-view.js';
+import {publicCreatorPage,creatorSoldCards,creatorPurchasePreloads,renderCreatorCatalog,creatorPhoto,creatorHowTo,creatorHeroFiles,renderCreatorPromo,renderCreatorStudioEntry,creatorFooter} from '../shared/content-creator-view.js';
 const BASE='https://firestore.googleapis.com/v1/projects/menyra-c0e68/databases/(default)/documents';
 function decode(v){if(!v)return null;if('stringValue'in v)return v.stringValue;if('booleanValue'in v)return v.booleanValue;if('integerValue'in v)return Number(v.integerValue);if('doubleValue'in v)return Number(v.doubleValue);if('timestampValue'in v)return v.timestampValue;if(v.mapValue)return Object.fromEntries(Object.entries(v.mapValue.fields||{}).map(([k,x])=>[k,decode(x)]));if(v.arrayValue)return (v.arrayValue.values||[]).map(decode);return null;}
 let creatorStyles;
@@ -102,7 +102,7 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
     }
     if(format==='live'){
       const {products,photoIds,media,mediaTypes,heroImages,heroPhotoIds,heroFormat,heroCrop,packagePhotoOrder,previewRevision,sold}=safePage;
-      const snapshot={id,products,photoIds,media,mediaTypes,heroImages,heroPhotoIds,heroFormat,heroCrop,packagePhotoOrder,previewRevision,sold};
+      const snapshot={id,products,photoIds,media,mediaTypes,heroImages,heroPhotoIds,heroFormat,heroCrop,packagePhotoOrder,previewRevision,sold,photoStudioEnabled:safePage.photoStudioEnabled===true};
       const version=createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');
       res.setHeader('Cache-Control','no-store');
       if(url.searchParams.get('version')===version){res.statusCode=204;res.end();return;}
@@ -168,6 +168,8 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
     if(html.includes('/apps/content-creator/content.css')){
       try{const css=await loadCreatorStyles();html=html.replace(/<link rel="stylesheet" href="\/apps\/content-creator\/(?:content|shop)\.css[^"]*">/g,'').replace('</head>',()=>`<style>${css}</style></head>`);}catch{}
     }
+    const studio=renderCreatorStudioEntry(safePage);
+    if(studio)html=html.replace(/<main[^>]*id="content-app"[^>]*>/,open=>studio+open);
     const payload=JSON.stringify(safePage).replace(/</g,'\\u003c').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
     html=html.replace('</head>',()=>`<script id="creator-page-data" type="application/json">${payload}</script></head>`);
     res.statusCode=200;res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','no-store');res.end(req.method==='HEAD'?undefined:html);
