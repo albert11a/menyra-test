@@ -5,7 +5,7 @@ import sharp from 'sharp';
 import { studioImage, studioSocialExport } from '../server/photo-studio-images.js';
 import { studioStorage } from '../server/photo-studio-storage.js';
 import { photoStudioAction } from '../server/photo-studio.js';
-import { studioStats } from '../shared/photo-studio.js';
+import { STUDIO_PART_BYTES, studioStats } from '../shared/photo-studio.js';
 import { STUDIO_CUSTOMER, STUDIO_PAGE_A as pageId, STUDIO_PAGE_B as other, STUDIO_TOKEN as token, studioFixture, testStudioOrderId } from './helpers/photo-studio-fixture.mjs';
 
 const now = Date.parse('2026-11-07T00:00:00Z');
@@ -136,11 +136,51 @@ test('ICC, orientation, baked watermark and padded export are present in actual 
   assert.deepEqual(exported.icc, originalInfo.icc);
 });
 
-test('browser grants sign the exact content length and precondition, and download grants expire in 90 seconds', async () => {
-  const store = studioStorage({ PHOTO_STUDIO_R2_ACCOUNT: pageId, PHOTO_STUDIO_R2_BUCKET: 'test-private', PHOTO_STUDIO_R2_ACCESS_KEY: 'example', PHOTO_STUDIO_R2_SECRET_KEY: 'example' });
-  const put = new URL(await store.upload('staging/test', 123));
-  assert.equal(put.searchParams.get('X-Amz-SignedHeaders'), 'content-length;host;if-none-match');
-  const get = new URL(await store.sign('assets/test', 'MNYRA.jpg'));
-  assert.equal(get.searchParams.get('X-Amz-Expires'), '90');
-  assert.match(get.searchParams.get('response-content-disposition'), /^attachment/);
+test('Studio uses the normal shop upload for encrypted chunks and keeps private download grants scoped', async () => {
+  const { repo } = studioFixture();
+  const bucket = new Map();
+  const base = 'https://menyra-media.alberthoti-vsa.workers.dev';
+  let uploads = 0;
+  const store = studioStorage(repo, {
+    credentials: { private_key: 'studio-fixture-key' },
+    issueTicket: async uid => ({ value: uid }),
+    fetchFn: async (url, request) => {
+      if (request.method === 'POST') {
+        assert.equal(url, base + '/image/upload');
+        const uid = request.body.get('restaurantId');
+        assert.equal(request.headers.Authorization, 'Bearer ' + uid);
+        const key = base + '/media/social/' + uid + '/object-' + (++uploads) + '.jpg';
+        bucket.set(key, Buffer.from(await request.body.get('file').arrayBuffer()));
+        return Response.json({ cdnUrl: key });
+      }
+      return bucket.has(url) ? new Response(bucket.get(url)) : new Response('', { status: 404 });
+    }
+  });
+  const token = url => new URL(url, 'https://www.mnyra.com').searchParams.get('t');
+  const stage = 'staging/order/upload';
+  const bytes = Buffer.concat([Buffer.alloc(STUDIO_PART_BYTES, 7), original]);
+  const upload = token(store.upload(stage, bytes.length));
+  assert.equal(await store.acceptPart(upload, 0, 'bad'), 400);
+  assert.equal(await store.acceptPart(upload, 0, bytes.subarray(0, STUDIO_PART_BYTES).toString('base64')), 200);
+  assert.equal(await store.acceptPart(upload, 1, original.toString('base64')), 200);
+  assert.equal(await store.acceptPart(upload, 1, original.toString('base64')), 200);
+  assert.equal(uploads, 2);
+  assert.notDeepEqual([...bucket.values()][1], original);
+  assert.deepEqual(await store.readUpload(stage), bytes);
+  assert.equal(await store.openDownload(upload), null);
+  await store.put('prepared/order/image', original, 'image/jpeg');
+  await store.copy('prepared/order/image', 'assets/order/image');
+  const read = async file => {
+    const chunks = [];
+    for await (const chunk of file.chunks) chunks.push(chunk);
+    return Buffer.concat(chunks);
+  };
+  const download = await store.openDownload(token(store.sign('assets/order/image', 'MNYRA.jpg')));
+  assert.equal(download.filename, 'MNYRA.jpg');
+  assert.equal(download.mime, 'image/jpeg');
+  assert.deepEqual(await read(download), original);
+  const zipKey = await store.archive('order', 'edited-archive', [{ name: 'MNYRA.jpg', key: 'assets/order/image' }]);
+  const zip = await store.openDownload(token(store.sign(zipKey, 'MNYRA.zip')));
+  assert.equal(zip.mime, 'application/zip');
+  assert.equal((await read(zip)).subarray(0, 4).toString('hex'), '504b0304');
 });

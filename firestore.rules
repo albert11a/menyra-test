@@ -975,6 +975,9 @@ service cloud.firestore {
     match /photoStudioUploads/{id} {
       allow read, write: if false;
     }
+    match /photoStudioMedia/{id} {
+      allow read, write: if false;
+    }
     match /photoStudioLimits/{id} {
       allow read, write: if false;
     }

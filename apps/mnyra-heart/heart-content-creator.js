@@ -285,9 +285,25 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       },error=>{errors[key]=`${key}: ${error.message}`;patch({error:Object.values(errors).join(' ')});}));
     }
     listen(CC_PAGES,'pages');listen(CC_CARTS,'carts');listen(CC_ORDERS,'orders');listen(CC_VISITS,'visits');
-    subscriptions.push(onSnapshot(collection(db, STUDIO_ORDERS), snap => {
+    let studioStopped = false, studioRetry;
+    const refreshStudioOrders = async () => {
+      try {
+        const { orders } = await studioAdminRequest('admin-list');
+        if (!studioStopped) patch({ studioOrders: orders, studioError: '' });
+      } catch {
+        if (!studioStopped) patch({ studioError: 'Photo-Studio-Aufträge konnten nicht geladen werden.' });
+      } finally {
+        if (!studioStopped) studioRetry = globalThis.setTimeout(refreshStudioOrders, 12000);
+      }
+    };
+    const stopStudioOrders = onSnapshot(collection(db, STUDIO_ORDERS), snap => {
       patch({ studioOrders: snap.docs.map(row => ({ ...row.data(), id: row.id })), studioError: '' });
-    }, () => patch({ studioOrders: [], studioError: 'Photo-Studio-Aufträge konnten nicht geladen werden.' })));
+    }, () => { if (!studioStopped) void refreshStudioOrders(); });
+    subscriptions.push(() => {
+      studioStopped = true;
+      globalThis.clearTimeout(studioRetry);
+      stopStudioOrders();
+    });
     let ticks=0;liveTimer=setInterval(()=>{if(!stopped){patch({now:Date.now()});if(++ticks%2===0){void retryNotifications();void preparePackageDeliveries();}}},30000);
     // Snapshots populate pending deliveries before the first retry pass.
     setTimeout(()=>{if(!stopped)void retryNotifications();},1500);

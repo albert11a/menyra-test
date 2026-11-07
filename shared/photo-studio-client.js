@@ -1,3 +1,5 @@
+import { STUDIO_PART_BYTES } from './photo-studio.js';
+
 export async function studioRequest(op, data = {}, auth = '') {
   const response = await fetch('/api/photo-studio', {
     method: 'POST', credentials: 'same-origin',
@@ -10,22 +12,31 @@ export async function studioRequest(op, data = {}, auth = '') {
   return result;
 }
 
-export function putStudioFile(url, file, progress) {
-  return new Promise((resolve, reject) => {
-    const xhr = new globalThis.XMLHttpRequest();
-    xhr.open('PUT', url);
-    xhr.timeout = 600000;
-    xhr.setRequestHeader('If-None-Match', '*');
-    xhr.upload.onprogress = event => progress(event.lengthComputable ? Math.round(event.loaded / event.total * 100) : 0);
-    xhr.onload = () => {
-      // A previous successful PUT can lose its response. Only the server's
-      // accept step verifies that this immutable slot contains a valid file.
-      if (xhr.status >= 200 && xhr.status < 300 || xhr.status === 412) resolve();
-      else reject(Error('Ngarkimi u ndërpre. Provo përsëri.'));
-    };
-    xhr.onerror = xhr.ontimeout = () => reject(Error('Kontrollo lidhjen dhe provo përsëri.'));
-    xhr.send(file);
-  });
+export async function putStudioFile(url, file, progress) {
+  for (let offset = 0; offset < file.size; offset += STUDIO_PART_BYTES) {
+    const end = Math.min(offset + STUDIO_PART_BYTES, file.size);
+    const bytes = new Uint8Array(await file.slice(offset, end).arrayBuffer());
+    let binary = '';
+    for (let start = 0; start < bytes.length; start += 32768) {
+      binary += String.fromCharCode(...bytes.subarray(start, start + 32768));
+    }
+    await new Promise((resolve, reject) => {
+      const xhr = new globalThis.XMLHttpRequest();
+      xhr.open('POST', url);
+      xhr.timeout = 90000;
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.upload.onprogress = event => {
+        if (event.lengthComputable) progress(Math.round((offset + bytes.length * event.loaded / event.total) / file.size * 100));
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(Error('Ngarkimi u ndërpre. Provo përsëri.'));
+      };
+      xhr.onerror = xhr.ontimeout = () => reject(Error('Kontrollo lidhjen dhe provo përsëri.'));
+      xhr.send(JSON.stringify({ index: offset / STUDIO_PART_BYTES, data: btoa(binary) }));
+    });
+    progress(Math.round(end / file.size * 100));
+  }
 }
 
 export function studioDownload({ url }) {

@@ -1009,6 +1009,7 @@ test('Photo Studio order documents are read-only for Heart and private from gues
     { path: 'photoStudioOrders/studio-demo', data: { pageId: 'page-a', totalCents: 25, paymentStatus: 'unpaid' } },
     { path: 'photoStudioUploads/studio-upload', data: { key: 'prepared/private' } },
     { path: 'photoStudioLimits/studio-limit', data: { count: 1 } },
+    { path: 'photoStudioMedia/studio-media', data: { key: 'encrypted-media' } },
   ]);
   const heart = firestoreFor(testEnv, AUTH_FIXTURES.heart);
   await assertSucceeds(heart.doc('photoStudioOrders/studio-demo').get());
@@ -1022,6 +1023,7 @@ test('Photo Studio order documents are read-only for Heart and private from gues
   await assertFails(heart.doc('photoStudioOrders/fake').set({ totalCents: 0 }));
   await assertFails(heart.doc('photoStudioUploads/studio-upload').get());
   await assertFails(heart.doc('photoStudioLimits/studio-limit').get());
+  await assertFails(heart.doc('photoStudioMedia/studio-media').get());
 });
 
 test('Studio REST transactions reject stale guards and simultaneous duplicate creation', async () => {
@@ -1037,6 +1039,7 @@ test('Studio REST transactions reject stale guards and simultaneous duplicate cr
   assert.deepEqual(results.sort(), [false, true]);
   const order = await rest.read(orderPath);
   assert.equal(order.data.totalCents, 25);
+  assert.ok((await rest.listOrders()).some(row => row.id === 'studio-tx' && row.totalCents === 25));
   assert.equal(await rest.write(orderPath, { paymentStatus: 'paid' }, order, [], { patch: true }), true);
   assert.equal(await rest.write(orderPath, { paymentStatus: 'unpaid' }, order, [], { patch: true }), false);
 });

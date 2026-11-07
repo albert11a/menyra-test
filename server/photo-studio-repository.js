@@ -27,6 +27,17 @@ export function createPhotoStudioRepository(base, token) {
       const raw = await response.json();
       return { path, version: raw.updateTime, data: Object.fromEntries(Object.entries(raw.fields || {}).map(([k, v]) => [k, wert(v)])) };
     },
+    async listOrders() {
+      const response = await request(':runQuery', {
+        method: 'POST',
+        body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'photoStudioOrders' }] } })
+      });
+      if (!response.ok) throw Error('Studio orders query failed');
+      return (await response.json()).flatMap(({ document }) => document ? [{
+        ...Object.fromEntries(Object.entries(document.fields || {}).map(([k, v]) => [k, wert(v)])),
+        id: document.name.split('/').at(-1)
+      }] : []);
+    },
     async write(path, data, previous = null, checks = [], { patch = false, ttl = false } = {}) {
       const fields = Object.fromEntries(Object.entries(data).map(([k, v]) => [k, encodeValue(v)]));
       if (ttl) fields.expireAt = { timestampValue: data.expireAt };

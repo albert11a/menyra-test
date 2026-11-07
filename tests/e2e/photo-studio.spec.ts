@@ -24,7 +24,7 @@ test('customer and Heart complete a private Photo Studio order', async ({ page, 
     const url = new URL(route.request().url()), key = url.searchParams.get('key')!;
     if (url.pathname.endsWith('/upload')) {
       if (!failedUpload) { failedUpload = true; await route.abort('connectionreset'); return; }
-      fixture.objects.set(key, route.request().postDataBuffer());
+      fixture.objects.set(key, Buffer.from(route.request().postDataJSON().data, "base64"));
       await route.fulfill({ status: 200 }); return;
     }
     await route.fulfill({ contentType: key.endsWith('.webp') ? 'image/webp' : 'image/jpeg', body: fixture.objects.get(key),

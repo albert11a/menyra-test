@@ -2,6 +2,7 @@ export const STUDIO_ORDERS = 'photoStudioOrders';
 export const STUDIO_PRICE = 25;
 export const STUDIO_MAX_FILES = 20;
 export const STUDIO_MAX_BYTES = 30 * 1024 * 1024;
+export const STUDIO_PART_BYTES = 3 * 1024 * 1024;
 export const STUDIO_ACCEPT = '.jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif';
 export const STUDIO_STYLES = ['Natural Pro', 'Food Photography', 'Product Studio', 'Cinematic'];
 export const STUDIO_FORMATS = { jpeg: ['image/jpeg', 'jpg'], png: ['image/png', 'png'], webp: ['image/webp', 'webp'], heif: ['image/heic', 'heic'] };
