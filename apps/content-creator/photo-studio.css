@@ -77,3 +77,28 @@
   .studio-comparison:not([data-mode]) figure:last-child { height: 76px; }
   .studio-comparison[data-mode="slider"] { --media-height: clamp(230px, 108vw, 520px); }
 }
+
+.creator-studio-dialog .studio-shell {
+  --studio-fg: #20362b; --studio-muted: #536359; --studio-border: #dce4d7;
+  width: 100%; padding: 16px 20px 24px;
+}
+.creator-studio-dialog .studio-card { background: #fff; }
+.creator-studio-dialog .studio-order-form { margin: 0; padding: 0; background: transparent; border: 0; }
+.creator-studio-dialog .studio-intro { margin: 0; }
+.creator-studio-dialog .studio-price { color: #20362b; margin: 10px 0 14px; }
+.creator-studio-dialog .studio-drop { background: transparent; border: 0; padding: 0; place-items: start; }
+.creator-studio-dialog .studio-shell button,
+.creator-studio-dialog .studio-fields input,
+.creator-studio-dialog .studio-toolbar select {
+  background: #fff; border-color: #dce4d7; color: #20362b;
+}
+.creator-studio-dialog .studio-shell :is(.studio-primary, [aria-current="true"], [aria-pressed="true"]) {
+  background: #d9f493; border-color: #d9f493; color: #20362b;
+}
+.creator-studio-dialog .studio-upload { background: #edf1e8; }
+.creator-studio-dialog .studio-error { color: #842c25; }
+.creator-studio-dialog .studio-title { font-size: clamp(1.6rem, 6vw, 2.4rem); }
+.creator-studio-dialog .studio-kicker { color: #536359; }
+.studio-order-form .studio-error:empty { display: none; }
+.creator-studio-dialog .studio-receipt-link{color:#20362b;font-size:13px;margin-inline-start:8px}
+.creator-studio-dialog .studio-fields input{font-size:16px}

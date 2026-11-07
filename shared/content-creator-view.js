@@ -41,14 +41,15 @@ export function renderCreatorStudioEntry(page) {
   if (page.photoStudioEnabled !== true || !/^[a-f0-9]{32}$/.test(page.id)) return '';
   const { before, after } = creatorStudioSamples(page);
   return `<section class="creator-studio-entry" aria-labelledby="creator-studio-title">
-    <div class="creator-studio-card">
-      <span class="answer-eyebrow">MNYRA PHOTO STUDIO</span>
-      <h2 id="creator-studio-title">Fotot e tua, të përpunuara profesionalisht.</h2>
-      <p>Na dërgo një foto nga telefoni. Ne përmirësojmë dritën, ngjyrat dhe detajet, që fotoja të jetë gati për rrjetet sociale.</p>
+    <div class="shop-intro-copy creator-studio-card">
+      <span class="shop-studio-tag"><span class="studio-mark">mnyra<span>•</span></span><span class="studio-cross">×</span> Photo Studio</span>
+      <h2 id="creator-studio-title">Foto më të bukura për biznesin tënd.</h2>
+      <p>Na dërgo fotot. Ne ua rregullojmë dritën dhe ngjyrat.</p>
       <div class="creator-studio-actions">
-        <a class="creator-studio-upload" href="/apps/content-creator/photo-studio.html?page=${page.id}">Ngarko fotot ${creatorIcon('arrow-up-right')}</a>
+        <a class="creator-studio-upload" data-creator-studio-open aria-haspopup="dialog" href="/apps/content-creator/photo-studio.html?page=${page.id}">Ngarko fotot ${creatorIcon('arrow-right')}</a>
         <span>${euro(STUDIO_PRICE)} / foto</span>
       </div>
+      <p data-studio-open-error role="alert" hidden>Provo përsëri.</p>
     </div>
     ${before && after ? `<div class="creator-studio-sample" role="group" aria-label="Shembull para dhe pas përpunimit">
       <figure><img src="${esc(before)}" width="360" height="450" loading="lazy" decoding="async" alt="Shembull i fotos origjinale"><figcaption>Origjinali</figcaption></figure>

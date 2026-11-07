@@ -1,43 +1,45 @@
 import { ccEscape as esc } from '../../shared/content-creator.js';
 import { euro } from '../../shared/content-creator-shop.js';
-import { STUDIO_ACCEPT, STUDIO_MAX_BYTES, STUDIO_MAX_FILES, STUDIO_PAYMENT, STUDIO_PRICE, STUDIO_STATES, STUDIO_STYLES } from '../../shared/photo-studio.js';
-import { putStudioFile, studioDownload, studioRequest } from '../../shared/photo-studio-client.js';
+import { STUDIO_ACCEPT, STUDIO_MAX_BYTES, STUDIO_MAX_FILES, STUDIO_PAYMENT, STUDIO_PRICE, STUDIO_STATES } from '../../shared/photo-studio.js';
+import { ensureStudioStyles, putStudioFile, studioDownload, studioRequest } from '../../shared/photo-studio-client.js';
 import { decodeStudioComparison, studioCompare } from '../../shared/photo-studio-compare.js';
 
-const root = document.querySelector('#photo-studio');
-const pageId = new URLSearchParams(location.search).get('page') || '';
-const givenToken = /^#studio=([a-f0-9]{64})$/.exec(location.hash)?.[1];
-const storageKey = 'mnyra-studio-pending-' + pageId;
+let root, pageId, givenToken, storageKey, token, link, nav, dialog;
 const readPending = () => { try { return sessionStorage.getItem(storageKey); } catch { return null; } };
-const token = givenToken || readPending() || [...crypto.getRandomValues(new Uint8Array(32))].map(byte => byte.toString(16).padStart(2, '0')).join('');
 const displaySize = matchMedia('(max-width: 480px)').matches && (navigator.connection?.saveData || globalThis.devicePixelRatio <= 1) ? 'thumb' : 'large';
 const call = (op, data) => studioRequest(op, { pageId, token, ...data });
-const link = new URL(location.pathname + location.search + '#studio=' + token, location.origin);
 const localeTime = value => new Intl.DateTimeFormat('sq-AL', { timeZone: 'Europe/Vienna', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
-const nav = `<nav class="studio-nav"><span class="studio-wordmark">MNYRA / STUDIO</span><a href="/content-creator/${esc(pageId)}">Kthehu te fotot</a></nav>`;
-const stopBusy = () => root.removeAttribute('aria-busy');
 
-function mountForm(businessName) {
-  root.innerHTML = `${nav}<header class="studio-hero"><p class="studio-kicker">${esc(businessName)} · MNYRA PHOTO STUDIO</p>
-    <h1 class="studio-title">Fotot e tua. Në një nivel tjetër.</h1>
-    <p class="studio-intro">Dërgo fotot e tua dhe ne i përpunojmë profesionalisht, me ndriçim, detaje dhe cilësi të përshtatshme për Instagram dhe Facebook.</p>
-    <p class="studio-price">Vetëm 0,25 € për foto</p></header>
-  <form class="studio-card">
-    <div class="studio-drop"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 16-5-5L5 21"/></svg>
-      <strong>Zgjidh fotot që dëshiron t’i përpunojmë.</strong><span class="studio-muted">Nga telefoni ose galeria jote.</span>
-      <input hidden type="file" multiple accept="${STUDIO_ACCEPT}"><button type="button" class="studio-primary" data-add>Ngarko fotot</button>
-      <span class="studio-fine">JPG, PNG, WebP, HEIC/HEIF · deri në 20 foto · 30 MB për foto</span></div>
-    <div class="studio-upload-grid"></div>
+function mount(target, id) {
+  root = target;
+  pageId = id;
+  givenToken = dialog ? '' : /^#studio=([a-f0-9]{64})$/.exec(location.hash)?.[1];
+  storageKey = 'mnyra-studio-pending-' + pageId;
+  token = givenToken || readPending() || [...crypto.getRandomValues(new Uint8Array(32))].map(byte => byte.toString(16).padStart(2, '0')).join('');
+  link = new URL(`/apps/content-creator/photo-studio.html?page=${encodeURIComponent(pageId)}#studio=${token}`, location.origin);
+  nav = dialog ? '' : `<nav class="studio-nav"><span class="studio-wordmark">MNYRA / STUDIO</span><a href="/content-creator/${esc(pageId)}">Kthehu te fotot</a></nav>`;
+  void start();
+}
+
+function mountForm() {
+  root.innerHTML = `${nav}
+  <form class="studio-card studio-order-form">
+    <p class="studio-intro">Ti na dërgon fotot. Ne ua rregullojmë dritën dhe ngjyrat që të duken më bukur. Kur të jenë gati, mund t’i shkarkosh.</p>
+    <p class="studio-price">${euro(STUDIO_PRICE)} për foto</p>
+    <div class="studio-drop">
+      <input hidden type="file" multiple accept="${STUDIO_ACCEPT}">
+      <button type="button" class="studio-primary" data-add>Ngarko fotot</button>
+    </div>
+    <div class="studio-upload-grid" hidden></div>
+    <div data-order-details hidden>
     <div class="studio-fields">
       <label>Emri<input name="name" required maxlength="120" autocomplete="name"></label>
       <label>Telefoni<input name="phone" required type="tel" maxlength="40" autocomplete="tel"></label>
-      <label>Emaili (opsional)<input name="email" type="email" maxlength="200" autocomplete="email"></label>
-      <label>Stili (opsional)<select name="style"><option value="">Zgjidh stilin</option>${STUDIO_STYLES.map(style => `<option>${style}</option>`).join('')}</select></label>
-      <label>Udhëzime (opsionale)<textarea name="notes" maxlength="1000" rows="2" placeholder="Dëshiroj fotografi natyrale, pa ndryshuar produktin."></textarea></label>
     </div>
     <label class="studio-consent"><input type="checkbox" name="consent" required>Kam të drejtë t’i dërgoj këto foto dhe lejoj përpunimin e tyre për këtë porosi.</label>
     <details class="studio-fine"><summary>Privatësia e fotove</summary><p>Fotot dhe të dhënat e kontaktit përdoren për përpunimin dhe dorëzimin e porosisë. Fotot janë private dhe ruhen për shkarkim deri në 175 ditë nga porosia. Ngarkimet e papërfunduara fshihen automatikisht. Ndaje linkun e porosisë vetëm me persona të besuar. Për fshirjen, kontakto MNYRA.</p></details>
     <div class="studio-checkout"><div><strong>Përmbledhja e porosisë</strong><div data-total aria-live="polite"></div></div><button class="studio-primary" type="submit">Dërgo porosinë</button></div>
+    </div>
     <p class="studio-error" role="alert"></p>
   </form>`;
   const form = root.querySelector('form'), picker = form.querySelector('[type=file]'), drop = form.querySelector('.studio-drop');
@@ -45,8 +47,10 @@ function mountForm(businessName) {
   const rows = [];
   let busy = false;
   const sync = () => {
-    form.querySelector('[data-total]').textContent = `${rows.length} foto × 0,25 € · Totali ${euro(rows.length * STUDIO_PRICE)}`;
+    form.querySelector('[data-total]').textContent = `${rows.length} foto × ${euro(STUDIO_PRICE)} · Totali ${euro(rows.length * STUDIO_PRICE)}`;
     submit.disabled = busy || !rows.length;
+    grid.hidden = !rows.length;
+    form.querySelector('[data-order-details]').hidden = !rows.length;
     form.querySelector('[data-add]').disabled = busy;
     rows.forEach(row => {
       row.remove.disabled = busy || row.uploading;
@@ -133,14 +137,14 @@ function mountForm(businessName) {
 }
 
 function openReceipt(initial, justPlaced = false) {
-  history.replaceState(null, '', link.href);
+  if (!dialog) history.replaceState(null, '', link.href);
   try { sessionStorage.removeItem(storageKey); } catch {}
   let order = initial, index = 0, paintVersion = 0, renderedKey = '', fetchingKey = '', selection = '', timer;
   const cache = new Map(), originals = new Map();
   root.innerHTML = `${nav}<header class="studio-receipt"><p class="studio-kicker">MNYRA PHOTO STUDIO</p><h1 class="studio-title">${justPlaced ? 'Porosia u pranua!' : 'Porosia jote'}</h1>
     ${justPlaced ? '<p class="studio-intro">Fotot e tua u dërguan me sukses. Do të mund t’i shikosh rezultatet këtu sapo të jenë gati.</p>' : ''}</header>
     <section class="studio-card"><h2>${esc(order.businessName)}</h2><p class="studio-meta"><span>#${esc(order.id.slice(0, 12).toUpperCase())}</span><span>${order.photoCount} foto</span><span>${euro(order.totalCents)}</span><time>${localeTime(order.createdAt)}</time></p>
-    <p data-status aria-live="polite"></p><button type="button" data-copy>Kopjo linkun e porosisë</button><p class="studio-fine" data-live role="status"></p></section>
+    <p data-status aria-live="polite"></p><button type="button" data-copy>Kopjo linkun e porosisë</button>${dialog ? ` <a class="studio-receipt-link" href="${esc(link.href)}">Hap porosinë</a>` : ''}<p class="studio-fine" data-live role="status"></p></section>
     <section class="studio-card" data-results><nav class="studio-pagination" aria-label="Fotot e porosisë"></nav><div data-compare aria-live="polite"></div>
     <div class="studio-toolbar" data-downloads hidden><button type="button" class="studio-primary" data-save>Shkarko foton</button>
       <button type="button" data-all>Shkarko të gjitha</button><button type="button" data-share hidden>Ruaj / shpërndaj</button>
@@ -252,7 +256,7 @@ function openReceipt(initial, justPlaced = false) {
   }
   let refreshing = false, delay = 4000;
   async function refresh() {
-    if (refreshing || document.hidden) return;
+    if (refreshing || document.hidden || (dialog && !dialog.open)) return;
     refreshing = true;
     try {
       const updated = await call('receipt', { revision: order.revision });
@@ -264,10 +268,12 @@ function openReceipt(initial, justPlaced = false) {
       delay = Math.min(delay * 2, 60000);
     } finally {
       refreshing = false;
-      if (!document.hidden && !['expired', 'cancelled'].includes(order.status)) timer = setTimeout(refresh, delay);
+      if (!document.hidden && (!dialog || dialog.open) && !['expired', 'cancelled'].includes(order.status)) timer = setTimeout(refresh, delay);
     }
   }
   const schedule = () => { clearTimeout(timer); if (!document.hidden) void refresh(); };
+  dialog?.addEventListener('studio-reopen', schedule);
+  dialog?.addEventListener('close', () => clearTimeout(timer));
   document.addEventListener('visibilitychange', schedule);
   globalThis.addEventListener('online', schedule);
   void paint();
@@ -280,11 +286,31 @@ async function start() {
       try { openReceipt(await call('receipt')); return; }
       catch (error) { if (givenToken || error.status !== 404) throw error; }
     }
-    const { businessName } = await call('studio-info');
-    mountForm(businessName);
+    await call('studio-info');
+    mountForm();
   } catch (error) {
     root.innerHTML = `${nav}<section class="studio-card"><p class="studio-error" role="alert">${esc(error.message)}</p><button type="button">Provo përsëri</button></section>`;
     root.querySelector('button').onclick = () => void start();
-  } finally { stopBusy(); }
+  } finally { root.removeAttribute('aria-busy'); }
 }
-void start();
+export function openPhotoStudioDialog(id) {
+  if (dialog) {
+    if (!dialog.open) dialog.showModal();
+    dialog.dispatchEvent(new Event('studio-reopen'));
+    return;
+  }
+  ensureStudioStyles();
+  dialog = document.createElement('dialog');
+  dialog.className = 'creator-studio-dialog';
+  dialog.setAttribute('aria-labelledby', 'creator-studio-dialog-title');
+  dialog.innerHTML = `<header><h2 id="creator-studio-dialog-title">Photo Studio</h2>
+    <button type="button" aria-label="Mbylle" autofocus>×</button></header>
+    <div class="studio-shell" aria-busy="true"><p role="status">Duke hapur…</p></div>`;
+  dialog.querySelector('button').onclick = () => dialog.close();
+  document.body.append(dialog);
+  dialog.showModal();
+  mount(dialog.querySelector('.studio-shell'), id);
+}
+
+const standalone = document.getElementById('photo-studio');
+if (standalone) mount(standalone, new URLSearchParams(location.search).get('page') || '');

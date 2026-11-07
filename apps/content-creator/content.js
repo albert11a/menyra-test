@@ -51,6 +51,13 @@ async function start(){
       root.innerHTML=renderCreatorPromo(page);
     }
     root.addEventListener('click',async event=>{
+      const studio=event.target.closest('[data-creator-studio-open]');
+      if(studio&&typeof document.createElement('dialog').showModal==='function'){
+        event.preventDefault();
+        try{const {openPhotoStudioDialog}=await import('./photo-studio.js');openPhotoStudioDialog(id);}
+        catch{studio.closest('.creator-studio-card').querySelector('[data-studio-open-error]').hidden=false;}
+        return;
+      }
       const button=event.target.closest('[data-answer]');if(!button)return;
       const buttons=root.querySelectorAll('[data-answer]');buttons.forEach(b=>b.disabled=true);
       try{await (await visits()).answer(button.dataset.answer);}catch{buttons.forEach(b=>b.disabled=false);const error=root.querySelector('#answer-error');if(error)error.textContent='Përgjigjja nuk u ruajt. Provoni përsëri.';}

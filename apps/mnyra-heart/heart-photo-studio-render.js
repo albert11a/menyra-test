@@ -27,13 +27,13 @@ export function studioOverview(state, page) {
   return creatorCard(`photo-studio-${page?.id || 'all'}`, 'Photo Studio', `
     ${page ? `<div class="cc-row-actions"><button type="button" data-cc-action="studio-toggle" data-id="${esc(page.id)}" aria-pressed="${page.photoStudioEnabled === true}" ${!page.published ? 'disabled' : ''}>${page.photoStudioEnabled ? 'Photo Studio deaktivieren' : 'Photo Studio aktivieren'}</button></div>` : ''}
     ${state.studioError ? `<p class="cc-muted" role="status">${esc(state.studioError)}</p>` : ''}
-    <div class="cc-stats">${[
+    <div class="cc-stats cc-studio-stats">${[
       ['Neu', stats.pending], ['In Bearbeitung', stats.processing], ['Fertig bearbeitet', stats.ready],
       ['Warten auf Zahlung', stats.unpaid], ['Abgeschlossen', stats.completed], ['Offen', stats.open],
       ['Eingereichte Fotos', stats.photos], ['Bearbeitete Fotos', stats.edited],
       ['Bestellwert', euro(stats.value)], ['Bestätigte Einnahmen', euro(stats.paid)]
     ].map(([label, value]) => `<div class="cc-stat"><strong>${value}</strong><span>${label}</span></div>`).join('')}</div>
-    <div class="cc-row-actions">
+    <div class="cc-row-actions cc-studio-filters">
       ${page ? '' : `<input id="cc-studio-search" type="search" data-studio-search aria-label="Photo-Studio-Business suchen" placeholder="Business suchen" value="${esc(state.studioSearch || '')}">`}
       <label>Auftragsstatus <select data-studio-filter><option value="">Alle</option>${Object.entries({ ...statuses, unpaid: 'Warten auf Zahlung' }).map(([key, label]) => `<option value="${key}" ${key === status ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
     </div>

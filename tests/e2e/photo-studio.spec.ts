@@ -98,3 +98,46 @@ test('customer and Heart complete a private Photo Studio order', async ({ page, 
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Porosia jote' })).toBeVisible();
 });
+
+test('shop opens a simple upload sheet in place and keeps sample photos full bleed', async ({ page, context }) => {
+  const { serveContentCreator } = await import('../../api/content-creator.js');
+  const { readFile } = await import('node:fs/promises');
+  const shell = await readFile(new URL('../../apps/content-creator/index.html', import.meta.url), 'utf8');
+  const fixture = studioFixture();
+  const base = 'https://menyra-media.alberthoti-vsa.workers.dev/media/social/owner/';
+  const businessPath = '/content-creator/' + pageId;
+  await page.route('**' + businessPath, async route => {
+    const response = { statusCode: 200, body: '', setHeader() {}, end(body) { this.body = body; } };
+    await serveContentCreator({ method: 'GET', url: businessPath, query: { id: pageId } }, response, {
+      shell,
+      read: async () => ({ name: 'Studio Bistro', kind: 'shop', published: true, photoIds: [], products: [],
+        photoStudioEnabled: true, photoStudioSamples: { before: base + 'before.webp', after: base + 'after.webp' } })
+    });
+    await route.fulfill({ status: response.statusCode, contentType: 'text/html', body: response.body });
+  });
+  await context.route('**/api/photo-studio', async route => {
+    const input = route.request().postDataJSON();
+    await route.fulfill({ json: await photoStudioAction(input, { ...fixture, image: studioImage }) });
+  });
+  await page.route(base + '**', route => route.abort());
+  await page.goto(businessPath);
+  const card = page.locator('#shop-purchases + .creator-studio-entry');
+  await expect(card.locator('img')).toHaveCount(2);
+  await expect(card.locator('img').first()).toHaveCSS('object-fit', 'cover');
+  const link = card.getByRole('link', { name: 'Ngarko fotot' });
+  await link.click();
+  const dialog = page.getByRole('dialog', { name: 'Photo Studio' });
+  await expect(dialog).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(businessPath + '$'));
+  await expect(dialog).toContainText('0,25');
+  await expect(dialog.getByRole('combobox')).toHaveCount(0);
+  await expect(dialog.getByLabel('Emri', { exact: true })).toBeHidden();
+  const picker = page.waitForEvent('filechooser');
+  await dialog.getByRole('button', { name: 'Ngarko fotot' }).click();
+  await (await picker).setFiles({ name: 'Test.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('fixture') });
+  await expect(dialog.getByLabel('Emri', { exact: true })).toBeVisible();
+  await expect(dialog.locator('[data-total]')).toContainText('0,25');
+  await dialog.getByRole('button', { name: 'Mbylle' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(link).toBeFocused();
+});
