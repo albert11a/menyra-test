@@ -15,15 +15,6 @@ const storageExpired = order => Date.parse(order.mediaExpiresAt);
 const valid = (value, pattern) => typeof value === 'string' && pattern.test(value);
 const hasDraft = photo => photo.result && photo.published?.version !== photo.result.version;
 
-function customerFields(input) {
-  const customer = { name: text(input.name, 120), phone: text(input.phone, 40), email: text(input.email, 200) };
-  if (!customer.name || !/^\+?[\d ()-]{6,40}$/.test(customer.phone) || customer.phone.replace(/\D/g, '').length < 6 ||
-      (customer.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email)) || input.consent !== true) {
-    reject('Shëno emrin dhe numrin e telefonit, kontrollo emailin dhe konfirmo lejen për përpunim.');
-  }
-  return customer;
-}
-
 function customerOrder(order, now) {
   const expired = now >= storageExpired(order);
   return {
@@ -137,7 +128,6 @@ export async function photoStudioAction(input, { repo, media, image, exportImage
     const ids = input.photos;
     if (!Array.isArray(ids) || ids.length < 1 || ids.length > STUDIO_MAX_FILES ||
         new Set(ids).size !== ids.length || !ids.every(id => valid(id, uuid))) reject('Zgjidh nga 1 deri në 20 foto.');
-    const customer = customerFields(input);
     if (!await limit('place', 50)) reject('Shumë porosi. Provo përsëri më vonë.', 429);
     const uploads = await Promise.all(ids.map(id => repo.read(`photoStudioUploads/${orderId}_${id}`)));
     if (uploads.some(row => !row || Date.parse(row.data.expireAt) <= now)) reject('Ngarkimi i fotove nuk ka përfunduar.');
@@ -152,12 +142,12 @@ export async function photoStudioAction(input, { repo, media, image, exportImage
     }
     const createdAt = time(now);
     const record = {
-      id: orderId, pageId, businessName: text(page.data.name, 160), customer, createdAt, updatedAt: createdAt,
+      id: orderId, pageId, businessName: text(page.data.name, 160), createdAt, updatedAt: createdAt,
       orderType: 'photo_edit', photoCount: ids.length, unitPriceCents: STUDIO_PRICE,
       totalCents: ids.length * STUDIO_PRICE, currency: 'EUR', processingStatus: 'pending',
       paymentStatus: 'unpaid', paymentMethod: 'manual', previewReleased: false, downloadsReleased: false,
       requestedStyle: STUDIO_STYLES.includes(input.style) ? input.style : '', customerNotes: text(input.notes, 1000),
-      consentAt: createdAt, accessTokenHash, mediaExpiresAt: time(now + 175 * DAY), revision: 1,
+      accessTokenHash, mediaExpiresAt: time(now + 175 * DAY), revision: 1,
       photoRecords,
       history: [{ event: 'ordered', at: createdAt }]
     };

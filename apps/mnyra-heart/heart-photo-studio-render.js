@@ -8,8 +8,8 @@ const datetime = value => new Intl.DateTimeFormat('de-AT', { dateStyle: 'short',
 const statuses = { pending: 'Neu', processing: 'In Bearbeitung', ready: 'Fertig bearbeitet', completed: 'Abgeschlossen', cancelled: 'Storniert' };
 
 export function studioOrderCard(order) {
-  return `<details class="cc-order" data-cc-fold="studio-${esc(order.id)}"><summary><span>Photo Studio · ${esc(order.businessName)}<small>${datetime(order.createdAt)} · ${esc(order.customer.name)}</small></span><span>${euro(order.totalCents)}<small>${STUDIO_PAYMENT[order.paymentStatus]}</small></span></summary>
-    <p>${esc(order.customer.name)} · ${esc(order.customer.phone)}</p>
+  return `<details class="cc-order" data-cc-fold="studio-${esc(order.id)}"><summary><span>Photo Studio · ${esc(order.businessName)}<small>${datetime(order.createdAt)} · #${esc(order.id.slice(0,12).toUpperCase())}</small></span><span>${euro(order.totalCents)}<small>${STUDIO_PAYMENT[order.paymentStatus]}</small></span></summary>
+    ${order.customer?.name || order.customer?.phone ? `<p>${[order.customer.name,order.customer.phone].filter(Boolean).map(esc).join(' · ')}</p>` : ''}
     <p>${order.photoCount} Fotos × ${euro(order.unitPriceCents)} · ${STUDIO_STATES[studioState(order)]}</p>
     <button type="button" data-cc-action="studio-open" data-id="${esc(order.id)}">Fotoauftrag öffnen</button>
   </details>`;

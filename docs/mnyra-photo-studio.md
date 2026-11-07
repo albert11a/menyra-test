@@ -10,7 +10,7 @@ Photo Studio ist pro veröffentlichter Creator-Seite in Heart aktivierbar. Die Z
 4. Den tatsächlichen Zahlungseingang mit Beleg oder Referenz der Sammelabrechnung erfassen. Derselbe Beleg kann für die dazugehörigen Studio-Aufträge verwendet werden.
 5. Den Download separat freigeben und den Auftrag abschließen. Eine Stornierung in Heart ist bei offenen Zahlungen mit Begründung möglich. Erstattungen bereits bezahlter Aufträge liegen außerhalb dieses Ablaufs.
 
-Die Kundenansicht aktualisiert sich bei geöffnetem Fenster regelmäßig. Der Zugangslink ist vertraulich. Die Bestellnummer allein berechtigt zu keinem Zugriff. Die optional erfasste E-Mail-Adresse ist im Heart-Auftrag sichtbar. In V1 erfolgt die Statusmitteilung über die Bestellansicht.
+Die Kundenansicht aktualisiert sich bei geöffnetem Fenster regelmäßig. Der Zugangslink ist vertraulich. Die Bestellnummer allein berechtigt zu keinem Zugriff. Neue Studio-Aufträge erfassen keine Kontaktdaten. In Heart lassen sie sich anhand des Businesses und der Bestellnummer zuordnen. Über den Zugangslink können Kunden den Status prüfen und nach der Freigabe ihre Fotos herunterladen.
 
 ## Einrichtung vor der Aktivierung
 

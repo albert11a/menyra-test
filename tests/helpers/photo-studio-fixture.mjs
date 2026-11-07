@@ -3,7 +3,6 @@ import { createHash } from 'node:crypto';
 export const STUDIO_PAGE_A = 'a'.repeat(32);
 export const STUDIO_PAGE_B = 'b'.repeat(32);
 export const STUDIO_TOKEN = 'f'.repeat(64);
-export const STUDIO_CUSTOMER = { name: 'Studio test', phone: '+383 44 123 456', consent: true };
 
 export function studioFixture() {
   const docs = new Map(), objects = new Map(), counts = new Map();

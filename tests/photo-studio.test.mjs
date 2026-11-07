@@ -6,7 +6,7 @@ import { studioImage, studioSocialExport } from '../server/photo-studio-images.j
 import { studioStorage } from '../server/photo-studio-storage.js';
 import { photoStudioAction } from '../server/photo-studio.js';
 import { STUDIO_PART_BYTES, studioStats } from '../shared/photo-studio.js';
-import { STUDIO_CUSTOMER, STUDIO_PAGE_A as pageId, STUDIO_PAGE_B as other, STUDIO_TOKEN as token, studioFixture, testStudioOrderId } from './helpers/photo-studio-fixture.mjs';
+import { STUDIO_PAGE_A as pageId, STUDIO_PAGE_B as other, STUDIO_TOKEN as token, studioFixture, testStudioOrderId } from './helpers/photo-studio-fixture.mjs';
 
 const now = Date.parse('2026-11-07T00:00:00Z');
 const original = await sharp({ create: { width: 91, height: 61, channels: 3, background: '#ca8744' } })
@@ -18,7 +18,7 @@ function setup() {
   const publicOp = (op, fields = {}, options = {}) => photoStudioAction({ op, pageId, token, ...fields }, { ...fixture, now, image: studioImage, ...options });
   const admin = (op, fields = {}) => publicOp('admin-' + op, { orderId, ...fields }, { admin: true });
   const record = () => fixture.docs.get('photoStudioOrders/' + orderId)?.data;
-  const place = (photos, fields = {}) => publicOp('place', { ...STUDIO_CUSTOMER, photos, ...fields });
+  const place = (photos, fields = {}) => publicOp('place', { photos, ...fields });
   async function upload(bytes, photoId = randomUUID(), version = photoId, baseVersion = '', edited = false) {
     const data = { photoId, version, baseVersion, bytes: bytes.length };
     const call = edited ? admin : publicOp;
@@ -42,7 +42,8 @@ test('one, five and twenty accepted files are ordered at 25 cents each; concurre
     assert.equal(ctx.record().photoRecords.length, count);
     assert.deepEqual(ctx.record().photoRecords.map(row => row.id), ids);
     assert.deepEqual(ctx.objects.get(ctx.record().photoRecords[0].original.key), original);
-    assert.equal(ctx.record().customer.address, undefined);
+    assert.equal(ctx.record().customer, undefined);
+    assert.equal(ctx.record().consentAt, undefined);
     assert.notEqual(ctx.record().accessTokenHash, token);
     assert.equal(a.accessTokenHash, undefined);
     assert.equal(a.customer, undefined);

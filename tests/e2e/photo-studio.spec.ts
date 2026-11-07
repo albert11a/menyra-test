@@ -33,9 +33,6 @@ test('customer and Heart complete a private Photo Studio order', async ({ page, 
   const studioPath = '/apps/content-creator/photo-studio.html?page=' + pageId;
   await page.goto(studioPath);
   await page.locator('input[type=file]').setInputFiles({ name: 'Original.jpg', mimeType: 'image/jpeg', buffer: original });
-  await page.getByLabel('Emri', { exact: true }).fill('Studio Customer');
-  await page.getByLabel('Telefoni').fill('+383 44 123 456');
-  await page.getByRole('checkbox').check();
   await expect(page.locator('[data-total]')).toContainText('0,25');
   await page.getByRole('button', { name: 'Dërgo porosinë' }).click();
   await expect(page.getByRole('alert')).toContainText('Kontrollo fotot');
@@ -130,13 +127,29 @@ test('shop opens a simple upload sheet in place and keeps sample photos full ble
   await expect(dialog).toBeVisible();
   await expect(page).toHaveURL(new RegExp(businessPath + '$'));
   await expect(dialog).toContainText('0,25');
-  await expect(dialog.getByRole('combobox')).toHaveCount(0);
-  await expect(dialog.getByLabel('Emri', { exact: true })).toBeHidden();
+  await expect(dialog.locator('header')).toContainText('+ Foto');
+  await expect(dialog.locator('input:not([type=file]), select, details')).toHaveCount(0);
+  await expect(dialog).not.toContainText('Ti na dërgon fotot');
+  const thumbnail = await sharp({ create: { width: 40, height: 80, channels: 3, background: '#a56a3a' } }).jpeg().toBuffer();
   const picker = page.waitForEvent('filechooser');
-  await dialog.getByRole('button', { name: 'Ngarko fotot' }).click();
-  await (await picker).setFiles({ name: 'Test.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('fixture') });
-  await expect(dialog.getByLabel('Emri', { exact: true })).toBeVisible();
-  await expect(dialog.locator('[data-total]')).toContainText('0,25');
+  await dialog.getByRole('button', { name: '+ Foto', exact: true }).click();
+  await (await picker).setFiles(Array.from({ length: 5 }, (_, index) => ({
+    name: 'Studio-Test-' + index + '.jpg', mimeType: 'image/jpeg', buffer: thumbnail
+  })));
+  const strip = dialog.getByRole('group', { name: 'Fotot e zgjedhura' });
+  await expect(strip.locator('img')).toHaveCount(5);
+  await expect(strip.locator('img').first()).toHaveCSS('object-fit', 'cover');
+  await expect(strip).not.toContainText('Studio-Test');
+  await expect(strip.getByRole('progressbar')).toHaveCount(0);
+  expect(await strip.evaluate(el => {
+    const tiles = [...el.children];
+    return getComputedStyle(el).overflowX === 'auto' && el.scrollWidth > el.clientWidth
+      && tiles.every(tile => tile.getBoundingClientRect().top === tiles[0].getBoundingClientRect().top);
+  })).toBe(true);
+  await expect(dialog.locator('[data-total]')).toHaveText(/5 foto · Totali 1,25/);
+  await strip.getByRole('button', { name: 'Hiq foton' }).first().click();
+  await expect(strip.locator('img')).toHaveCount(4);
+  await expect(dialog.locator('[data-total]')).toHaveText(/4 foto · Totali 1,00/);
   await dialog.getByRole('button', { name: 'Mbylle' }).click();
   await expect(dialog).toBeHidden();
   await expect(link).toBeFocused();

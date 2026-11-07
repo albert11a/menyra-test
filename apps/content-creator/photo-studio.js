@@ -24,62 +24,52 @@ function mount(target, id) {
 function mountForm() {
   root.innerHTML = `${nav}
   <form class="studio-card studio-order-form">
-    <p class="studio-intro">Ti na dërgon fotot. Ne ua rregullojmë dritën dhe ngjyrat që të duken më bukur. Kur të jenë gati, mund t’i shkarkosh.</p>
-    <p class="studio-price">${euro(STUDIO_PRICE)} për foto</p>
-    <div class="studio-drop">
-      <input hidden type="file" multiple accept="${STUDIO_ACCEPT}">
-      <button type="button" class="studio-primary" data-add>Ngarko fotot</button>
-    </div>
-    <div class="studio-upload-grid" hidden></div>
-    <div data-order-details hidden>
-    <div class="studio-fields">
-      <label>Emri<input name="name" required maxlength="120" autocomplete="name"></label>
-      <label>Telefoni<input name="phone" required type="tel" maxlength="40" autocomplete="tel"></label>
-    </div>
-    <label class="studio-consent"><input type="checkbox" name="consent" required>Kam të drejtë t’i dërgoj këto foto dhe lejoj përpunimin e tyre për këtë porosi.</label>
-    <details class="studio-fine"><summary>Privatësia e fotove</summary><p>Fotot dhe të dhënat e kontaktit përdoren për përpunimin dhe dorëzimin e porosisë. Fotot janë private dhe ruhen për shkarkim deri në 175 ditë nga porosia. Ngarkimet e papërfunduara fshihen automatikisht. Ndaje linkun e porosisë vetëm me persona të besuar. Për fshirjen, kontakto MNYRA.</p></details>
-    <div class="studio-checkout"><div><strong>Përmbledhja e porosisë</strong><div data-total aria-live="polite"></div></div><button class="studio-primary" type="submit">Dërgo porosinë</button></div>
+    ${dialog ? '' : '<div class="studio-order-tools"><button class="studio-primary" type="button" data-add>+ Foto</button></div>'}
+    <input hidden type="file" multiple accept="${STUDIO_ACCEPT}">
+    <div class="studio-upload-strip" role="group" aria-label="Fotot e zgjedhura" tabindex="0" hidden></div>
+    <div class="studio-checkout">
+      <strong data-total aria-live="polite"></strong>
+      <button class="studio-primary" type="submit" hidden>Dërgo porosinë</button>
     </div>
     <p class="studio-error" role="alert"></p>
   </form>`;
-  const form = root.querySelector('form'), picker = form.querySelector('[type=file]'), drop = form.querySelector('.studio-drop');
-  const grid = form.querySelector('.studio-upload-grid'), status = form.querySelector('[role=alert]'), submit = form.querySelector('[type=submit]');
+  const form = root.querySelector('form'), picker = form.querySelector('[type=file]');
+  const strip = form.querySelector('.studio-upload-strip'), status = form.querySelector('[role=alert]');
+  const submit = form.querySelector('[type=submit]'), addButton = (dialog || form).querySelector('[data-add]');
   const rows = [];
   let busy = false;
+  addButton.hidden = false;
   const sync = () => {
-    form.querySelector('[data-total]').textContent = `${rows.length} foto × ${euro(STUDIO_PRICE)} · Totali ${euro(rows.length * STUDIO_PRICE)}`;
-    submit.disabled = busy || !rows.length;
-    grid.hidden = !rows.length;
-    form.querySelector('[data-order-details]').hidden = !rows.length;
-    form.querySelector('[data-add]').disabled = busy;
-    rows.forEach(row => {
-      row.remove.disabled = busy || row.uploading;
-      row.retry.disabled = busy || row.uploading;
-    });
+    const count = rows.length;
+    form.querySelector('[data-total]').textContent = count
+      ? `${count} foto · Totali ${euro(count * STUDIO_PRICE)}`
+      : `${euro(STUDIO_PRICE)} për foto`;
+    submit.hidden = strip.hidden = !count;
+    submit.disabled = busy || !count;
+    addButton.disabled = busy || count >= STUDIO_MAX_FILES;
+    for (const row of rows) row.remove.disabled = busy;
   };
   async function upload(row) {
     if (row.accepted || row.uploading) return;
     row.uploading = true;
-    row.retry.hidden = true;
+    row.error = undefined;
+    row.progress.hidden = false;
     row.progress.value = 0;
-    row.label.textContent = 'Duke ngarkuar…';
     sync();
     const data = { photoId: row.id, version: row.id, bytes: row.file.size };
     try {
       const slot = await call('prepare-original', data);
       if (!slot.accepted) {
         await putStudioFile(slot.url, row.file, value => { row.progress.value = value; });
-        row.label.textContent = 'Duke kontrolluar…';
         await call('accept-original', data);
       }
       row.accepted = true;
       row.progress.value = 100;
-      row.label.textContent = 'E ngarkuar';
     } catch (error) {
-      row.label.textContent = error.message;
-      row.retry.hidden = error.status === 422;
+      row.error = error;
     } finally {
       row.uploading = false;
+      row.progress.hidden = true;
       sync();
     }
   }
@@ -93,24 +83,27 @@ function mountForm() {
       }
       const id = crypto.randomUUID(), url = URL.createObjectURL(file), card = document.createElement('article');
       card.className = 'studio-upload';
-      card.innerHTML = '<img alt="" loading="lazy" decoding="async"><strong></strong><span role="status">Në pritje</span><progress max="100" value="0" aria-label="Ngarkimi"></progress><button type="button" data-remove>Hiq</button><button type="button" data-retry hidden>Provo përsëri</button>';
-      card.querySelector('strong').textContent = file.name;
+      card.innerHTML = '<img alt="Foto e zgjedhur" decoding="async"><button type="button" data-remove aria-label="Hiq foton"><span aria-hidden="true">×</span></button><progress max="100" value="0" aria-label="Ngarkimi" hidden></progress>';
       const preview = card.querySelector('img');
       preview.src = url;
       preview.onerror = () => { preview.hidden = true; };
-      const row = { id, url, file, label: card.querySelector('span'), progress: card.querySelector('progress'), remove: card.querySelector('[data-remove]'), retry: card.querySelector('[data-retry]') };
-      row.remove.onclick = () => { rows.splice(rows.indexOf(row), 1); URL.revokeObjectURL(url); card.remove(); sync(); };
-      row.retry.onclick = () => void upload(row);
+      const row = { id, url, file, progress: card.querySelector('progress'), remove: card.querySelector('[data-remove]') };
+      row.remove.onclick = () => {
+        rows.splice(rows.indexOf(row), 1);
+        URL.revokeObjectURL(url);
+        card.remove();
+        status.textContent = '';
+        sync();
+      };
       rows.push(row);
-      grid.append(card);
+      strip.append(card);
     }
     sync();
   }
-  form.querySelector('[data-add]').onclick = () => picker.click();
+  addButton.onclick = () => picker.click();
   picker.onchange = () => { add(picker.files); picker.value = ''; };
-  drop.ondragover = event => { event.preventDefault(); drop.dataset.over = ''; };
-  drop.ondragleave = () => { delete drop.dataset.over; };
-  drop.ondrop = event => { event.preventDefault(); delete drop.dataset.over; add(event.dataTransfer.files); };
+  form.ondragover = event => event.preventDefault();
+  form.ondrop = event => { event.preventDefault(); add(event.dataTransfer.files); };
   form.onsubmit = async event => {
     event.preventDefault();
     if (busy || !rows.length || rows.some(row => row.uploading)) return;
@@ -119,11 +112,11 @@ function mountForm() {
     status.textContent = '';
     sync();
     try {
-      const fields = Object.fromEntries(new FormData(form));
       for (let start = 0; start < rows.length; start += 3) await Promise.all(rows.slice(start, start + 3).map(upload));
-      if (rows.some(row => !row.accepted)) throw Error('Kontrollo fotot dhe provo përsëri.');
+      const failed = rows.find(row => !row.accepted);
+      if (failed) throw Error(failed.error?.status === 422 ? failed.error.message : 'Kontrollo fotot dhe provo përsëri.');
       try { sessionStorage.setItem(storageKey, token); } catch {}
-      const receipt = await call('place', { ...fields, consent: fields.consent === 'on', photos: rows.map(row => row.id) });
+      const receipt = await call('place', { photos: rows.map(row => row.id) });
       for (const row of rows) URL.revokeObjectURL(row.url);
       openReceipt(receipt, true);
     } catch (error) { status.textContent = error.message; }
@@ -137,12 +130,13 @@ function mountForm() {
 }
 
 function openReceipt(initial, justPlaced = false) {
-  if (!dialog) history.replaceState(null, '', link.href);
+  if (dialog) dialog.querySelector('[data-add]').hidden = true;
+  else history.replaceState(null, '', link.href);
   try { sessionStorage.removeItem(storageKey); } catch {}
   let order = initial, index = 0, paintVersion = 0, renderedKey = '', fetchingKey = '', selection = '', timer;
   const cache = new Map(), originals = new Map();
   root.innerHTML = `${nav}<header class="studio-receipt"><p class="studio-kicker">MNYRA PHOTO STUDIO</p><h1 class="studio-title">${justPlaced ? 'Porosia u pranua!' : 'Porosia jote'}</h1>
-    ${justPlaced ? '<p class="studio-intro">Fotot e tua u dërguan me sukses. Do të mund t’i shikosh rezultatet këtu sapo të jenë gati.</p>' : ''}</header>
+    ${justPlaced ? '<p class="studio-intro">Ruaje linkun e porosisë për t’i shkarkuar fotot kur të jenë gati.</p>' : ''}</header>
     <section class="studio-card"><h2>${esc(order.businessName)}</h2><p class="studio-meta"><span>#${esc(order.id.slice(0, 12).toUpperCase())}</span><span>${order.photoCount} foto</span><span>${euro(order.totalCents)}</span><time>${localeTime(order.createdAt)}</time></p>
     <p data-status aria-live="polite"></p><button type="button" data-copy>Kopjo linkun e porosisë</button>${dialog ? ` <a class="studio-receipt-link" href="${esc(link.href)}">Hap porosinë</a>` : ''}<p class="studio-fine" data-live role="status"></p></section>
     <section class="studio-card" data-results><nav class="studio-pagination" aria-label="Fotot e porosisë"></nav><div data-compare aria-live="polite"></div>
@@ -304,9 +298,9 @@ export function openPhotoStudioDialog(id) {
   dialog.className = 'creator-studio-dialog';
   dialog.setAttribute('aria-labelledby', 'creator-studio-dialog-title');
   dialog.innerHTML = `<header><h2 id="creator-studio-dialog-title">Photo Studio</h2>
-    <button type="button" aria-label="Mbylle" autofocus>×</button></header>
+    <div class="creator-studio-dialog-actions"><button type="button" data-add hidden>+ Foto</button><button type="button" data-close-studio aria-label="Mbylle" autofocus>×</button></div></header>
     <div class="studio-shell" aria-busy="true"><p role="status">Duke hapur…</p></div>`;
-  dialog.querySelector('button').onclick = () => dialog.close();
+  dialog.querySelector('[data-close-studio]').onclick = () => dialog.close();
   document.body.append(dialog);
   dialog.showModal();
   mount(dialog.querySelector('.studio-shell'), id);

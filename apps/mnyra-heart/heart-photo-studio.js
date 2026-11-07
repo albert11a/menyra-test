@@ -85,7 +85,7 @@ export function openHeartStudio({ store, initial, request }) {
   }
   function render() {
     const active = !closed(), pending = order.photoRecords.some(photo => photo.result && photo.result.version !== photo.published?.version);
-    get('[data-details]').innerHTML = `<p class="studio-meta"><span>${esc(order.customer.name)}</span><span>${esc(order.customer.phone)}</span><span>${esc(order.customer.email)}</span><span>${order.photoCount} × ${euro(order.unitPriceCents)} = ${euro(order.totalCents)}</span></p>
+    get('[data-details]').innerHTML = `<p class="studio-meta">${[order.customer?.name, order.customer?.phone, order.customer?.email].filter(Boolean).map(value => `<span>${esc(value)}</span>`).join('')}<span>${order.photoCount} × ${euro(order.unitPriceCents)} = ${euro(order.totalCents)}</span></p>
       <p>${STUDIO_STATES[studioState(order)]} · ${STUDIO_PAYMENT[order.paymentStatus]}${order.downloadsReleased ? ' · Downloads freigegeben' : ''}</p>
       ${order.requestedStyle || order.customerNotes ? `<p>${esc(order.requestedStyle)} ${esc(order.customerNotes)}</p>` : ''}
       ${order.paymentReference ? `<p class="studio-fine">Zahlungsreferenz ${esc(order.paymentReference)}</p>` : ''}`;
