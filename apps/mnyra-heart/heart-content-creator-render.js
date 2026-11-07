@@ -1,4 +1,4 @@
-import { studioOverview } from './heart-photo-studio-render.js';
+import { studioOverview, studioSamplesCard } from './heart-photo-studio-render.js';
 import {creatorCard,creatorSearch,creatorIcon as icon} from './heart-creator-components.js';
 import {creatorStats,creatorOrders,creatorFollowupCard,creatorJourney,creatorTime,creatorDuration} from './heart-creator-overview.js';
 import {CREATOR_STATUSES,creatorBusinessStatus,creatorBusinessMatches,creatorVisitStats} from '../../shared/creator-analytics.js';
@@ -60,6 +60,7 @@ function renderDetail(page,state) {
   ${shopAdmin(page,state)}
   ${creatorOrders(state,page.id)}
   ${studioOverview(state,page)}
+  ${studioSamplesCard(page,state)}
   ${renderCreatorHeroEditor(page,state)}
   ${creatorCard(`stats-${page.id}`,'Besuche',`<div class="cc-stats">${values.map(([label,n])=>`<div class="cc-stat"><strong>${n}</strong><span>${label}</span></div>`).join('')}</div><p class="cc-muted">Letzter Besuch: ${creatorTime(attendance.lastSeen)} · Sichtbare Zeit: ${creatorDuration(attendance.activeMs)}</p>`,state)}
 ${creatorFollowupCard(state,page.id)}

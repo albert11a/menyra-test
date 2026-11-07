@@ -127,7 +127,12 @@ test('Enabled Studio is in the first HTML response on shop and promo pages, incl
    const {document}=parseHTML(res.body);
    const entry=document.querySelector('.creator-studio-entry');
    assert.equal(!!entry,enabled);
-   if(entry)assert.equal(entry.querySelector('a').getAttribute('href'),'/apps/content-creator/photo-studio.html?page='+id);
+   if(entry){
+    assert.equal(entry.querySelector('a').getAttribute('href'),'/apps/content-creator/photo-studio.html?page='+id);
+    assert.equal(entry.querySelector('a').textContent.trim(),'Ngarko fotot');
+    assert.equal(entry.nextElementSibling.tagName,'FOOTER');
+    if(kind==='shop')assert.equal(entry.previousElementSibling.id,'shop-purchases');
+   }
   }
  }
 });
@@ -148,4 +153,23 @@ test('Studio activation and deactivation invalidate the existing live shop versi
  page.photoStudioEnabled=false;
  const disabled=await live(enabled.version);
  assert.equal(disabled.photoStudioEnabled,false);
+});
+
+test('Sample pair displays original left and edit right after both approved CDN URLs are set',async()=>{
+ const before='https://menyra-media.alberthoti-vsa.workers.dev/media/social/owner/before.webp';
+ const after='https://menyra-media.alberthoti-vsa.workers.dev/media/social/owner/after.webp';
+ const shell='<html><head><title>Default</title></head><body><main id="content-app">Loading</main></body></html>';
+ for(const [sampleAfter,count] of [[after,2],['https://other.example/sample.webp',0],['',0]]){
+  const res=response();
+  await serveContentCreator({method:'GET',url:`/api/content-creator?id=${id}`},res,{
+   shell,read:async()=>({published:true,kind:'shop',name:'Bistro',photoIds:[],products:[],photoStudioEnabled:true,photoStudioSamples:{before,after:sampleAfter}})
+  });
+  const {document}=parseHTML(res.body);
+  const photos=[...document.querySelectorAll('.creator-studio-sample figure')];
+  assert.equal(photos.length,count);
+  if(count){
+   assert.deepEqual(photos.map(photo=>photo.querySelector('img').getAttribute('src')),[before,after]);
+   assert.deepEqual(photos.map(photo=>photo.querySelector('figcaption').textContent),['Origjinali','E përpunuar']);
+  }
+ }
 });

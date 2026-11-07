@@ -1,3 +1,4 @@
+import { creatorStudioSamples } from '../../shared/creator-media.js';
 import { ccEscape as esc } from '../../shared/content-creator.js';
 import { euro } from '../../shared/content-creator-shop.js';
 import { STUDIO_PAYMENT, STUDIO_STATES, studioState, studioStats } from '../../shared/photo-studio.js';
@@ -39,4 +40,20 @@ export function studioOverview(state, page) {
     ${sorted.slice(0, limit).map(studioOrderCard).join('') || '<p class="cc-muted">Keine Aufträge in dieser Auswahl.</p>'}
     ${sorted.length > limit ? '<button type="button" data-cc-action="more" data-key="studioLimit">Mehr anzeigen</button>' : ''}
   `, state, { count: rows.length });
+}
+
+export function studioSamplesCard(page, state) {
+  const samples = creatorStudioSamples(page);
+  return creatorCard(`studio-samples-${page.id}`, 'Samples', `
+    <p class="cc-muted">Dieses Vorher-Nachher-Paar erscheint im Photo Studio auf der Business-Seite. Nur freigegebene Beispielbilder hochladen.</p>
+    <div class="cc-studio-samples">
+      ${[['before', 'Unbearbeitet'], ['after', 'Bearbeitet']].map(([side, label]) => `
+        <label>
+          <strong>${label}</strong>
+          ${samples[side] ? `<img src="${esc(samples[side])}" alt="${label}" loading="lazy">` : '<span class="cc-muted">Noch kein Bild</span>'}
+          <input type="file" accept="image/jpeg,image/png,image/webp" data-cc-studio-sample="${side}" data-page="${esc(page.id)}" ${state.mediaBusy ? 'disabled' : ''}>
+        </label>
+      `).join('')}
+    </div>
+  `, state);
 }

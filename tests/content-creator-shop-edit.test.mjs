@@ -9,7 +9,7 @@ import {createHeartStore,createHeartInitialState} from '../apps/mnyra-heart/hear
 import {renderContentCreator} from '../apps/mnyra-heart/heart-content-creator-render.js';
 import {contentLink} from '../shared/content-creator.js';
 const source=(await readFile(new URL('../apps/mnyra-heart/heart-content-creator.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export (async )?function /g,'$1function ');
-const factory=new Function('bindCreatorPhotoOrder','creatorPackageFiles','creatorWatermarkOpacity','db','collection','doc','getDoc','onSnapshot','setDoc','updateDoc','writeBatch','serverTimestamp','CC_PAGES','CC_VISITS','contentLink','creatorBusinessStatus','creatorBusinessMatches','runTransaction',`const creatorCdnEnabled=async()=>false; const savePromoAsset=async(pageId,imageId,file,data)=>setDoc(doc(db,CC_PAGES,pageId,'images',imageId),{data,caption:''});\nconst unlockCreatorVideoAudio=()=>{};\n${source}\nreturn createContentCreator;`);
+const factory=new Function('bindCreatorPhotoOrder','creatorPackageFiles','creatorWatermarkOpacity','db','collection','doc','getDoc','onSnapshot','setDoc','updateDoc','writeBatch','serverTimestamp','CC_PAGES','CC_VISITS','contentLink','creatorBusinessStatus','creatorBusinessMatches','runTransaction','saveCreatorCdnAsset',`const creatorCdnEnabled=async()=>false; const savePromoAsset=async(pageId,imageId,file,data)=>setDoc(doc(db,CC_PAGES,pageId,'images',imageId),{data,caption:''});\nconst unlockCreatorVideoAudio=()=>{};\n${source}\nreturn createContentCreator;`);
 function setup(options={}){
  const {document,window}=parseHTML('<div id="app"></div>'),root=document.getElementById('app');
  const store=createHeartStore(createHeartInitialState());
@@ -25,10 +25,15 @@ function setup(options={}){
   get:async path=>({data:()=>docs.get(path)}),
   update(path,field,value){
    if(fail)throw Error('Offline');
+   if(typeof field==='object'){docs.set(path,{...docs.get(path),...field});return;}
    const [,id]=field.split('.'),page=docs.get(path);
    docs.set(path,{...page,packagePhotoOrder:{...page.packagePhotoOrder,[id]:value}});
   }
- }));
+ }), async (id,key,file,settings)=>{
+  assert.equal(id,'shop');
+  assert.deepEqual(settings,{hero:true,publish:false});
+  return {medium:`https://menyra-media.alberthoti-vsa.workers.dev/media/social/owner/${key}.webp`};
+ });
  store.actions.patchContentCreator({pages:[page]});store.subscribe(state=>{root.innerHTML=renderContentCreator(state.contentCreator);});root.innerHTML=renderContentCreator(store.getState().contentCreator);
  const uploads=[];
  create({root,store,prepareImage:async file=>'preview:'+file.name,saveAsset:async(pageId,key,file,data,config)=>{
@@ -37,7 +42,14 @@ function setup(options={}){
  }});
  async function click(selector){const node=root.querySelector(selector);assert.ok(node,selector);node.dispatchEvent(new window.Event('click',{bubbles:true}));for(let i=0;i<15;i++)await new Promise(r=>setImmediate(r));}
  async function add(product,files){const input=root.querySelector(`[data-cc-package-add="${product}"]`);assert.ok(input);Object.defineProperty(input,'files',{value:files});input.dispatchEvent(new window.Event('change',{bubbles:true}));for(let i=0;i<20;i++)await new Promise(r=>setImmediate(r));}
- return {root,store,docs,click,add,uploads,setFailure:value=>{fail=value;}};
+ async function sample(side){
+  const input=root.querySelector(`[data-cc-studio-sample="${side}"]`);
+  assert.ok(input);
+  Object.defineProperty(input,'files',{value:[{name:`${side}.jpg`,type:'image/jpeg',size:100}]});
+  input.dispatchEvent(new window.Event('change',{bubbles:true}));
+  for(let i=0;i<20;i++)await new Promise(r=>setImmediate(r));
+ }
+ return {root,store,docs,click,add,sample,uploads,setFailure:value=>{fail=value;}};
 }
 test('Paket löschen bestätigt und atomar; gemeinsame Fotos und gekaufte Originale bleiben erhalten',async()=>{
  const c=setup();await c.click('[data-cc-action="detail"]');
@@ -239,4 +251,19 @@ test('A failed package reorder restores the last order and can be saved with one
  c.setFailure(false);await c.click('[data-cc-package="p"] [data-cc-sort-retry]');
  assert.deepEqual(figureOrder(),['b','a']);
  assert.deepEqual(c.docs.get('contentCreatorPages/shop').packagePhotoOrder.p,['b','a']);
+});
+
+test('Heart uploads each sample into its own slot without changing packages',async()=>{
+ const c=setup();
+ await c.click('[data-cc-action="detail"]');
+ assert.deepEqual([...c.root.querySelectorAll('[data-cc-studio-sample]')].map(node=>node.dataset.ccStudioSample),['before','after']);
+ await c.sample('before');
+ assert.match(c.docs.get('contentCreatorPages/shop').photoStudioSamples.before,/studio_before.webp$/);
+ assert.equal(c.docs.get('contentCreatorPages/shop').photoStudioSamples.after,undefined);
+ await c.sample('after');
+ const page=c.docs.get('contentCreatorPages/shop');
+ assert.match(page.photoStudioSamples.before,/studio_before.webp$/);
+ assert.match(page.photoStudioSamples.after,/studio_after.webp$/);
+ assert.deepEqual(page.photoIds,['a','b','c']);
+ assert.equal(c.root.querySelectorAll('.cc-studio-samples img').length,2);
 });

@@ -188,3 +188,8 @@
 .cc-sort-source{opacity:.55}
 .cc-sort-ghost{position:fixed;top:0;left:0;width:68px;height:82px;object-fit:cover;border-radius:8px;pointer-events:none;z-index:5000;opacity:.9}
 @media(prefers-reduced-motion:reduce){.cc-photo-sort figure{transition:none}}
+
+.cc-studio-samples{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.cc-studio-samples label{min-width:0;display:grid;align-content:start;gap:8px;padding:10px;background:#1a1b1d;border-radius:12px;font-size:12px}
+.cc-studio-samples img{display:block;width:100%;aspect-ratio:4/5;object-fit:contain;border-radius:8px;background:#111213}
+.cc-studio-samples input{width:100%;min-width:0;font:inherit}

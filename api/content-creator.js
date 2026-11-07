@@ -102,7 +102,7 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
     }
     if(format==='live'){
       const {products,photoIds,media,mediaTypes,heroImages,heroPhotoIds,heroFormat,heroCrop,packagePhotoOrder,previewRevision,sold}=safePage;
-      const snapshot={id,products,photoIds,media,mediaTypes,heroImages,heroPhotoIds,heroFormat,heroCrop,packagePhotoOrder,previewRevision,sold,photoStudioEnabled:safePage.photoStudioEnabled===true};
+      const snapshot={id,products,photoIds,media,mediaTypes,heroImages,heroPhotoIds,heroFormat,heroCrop,packagePhotoOrder,previewRevision,sold,photoStudioEnabled:safePage.photoStudioEnabled===true,photoStudioSamples:safePage.photoStudioSamples};
       const version=createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');
       res.setHeader('Cache-Control','no-store');
       if(url.searchParams.get('version')===version){res.statusCode=204;res.end();return;}
@@ -157,7 +157,7 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
       await purchaseMedia;
       html=html.replace('</head>',()=>`${creatorPurchasePreloads(safePage,safePage.sold)}</head>`);
       const catalog=renderCreatorCatalog(safePage,{purchasedIds:new Set(safePage.sold.map(line=>line.id)),photo:(key,alt,options)=>creatorPhoto(safePage,key,alt,{...options,src:covers[key]})});
-      const firstFrame=`<div class="shop-shell">${catalog}<div id="shop-image-errors"></div>${creatorHowTo(safePage)}<section class="shop-purchases" id="shop-purchases"><h2>Blerjet tuaja</h2>${creatorSoldCards(safePage,safePage.sold)||'<p>Pas porosisë, artikujt tuaj do të shfaqen këtu.</p>'}</section>${creatorFooter(safePage)}</div>`;
+      const firstFrame=`<div class="shop-shell">${catalog}<div id="shop-image-errors"></div>${creatorHowTo(safePage)}<section class="shop-purchases" id="shop-purchases"><h2>Blerjet tuaja</h2>${creatorSoldCards(safePage,safePage.sold)||'<p>Pas porosisë, artikujt tuaj do të shfaqen këtu.</p>'}</section>${renderCreatorStudioEntry(safePage)}${creatorFooter(safePage)}</div>`;
       html=html.replace(/(<main[^>]*id="content-app"[^>]*>)[\s\S]*?(<\/main>)/,(_,open,close)=>open+firstFrame+close);
     }
     if(safePage.kind!=='shop'){
@@ -168,8 +168,6 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
     if(html.includes('/apps/content-creator/content.css')){
       try{const css=await loadCreatorStyles();html=html.replace(/<link rel="stylesheet" href="\/apps\/content-creator\/(?:content|shop)\.css[^"]*">/g,'').replace('</head>',()=>`<style>${css}</style></head>`);}catch{}
     }
-    const studio=renderCreatorStudioEntry(safePage);
-    if(studio)html=html.replace(/<main[^>]*id="content-app"[^>]*>/,open=>studio+open);
     const payload=JSON.stringify(safePage).replace(/</g,'\\u003c').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
     html=html.replace('</head>',()=>`<script id="creator-page-data" type="application/json">${payload}</script></head>`);
     res.statusCode=200;res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','no-store');res.end(req.method==='HEAD'?undefined:html);

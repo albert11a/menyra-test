@@ -450,6 +450,27 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         await detail(id);
       });return;
     }
+    if(input.hasAttribute('data-cc-studio-sample')){
+      const { ccStudioSample:side,page:id }=input.dataset;
+      const file=input.files?.[0];
+      if(!file||!['before','after'].includes(side))return;
+      mediaTask(async()=>{
+        if(!['image/jpeg','image/png','image/webp'].includes(file.type)||!file.size||file.size>30*1024*1024)throw Error('JPG, PNG oder WebP bis 30 MB wählen.');
+        const pageRef=doc(db,CC_PAGES,id);
+        const page=(await getDoc(pageRef)).data();
+        if(!page||page.deleting)throw Error('Business nicht verfügbar.');
+        const media=await saveCreatorCdnAsset(id,`studio_${side}`,file,{hero:true,publish:false});
+        const photoStudioSamples=await runTransaction(db,async transaction=>{
+          const latest=(await transaction.get(pageRef)).data();
+          if(!latest||latest.deleting)throw Error('Business nicht verfügbar.');
+          const samples={...latest.photoStudioSamples,[side]:media.medium};
+          transaction.update(pageRef,{photoStudioSamples:samples});
+          return samples;
+        });
+        patch({pages:store.getState().contentCreator.pages.map(page=>page.id===id?{...page,photoStudioSamples}:page)});
+        notice('Beispielbild gespeichert.');
+      });return;
+    }
     if(input.hasAttribute('data-cc-hero-upload')){
       const files=Array.from(input.files||[]),id=input.dataset.ccHeroUpload;if(!files.length)return;
       mediaTask(async()=>{

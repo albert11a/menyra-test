@@ -4,8 +4,8 @@ import {creatorIsVideo,creatorAssetCount,creatorVideoFirst,creatorVideoUrl} from
 import {creatorVisitorId} from './visitor-id.js';
 import {ccEscape as esc,ccImage} from '../../shared/content-creator.js';
 import {euro,shopQuote,validShopId,creatorPackageFiles} from '../../shared/content-creator-shop.js';
-import {creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,creatorSoldCards,creatorPurchasePhotos,creatorPurchaseDate,creatorHeroFiles,renderCreatorCatalog,creatorHowTo,creatorFooter} from '../../shared/content-creator-view.js';
-export async function mountCreatorShop({root,page,still=false,syncStudioEntry,track=async()=>{}}){
+import {creatorIcon,creatorImageUrl,creatorOfferButton,creatorPhoto,creatorSoldCards,creatorPurchasePhotos,creatorPurchaseDate,creatorHeroFiles,renderCreatorCatalog,creatorHowTo,renderCreatorStudioEntry,creatorFooter} from '../../shared/content-creator-view.js';
+export async function mountCreatorShop({root,page,still=false,track=async()=>{}}){
  // Block native image-save/drag actions on paid previews, including new viewer nodes.
  // Do not cancel touch/pointer gestures: scrolling, swiping and zoom stay native.
  for(const name of ['contextmenu','dragstart'])root.addEventListener(name,event=>{
@@ -265,6 +265,7 @@ export async function mountCreatorShop({root,page,still=false,syncStudioEntry,tr
   const faqState=[...root.querySelectorAll('details[data-faq]')].map(node=>[node.dataset.faq,node.hasAttribute('open')]);
   // Retain decoded image nodes across cart/status changes; do not restart
   // image requests or show a blank frame every time the UI updates.
+  const studioEntry=root.querySelector('.creator-studio-entry');
   const answerContent=root.querySelector('.answer-message')?.closest('.answer-content');
   const heroGallery=replaceHero?null:root.querySelector('.shop-hero-gallery');
   const carousels=new Map([...root.querySelectorAll('[data-track]')].map(track=>[track.dataset.track,track.parentElement]));
@@ -284,7 +285,7 @@ export async function mountCreatorShop({root,page,still=false,syncStudioEntry,tr
   }
   root.innerHTML=`<div class="shop-shell">${renderCreatorCatalog(page,{ids,positions,heroPosition:heroIndex,offerButton,photo:img,purchasedIds})}<div id="shop-image-errors">${imageStatus()}</div>${creatorHowTo(page)}
    <section class="shop-purchases" id="shop-purchases"><h2>Blerjet tuaja</h2>${([...orders.values()].filter(order=>still||order.totalCents===0||order.lines.some(line=>line.imageIds.some(file=>creatorIsVideo(page,file)))).map(order=>`<article class="shop-order"><div class="shop-order-title"><b>Porosia #${esc(order.id.slice(0,8).toUpperCase())}</b>${creatorPurchaseDate(order.createdAt)}<strong>${euro(order.totalCents)}</strong></div><p class="shop-order-state">${order.approved?(order.totalCents===0?'✓ Pako falas · Shkarkimet janë gati':'✓ Pagesa u konfirmua · Shkarkimet janë gati'):(canDownload(order)?order.paymentSchedule==='courier'?'✓ Fotot janë gati · Pagesa cash pas 2–3 ditësh':`✓ Fotot janë gati · Pagesa më ${order.paymentDueDate?esc(order.paymentDueDate.split('-').reverse().join('.')):'1 të muajit të ardhshëm'}`:(order.totalCents===0?'Në pritje të miratimit':'Në pritje të pagesës / miratimit'))}</p>${order.lines.map(line=>`<div class="shop-purchased-item">${img(line.imageIds[0],line.title)}<div><h3>${esc(line.title)}</h3><p>${creatorAssetCount(page,line.imageIds)} · ${euro(line.priceCents)}</p><button data-shop="save-photos" data-order="${order.id}" data-product="${line.id}" ${!canDownload(order)||downloadBusy?'disabled':''}>${creatorIcon(canDownload(order)?'save':'shield-check')}${canDownload(order)?(line.imageIds.some(id=>creatorIsVideo(page,id))?'Ruaj skedarët':'Ruaj fotot'):'Në pritje të konfirmimit'}</button></div></div>`).join('')}<div class="shop-order-actions"><button data-shop="refresh" data-order="${order.id}">Kontrollo statusin</button>${still?'':`<button data-shop="receipt-link" data-order="${order.id}">Kopjo linkun e porosisë</button>`}</div></article>`).join('')+creatorSoldCards(page,sold,ownedIds,[...orders.values()].flatMap(order=>order.lines.map(line=>({...line,createdAt:order.createdAt,orderCode:!still&&order.totalCents>0&&!order.lines.some(item=>item.imageIds.some(file=>creatorIsVideo(page,file)))?order.orderCode:'',totalCents:order.totalCents,paymentConfirmed:order.paymentConfirmed,downloadIds:sold.find(item=>item.id===line.id)?.downloadIds||(!still&&line.priceCents>0&&canDownload(order)?line.imageIds:[]),deliveryMedia:{...order.deliveryMedia,...sold.find(item=>item.id===line.id)?.deliveryMedia},orderId:order.id,enabled:canDownload(order)&&!downloadBusy,photo:img})))))||'<p>Pas porosisë, artikujt tuaj do të shfaqen këtu.</p>'}</section>
-   ${creatorFooter(page)}
+   ${studioEntry ? "" : renderCreatorStudioEntry(page)}${creatorFooter(page)}
    ${notice?`<p class="shop-notice" role="status">${esc(notice)}</p>`:''}
    ${error&&panel!=='checkout'?`<p class="shop-error" role="alert">${esc(error)}</p>`:''}
    ${panel?`<div class="shop-overlay"><section class="shop-drawer" role="dialog" aria-modal="true" aria-labelledby="shop-panel-title"><div class="shop-drawer-head"><h2 id="shop-panel-title">${panel==='checkout'?'Përfundoni porosinë':'Shporta juaj'}</h2><button data-shop="close" aria-label="Mbyll" ${submitting?'disabled':''}>${creatorIcon('x')}</button></div>
@@ -292,6 +293,7 @@ export async function mountCreatorShop({root,page,still=false,syncStudioEntry,tr
     <div class="shop-total"><span>Totali</span><strong>${euro(cart.totalCents)}</strong></div>
     ${panel==='cart'?`<p class="shop-fine">${cart.totalCents===0?'Falas · Shkarkim pas miratimit':'Fotot menjëherë · Pagesa cash pas 2–3 ditësh'}</p><button class="shop-buy" data-shop="checkout" ${!cart.lines.length?'disabled':''}>Vazhdo te porosia →</button>`:`<form id="shop-checkout"><label>Emri dhe mbiemri<input id="shop-name" name="name" value="${esc(customer.name)}" autocomplete="name" required minlength="3" maxlength="120"></label><label>Adresa e plotë<textarea id="shop-address" name="address" autocomplete="street-address" required minlength="5" maxlength="300">${esc(customer.address)}</textarea></label><label>Shteti<select id="shop-country" name="country">${['Kosovë','Shqipëri','Austri','Gjermani','Zvicër','Maqedoni e Veriut','Mal i Zi','Itali','Francë','Serbi','Slloveni','Kroaci'].map(country=>`<option ${customer.country===country?'selected':''}>${country}</option>`).join('')}</select></label><label>Numri i telefonit<input id="shop-phone" type="tel" name="phone" value="${esc(customer.phone)}" autocomplete="tel" required minlength="6" maxlength="40"></label><div class="shop-payment">${cart.totalCents===0?'<strong>Falas · 0 €</strong><p>Nuk kërkohet pagesë. Shkarkimet hapen pas miratimit nga MNYRA.</p>':'<strong>Pagesa bëhet cash te korrieri</strong><p>Fotot i shkarkoni menjëherë pas porosisë. Korrieri ynë vjen për pagesën pas 2–3 ditësh.</p>'}</div>${error?`<p role="alert" class="shop-inline-error">${esc(error)}</p>`:''}<button class="shop-buy" type="submit" ${submitting?'disabled':''}>${submitting?'Duke dërguar…':`Porosit · ${euro(cart.totalCents)}`}</button></form>`}
    </section></div>`:''}${viewerMarkup()}${photoSaveMarkup()}</div>`;
+  if(studioEntry)root.querySelector('#shop-purchases').after(studioEntry);
   for(const image of root.querySelectorAll('img[data-photo],video[data-photo]')){
    if(image.closest('[data-track],[data-hero-track]'))continue;
    const key=image.tagName==='VIDEO'?`video:${image.dataset.photo}:${image.dataset.size||'thumb'}`:`${image.dataset.photo}:${image.dataset.size||'thumb'}:${image.getAttribute('src')||image.dataset.deferredSrc||''}`;
@@ -588,7 +590,12 @@ export async function mountCreatorShop({root,page,still=false,syncStudioEntry,tr
    const changed=fields.filter(field=>!same(page[field],next[field]));
    liveVersion=typeof next.version==='string'?next.version:'';
    lastFullSync=Date.now();
-   syncStudioEntry?.(next.photoStudioEnabled===true);
+   if(page.photoStudioEnabled!==next.photoStudioEnabled||!same(page.photoStudioSamples,next.photoStudioSamples)){
+    page.photoStudioEnabled=next.photoStudioEnabled===true;
+    page.photoStudioSamples=next.photoStudioSamples;
+    root.querySelector('.creator-studio-entry')?.remove();
+    root.querySelector('#shop-purchases').insertAdjacentHTML('afterend',renderCreatorStudioEntry(page));
+   }
    if(!changed.length&&same(sold,next.sold))return;
    const viewed=viewer?packFiles(viewer.product)[viewer.index]:null;
    const previousHeroFiles=creatorHeroFiles(page);

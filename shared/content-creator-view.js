@@ -1,8 +1,9 @@
+import { STUDIO_PRICE } from './photo-studio.js';
 import {creatorIsVideo,creatorVideoUrl,creatorAssetCount,creatorVideoFirst} from './creator-video.js';
 import {creatorHeroFormat,creatorHeroCrop,creatorHeroCropStyle} from './creator-hero.js';
 import { ccEscape as esc, ccImage } from './content-creator.js';
 import { euro, creatorPackageFiles } from './content-creator-shop.js';
-import {creatorMediaUrl,creatorPublicMedia,creatorHeroImages} from './creator-media.js';
+import {creatorMediaUrl,creatorPublicMedia,creatorHeroImages,creatorStudioSamples} from './creator-media.js';
 
 // Lucide paths, rendered inline: no icon library/CDN request or hydration delay.
 const paths = {
@@ -38,12 +39,27 @@ export function creatorImageUrl(page, file, size = 'thumb') {
 }
 export function renderCreatorStudioEntry(page) {
   if (page.photoStudioEnabled !== true || !/^[a-f0-9]{32}$/.test(page.id)) return '';
-  return `<nav class="creator-studio-entry" aria-label="MNYRA Photo Studio"><a href="/apps/content-creator/photo-studio.html?page=${page.id}">MNYRA PHOTO STUDIO · 0,25 € / foto</a></nav>`;
+  const { before, after } = creatorStudioSamples(page);
+  return `<section class="creator-studio-entry" aria-labelledby="creator-studio-title">
+    <div class="creator-studio-card">
+      <span class="answer-eyebrow">MNYRA PHOTO STUDIO</span>
+      <h2 id="creator-studio-title">Fotot e tua, të përpunuara profesionalisht.</h2>
+      <p>Na dërgo një foto nga telefoni. Ne përmirësojmë dritën, ngjyrat dhe detajet, që fotoja të jetë gati për rrjetet sociale.</p>
+      <div class="creator-studio-actions">
+        <a class="creator-studio-upload" href="/apps/content-creator/photo-studio.html?page=${page.id}">Ngarko fotot ${creatorIcon('arrow-up-right')}</a>
+        <span>${euro(STUDIO_PRICE)} / foto</span>
+      </div>
+    </div>
+    ${before && after ? `<div class="creator-studio-sample" role="group" aria-label="Shembull para dhe pas përpunimit">
+      <figure><img src="${esc(before)}" width="360" height="450" loading="lazy" decoding="async" alt="Shembull i fotos origjinale"><figcaption>Origjinali</figcaption></figure>
+      <figure><img src="${esc(after)}" width="360" height="450" loading="lazy" decoding="async" alt="Shembull i fotos së përpunuar"><figcaption>E përpunuar</figcaption></figure>
+    </div>` : ''}
+  </section>`;
 }
 
 export function publicCreatorPage(page, id) {
   const photoIds = [...new Set((page.photoIds || []).filter(key => /^[a-zA-Z0-9_-]{1,64}$/.test(key)))].slice(0,page.kind==='shop'?100:30);
-  return {id, published:true, ...(page.photoStudioEnabled === true ? { photoStudioEnabled: true } : {}), mediaTypes:Object.fromEntries(photoIds.filter(key=>creatorIsVideo(page,key)).map(key=>[key,'video'])), media:creatorPublicMedia(page),heroImages:creatorHeroImages(page),heroFormat:creatorHeroFormat(page),heroCrop:Object.fromEntries(creatorHeroFiles(page).map(id=>[id,creatorHeroCrop(page,id)])),packagePhotoOrder:Object.fromEntries((page.products||[]).filter(p=>Array.isArray(page.packagePhotoOrder?.[p.id])).map(p=>[p.id,creatorPackageFiles(page,p,photoIds.filter(id=>p.imageIds?.includes(id)))])), previewRevision:typeof page.previewRevision==='string'?page.previewRevision.slice(0,64):'', kind:page.kind === 'shop' ? 'shop' : 'promo', name:String(page.name || '').slice(0,160),
+  return {id, published:true, ...(page.photoStudioEnabled === true ? { photoStudioEnabled: true, photoStudioSamples: creatorStudioSamples(page) } : {}), mediaTypes:Object.fromEntries(photoIds.filter(key=>creatorIsVideo(page,key)).map(key=>[key,'video'])), media:creatorPublicMedia(page),heroImages:creatorHeroImages(page),heroFormat:creatorHeroFormat(page),heroCrop:Object.fromEntries(creatorHeroFiles(page).map(id=>[id,creatorHeroCrop(page,id)])),packagePhotoOrder:Object.fromEntries((page.products||[]).filter(p=>Array.isArray(page.packagePhotoOrder?.[p.id])).map(p=>[p.id,creatorPackageFiles(page,p,photoIds.filter(id=>p.imageIds?.includes(id)))])), previewRevision:typeof page.previewRevision==='string'?page.previewRevision.slice(0,64):'', kind:page.kind === 'shop' ? 'shop' : 'promo', name:String(page.name || '').slice(0,160),
     avatar:ccImage(page.avatar), heroPhotoIds:[...new Set((Array.isArray(page.heroPhotoIds)?page.heroPhotoIds:[]).filter(id=>photoIds.includes(id)))].slice(0,6), updatedAt:typeof page.updatedAt === 'string' ? page.updatedAt : '', createdMs:Number(page.createdMs)||0, photoIds,
     products:(page.products || []).filter(p => p.active !== false && /^[a-zA-Z0-9_-]{1,64}$/.test(p.id) && Number.isSafeInteger(p.priceCents) && p.priceCents >= 0).slice(0,100).map(p=>({id:p.id,title:String(p.title || 'Pako fotosh').slice(0,120),priceCents:p.priceCents,active:true,imageIds:creatorPackageFiles(page,p,photoIds.filter(key=>p.imageIds?.includes(key)))}))};
 }
@@ -162,5 +178,5 @@ export function renderCreatorPromo(page){
         <section class="intro"><p class="eyebrow">Krijuar për ju</p><p>Ne jemi MNYRA. Krijojmë foto dhe video për Instagram, Facebook dhe TikTok, posaçërisht për <strong>${esc(page.name)}</strong>.</p><div class="free">Këto foto janë një dhuratë nga ne. Mbajeni të shtypur foton për ta ruajtur në telefon.</div></section>
         <section class="gallery" aria-label="Fotot për lokalin tuaj">${page.photoIds.map((key,i)=>`<figure class="photo"><img data-photo="${esc(key)}" src="${page.media?.[key]?creatorImageUrl(page,key,'medium'):'/api/content-creator?'+new URLSearchParams({id:page.id,asset:'1',photo:key,v:page.updatedAt||''})}" width="360" height="450" alt="Foto ${i+1} për ${esc(page.name)}" loading="${i<2?'eager':'lazy'}" fetchpriority="${i===0?'high':'auto'}" decoding="async"></figure>`).join('')}</section>
         <section class="faq"><h2>Pyetje dhe përgjigje</h2><details><summary>A mund t’i përdorim menjëherë?</summary><p>Po. Ruajini në telefon dhe përdorini në rrjetet tuaja sociale, pa asnjë detyrim.</p></details><details><summary>Si funksionon bashkëpunimi?</summary><p>Flasim për nevojat tuaja dhe i dakordojmë së bashku shërbimet dhe çmimin para se të fillojmë.</p></details></section>
-        <section class="answer"><h2>A jeni të interesuar për më shumë foto për lokalin tuaj?</h2><div class="answer-content"><p>Një përgjigje e shkurtër. Pa asnjë detyrim.</p><div class="answers"><button data-answer="yes">Po, më intereson</button><button data-answer="no">Jo, faleminderit</button></div><p id="answer-error" role="alert"></p></div></section><footer>MNYRA · PËR BIZNESIN TUAJ</footer>`;
+        <section class="answer"><h2>A jeni të interesuar për më shumë foto për lokalin tuaj?</h2><div class="answer-content"><p>Një përgjigje e shkurtër. Pa asnjë detyrim.</p><div class="answers"><button data-answer="yes">Po, më intereson</button><button data-answer="no">Jo, faleminderit</button></div><p id="answer-error" role="alert"></p></div></section>${renderCreatorStudioEntry(page)}<footer>MNYRA · PËR BIZNESIN TUAJ</footer>`;
 }

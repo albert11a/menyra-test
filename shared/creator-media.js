@@ -7,6 +7,10 @@ export function creatorMediaUrl(value) {
     return url.origin === CREATOR_MEDIA_ORIGIN && /^\/media\/(?:creator-public\/[a-zA-Z0-9/_-]+|social\/[A-Za-z0-9_-]{1,80}\/[A-Za-z0-9_-]+)\.(webp|jpg|png)$/.test(url.pathname) && !url.search && !url.hash && !url.username && !url.password ? url.href : '';
   } catch { return ''; }
 }
+export function creatorStudioSamples(page) {
+  const { before, after } = page.photoStudioSamples || {};
+  return { before: creatorMediaUrl(before), after: creatorMediaUrl(after) };
+}
 export function creatorVideoMediaUrl(value) {
   try {
     const url=new URL(value);
