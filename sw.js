@@ -41,6 +41,8 @@ const NON_SOCIAL_NAVIGATION_PREFIXES = [
   // einer Anzeige, oft im Mobilfunk - liefert er statt des Trichters die
   // gecachte Social-Shell aus. Der Kunde sieht dann ein leeres Lokalprofil
   // namens "Lifeskin" und ist weg. Genau das ist passiert.
+  '/lifeskinlifeskin',
+  '/apps/lifeskinlifeskin',
   '/lifeskin',
   '/apps/lifeskin',
   // Die Landingpage, die /lifeskin ausliefert. Sie braucht ihren eigenen
