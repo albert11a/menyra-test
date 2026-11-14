@@ -1,3 +1,4 @@
+import {creatorVideoFile,validateCreatorAsset} from '../../shared/creator-video.js';
 import { STUDIO_ORDERS } from '../../shared/photo-studio.js';
 import {bindCreatorPhotoOrder} from './heart-creator-photo-order.js';
 import {CREATOR_DIRECT_ROUTES} from '../../shared/creator-direct-routes.js';
@@ -15,8 +16,8 @@ import { collection, doc, getDoc, onSnapshot, setDoc, updateDoc, writeBatch, run
 import { CC_PAGES, CC_VISITS, contentLink, creatorDeliveryPhotos, ccEscape as esc } from "../../shared/content-creator.js";
 
 export async function prepareContentImage(file, avatar = false) {
-  if(!avatar&&['video/mp4','video/quicktime','video/webm'].includes(file?.type)){
-    if(!file.size||file.size>30*1024*1024)throw Error('Ein Video darf höchstens 30 MB groß sein.');
+  if(!avatar&&creatorVideoFile(file)){
+    validateCreatorAsset(file);
     return ''; // Video and poster preparation are loaded only on video upload.
   }
   if (!file || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw new Error("Bitte JPG-, PNG- oder WebP-Bilder wählen.");
@@ -438,7 +439,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         const product=page?.products?.find(p=>p.id===productId);
         if(!product||page.kind!=='shop')throw Error('Paket wurde nicht gefunden.');
         if((page.photoIds?.length||0)+files.length>100)throw Error('Maximal 100 Dateien pro Shop.');
-        for(const file of files)if(!['image/jpeg','image/png','image/webp','video/mp4','video/quicktime','video/webm'].includes(file.type)||file.size>30*1024*1024)throw Error('JPG, PNG, WebP, MP4, MOV oder WebM bis 30 MB wählen.');
+        for(const file of files)validateCreatorAsset(file);
         const keys=[];
         for(const file of files){
           const key=crypto.randomUUID().replaceAll('-','');
@@ -544,7 +545,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
         if(!files.length)throw Error('Bitte mindestens ein Foto oder Video auswählen.');
         if((page.photoIds?.length||0)+files.length>100)throw Error('Maximal 100 Dateien pro Shop.');
         if((page.products||[]).length>=100)throw Error('Maximal 100 Pakete pro Shop.');
-        for(const file of files)if(!['image/jpeg','image/png','image/webp','video/mp4','video/quicktime','video/webm'].includes(file.type)||file.size>30*1024*1024)throw Error('JPG, PNG, WebP, MP4, MOV oder WebM bis 30 MB wählen.');
+        for(const file of files)validateCreatorAsset(file);
         const keys=[];
         for(const file of files){
           const key=crypto.randomUUID().replaceAll('-',''),data=await prepareImage(file);
@@ -606,7 +607,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     } catch(error){patch({saving:false,editorError:`Nicht abgeschlossen: ${error.message}. Du kannst es erneut versuchen.`});}
     finally{busy=false;}
   });
-  const unlockVideoAudio=event=>{const button=event.target.closest('button');if(event.target.closest('[data-cc-action="refresh-previews"],input[type="file"]')||(button?.type==='submit'&&button.closest('form')))unlockCreatorVideoAudio();};
+  const unlockVideoAudio=event=>{const button=event.target.closest('button');if(event.target.closest('[data-cc-action="refresh-previews"],[data-cc-action="download-video-preview"],input[type="file"]')||(button?.type==='submit'&&button.closest('form')))unlockCreatorVideoAudio();};
   root.addEventListener('pointerdown',unlockVideoAudio,{passive:true});
   root.addEventListener('click',unlockVideoAudio,{passive:true});
   root.addEventListener("click", async event => {
@@ -621,6 +622,15 @@ export function createContentCreator({root, store, prepareImage = prepareContent
       if (action === 'reset-data') { await creatorReset().reset(); return; }
       if (action === 'cancel-reset') { creatorReset().cancel(); return; }
       if (store.getState().contentCreator.resetRunning || store.getState().contentCreator.deletingBusinessId) return;
+      if(action==='download-video-preview'){
+        if(mediaBusy||busy)return;
+        const page=store.getState().contentCreator.pages.find(row=>row.id===id),fileId=button.dataset.image;
+        if(!page||(page.mediaTypes?.[fileId]!=='video'&&page.media?.[fileId]?.mediaType!=='video'))throw Error('Video wurde nicht gefunden.');
+        await mediaTask(async()=>{
+          const {downloadCreatorVideoPreview}=await import('./heart-creator-video-download.js');
+          await downloadCreatorVideoPreview(page,fileId,{loadOriginal:savedCreatorFile,watermark:drawShopWatermark});
+        });return;
+      }
       if (action === 'studio-order-filter') { patch({ orderTypeFilter: button.dataset.key, orderLimit: 20 }); return; }
       if (action === 'studio-toggle') {
         const page = store.getState().contentCreator.pages.find(row => row.id === id);

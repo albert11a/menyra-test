@@ -1,3 +1,4 @@
+import {normalizeCreatorAsset} from '../shared/creator-video.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -13,8 +14,8 @@ function setup(fail=false,{large=false,writeFailure=false}={}){
  const document={createElement:()=>({getContext:()=>context,toDataURL:()=> 'data:image/webp;base64,YWJj'})};
  const prepareCreatorVideo=async(input,opts)=>{assert.equal(input,file);assert.equal(opts.free,false);if(fail)throw Error('Encoding failed');return {preview:new Blob(['MARKED-PREVIEW-WITH-AUDIO'],{type:'video/mp4'}),boomerang:new Blob(['BOOMERANG'],{type:'video/mp4'}),poster:new File(['POSTER'],'poster.jpg',{type:'image/jpeg'}),duration:10};};
  const uploadCreatorMedia=async(page,id,input,displays,options)=>{uploaded.push(input);return {media:{mode:options.free?'clean':'marked',thumb:CREATOR_MEDIA_ORIGIN+'/media/social/owner/thumb.webp',medium:CREATOR_MEDIA_ORIGIN+'/media/social/owner/medium.webp',large:CREATOR_MEDIA_ORIGIN+'/media/social/owner/large.webp'}};};
- const factory=new Function('db','doc','setDoc','writeBatch','creatorCdnEnabled','uploadCreatorMedia','uploadCreatorVideo','Image','URL','document','creatorVariants','serverTimestamp','prepareVideoMock','CC_PAGES',`${source}\nreturn saveShopAsset;`);
- const save=factory({},doc,setDoc,()=>({set:(...args)=>setDoc(...args),update:(_ref,value)=>published.push(value),commit:async()=>{}}),async()=>true,uploadCreatorMedia,async prepared=>{uploaded.push(prepared.preview,prepared.boomerang);return {video:CREATOR_MEDIA_ORIGIN+'/media/stories/owner/full.mp4',boomerang:CREATOR_MEDIA_ORIGIN+'/media/stories/owner/boom.mp4'};},Image,{createObjectURL:()=> 'blob:poster',revokeObjectURL(){}},document,creatorVariants,()=>0,prepareCreatorVideo,'contentCreatorPages');
+ const factory=new Function('normalizeCreatorAsset','db','doc','setDoc','writeBatch','creatorCdnEnabled','uploadCreatorMedia','uploadCreatorVideo','Image','URL','document','creatorVariants','serverTimestamp','prepareVideoMock','CC_PAGES',`${source}\nreturn saveShopAsset;`);
+ const save=factory(normalizeCreatorAsset,{},doc,setDoc,()=>({set:(...args)=>setDoc(...args),update:(_ref,value)=>published.push(value),commit:async()=>{}}),async()=>true,uploadCreatorMedia,async prepared=>{uploaded.push(prepared.preview,prepared.boomerang);return {video:CREATOR_MEDIA_ORIGIN+'/media/stories/owner/full.mp4',boomerang:CREATOR_MEDIA_ORIGIN+'/media/stories/owner/boom.mp4'};},Image,{createObjectURL:()=> 'blob:poster',revokeObjectURL(){}},document,creatorVariants,()=>0,prepareCreatorVideo,'contentCreatorPages');
  return {save,docs,uploaded,published,file,get maxActive(){return maxActive;}};
 }
 test('Video upload persists byte-exact private original, marked R2 full video with audio, boomerang and poster',async()=>{

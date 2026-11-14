@@ -1,3 +1,4 @@
+import {normalizeCreatorAsset} from '../../shared/creator-video.js';
 import {auth,db} from '/shared/firebase-config.js';
 import {doc,getDoc,setDoc,updateDoc,serverTimestamp,writeBatch,runTransaction,deleteField} from '/shared/vendor/firebase/11.0.0/firebase-firestore.js';
 import {CC_PAGES} from '../../shared/content-creator.js';
@@ -77,7 +78,7 @@ export async function refreshShopPreviews(pageId,imageIds){
  await updateDoc(doc(db,CC_PAGES,pageId),{updatedAt:serverTimestamp()});
 }
 export async function saveShopAsset(pageId,imageId,file,display,options={}){
- if(!file||file.size>30*1024*1024||!['image/jpeg','image/png','image/webp','video/mp4','video/quicktime','video/webm'].includes(file.type))throw Error('JPG, PNG, WebP, MP4, MOV oder WebM bis 30 MB wählen.');
+ file=normalizeCreatorAsset(file);
  const bytes=new Uint8Array(await file.arrayBuffer());
  const parts=Math.ceil(bytes.length/PART);if(!parts)throw Error('Die Datei ist leer.');
  // Bound memory/network use while avoiding one round trip per original chunk.

@@ -8,6 +8,10 @@ function adminAsset(page,id,alt,state){
  if(page.mediaTypes?.[id]==='video'||page.media?.[id]?.mediaType==='video')return creatorPhoto(page,id,alt,{size:'thumb',active:true});
  return `<img src="${ccImage(page.media?.[id]?.thumb||state.images?.[id]?.cdn?.thumb||state.images?.[id]?.data)||esc(creatorImageUrl(page,id,'thumb'))}" alt="${esc(alt)}" loading="lazy">`;
 }
+function videoDownload(page,id,state){
+ if(page.mediaTypes?.[id]!=='video'&&page.media?.[id]?.mediaType!=='video')return '';
+ return `<button type="button" data-cc-action="download-video-preview" data-id="${esc(page.id)}" data-image="${esc(id)}" ${state.mediaBusy?'disabled':''}>Video mit MNYRA Preview herunterladen</button>`;
+}
 function photoSeen(page,id,state){
  if(page.mediaTypes?.[id]==='video'||page.media?.[id]?.mediaType==='video')return '';
  return `<span class="cc-photo-seen">${shopIcon('eye')} ${state.photoViewsPageId!==page.id||state.photoViewsUnavailable?'–':state.photoViews?.[id]||0} Seen</span>`;
@@ -37,7 +41,7 @@ function packageEditor(page,product,state){
 function packageCard(page,product,state,{editable=true,purchased=false}={}){
   const files=product.imageIds||[],ids=state.photoSort?.[product.id]?.pending||creatorPackageFiles(page,product),key=`package-${product.id}`,closed=creatorCollapsed(state,key);
   return `<article class="cc-card cc-package-card${closed?' cc-collapsed':''}" data-morph-key="package-${esc(product.id)}" data-cc-collapse="${esc(key)}">
-  <div class="cc-card-body" ${closed?'hidden':''}><div class="cc-package-stage"><div class="cc-package-gallery" data-cc-gallery="${esc(product.id)}" data-cc-track="cover-${esc(product.id)}" aria-label="${esc(product.title)} · Fotos">${ids.map((id,i)=>`<div class="cc-package-slide">${adminAsset(page,id,`${product.title} · ${i+1}`,state)}${photoSeen(page,id,state)}</div>`).join('')||'<p class="cc-muted">Keine Vorschau verfügbar.</p>'}</div>
+  <div class="cc-card-body" ${closed?'hidden':''}><div class="cc-package-stage"><div class="cc-package-gallery" data-cc-gallery="${esc(product.id)}" data-cc-track="cover-${esc(product.id)}" aria-label="${esc(product.title)} · Fotos">${ids.map((id,i)=>`<div class="cc-package-slide">${adminAsset(page,id,`${product.title} · ${i+1}`,state)}${photoSeen(page,id,state)}${videoDownload(page,id,state)}</div>`).join('')||'<p class="cc-muted">Keine Vorschau verfügbar.</p>'}</div>
   ${ids.length>1?`<button type="button" class="cc-package-prev" data-cc-action="slide-package" data-product="${esc(product.id)}" data-direction="-1" aria-label="Vorheriges Foto">${icon('chevronDown')}</button><button type="button" class="cc-package-next" data-cc-action="slide-package" data-product="${esc(product.id)}" data-direction="1" aria-label="Nächstes Foto">${icon('chevronRight')}</button><span class="cc-package-position" data-cc-position="${esc(product.id)}">1 / ${ids.length}</span>`:''}</div></div>
   ${purchased?`<h3 class="cc-purchased-package-name">${esc(product.title)}</h3>`:''}
   <div class="cc-package-price"><button type="button" data-cc-action="collapse" data-key="${esc(key)}" aria-label="${esc(product.title)} ${closed?'erweitern':'minimieren'}" aria-expanded="${!closed}">Preis: ${creatorMoney(product.priceCents)}</button><span>${files.length} ${files.length===1?'Datei':'Dateien'}</span></div>
