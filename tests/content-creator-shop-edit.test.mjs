@@ -130,8 +130,8 @@ test('Failed or oversized package additions leave membership unchanged and can b
  assert.deepEqual(c.docs.get('contentCreatorPages/shop').products[0].imageIds,['a','b']);
  assert.match(c.store.getState().contentCreator.mediaError,/Upload fehlgeschlagen/);
  assert.equal(c.root.querySelector('[data-cc-package-add="p"]').disabled,false);
- const d=setup();await d.click('[data-cc-action="detail"]');await d.add('p',[{...file,size:31*1024*1024}]);
- assert.equal(d.uploads.length,0);assert.match(d.store.getState().contentCreator.mediaError,/30 MB/);
+ const d=setup();await d.click('[data-cc-action="detail"]');await d.add('p',[{...file,size:101*1024*1024}]);
+ assert.equal(d.uploads.length,0);assert.match(d.store.getState().contentCreator.mediaError,/100 MB/);
  await d.add('p',[file]);assert.equal(d.docs.get('contentCreatorPages/shop').products[0].imageIds.length,3);
 });
 

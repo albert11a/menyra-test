@@ -4,9 +4,9 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {creatorVariants,CREATOR_MEDIA_ORIGIN} from '../shared/creator-media.js';
 const source=(await readFile(new URL('../apps/mnyra-heart/heart-content-creator-shop.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/^export \{.*\n/gm,'').replace(/export (async )?function /g,'$1function ').replace("await import('./heart-creator-video.js')",'({prepareCreatorVideo:prepareVideoMock})');
-function setup(fail=false,{large=false,writeFailure=false}={}){
+function setup(fail=false,{large=false,writeFailure=false,fullSize=false}={}){
  let active=0,maxActive=0;
- const docs=new Map(),uploaded=[],published=[],file=new File([large?Buffer.alloc(2800017,91):'ORIGINAL-WITH-AUDIO'],'reel.mp4',{type:'video/mp4'});
+ const docs=new Map(),uploaded=[],published=[],file=new File([fullSize?Buffer.alloc(100*1024*1024,91):large?Buffer.alloc(2800017,91):'ORIGINAL-WITH-AUDIO'],'reel.mp4',{type:'video/mp4'});
  const doc=(...args)=>args.filter(x=>typeof x==='string').join('/');
  const setDoc=async(path,value,options)=>{if(path.includes('/chunks/')){active++;maxActive=Math.max(active,maxActive);await new Promise(resolve=>setImmediate(resolve));active--;if(writeFailure&&path.endsWith('/002'))throw Error('Storage refused');}docs.set(path,options?.merge?{...docs.get(path),...value}:value);};
  class Image{constructor(){this.width=360;this.height=480;}async decode(){}}
@@ -41,4 +41,19 @@ test('Large private video originals upload concurrently with a fixed bound and r
 test('Rejected private chunk never publishes complete original metadata or a public product video',async()=>{
  const c=setup(false,{large:true,writeFailure:true});await assert.rejects(c.save('page','clip',c.file,'',{free:false}),/Storage refused/);
  assert.equal(c.docs.has('contentCreatorPages/page/originals/clip'),false);assert.equal(c.uploaded.length,0);assert.equal(c.published.length,0);
+});
+
+ test('100 MB originals use 263 bounded slices without a whole-file arrayBuffer read',async()=>{
+ const c=setup(false,{fullSize:true});
+ c.file.arrayBuffer=()=>assert.fail('Do not load a 100 MB original into JS memory at once');
+ await c.save('page','clip',c.file,'',{free:false});
+ const meta=c.docs.get('contentCreatorPages/page/originals/clip');
+ assert.equal(meta.size,100*1024*1024);assert.equal(meta.parts,263);
+ let size=0;
+ for(let i=0;i<meta.parts;i++){
+  const bytes=Buffer.from(c.docs.get(`contentCreatorPages/page/originals/clip/chunks/${String(i).padStart(3,'0')}`).data,'base64');
+  assert.equal(bytes.length,Math.min(400000,meta.size-size));
+  assert.ok(bytes.every(value=>value===91));size+=bytes.length;
+ }
+ assert.equal(size,meta.size);assert.ok(c.maxActive>1&&c.maxActive<=6);
 });

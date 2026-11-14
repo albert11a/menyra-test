@@ -13,7 +13,7 @@ export function creatorVideoMime(file){
 export const creatorVideoFile = file => !!creatorVideoMime(file);
 export function validateCreatorAsset(file){
  if(!file?.size)throw Error('Die Datei ist leer.');
- if(file.size>30*1024*1024)throw Error(`Die Datei ist ${(file.size/1024/1024).toFixed(1)} MB groß. Maximal 30 MB pro Datei erlaubt.`);
+ if(file.size>100*1024*1024)throw Error(`Die Datei ist ${(file.size/1024/1024).toFixed(1)} MB groß. Maximal 100 MB pro Datei erlaubt.`);
  if(!['image/jpeg','image/png','image/webp'].includes(file.type)&&!creatorVideoFile(file))throw Error('Dateiformat nicht unterstützt. Bitte JPG, PNG, WebP, MP4, MOV oder WebM wählen.');
 }
 export function normalizeCreatorAsset(file){

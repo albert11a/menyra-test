@@ -15,7 +15,7 @@ test('MOV from iOS Files preserves bytes and gains a canonical MIME',async()=>{
 });
 test('empty, unsupported and oversized files have distinct errors',()=>{
  assert.throws(()=>validateCreatorAsset({size:0,type:'video/quicktime'}),/leer/);
- assert.throws(()=>validateCreatorAsset({size:31*1024*1024,type:'video/quicktime'}),/31.0 MB.*30 MB/);
+ assert.throws(()=>validateCreatorAsset({size:101*1024*1024,type:'video/quicktime'}),/101.0 MB.*100 MB/);
  assert.throws(()=>validateCreatorAsset({size:10,type:'text/html',name:'bad.mov'}),/Dateiformat/);
 });
 function page(mode='marked'){
@@ -32,4 +32,11 @@ test('free video is re-rendered with an explicit watermark rather than downloade
 });
 test('failed preview download never falls back to the clean original',async()=>{
  await assert.rejects(creatorPreviewFile(page(),'clip',{fetchFn:async()=>new Response('',{status:500}),loadOriginal:()=>assert.fail('No original fallback')}),/nicht geladen/);
+});
+
+ test('100 MB is accepted for Creator MOV and photos; the next byte is rejected',()=>{
+ for(const type of ['video/quicktime','image/jpeg']){
+  assert.doesNotThrow(()=>validateCreatorAsset({name:'clip.mov',type,size:100*1024*1024}));
+  assert.throws(()=>validateCreatorAsset({name:'clip.mov',type,size:100*1024*1024+1}),/Maximal 100 MB/);
+ }
 });

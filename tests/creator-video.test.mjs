@@ -79,3 +79,21 @@ test('Non-video order HTTP responses keep numeric 200 instead of the string orde
  await serveCreatorShop({method:'POST',body:{op:'order',pageId,cartId,orderId,ids:['p'],expectedTotalCents:1400,customer:{name:'Video Test',address:'Test Street',country:'Kosovë',phone:'00000000'}}},response,async()=>f.repo);
  assert.equal(response.statusCode,200);assert.equal(JSON.parse(response.body).status,'pending');
 });
+
+ test('100 MB MOV metadata and final chunk are downloadable; oversized metadata stays blocked',async()=>{
+ const f=fixture(),meta=f.docs.get(f.base);
+ Object.assign(meta,{size:100*1024*1024,parts:263});
+ const data=Buffer.alloc(57600,81).toString('base64');f.docs.set(`${f.base}/chunks/262`,{data});
+ await shopAction({op:'order',pageId,cartId,orderId,ids:['p'],expectedTotalCents:1400,customer:{name:'Video Test',phone:'00000000',address:'Test Street',country:'Kosovë'}},f.repo);
+ const paid=await shopAction({op:'download',orderId,file:'clip'},f.repo);
+ assert.equal(paid.size,100*1024*1024);assert.equal(paid.parts,263);
+ assert.equal((await shopAction({op:'download',orderId,file:'clip',part:262},f.repo)).data,data);
+ f.page.products[0].priceCents=0;
+ assert.equal((await shopAction({op:'free-download',pageId,productId:'p',file:'clip'},f.repo)).parts,263);
+ assert.equal((await shopAction({op:'free-download',pageId,productId:'p',file:'clip',part:262},f.repo)).data,data);
+ meta.size++;
+ await assert.rejects(shopAction({op:'download',orderId,file:'clip'},f.repo));
+ await assert.rejects(shopAction({op:'free-download',pageId,productId:'p',file:'clip'},f.repo));
+ meta.size--;meta.parts=264;
+ await assert.rejects(shopAction({op:'free-download',pageId,productId:'p',file:'clip'},f.repo));
+});

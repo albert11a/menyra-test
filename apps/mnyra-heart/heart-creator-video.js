@@ -5,7 +5,7 @@ import {creatorVideoAudioContext} from './heart-creator-video-audio.js';
 // Two derivatives: a full 1920px video retaining audio, and a short, silent
 // 1080px forward/reverse clip. Paid derivatives have a baked watermark.
 export async function prepareCreatorVideo(file,{free=false,watermark=()=>{}}={}){
- if(!creatorVideoFile(file)||file.size<1||file.size>30*1024*1024)throw Error('MP4, MOV oder WebM bis 30 MB wählen.');
+ if(!creatorVideoFile(file)||file.size<1||file.size>100*1024*1024)throw Error('MP4, MOV oder WebM bis 100 MB wählen.');
  const Recorder=globalThis.MediaRecorder;
  const mimes=['video/mp4;codecs=avc1.4d0028,mp4a.40.2','video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp8,opus','video/webm'].filter(type=>Recorder?.isTypeSupported?.(type));
  const canvas=document.createElement('canvas'),audio=creatorVideoAudioContext();

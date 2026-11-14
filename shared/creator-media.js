@@ -20,7 +20,7 @@ export function creatorVideoMediaUrl(value) {
 export function creatorVariants(record) {
   if (!record || !['clean','marked'].includes(record.mode)) return null;
   const result = {mode:record.mode,...(record.mediaType==='video'?{mediaType:'video'}:{})};
-  if(Number.isSafeInteger(record.bytes)&&record.bytes>0&&record.bytes<=30*1024*1024)result.bytes=record.bytes;
+  if(Number.isSafeInteger(record.bytes)&&record.bytes>0&&record.bytes<=100*1024*1024)result.bytes=record.bytes;
   for (const size of ['thumb','medium','large']) {
     result[size] = creatorMediaUrl(record[size]);
     if (!result[size]) return null;

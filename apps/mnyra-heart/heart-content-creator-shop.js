@@ -79,18 +79,17 @@ export async function refreshShopPreviews(pageId,imageIds){
 }
 export async function saveShopAsset(pageId,imageId,file,display,options={}){
  file=normalizeCreatorAsset(file);
- const bytes=new Uint8Array(await file.arrayBuffer());
- const parts=Math.ceil(bytes.length/PART);if(!parts)throw Error('Die Datei ist leer.');
+ const parts=Math.ceil(file.size/PART);if(!parts)throw Error('Die Datei ist leer.');
  // Bound memory/network use while avoiding one round trip per original chunk.
  // Publish original metadata only after ALL chunks have been acknowledged.
  for(let start=0;start<parts;start+=6){
   await Promise.all(Array.from({length:Math.min(6,parts-start)},async(_,offset)=>{
-   const i=start+offset,slice=bytes.subarray(i*PART,(i+1)*PART);let binary='';
+   const i=start+offset,slice=new Uint8Array(await file.slice(i*PART,(i+1)*PART).arrayBuffer());let binary='';
    for(let n=0;n<slice.length;n+=4096)binary+=String.fromCharCode(...slice.subarray(n,n+4096));
    await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId,'chunks',String(i).padStart(3,'0')),{data:btoa(binary)});
   }));
  }
- await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId),{name:file.name.slice(0,180),mime:file.type,size:bytes.length,parts});
+ await setDoc(doc(db,CC_PAGES,pageId,'originals',imageId),{name:file.name.slice(0,180),mime:file.type,size:file.size,parts});
  if(file.type.startsWith('video/')||await creatorCdnEnabled())return saveCreatorCdnAsset(pageId,imageId,file,options);
  const source=URL.createObjectURL(file);
  try{await saveShopPreview(pageId,imageId,source);}finally{URL.revokeObjectURL(source);}
@@ -211,7 +210,7 @@ export async function applyShopWatermark(pageId,value,{sold=new Set(),progress=(
 
 export async function savedCreatorFile(pageId,imageId){
  const ref=doc(db,CC_PAGES,pageId,'originals',imageId),snap=await getDoc(ref),meta=snap.data();
- if(!Number.isInteger(meta?.parts)||meta.parts<1||meta.parts>100||!Number.isSafeInteger(meta.size)||meta.size<1||meta.size>30*1024*1024)throw Error('Gespeichertes Original fehlt.');
+ if(!Number.isInteger(meta?.parts)||meta.parts<1||meta.parts>263||!Number.isSafeInteger(meta.size)||meta.size<1||meta.size>100*1024*1024)throw Error('Gespeichertes Original fehlt.');
  const chunks=[];let size=0;
  for(let start=0;start<meta.parts;start+=8){
   const rows=await Promise.all(Array.from({length:Math.min(8,meta.parts-start)},(_,offset)=>getDoc(doc(ref,'chunks',String(start+offset).padStart(3,'0')))));

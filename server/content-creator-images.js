@@ -16,7 +16,7 @@ export async function optimizedShopImage(path,metadata,repo,persist=false){
    const parts=[];let size=0;
    for(let start=0;start<metadata.parts;start+=8){
     const chunks=await Promise.all(Array.from({length:Math.min(8,metadata.parts-start)},(_,i)=>repo.read(`${path}/chunks/${String(start+i).padStart(3,'0')}`)));
-    for(const chunk of chunks){if(!chunk?.data)throw Error('Skedari nuk është i plotë.');const bytes=Buffer.from(chunk.data,'base64');size+=bytes.length;if(size>30*1024*1024)throw Error('Skedari është shumë i madh.');parts.push(bytes);}
+    for(const chunk of chunks){if(!chunk?.data)throw Error('Skedari nuk është i plotë.');const bytes=Buffer.from(chunk.data,'base64');size+=bytes.length;if(size>100*1024*1024)throw Error('Skedari është shumë i madh.');parts.push(bytes);}
    }
    if(size!==metadata.size)throw Error('Skedari nuk është i plotë.');
    const {default:sharp}=await import('sharp');
@@ -52,7 +52,7 @@ function validDisplay(record, mode, opacity=20) {
   return record?.version === DISPLAY_IMAGE_VERSION && (mode==='clean'||(record.opacity??20)===opacity) && (mode ? [mode] : ['clean','marked']).every(mode => /^data:image\/(?:webp|jpeg);base64,[A-Za-z0-9+/=]+$/.test(record[mode] || ''));
 }
 async function originalDisplaySource(path,metadata,repo){
- if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>30*1024*1024)throw Error('Fotoja nuk u gjet.');
+ if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>263||!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>100*1024*1024)throw Error('Fotoja nuk u gjet.');
  const chunks=[];let total=0;
  for(let start=0;start<metadata.parts;start+=8){
   const rows=await Promise.all(Array.from({length:Math.min(8,metadata.parts-start)},(_,i)=>repo.read(`${path}/chunks/${String(start+i).padStart(3,'0')}`)));

@@ -106,7 +106,7 @@ export async function shopRepository(){
 function publicOrderCode(id){return createHash('sha256').update(id).digest('hex').slice(0,12).toUpperCase();}
 function publicOrder(order,id){return {id,orderCode:publicOrderCode(id),paymentConfirmed:order.paymentConfirmed===true,pageId:order.pageId,lines:order.lines,totalCents:order.totalCents,currency:'EUR',status:order.status,approved:order.approved===true,downloadsAvailable:order.downloadsReleased===true||order.approved===true,paymentDueDate:order.paymentDueDate||'',paymentSchedule:order.paymentSchedule||'',paymentMethod:'cod',createdAt:order.createdAt};}
 async function* originalChunks(path,metadata,repo){
- if(!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>30*1024*1024)throw Error('Skedari nuk është i disponueshëm.');
+ if(!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>100*1024*1024)throw Error('Skedari nuk është i disponueshëm.');
  let size=0;
  for(let start=0;start<metadata.parts;start+=12){
   const rows=await Promise.all(Array.from({length:Math.min(12,metadata.parts-start)},(_,i)=>repo.read(`${path}/chunks/${String(start+i).padStart(3,'0')}`)));
@@ -145,7 +145,7 @@ export async function shopAction(input,repo,{streamPhoto=false}={}){
    return creatorDeliveryPreview(path,repo);
   }
   if(cdn&&input.source!=='firestore')return {redirect:cdn};
-  if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!['image/jpeg','image/png','image/webp'].includes(metadata.mime))throw Error('Origjinali nuk është i disponueshëm.');
+  if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>263||!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>100*1024*1024||!['image/jpeg','image/png','image/webp'].includes(metadata.mime))throw Error('Origjinali nuk është i disponueshëm.');
   if(streamPhoto)return {chunks:originalChunks(path,metadata,repo),...metadata};
   return originalFile(path,metadata,repo);
  }
@@ -177,7 +177,7 @@ export async function shopAction(input,repo,{streamPhoto=false}={}){
   const directRecord=op==='photo-record'?delivery?.originals?.[file]:null;
   if(op==='photo-record'&&!creatorMediaUrl(directRecord?.url))throw Error('Fotoja nuk është e disponueshme.');
   const metadata=directRecord||await repo.read(path,['name','mime','size','parts']);
-  if(!directRecord&&(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!['image/jpeg','image/png','image/webp'].includes(metadata.mime)))throw Error('Origjinali nuk është i disponueshëm.');
+  if(!directRecord&&(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>263||!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>100*1024*1024||!['image/jpeg','image/png','image/webp'].includes(metadata.mime)))throw Error('Origjinali nuk është i disponueshëm.');
   if(!validShopId(visitorId))throw Error('Fotoja nuk është e disponueshme.');
   const recordDownload=async()=>{
   const visitPath=`contentCreatorVisits/${pageId}_${visitorId}`;
@@ -228,7 +228,7 @@ export async function shopAction(input,repo,{streamPhoto=false}={}){
   }
   if(free){
    const path=`contentCreatorPages/${pageId}/originals/${input.file}`,metadata=await repo.read(path);
-   if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>30*1024*1024)throw Error('Fotoja nuk u gjet.');
+   if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>263||!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>100*1024*1024)throw Error('Fotoja nuk u gjet.');
    const preview=await optimizedShopImage(path,metadata,repo);
    return {bytes:Buffer.from(preview.data.split(',')[1],'base64'),mime:'image/jpeg'};
   }
@@ -245,7 +245,7 @@ export async function shopAction(input,repo,{streamPhoto=false}={}){
   const publicOriginal=creatorPublicMedia(page)[file]?.download;
   if(op==='free-download'&&input.format==='file'&&publicOriginal)return {redirect:publicOriginal};
   const path=`contentCreatorPages/${pageId}/originals/${file}`,metadata=await repo.read(path,op==='free-download'?['name','mime','size','parts']:undefined);
-  if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100||!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>30*1024*1024||!['image/jpeg','image/png','image/webp','video/mp4','video/quicktime','video/webm'].includes(metadata.mime))throw Error('Skedari nuk është i disponueshëm.');
+  if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>263||!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>100*1024*1024||!['image/jpeg','image/png','image/webp','video/mp4','video/quicktime','video/webm'].includes(metadata.mime))throw Error('Skedari nuk është i disponueshëm.');
   if(op==='free-image'||op==='free-preview'){
    const posterUrl=metadata.mediaType==='video'?creatorPublicMedia(page)[file]?.thumb:'';
    if(posterUrl)return op==='free-preview'?{data:posterUrl}:{redirect:posterUrl};
@@ -265,7 +265,7 @@ export async function shopAction(input,repo,{streamPhoto=false}={}){
   if(order.downloadsReleased!==true&&(order.approved!==true||order.status!=='released'||order.paymentConfirmed!==true))throw Error('Shkarkimi hapet pas konfirmimit të pagesës.');
   const file=String(input.file||'');if(!/^[a-zA-Z0-9_-]{1,64}$/.test(file)||!purchasedFiles(order).includes(file))throw Error('Ky artikull nuk i përket porosisë.');
   const metadata=await repo.read(`contentCreatorPages/${order.pageId}/originals/${file}`,['name','mime','size','parts']);
-  if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>100)throw Error('Skedari nuk është i disponueshëm.');
+  if(!metadata||!Number.isInteger(metadata.parts)||metadata.parts<1||metadata.parts>263||!Number.isSafeInteger(metadata.size)||metadata.size<1||metadata.size>100*1024*1024)throw Error('Skedari nuk është i disponueshëm.');
   if(input.format==='file')return originalFile(`contentCreatorPages/${order.pageId}/originals/${file}`,metadata,repo);
   if(input.part===undefined)return {name:metadata.name,mime:metadata.mime,parts:metadata.parts,size:metadata.size};
   const part=Number(input.part);if(!Number.isInteger(part)||part<0||part>=metadata.parts)throw Error('Skedari nuk është i vlefshëm.');

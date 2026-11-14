@@ -21,7 +21,7 @@ export async function prepareContentImage(file, avatar = false) {
     return ''; // Video and poster preparation are loaded only on video upload.
   }
   if (!file || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw new Error("Bitte JPG-, PNG- oder WebP-Bilder wählen.");
-  if (file.size > 30 * 1024 * 1024) throw new Error("Ein Bild darf höchstens 30 MB groß sein.");
+  if (file.size > 100 * 1024 * 1024) throw new Error("Ein Bild darf höchstens 100 MB groß sein.");
   const url = URL.createObjectURL(file);
   try {
     const image = new Image(); image.src = url; await image.decode();
