@@ -6,11 +6,18 @@ export async function creatorPreviewFile(page,id,{loadOriginal,watermark,fetchFn
  const media=creatorPublicMedia(page)[id];
  let blob;
  if(media?.mode==='marked'&&media.video){
-  const response=await fetchFn(media.video,{signal:AbortSignal.timeout(120000)});
-  if(!response.ok)throw Error('Videovorschau konnte nicht geladen werden. Bitte erneut versuchen.');
-  blob=await response.blob();
-  if(!['video/mp4','video/webm'].includes(blob.type.split(';')[0]))throw Error('Ungültige Videovorschau.');
- }else{
+  try{
+   const response=await fetchFn(media.video,{signal:AbortSignal.timeout(120000)});
+   if(response.ok){
+    const candidate=await response.blob();
+    if(candidate.size && ['video/mp4','video/webm'].includes(candidate.type.split(';')[0]))blob=candidate;
+   }
+  }catch{
+   // A failed CDN read (including a dropped response body) can be rebuilt locally.
+  }
+ }
+ if(!blob){
+  if(typeof watermark!=='function')throw Error('Videovorschau konnte nicht geladen werden.');
   const original=await loadOriginal(page.id,id);
   const prepare=prepareVideo||(await import('./heart-creator-video.js')).prepareCreatorVideo;
   blob=(await prepare(original,{free:false,watermark})).preview;

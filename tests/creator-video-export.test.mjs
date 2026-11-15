@@ -34,6 +34,27 @@ test('failed preview download never falls back to the clean original',async()=>{
  await assert.rejects(creatorPreviewFile(page(),'clip',{fetchFn:async()=>new Response('',{status:500}),loadOriginal:()=>assert.fail('No original fallback')}),/nicht geladen/);
 });
 
+test('an unavailable marked preview is rebuilt with a watermark for download',async()=>{
+ const original=new File(['private-original'],'clip.mov',{type:'video/quicktime'});
+ const watermark=()=>{};
+ for(const fetchFn of [
+  async()=>{throw TypeError('Load failed');},
+  async()=>new Response(null,{status:404}),
+  async()=>new Response(new Blob([],{type:'video/mp4'})),
+  async()=>new Response('error',{headers:{'Content-Type':'text/html'}})
+ ]){
+  const file=await creatorPreviewFile(page(),'clip',{
+   fetchFn,watermark,
+   loadOriginal:async(pageId,id)=>{assert.equal(pageId,'page');assert.equal(id,'clip');return original;},
+   prepareVideo:async(input,options)=>{
+    assert.equal(input,original);assert.equal(options.free,false);assert.equal(options.watermark,watermark);
+    return {preview:new Blob(['rebuilt-marked'],{type:'video/mp4'})};
+   }
+  });
+  assert.equal(await file.text(),'rebuilt-marked');
+ }
+});
+
  test('100 MB is accepted for Creator MOV and photos; the next byte is rejected',()=>{
  for(const type of ['video/quicktime','image/jpeg']){
   assert.doesNotThrow(()=>validateCreatorAsset({name:'clip.mov',type,size:100*1024*1024}));
