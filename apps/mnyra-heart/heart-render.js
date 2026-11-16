@@ -828,7 +828,8 @@ function restoreCreatorDom(root,previous){
   const form=field.closest('form'),key=`${form.id||form.dataset.ccPackage}:${field.id||field.name||field.dataset.ccPackageAdd}`,old=previous.controls.get(key);
   if(!old)continue;
   if(field.type==='file'){old.node.disabled=field.disabled;if(old.node!==field)field.replaceWith(old.node);}
-  else{field.value=old.value;if(field.type==='checkbox')field.checked=old.checked;}
+  else if(field.type==='checkbox')field.checked=old.checked;
+  else field.value=old.value;
  }
  for(const node of all('[data-cc-fold]'))if(previous.folds.has(node.dataset.ccFold))node.open=previous.folds.get(node.dataset.ccFold);
  for(const node of all('[data-cc-track]'))if(previous.tracks.has(node.dataset.ccTrack)){

@@ -147,3 +147,23 @@ test('Unvisited legacy businesses stay Working; a true visit moves them into See
  const {document}=parseHTML(renderContentCreator(state));
  const chip=document.querySelector('[data-cc-action="filter"][data-key="seen"]');assert.match(chip.textContent,/Seen3/);
 });
+
+test('Live refresh keeps an edited bundle separate from the new bundle and preserves media identities',()=>{
+ const {document}=parseHTML('<div id="app"></div>'),root=document.querySelector('#app');
+ const state=createHeartInitialState(),{page}=fixture();
+ page.photoIds.push('two');page.mediaTypes={two:'video'};
+ page.products.push({id:'clip',imageIds:['two'],title:'Video',priceCents:9000},
+  {id:'offer',bundle:true,imageIds:['one'],sourceIds:['pack'],priceCents:8000,title:'Pako me 1 foto'});
+ state.auth={status:'authenticated',access:{allowed:true},user:{uid:'test'}};
+ state.shell.activeView='contentCreator';
+ state.contentCreator={...state.contentCreator,pages:[page],selectedId:pageId};
+ renderHeartApp(root,state,{});
+ const form=()=>root.querySelector('[data-cc-bundle="offer"]');
+ form().querySelector('[name=price]').value='75';
+ for(const box of form().querySelectorAll('[name=file]'))box.checked=true;
+ state.contentCreator.notice='Aktualisiert';renderHeartApp(root,state,{});
+ assert.equal(form().querySelector('[name=price]').value,'75');
+ const media=[...form().querySelectorAll('[name=file]')];
+ assert.deepEqual(media.map(box=>[box.value,box.dataset.source,box.checked]),[['one','pack',true],['two','clip',true]]);
+ assert.equal(root.querySelector('[data-cc-bundle=""] [name=price]').value,'');
+});

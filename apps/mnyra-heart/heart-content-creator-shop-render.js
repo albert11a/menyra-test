@@ -51,14 +51,15 @@ function packageCard(page,product,state,{editable=true,purchased=false}={}){
 function bundleForm(page,state,sold,bundle){
  const sources=(page.products||[]).filter(p=>!p.bundle&&p.active!==false&&!sold.has(p.id));
  const used=new Set(),busy=state.mediaBusy?'disabled':'';
+ const formId=`cc-bundle-${page.id}-${bundle?.id||'new'}`;
  const choices=sources.map(source=>{
   const files=creatorPackageFiles(page,source).filter(id=>!used.has(id));
   files.forEach(id=>used.add(id));
   if(!files.length)return '';
-  return `<fieldset data-source-price="${source.priceCents}"><legend>${esc(source.title)} · ${creatorMoney(source.priceCents)}</legend><div class="cc-bundle-files">${files.map(id=>`<label>${adminAsset(page,id,source.title,state)}<span><input type="checkbox" name="file" value="${esc(id)}" data-source="${esc(source.id)}" ${bundle?.imageIds.includes(id)?'checked':''}> ${page.mediaTypes?.[id]==='video'||page.media?.[id]?.mediaType==='video'?'Video':'Foto'}</span></label>`).join('')}</div></fieldset>`;
+  return `<fieldset data-source-price="${source.priceCents}"><legend>${esc(source.title)} · ${creatorMoney(source.priceCents)}</legend><div class="cc-bundle-files">${files.map(id=>`<label>${adminAsset(page,id,source.title,state)}<span><input type="checkbox" id="${esc(formId)}-${esc(id)}" name="file" value="${esc(id)}" data-source="${esc(source.id)}" ${bundle?.imageIds.includes(id)?'checked':''}> ${page.mediaTypes?.[id]==='video'||page.media?.[id]?.mediaType==='video'?'Video':'Foto'}</span></label>`).join('')}</div></fieldset>`;
  }).join('');
  if(!choices)return '<p class="cc-muted">Zuerst ein Medienpaket mit Fotos oder Videos anlegen.</p>';
- return `<form data-cc-bundle="${esc(bundle?.id||'')}" data-page="${esc(page.id)}">${choices}<label>Bundlepreis in €<input name="price" required inputmode="decimal" value="${bundle?(bundle.priceCents/100).toFixed(2):''}"></label>
+ return `<form id="${esc(formId)}" data-cc-bundle="${esc(bundle?.id||'')}" data-page="${esc(page.id)}">${choices}<label>Bundlepreis in €<input name="price" required inputmode="decimal" value="${bundle?(bundle.priceCents/100).toFixed(2):''}"></label>
  <label><input type="checkbox" name="discount" ${!bundle||bundle.showDiscount?'checked':''}> Zbritje im Shop anzeigen</label>
  <output aria-live="polite">${bundle?'':'Medien und Preis auswählen.'}</output>
  <button type="submit" ${busy}>Bundle speichern</button>${bundle?`<button type="button" data-cc-action="delete-package" data-id="${esc(page.id)}" data-product="${esc(bundle.id)}">${state.deletePackageConfirm===bundle.id?'Löschen bestätigen':'Bundle löschen'}</button>`:''}</form>`;
