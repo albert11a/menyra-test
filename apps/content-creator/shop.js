@@ -1,3 +1,4 @@
+import {bundleOverlap,unavailableCreatorProducts} from '../../shared/creator-bundles.js';
 import {createCreatorVideoPreload} from '../../shared/creator-video-preload.js';
 import {createCreatorVideoPlayback} from '../../shared/creator-video-playback.js';
 import {creatorIsVideo,creatorAssetCount,creatorVideoFirst,creatorVideoUrl} from '../../shared/creator-video.js';
@@ -44,13 +45,13 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
   sold=lines;
   purchasedIds.clear();
   for(const id of ownedIds)purchasedIds.add(id);
-  for(const line of sold)purchasedIds.add(line.id);
+  for(const id of unavailableCreatorProducts(page,sold))purchasedIds.add(id);
   ids=ids.filter(id=>!purchasedIds.has(id));
  }
  applySold(page.sold||[]);
  function rememberOrder(order){
   orders.set(order.id,order);
-  for(const line of order.lines){ownedIds.add(line.id);purchasedIds.add(line.id);}
+  for(const id of unavailableCreatorProducts(page,order.lines)){ownedIds.add(id);purchasedIds.add(id);}
   ids=ids.filter(id=>!purchasedIds.has(id));
  }
  const tokens=still?[]:(Array.isArray(saved.orders)?saved.orders:[]).filter(validShopId);
@@ -411,7 +412,10 @@ export async function mountCreatorShop({root,page,still=false,track=async()=>{}}
     positions[product]=target;activateImages(track,target);track.scrollTo({left:target*track.clientWidth,behavior:'smooth'});return;
    }
    error='';
-   if(action==='add'){if(purchasedIds.has(product))return;if(page.products.find(p=>p.id===product)?.priceCents===0){await download('',product,'photos');return;}if(!ids.includes(product)){ids.push(product);activity('add',{productId:product});flash('Pakoja u shtua në shportë.');render();saveCart();}}
+   if(action==='add'){if(purchasedIds.has(product))return;if(page.products.find(p=>p.id===product)?.priceCents===0){await download('',product,'photos');return;}if(!ids.includes(product)){
+     const addedProduct=page.products.find(p=>p.id===product);
+     if(ids.some(id=>bundleOverlap(addedProduct,page.products.find(p=>p.id===id)||{}))){flash('Kjo media është tashmë në shportë.');return;}
+     ids.push(product);activity('add',{productId:product});flash('Pakoja u shtua në shportë.');render();saveCart();}}
    if(action==='cart'){panel='cart';activity('cart');render();}
    if(action==='close'&&!submitting){panel='';activity('close');render();void syncShop();}
    if(action==='checkout'){panel='checkout';activity('checkout');saveCheckout();render();root.querySelector('#shop-name')?.focus();}

@@ -1,3 +1,4 @@
+import {bundleOverlap} from '../shared/creator-bundles.js';
 import {countCreatorPhotoViews,recordCreatorPhotoViews} from './creator-photo-views.js';
 import {creatorDeliveryPhotos} from '../shared/content-creator.js';
 import {creatorVideoPreview} from './creator-video-preview.js';
@@ -47,7 +48,7 @@ export async function shopRepository(){
      if(typeof line.id!=='string'||!(line.priceCents>0))continue;
      const imageIds=(line.imageIds||[]).filter(id=>/^[A-Za-z0-9_-]{1,64}$/.test(id)).slice(0,100);
      const previous=lines.get(line.id);
-     lines.set(line.id,{id:line.id,orderCode:publicOrderCode(row.document.name.split('/').at(-1)),totalCents:wert(fields.totalCents),paymentConfirmed:wert(fields.paymentConfirmed)===true,createdAt:wert(fields.createdAt)||'',title:String(line.title||'Pako fotosh').slice(0,120),
+     lines.set(line.id,{id:line.id,...(line.bundle?{bundle:true}:{}),orderCode:publicOrderCode(row.document.name.split('/').at(-1)),totalCents:wert(fields.totalCents),paymentConfirmed:wert(fields.paymentConfirmed)===true,createdAt:wert(fields.createdAt)||'',title:String(line.title||'Pako fotosh').slice(0,120),
       imageIds:[...new Set([...(previous?.imageIds||[]),...imageIds])],
       downloadIds:[...new Set([...(previous?.downloadIds||[]),...(released?imageIds:[])])]});
     }
@@ -314,7 +315,7 @@ export async function shopAction(input,repo,{streamPhoto=false}={}){
  }
  if(op!=='order'||!validShopId(orderId))throw Error('Kërkesa nuk është e vlefshme.');
  const sold=await repo.sold?.(pageId)||[];
- if(quote.lines.some(line=>sold.some(item=>item.id===line.id)))return {sold};
+ if(quote.lines.some(line=>sold.some(item=>item.id===line.id||bundleOverlap(item,line))))return {sold};
  if(input.expectedTotalCents!==quote.totalCents)return {priceChanged:true,...quote};
  const customer=shopCustomer(input.customer);
  // Freeze original file identities; removing storefront photos never removes purchased assets.
@@ -332,7 +333,7 @@ export async function shopAction(input,repo,{streamPhoto=false}={}){
  const order={pageId,pageName:page.name,cartId,...(validShopId(input.visitorId)?{visitorId:input.visitorId}:{}),...quote,customer,paymentMethod:'cod',status:'pending',approved:false,notificationPending:true,...(quote.totalCents>0?{downloadsReleased:true,paymentSchedule:'courier',paymentWindowDays:[2,3]}:{}),createdAt:now,updatedAt:now};
  const created=repo.createOrder?await repo.createOrder(pageId,orderId,order):await repo.write(`${CC_ORDERS}/${orderId}`,order,true);
  const persisted=created?order:await repo.read(`${CC_ORDERS}/${orderId}`);
- if(!persisted&&repo.sold){const latest=await repo.sold(pageId);if(quote.lines.some(line=>latest.some(item=>item.id===line.id)))return {sold:latest};throw Error('Oferta u përditësua. Provoni përsëri.');}
+ if(!persisted&&repo.sold){const latest=await repo.sold(pageId);if(quote.lines.some(line=>latest.some(item=>item.id===line.id||bundleOverlap(item,line))))return {sold:latest};throw Error('Oferta u përditësua. Provoni përsëri.');}
  if(!persisted||persisted.cartId!==cartId||persisted.pageId!==pageId)throw Error('Porosia nuk është e vlefshme.');
  if(!repo.createOrder||!created)await repo.write(`${CC_CARTS}/${cartId}`,{status:'ordered',orderId,updatedAt:now});
  const notified=await repo.notify('order',orderId,persisted).catch(()=>false);

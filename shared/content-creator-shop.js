@@ -1,3 +1,4 @@
+import {bundleOverlap} from './creator-bundles.js';
 export const CC_CARTS='contentCreatorCarts';
 export const CC_ORDERS='contentCreatorOrders';
 export const euro=cents=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format((Number(cents)||0)/100);
@@ -28,8 +29,9 @@ export function shopQuote(page,ids){
   const product=(page.products||[]).find(p=>p.id===id&&p.active!==false);
   const images=creatorPackageFiles(page,product);
   if(!product||!Number.isSafeInteger(product.priceCents)||product.priceCents<0||product.priceCents>1000000||!images.length)throw Error('Një pako nuk është më e disponueshme.');
-  return {id,title:String(product.title||'Pako fotosh').slice(0,120),priceCents:product.priceCents,imageIds:images};
+  return {id,...(product.bundle ? {bundle:true} : {}),title:String(product.title||'Pako fotosh').slice(0,120),priceCents:product.priceCents,imageIds:images};
  });
+ if(lines.some((line,i)=>lines.slice(i+1).some(other=>bundleOverlap(line,other))))throw Error("Shporta përmban të njëjtën media dy herë.");
  if(new Set(lines.flatMap(p=>p.imageIds)).size>100)throw Error('Shporta është shumë e madhe.');
  return {lines,totalCents:lines.reduce((sum,p)=>sum+p.priceCents,0),currency:'EUR'};
 }

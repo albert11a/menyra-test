@@ -1,3 +1,5 @@
+import {makeCreatorBundle} from '../shared/creator-bundles.js';
+import {priceCents} from '../shared/content-creator-shop.js';
 import {validateCreatorAsset} from '../shared/creator-video.js';
 import {bindCreatorPhotoOrder} from '../apps/mnyra-heart/heart-creator-photo-order.js';
 import {creatorPackageFiles,creatorWatermarkOpacity} from '../shared/content-creator-shop.js';
@@ -10,7 +12,7 @@ import {createHeartStore,createHeartInitialState} from '../apps/mnyra-heart/hear
 import {renderContentCreator} from '../apps/mnyra-heart/heart-content-creator-render.js';
 import {contentLink} from '../shared/content-creator.js';
 const source=(await readFile(new URL('../apps/mnyra-heart/heart-content-creator.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export (async )?function /g,'$1function ');
-const factory=new Function('validateCreatorAsset','bindCreatorPhotoOrder','creatorPackageFiles','creatorWatermarkOpacity','db','collection','doc','getDoc','onSnapshot','setDoc','updateDoc','writeBatch','serverTimestamp','CC_PAGES','CC_VISITS','contentLink','creatorBusinessStatus','creatorBusinessMatches','runTransaction','saveCreatorCdnAsset',`const creatorCdnEnabled=async()=>false; const savePromoAsset=async(pageId,imageId,file,data)=>setDoc(doc(db,CC_PAGES,pageId,'images',imageId),{data,caption:''});\nconst unlockCreatorVideoAudio=()=>{};\n${source}\nreturn createContentCreator;`);
+const factory=new Function('makeCreatorBundle','priceCents','validateCreatorAsset','bindCreatorPhotoOrder','creatorPackageFiles','creatorWatermarkOpacity','db','collection','doc','getDoc','onSnapshot','setDoc','updateDoc','writeBatch','serverTimestamp','CC_PAGES','CC_VISITS','contentLink','creatorBusinessStatus','creatorBusinessMatches','runTransaction','saveCreatorCdnAsset',`const creatorCdnEnabled=async()=>false; const savePromoAsset=async(pageId,imageId,file,data)=>setDoc(doc(db,CC_PAGES,pageId,'images',imageId),{data,caption:''});\nconst unlockCreatorVideoAudio=()=>{};\n${source}\nreturn createContentCreator;`);
 function setup(options={}){
  const {document,window}=parseHTML('<div id="app"></div>'),root=document.getElementById('app');
  const store=createHeartStore(createHeartInitialState());
@@ -20,7 +22,7 @@ function setup(options={}){
  const doc=(...args)=>args.filter(x=>typeof x==='string').join('/');
  const update=async(path,data)=>docs.set(path,{...docs.get(path),...data});
  let fail=false;
- const create=factory(validateCreatorAsset,bindCreatorPhotoOrder,creatorPackageFiles,creatorWatermarkOpacity,{},()=>'',doc,async path=>({data:()=>docs.get(path)}),()=>()=>{},async()=>{},update,()=>{
+ const create=factory(makeCreatorBundle,priceCents,validateCreatorAsset,bindCreatorPhotoOrder,creatorPackageFiles,creatorWatermarkOpacity,{},()=>'',doc,async path=>({data:()=>docs.get(path)}),()=>()=>{},async()=>{},update,()=>{
  const writes=[];return {update:(...args)=>writes.push(()=>update(...args)),delete:path=>writes.push(()=>docs.delete(path)),commit:async()=>{if(fail)throw Error('Offline');for(const write of writes)await write();}};
  },()=>'', 'contentCreatorPages','contentCreatorVisits',contentLink,creatorBusinessStatus,creatorBusinessMatches,async(_db,callback)=>callback({
   get:async path=>({data:()=>docs.get(path)}),
@@ -50,7 +52,7 @@ function setup(options={}){
   input.dispatchEvent(new window.Event('change',{bubbles:true}));
   for(let i=0;i<20;i++)await new Promise(r=>setImmediate(r));
  }
- return {root,store,docs,click,add,sample,uploads,setFailure:value=>{fail=value;}};
+ return {root,store,docs,click,add,sample,uploads,window,setFailure:value=>{fail=value;}};
 }
 test('Paket löschen bestätigt und atomar; gemeinsame Fotos und gekaufte Originale bleiben erhalten',async()=>{
  const c=setup();await c.click('[data-cc-action="detail"]');
@@ -267,4 +269,18 @@ test('Heart uploads each sample into its own slot without changing packages',asy
  assert.match(page.photoStudioSamples.after,/studio_after.webp$/);
  assert.deepEqual(page.photoIds,['a','b','c']);
  assert.equal(c.root.querySelectorAll('.cc-studio-samples img').length,2);
+});
+
+test('HEART speichert ein Bundle im gewählten Business ohne Kopien der Originale',async()=>{
+ const c=setup();await c.click('[data-cc-action="detail"]');
+ const form=c.root.querySelector('form[data-cc-bundle=""]');
+ for(const file of ['a','c'])form.querySelector(`[value="${file}"]`).setAttribute('checked','');
+ form.querySelector('[name=price]').value='4,50';
+ form.querySelector('[name=discount]').checked=true;
+ form.dispatchEvent(new c.window.Event('submit',{bubbles:true}));
+ for(let i=0;i<20;i++)await new Promise(r=>setImmediate(r));
+ const page=c.docs.get('contentCreatorPages/shop'),bundle=page.products.at(-1);
+ assert.deepEqual(bundle.imageIds,['a','c']);assert.deepEqual(bundle.sourceIds,['p','q']);
+ assert.equal(bundle.priceCents,450);assert.equal(bundle.showDiscount,true);
+ assert.deepEqual(page.photoIds,['a','b','c']);assert.equal(c.uploads.length,0);
 });

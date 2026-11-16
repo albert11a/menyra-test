@@ -48,6 +48,22 @@ function packageCard(page,product,state,{editable=true,purchased=false}={}){
   <div class="cc-card-body" ${closed?'hidden':''}>${editable?packageEditor(page,product,state):''}</div></article>`;
 }
 
+function bundleForm(page,state,sold,bundle){
+ const sources=(page.products||[]).filter(p=>!p.bundle&&p.active!==false&&!sold.has(p.id));
+ const used=new Set(),busy=state.mediaBusy?'disabled':'';
+ const choices=sources.map(source=>{
+  const files=creatorPackageFiles(page,source).filter(id=>!used.has(id));
+  files.forEach(id=>used.add(id));
+  if(!files.length)return '';
+  return `<fieldset data-source-price="${source.priceCents}"><legend>${esc(source.title)} · ${creatorMoney(source.priceCents)}</legend><div class="cc-bundle-files">${files.map(id=>`<label>${adminAsset(page,id,source.title,state)}<span><input type="checkbox" name="file" value="${esc(id)}" data-source="${esc(source.id)}" ${bundle?.imageIds.includes(id)?'checked':''}> ${page.mediaTypes?.[id]==='video'||page.media?.[id]?.mediaType==='video'?'Video':'Foto'}</span></label>`).join('')}</div></fieldset>`;
+ }).join('');
+ if(!choices)return '<p class="cc-muted">Zuerst ein Medienpaket mit Fotos oder Videos anlegen.</p>';
+ return `<form data-cc-bundle="${esc(bundle?.id||'')}" data-page="${esc(page.id)}">${choices}<label>Bundlepreis in €<input name="price" required inputmode="decimal" value="${bundle?(bundle.priceCents/100).toFixed(2):''}"></label>
+ <label><input type="checkbox" name="discount" ${!bundle||bundle.showDiscount?'checked':''}> Zbritje im Shop anzeigen</label>
+ <output aria-live="polite">${bundle?'':'Medien und Preis auswählen.'}</output>
+ <button type="submit" ${busy}>Bundle speichern</button>${bundle?`<button type="button" data-cc-action="delete-package" data-id="${esc(page.id)}" data-product="${esc(bundle.id)}">${state.deletePackageConfirm===bundle.id?'Löschen bestätigen':'Bundle löschen'}</button>`:''}</form>`;
+}
+
 export function shopAdmin(page,state){
  if(page.kind!=='shop')return '';
  const busy=state.mediaBusy?'disabled':'';
@@ -61,10 +77,10 @@ export function shopAdmin(page,state){
    if(line.id&&line.priceCents>0&&!sold.has(line.id))sold.set(line.id,line);
   }
  }
- const packages=products.filter(product=>!sold.has(product.id)).map(product=>packageCard(page,product,state)).join('');
+ const packages=products.filter(product=>!product.bundle&&!sold.has(product.id)).map(product=>packageCard(page,product,state)).join('');
  const purchased=[...sold.values()].map(line=>{
   const product=products.find(item=>item.id===line.id);
-  return packageCard(page,product||line,state,{editable:!!product,purchased:true});
+  return packageCard(page,product||line,state,{editable:!!product&&!product.bundle,purchased:true});
  }).join('');
  const draft=state.watermarkDraft?.id===page.id?state.watermarkDraft.value:creatorWatermarkOpacity(page.watermarkOpacity);
  const sample=products.filter(p=>p.active!==false&&p.priceCents>0&&!sold.has(p.id)).flatMap(p=>creatorPackageFiles(page,p)).find(id=>page.mediaTypes?.[id]!=='video'&&page.media?.[id]?.mediaType!=='video');
@@ -75,5 +91,8 @@ export function shopAdmin(page,state){
  <button type="button" data-cc-action="watermark-reset" data-id="${esc(page.id)}" ${page.watermarkOpacity==null?'disabled':busy}>Standard wiederherstellen</button></div></div>
  <button type="button" data-cc-action="refresh-previews" data-id="${esc(page.id)}" ${busy}>Vorschauen aktualisieren</button>`,{...state,collapsedCards:{[`package-options-${page.id}`]:true,...state.collapsedCards}});
  const purchasedCard=purchased?creatorCard(`purchased-photos-${page.id}`,'Gekaufte Fotos',`<div class="cc-package-grid cc-purchased-packages">${purchased}</div>`,state,{count:sold.size}):'';
- return header+create+(packages?`<div class="cc-package-grid">${packages}</div>`:'')+options+purchasedCard;
+ const bundles=products.filter(p=>p.bundle&&!sold.has(p.id));
+ const bundleCard=creatorCard(`bundles-${page.id}`,'Bundles',
+  [...bundles,null].map(b=>`<details data-cc-fold="bundle-${esc(b?.id||page.id)}"><summary>${b?esc(b.title)+' · '+creatorMoney(b.priceCents):'Bundle erstellen'}</summary>${bundleForm(page,state,sold,b)}</details>`).join(''),state,{count:bundles.length});
+ return header+create+bundleCard+(packages?`<div class="cc-package-grid">${packages}</div>`:'')+options+purchasedCard;
 }

@@ -1,3 +1,4 @@
+import {unavailableCreatorProducts} from '../shared/creator-bundles.js';
 import {createHash} from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { ccEscape as esc, ccImage, contentLink } from '../shared/content-creator.js';
@@ -156,7 +157,7 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
       }
       await purchaseMedia;
       html=html.replace('</head>',()=>`${creatorPurchasePreloads(safePage,safePage.sold)}</head>`);
-      const catalog=renderCreatorCatalog(safePage,{purchasedIds:new Set(safePage.sold.map(line=>line.id)),photo:(key,alt,options)=>creatorPhoto(safePage,key,alt,{...options,src:covers[key]})});
+      const catalog=renderCreatorCatalog(safePage,{purchasedIds:unavailableCreatorProducts(safePage,safePage.sold),photo:(key,alt,options)=>creatorPhoto(safePage,key,alt,{...options,src:covers[key]})});
       const firstFrame=`<div class="shop-shell">${catalog}<div id="shop-image-errors"></div>${creatorHowTo(safePage)}<section class="shop-purchases" id="shop-purchases"><h2>Blerjet tuaja</h2>${creatorSoldCards(safePage,safePage.sold)||'<p>Pas porosisë, artikujt tuaj do të shfaqen këtu.</p>'}</section>${renderCreatorStudioEntry(safePage)}${creatorFooter(safePage)}</div>`;
       html=html.replace(/(<main[^>]*id="content-app"[^>]*>)[\s\S]*?(<\/main>)/,(_,open,close)=>open+firstFrame+close);
     }

@@ -1,3 +1,4 @@
+import {makeCreatorBundle} from '../../shared/creator-bundles.js';
 import {creatorVideoFile,validateCreatorAsset} from '../../shared/creator-video.js';
 import { STUDIO_ORDERS } from '../../shared/photo-studio.js';
 import {bindCreatorPhotoOrder} from './heart-creator-photo-order.js';
@@ -390,6 +391,13 @@ export function createContentCreator({root, store, prepareImage = prepareContent
   });
   root.addEventListener("change",event=>{if(event.target.hasAttribute('data-cc-watermark')){patch({watermarkDraft});const options=root.querySelector('[data-cc-watermark-page]');if(options)void paintWatermarkSample(options);}});
   root.addEventListener("input", event => {
+    const bundleForm=event.target.closest('form[data-cc-bundle]');
+    if(bundleForm){
+      const total=[...bundleForm.querySelectorAll('fieldset')].reduce((sum,field)=>sum+(field.querySelector('input:checked')?Number(field.dataset.sourcePrice):0),0);
+      let cents;try{cents=priceCents(bundleForm.querySelector('[name=price]').value);}catch{cents=null;}
+      bundleForm.querySelector('output').textContent='Ursprungspakete: '+(total/100).toFixed(2)+' €'+(cents===null?'':' · Ersparnis: '+(Math.max(0,total-cents)/100).toFixed(2)+' €');
+      return;
+    }
     if(event.target.hasAttribute('data-cc-watermark')){
       const options=event.target.closest('[data-cc-watermark-page]'),value=Number(event.target.value);
       watermarkDraft={id:options.dataset.ccWatermarkPage,value};
@@ -521,6 +529,24 @@ export function createContentCreator({root, store, prepareImage = prepareContent
   });
   root.addEventListener("submit", async event => {
     const form=event.target;
+    if(form.hasAttribute('data-cc-bundle')){
+      event.preventDefault();
+      const pageId=form.dataset.page,existing=!!form.dataset.ccBundle,id=form.dataset.ccBundle||crypto.randomUUID().replaceAll('-','');
+      const picks=[...form.querySelectorAll('[name="file"]:checked')].map(input=>({file:input.value,sourceId:input.dataset.source}));
+      const amount=form.querySelector('[name=price]').value,showDiscount=form.querySelector('[name=discount]').checked;
+      await mediaTask(async()=>{
+        const ref=doc(db,CC_PAGES,pageId);
+        const products=await runTransaction(db,async tx=>{
+          const page=(await tx.get(ref)).data();
+          const bundle=makeCreatorBundle(page,{id,existing,picks,priceCents:priceCents(amount),showDiscount});
+          const next=existing?page.products.map(p=>p.id===id?bundle:p):[...page.products,bundle];
+          tx.update(ref,{products:next,updatedAt:serverTimestamp()});
+          return next;
+        });
+        patch({pages:store.getState().contentCreator.pages.map(p=>p.id===pageId?{...p,products}:p)});
+        notice('Bundle gespeichert.');
+      });return;
+    }
     if(form.id==='cc-add-package' || form.hasAttribute('data-cc-package')){
       event.preventDefault();
       // Read before state changes rebuild the form.

@@ -263,3 +263,24 @@ test('Checkout batches original metadata and rejects missing files before commit
  assert.equal((await shopAction(request,f.repo)).id,orderId);
  assert.equal(batches,2);
 });
+
+test('Bundle übernimmt ausgewählte Originale, Paketpreis, Kaufhistorie und Downloads',async()=>{
+ const {makeCreatorBundle,bundleComparison,unavailableCreatorProducts}=await import('../shared/creator-bundles.js');
+ const {publicCreatorPage,renderCreatorCatalog}=await import('../shared/content-creator-view.js');
+ const f=fixture();
+ f.page.mediaTypes={two:'video'};
+ const bundle=makeCreatorBundle(f.page,{id:'bundle',priceCents:2000,showDiscount:true,picks:['one','two'].map(file=>({sourceId:'pack',file}))});
+ f.page.products.push(bundle);
+ assert.deepEqual(bundleComparison(f.page,bundle),{cents:2900,partial:true});
+ const safe=publicCreatorPage(f.page,pageId),html=renderCreatorCatalog(safe);
+ assert.match(html,/1 foto dhe 1 video/);assert.match(html,/Blej pakon/);assert.match(html,/Kursen 9,00/);
+ assert.throws(()=>shopQuote(f.page,['bundle','pack']));
+ const order=await shopAction({...request,ids:['bundle'],expectedTotalCents:2000},f.repo);
+ assert.equal(order.totalCents,2000);
+ const receipt=await shopAction({op:'receipt',orderId},f.repo);
+ assert.deepEqual(receipt.lines[0].imageIds,['one','two']);assert.equal(receipt.lines[0].bundle,true);
+ assert.ok(unavailableCreatorProducts(f.page,receipt.lines).has('pack'));
+ f.page.products=[];
+ assert.equal((await shopAction({op:'download',orderId,file:'two'},f.repo)).parts,1);
+ await assert.rejects(shopAction({op:'download',orderId,file:'three'},f.repo));
+});
