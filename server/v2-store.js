@@ -53,20 +53,35 @@ export function problem(status, message) {
 export async function v2Store() {
   const token = await zugangHolen(schluessel());
   async function request(path, body) {
-    const res = await fetch(base + path, {
+    const options = {
       method: body ? "POST" : "GET",
       headers: {
         authorization: "Bearer " + token,
         "content-type": "application/json",
       },
       body: body && JSON.stringify(body),
-      signal: AbortSignal.timeout(10000),
-    });
+    };
+    const readOnly = !body || path.endsWith(":runQuery");
+    const send = () => fetch(base + path, { ...options, signal: AbortSignal.timeout(10000) });
+    let res;
+    try {
+      res = await send();
+    } catch (error) {
+      if (!readOnly) throw error;
+    }
+    if (readOnly && (!res || [502, 503, 504].includes(res.status))) {
+      res = await send();
+    }
     if (res.status === 404 && !body) return null;
     if (!res.ok) {
       const detail = await res.json().catch(() => ({}));
+      console.warn("[mnyra-v2] Firestore request failed", {
+        operation: body ? (readOnly ? "query" : "commit") : "read",
+        httpStatus: res.status,
+        code: detail.error?.status,
+      });
       if (
-        ["ABORTED", "FAILED_PRECONDITION", "ALREADY_EXISTS"].includes(
+        !readOnly && ["ABORTED", "FAILED_PRECONDITION", "ALREADY_EXISTS"].includes(
           detail.error?.status,
         )
       )
