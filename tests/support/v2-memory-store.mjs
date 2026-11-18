@@ -19,9 +19,9 @@ export function memoryStore() {
         .filter(
           (r) =>
             (!where || r.data[where[0]] === where[1]) &&
-            (!start || r.id < start),
+            (!start || r.id > start),
         )
-        .sort((a, b) =>
+        .sort((a, b) => order === "__name__" ? (a.id < b.id ? -1 : Number(a.id > b.id)) :
           String(b.data[order] || b.id).localeCompare(
             String(a.data[order] || a.id),
           ),

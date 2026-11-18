@@ -46,11 +46,10 @@ test("Heart lead to menu, reel, guest reaction and entitled feed publication", a
   );
   assert.equal(lead.status, 201);
   assert.match(lead.pin, /^[0-9]{5}$/);
-  assert.equal(
-    (await api("admin-create", { name: "Riga Demo", city: "Prishtinë" }, true))
-      .status,
-    409,
-  );
+  const repeated = await api("admin-create", { name: "Riga Demo", city: "Prishtinë" }, true);
+  assert.equal(repeated.status, 200);
+  assert.equal(repeated.existing, true);
+  assert.equal(repeated.pin, lead.pin);
   assert.equal(
     (
       await api(
@@ -165,4 +164,18 @@ test("HTML and initial client state contain the same escaped restaurant", async 
   assert.equal(state.slug, "mobile-demo");
   assert.ok(html.includes("Riga &lt;/script&gt; &amp; Grill"));
   assert.equal(state.salt, undefined);
+});
+
+test("Numa retains a reserved Creator page and repeated submissions return one V2 lead", async () => {
+  const { createLead } = await import("../server/v2-business.js");
+  const { change } = await import("../server/v2-store.js");
+  const repo = memoryStore();
+  const input = { name: "Numa", city: "Prishtina", countryCode: "xk", slug: "Numa" };
+  await repo.commit([change("contentCreatorPages/numa", { kind: "existing-shop" }, false)]);
+  const [first, second] = await Promise.all([createLead(repo, input), createLead(repo, input)]);
+  assert.equal(first.slug, "numa-prishtina");
+  assert.equal(second.pin, first.pin);
+  assert.equal((await repo.query("v2Leads")).length, 1);
+  assert.equal((await repo.read("contentCreatorPages/numa")).data.kind, "existing-shop");
+  await assert.rejects(createLead(repo, { ...input, name: "Another business" }), /Profillink ist bereits belegt/);
 });

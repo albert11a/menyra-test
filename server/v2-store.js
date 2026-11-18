@@ -78,7 +78,7 @@ export async function v2Store() {
       console.warn("[mnyra-v2] Firestore request failed", {
         operation: body ? (readOnly ? "query" : "commit") : "read",
         httpStatus: res.status,
-        code: detail.error?.status,
+        code: (Array.isArray(detail) ? detail[0] : detail)?.error?.status,
       });
       if (
         !readOnly && ["ABORTED", "FAILED_PRECONDITION", "ALREADY_EXISTS"].includes(
@@ -109,7 +109,7 @@ export async function v2Store() {
           },
         };
       if (order)
-        q.orderBy = [{ field: { fieldPath: order }, direction: "DESCENDING" }];
+        q.orderBy = [{ field: { fieldPath: order }, direction: order === "__name__" ? "ASCENDING" : "DESCENDING" }];
       if (start)
         q.startAt = {
           values: [{ referenceValue: name + "/" + collection + "/" + start }],

@@ -1,3 +1,4 @@
+import { mountHeartV2 } from "./heart-v2.js";
 import { ensureCreatorStyles } from "./heart-creator-styles.js";
 import { fastKonfig } from "../../shared/lifeskin-fast.js";
 import { speichereFast } from "./heart-lifeskin-adapter.js";
@@ -236,6 +237,7 @@ let crmBuildStatusCache = {
 function getRenderRuntime() {
   return {
     crmAdminConsumerDeps,
+    getIdToken: authController.getIdToken,
     now: renderClock
   };
 }
@@ -4044,6 +4046,10 @@ const VIEW_LOADERS = Object.freeze({
   ]),
   landing: (options) => refreshLanding(options),
   contentCreator: () => contentCreator.load(),
+  mnyraV2: ({ force }) => {
+    const section = root.querySelector("[data-heart-v2]");
+    if (force && section) return mountHeartV2(section, authController.getIdToken)();
+  },
   crmLeads: (options) => loadCrmDomain("leads", options),
   crmCustomers: (options) => loadCrmDomain("customers", options),
   crmAds: (options) => loadCrmDomain("ads", options),

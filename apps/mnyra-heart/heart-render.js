@@ -1,3 +1,4 @@
+import { mountHeartV2 } from "./heart-v2.js";
 import { renderFastKnopf } from "./heart-lifeskin-fast.js";
 import {
   HEART_NAV_ITEMS
@@ -265,7 +266,7 @@ function renderViewBody(state, runtime = {}) {
 function renderViewBodyInner(state, runtime = {}) {
   const activeView = state.shell.activeView;
 
-  if (activeView === "mnyraV2") return `<iframe title="MNYRA V2 · Leads" src="/apps/mnyra-v2/heart.html" style="display:block;width:100%;height:calc(100dvh - 5rem);border:0;border-radius:18px;background:#f7f7f2"></iframe>`;
+  if (activeView === "mnyraV2") return `<section class="heart-section" data-heart-v2="${escapeHtml(state.auth.user?.uid || "")}" data-morph-key="v2-${escapeHtml(state.auth.user?.uid || "")}" data-morph-hash="v2"></section>`;
   if (activeView === "contentCreator") return renderContentCreator(state.contentCreator);
   if (activeView === "analytics") {
     return renderHeartAnalyticsView(state.analytics || {});
@@ -689,12 +690,19 @@ export function renderHeartApp(rootNode, state, runtime = {}) {
   // Identisches Markup nicht neu schreiben -> kein unnoetiges DOM-Neuaufbauen
   // (verhindert Flackern/Bild-Neuladen bei Hintergrund-Refreshes ohne Aenderung).
   if (rootNode.__heartLastMarkup === markup) return;
+  const previousV2 = runtime.getIdToken && rootNode.querySelector?.("[data-heart-v2]");
   const focusSnapshot = captureHeartActiveField(rootNode);
   const wischStand = captureChipScroll(rootNode);
   const bewahrt = captureBewahrt(rootNode);
   const creatorDom = captureCreatorDom(rootNode);
   if (MORPH && typeof rootNode.ownerDocument?.createElement === "function") morphInhalt(rootNode, markup);
   else rootNode.innerHTML = markup;
+  const currentV2 = rootNode.querySelector?.("[data-heart-v2]");
+  if (currentV2 && runtime.getIdToken) {
+    const sameUser = previousV2 && previousV2.dataset.heartV2 === currentV2.dataset.heartV2;
+    if (sameUser && previousV2 !== currentV2) currentV2.replaceWith(previousV2);
+    mountHeartV2(sameUser ? previousV2 : currentV2, runtime.getIdToken);
+  }
   rootNode.__heartLastMarkup = markup;
   restoreBewahrt(rootNode, bewahrt);
   restoreCreatorDom(rootNode,creatorDom);

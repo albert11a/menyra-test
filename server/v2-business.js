@@ -45,6 +45,31 @@ export async function createLead(repo, input) {
     slug.endsWith("-fotot")
   )
     throw problem(400, "Bitte einen freien Restaurantnamen und Ort eingeben.");
+  const countryCode = input.countryCode || "xk";
+  if (!["xk", "al", "rs"].includes(countryCode)) invalid();
+  const candidates = [slug];
+  if (slug === normalizePublicBusinessSlugCore(name)) {
+    const local = normalizePublicBusinessSlugCore(name + "-" + city);
+    if (slugOk(local) && local !== slug && !reserved.has(local) && !local.endsWith("-fotot")) candidates.push(local);
+  }
+  for (const candidate of candidates) {
+    try {
+      return await reserveLead(repo, { name, city, countryCode }, candidate);
+    } catch (error) {
+      if (error.status !== 409) throw error;
+      const lead = await repo.read("v2Leads/" + candidate);
+      if (lead?.data.salt) {
+        const profile = (await repo.read("restaurants/" + candidate))?.data;
+        if (profile?.mnyraV2 && profile.name === name && profile.city === city && profile.countryCode === countryCode) {
+          return { slug: candidate, pin: pinFor(candidate, lead.data.salt), existing: true };
+        }
+      }
+    }
+  }
+  throw problem(409, "Dieser Profillink ist bereits belegt. Bitte einen anderen Link eingeben.");
+}
+
+async function reserveLead(repo, { name, city, countryCode }, slug) {
   const aliases = await Promise.all(
     ["publicSlug", "landingSlug"].map((key) =>
       repo.query("restaurants", { where: [key, slug], limit: 1 }),
@@ -53,8 +78,6 @@ export async function createLead(repo, input) {
   if (aliases.some((list) => list.length))
     throw problem(409, "Dieser Restaurantlink ist bereits vergeben.");
   const salt = newSalt();
-  const countryCode = input.countryCode || "xk";
-  if (!["xk", "al", "rs"].includes(countryCode)) invalid();
   const profile = {
     name,
     city,

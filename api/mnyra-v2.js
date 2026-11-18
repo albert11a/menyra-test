@@ -45,7 +45,10 @@ export async function serveV2(
     if (admin && !(await authorize(req)))
       return reply(403, { error: "CEO-Anmeldung erforderlich." });
     const repo = await store();
-    if (op === "admin-create") return reply(201, await createLead(repo, input));
+    if (op === "admin-create") {
+      const result = await createLead(repo, input);
+      return reply(result.existing ? 200 : 201, result);
+    }
     if (op === "admin-list") {
       if (input.after && !slugOk(input.after)) return reply(400, {});
       if (input.stage && !stages.includes(input.stage)) return reply(400, {});
