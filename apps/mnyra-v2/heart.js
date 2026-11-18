@@ -1,5 +1,3 @@
-import { auth } from "/shared/firebase-config.js";
-import { onAuthStateChanged } from "/shared/vendor/firebase/11.0.0/firebase-auth.js";
 import { ccEscape as esc } from "../../shared/content-creator.js";
 const stages = [
   "Neu",
@@ -13,13 +11,17 @@ let leads = [],
   filter = "",
   next = null;
 async function api(op, payload = {}) {
-  const user = auth.currentUser;
-  if (!user) throw Error("Bitte in Heart anmelden.");
+  const session = {};
+  window.frameElement?.dispatchEvent(
+    new CustomEvent("mnyra-v2-session", { bubbles: true, detail: session }),
+  );
+  const token = await session.token;
+  if (!token) throw Error("Bitte in Heart anmelden.");
   const res = await fetch("/api/mnyra-v2", {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: "Bearer " + (await user.getIdToken()),
+      authorization: "Bearer " + token,
     },
     body: JSON.stringify({ op: "admin-" + op, ...payload }),
   });
@@ -54,20 +56,29 @@ async function load(after) {
   if (requested !== filter) return;
   leads = after ? [...leads, ...out.leads] : out.leads;
   next = out.next;
+  $("list-error").textContent = "";
+  $("retry").hidden = true;
   draw();
 }
 const report = (e) => {
   $("message").textContent = e.message;
 };
-onAuthStateChanged(auth, (user) => {
-  if (user) load().catch(report);
-  else {
-    leads = [];
-    next = null;
-    draw();
-    $("message").textContent = "Bitte in Heart anmelden.";
+const reportListError = (e) => {
+  $("list-error").textContent = "Liste konnte nicht geladen werden. " + e.message;
+  $("retry").hidden = false;
+};
+if (window.parent === window) window.location.replace("/heart#mnyrav2");
+else load().catch(reportListError);
+$("retry").onclick = async () => {
+  $("retry").disabled = true;
+  try {
+    await load();
+  } catch (e) {
+    reportListError(e);
+  } finally {
+    $("retry").disabled = false;
   }
-});
+};
 $("add").onclick = () => {
   $("create").hidden = !$("create").hidden;
   if (!$("create").hidden) $("create").elements.name.focus();
@@ -90,7 +101,7 @@ $("create").onsubmit = async (event) => {
     form.reset();
     form.hidden = true;
     filter = "";
-    await load();
+    await load().catch(reportListError);
   } catch (e) {
     report(e);
   } finally {
@@ -99,7 +110,7 @@ $("create").onsubmit = async (event) => {
 };
 document.addEventListener("change", async (event) => {
   const select = event.target;
-  if (select.tagName !== "SELECT") return;
+  if (!select.matches("article[data-slug] select")) return;
   const slug = select.closest("article").dataset.slug,
     row = leads.find((r) => r.slug === slug);
   select.disabled = true;
@@ -125,7 +136,7 @@ document.addEventListener("click", async (event) => {
     try {
       await load();
     } catch (e) {
-      report(e);
+      reportListError(e);
     }
     return;
   }
@@ -133,7 +144,7 @@ document.addEventListener("click", async (event) => {
   b.disabled = true;
   try {
     if (b.dataset.action === "more") {
-      await load(next);
+      await load(next).catch(reportListError);
       return;
     }
     const article = b.closest("article"),

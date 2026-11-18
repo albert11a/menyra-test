@@ -76,7 +76,14 @@ export function createHeartAuthController({ store }) {
     actions.setAuthReady(user, profile, user.uid === ALBERT_CEO_UID ? "global-ceo" : "role-ceo");
   }
 
+  function handleV2Session(event) {
+    if (!event.target.matches?.('iframe[src="/apps/mnyra-v2/heart.html"]')) return;
+    if (store.getState().auth.status !== "authenticated") return;
+    event.detail.token = getIdToken();
+  }
+
   async function initialize() {
+    document.addEventListener("mnyra-v2-session", handleV2Session);
     await ensurePersistence();
     actions.setAuthChecking();
     unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -110,6 +117,7 @@ export function createHeartAuthController({ store }) {
   }
 
   function destroy() {
+    document.removeEventListener("mnyra-v2-session", handleV2Session);
     if (typeof unsubscribe === "function") unsubscribe();
   }
 
