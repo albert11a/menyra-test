@@ -3145,7 +3145,7 @@ export function createFeedViewOrchestrationController({
       heroReady,
       rootAttrs: `${feedAttr} ${feedRenderAttr}`,
       menuHtml,
-      profileButtonAttrs: `data-profile-business="${escapeHtmlFn(post.business)}" data-profile-id="${escapeHtmlFn(post.restaurantId || "")}"`,
+      profileButtonAttrs: `${post.mnyraV2 || restaurant.mnyraV2 ? 'data-v2-profile="true" ' : ''}data-profile-business="${escapeHtmlFn(post.business)}" data-profile-id="${escapeHtmlFn(post.restaurantId || "")}"`,
       likeButtonAttrs: `data-feed-post-like="${escapeHtmlFn(postId)}" data-post-like-btn="${escapeHtmlFn(postId)}"`,
       likeCountAttrs: likeAttr,
       commentButtonAttrs: `data-feed-post-comment="${escapeHtmlFn(postId)}"`,
@@ -4059,6 +4059,10 @@ export function createFeedViewOrchestrationController({
       }
       const profileBtn = target.closest("[data-profile-business]");
       if (profileBtn) {
+        if (profileBtn.dataset.v2Profile && /^[a-z0-9-]+$/.test(profileBtn.dataset.profileId)) {
+          window.location.assign("/" + profileBtn.dataset.profileId);
+          return;
+        }
         openProfileViewFromBusinessFn({
           id: profileBtn.dataset.profileId || "",
           name: profileBtn.dataset.profileBusiness || ""

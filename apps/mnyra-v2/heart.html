@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="stylesheet" href="/apps/mnyra-v2/v2.css" />
+    <title>MNYRA V2 · Heart</title>
+  </head>
+  <body>
+    <main>
+      <div class="row">
+        <h1>MNYRA V2</h1>
+        <button id="add" class="primary">+ Lead</button>
+      </div>
+      <form id="create" hidden>
+        <label
+          >Restaurantname<input name="name" maxlength="90" required /></label
+        ><label>Stadt<input name="city" required /></label
+        ><label
+          >Land<select name="countryCode">
+            <option value="xk">Kosovo</option>
+            <option value="al">Albanien</option>
+            <option value="rs">Serbien</option>
+          </select></label
+        ><label>Link<input name="slug" placeholder="restaurant-name" /></label
+        ><button class="primary">Lead erstellen</button>
+      </form>
+      <p id="message" role="status"></p>
+      <div id="filters" class="chips rail"></div>
+      <div id="list"></div>
+    </main>
+    <script type="module" src="/apps/mnyra-v2/heart.js"></script>
+  </body>
+</html>

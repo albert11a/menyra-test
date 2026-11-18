@@ -204,6 +204,7 @@ export function createFeedVisibilityRuntimeCluster({
     const poster = String(row?.thumbUrl || row?.media?.[0]?.thumbUrl || canonicalPost?.thumbUrl || "").trim();
     return {
       id: postId,
+      ...(row.mnyraV2 === true ? {mnyraV2:true} : {}),
       restaurantId,
       isVideo,
       videoUrl,

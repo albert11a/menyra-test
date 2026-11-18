@@ -281,7 +281,7 @@ export function createContentCreator({root, store, prepareImage = prepareContent
     function listen(name,key){
       subscriptions.push(onSnapshot(collection(db,name),snap=>{
         delete errors[key];
-        patch({[key]:snap.docs.map(d=>({id:d.id,...d.data()})).filter(row=>key!=='pages'||row.kind!=='creator-route'),status:"ready",error:Object.values(errors).join(' ')});
+        patch({[key]:snap.docs.map(d=>({id:d.id,...d.data()})).filter(row=>key!=='pages'||!['creator-route','v2-route'].includes(row.kind)),status:"ready",error:Object.values(errors).join(' ')});
         if(key==='pages'||key==='orders')void preparePackageDeliveries();
         if(key==='pages'){void activateCompletedEmptyShops(store.getState().contentCreator.pages);void migrateExisting();}
       },error=>{errors[key]=`${key}: ${error.message}`;patch({error:Object.values(errors).join(' ')});}));

@@ -104,7 +104,7 @@ const CRM_VIEW_DOMAIN_BY_ACTIVE_VIEW = Object.freeze({
 // erste Zahl kam - und wer die Analysen aufmacht, weiss, dass er in den
 // Analysen ist.
 const VIEWS_WITHOUT_PAGE_TITLE = new Set([
-  "dashboard", "crmLeads", "destinations", "landing", "lifeskin", "contentCreator"
+  "dashboard", "crmLeads", "destinations", "landing", "lifeskin", "contentCreator", "mnyraV2"
 ]);
 
 // DER KOPF SAGT, WO MAN IST.
@@ -265,6 +265,7 @@ function renderViewBody(state, runtime = {}) {
 function renderViewBodyInner(state, runtime = {}) {
   const activeView = state.shell.activeView;
 
+  if (activeView === "mnyraV2") return `<iframe title="MNYRA V2 · Leads" src="/apps/mnyra-v2/heart.html" style="display:block;width:100%;height:calc(100dvh - 5rem);border:0;border-radius:18px;background:#f7f7f2"></iframe>`;
   if (activeView === "contentCreator") return renderContentCreator(state.contentCreator);
   if (activeView === "analytics") {
     return renderHeartAnalyticsView(state.analytics || {});
@@ -392,6 +393,7 @@ function renderDrawerNav(state) {
   const unter = NAV_MNYRA.map((key) => renderNavLink(eintrag.get(key), state, { unter: true })).join("");
   return `
     ${renderNavLink(eintrag.get("contentCreator"), state)}
+    ${renderNavLink(eintrag.get("mnyraV2"), state)}
     ${renderNavLink(eintrag.get("lifeskin"), state)}
     ${renderNavLink({ ...LIFESKINSHOP_NAV, label: "lifeskinshop" }, state)}
     <div class="heart-nav-gruppe${offen ? " heart-nav-gruppe--offen" : ""}">

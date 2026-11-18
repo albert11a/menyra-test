@@ -318,7 +318,7 @@
     },
     {
       "source": "/feed",
-      "destination": "/index.html"
+      "destination": "/apps/menyra-social/index.html"
     },
     {
       "source": "/search",
@@ -1242,8 +1242,9 @@
     }
   ],
   "functions": {
+    "api/mnyra-v2.js": { "includeFiles": "vercel.json" },
     "api/content-creator.js": {
-      "includeFiles": "{dist/apps/menyra-social/index.html,apps/menyra-social/index.html,dist/apps/content-creator/index.html,dist/apps/content-creator/*.css}"
+      "includeFiles": "{vercel.json,dist/apps/mnyra-v2/index.html,apps/mnyra-v2/index.html,dist/apps/menyra-social/index.html,apps/menyra-social/index.html,dist/apps/content-creator/index.html,dist/apps/content-creator/*.css}"
     },
     "api/oferta.js": {
       "includeFiles": "apps/menyra-social/lead-landing/index.html"

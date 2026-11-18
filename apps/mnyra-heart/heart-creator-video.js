@@ -4,7 +4,7 @@ import {creatorVideoAudioContext} from './heart-creator-video-audio.js';
 
 // Two derivatives: a full 1920px video retaining audio, and a short, silent
 // 1080px forward/reverse clip. Paid derivatives have a baked watermark.
-export async function prepareCreatorVideo(file,{free=false,watermark=()=>{}}={}){
+export async function prepareCreatorVideo(file,{free=false,watermark=()=>{},loop=true}={}){
  if(!creatorVideoFile(file)||file.size<1||file.size>100*1024*1024)throw Error('MP4, MOV oder WebM bis 100 MB wählen.');
  const Recorder=globalThis.MediaRecorder;
  const mimes=['video/mp4;codecs=avc1.4d0028,mp4a.40.2','video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp8,opus','video/webm'].filter(type=>Recorder?.isTypeSupported?.(type));
@@ -61,12 +61,13 @@ export async function prepareCreatorVideo(file,{free=false,watermark=()=>{}}={})
    video.onended=stop;video.onerror=()=>fail('Video konnte nicht vollständig verarbeitet werden.');
    const tick=()=>{
     draw();
-    if(video.currentTime<=1.2&&frames.length<maxFrames&&video.currentTime-lastCapture>=.9/captureFps){smallContext.drawImage(video,0,0,small.width,small.height);if(!free)watermark(smallContext,small.width,small.height);if(!frames.length)firstCapture=video.currentTime;frames.push(smallContext.getImageData(0,0,small.width,small.height));lastCapture=video.currentTime;}
+    if(loop&&video.currentTime<=1.2&&frames.length<maxFrames&&video.currentTime-lastCapture>=.9/captureFps){smallContext.drawImage(video,0,0,small.width,small.height);if(!free)watermark(smallContext,small.width,small.height);if(!frames.length)firstCapture=video.currentTime;frames.push(smallContext.getImageData(0,0,small.width,small.height));lastCapture=video.currentTime;}
     frame=requestAnimationFrame(tick);
    };
    tick();
   });
-  video.pause();if(!preview.size||frames.length<2)throw Error('Videovorschau ist unvollständig.');
+  video.pause();if(!loop&&preview.size)return {preview,poster};
+  if(!preview.size||frames.length<2)throw Error('Videovorschau ist unvollständig.');
   // Reverse is encoded once, rather than repeated seeking/negative playbackRate
   // on every customer's phone. At most 36 bounded frames are held in memory.
   const sequence=[...frames,...frames.slice(1,-1).reverse()],fps=Math.min(captureFps,Math.max(12,(frames.length-1)/Math.max(.001,lastCapture-firstCapture)));

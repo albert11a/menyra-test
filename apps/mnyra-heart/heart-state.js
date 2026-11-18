@@ -4,6 +4,7 @@ const CRM_ADMIN_DOMAIN_KEYS = Object.freeze(["leads", "customers", "ads", "staff
 export const HEART_NAV_ITEMS = Object.freeze([
   { key: "dashboard", label: "Start" },
   { key: "landing", label: "Landing" },
+  { key: "mnyraV2", label: "MNYRA V2" },
   { key: "contentCreator", label: "Content Creator" },
   { key: "crmLeads", label: "Leads" },
   { key: "crmCustomers", label: "Kunden" },

@@ -43,10 +43,10 @@ function lead(html = "") {
   return start === -1 ? "" : html.slice(start, end === -1 ? undefined : end);
 }
 
-test("the social pages keep MNYRA Social", () => {
+test("the public feed shows the Creator wordmark", () => {
   const html = lead(header({ activeTab: "feed" }));
   assert.ok(html.includes(">MNYRA</h1>"));
-  assert.ok(html.includes(">Social</span>"));
+  assert.ok(html.includes("v2-brand"));
   assert.equal(html.includes("smart-header-brand--go"), false);
   assert.equal(html.includes("smart-header-brand--work"), false);
 });

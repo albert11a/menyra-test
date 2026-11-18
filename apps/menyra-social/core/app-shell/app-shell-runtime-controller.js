@@ -997,6 +997,7 @@ export function createAppShellRuntimeController(deps = {}) {
     // BEIDE GO-Seiten, und das war ein Fehler: Hier stand nur "go", die Seite
     // des Gastes. Das Lokal sitzt auf "gobiznes" und las im Kopf deshalb
     // weiter "MNYRA Social", waehrend unter ihm GO stand.
+    if (activeTabKey === "feed") return `<div class="smart-header-brand v2-brand" data-nav="feed"><h1>MNYRA</h1><span></span></div>`;
     if (activeTabKey === "go" || activeTabKey === "gobiznes") {
       return `
         <div class="smart-header-brand smart-header-brand--go flex items-baseline cursor-pointer" data-nav="feed">

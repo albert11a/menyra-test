@@ -44,6 +44,16 @@ export async function serveContentCreator(req,res,{read=publicDocument,shell,loa
     if(/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(creatorSlug)&&creatorSlug.length<=80){
       try{route=await read(`contentCreatorPages/${creatorSlug}`);}catch{}
     }
+    if(route?.kind==='v2-route' && route.restaurantId===creatorSlug){
+      try {
+        const {restaurantDocument}=await import('../server/v2-document.js');
+        const html=await restaurantDocument(creatorSlug);
+        res.setHeader('Cache-Control','public,max-age=0,s-maxage=10,stale-while-revalidate=30');
+        res.setHeader('Content-Type','text/html; charset=utf-8');
+        res.end(req.method==='HEAD'?undefined:html);
+      } catch { res.statusCode=503;res.setHeader('Cache-Control','no-store');res.end('Provo përsëri.'); }
+      return;
+    }
     if(route?.kind==='creator-route'&&/^[a-f0-9]{32}$/.test(route.pageId))id=route.pageId;
     else{
       let html;

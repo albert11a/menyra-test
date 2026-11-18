@@ -99,6 +99,18 @@ for (const pathFromRoot of [...deployablePaths, ...optionalRootFiles]) {
   if (await copyIfPresent(pathFromRoot)) copied.push(pathFromRoot);
 }
 
+const v2Base = "/apps/mnyra-v2/";
+const v2Dir = resolve(distRoot,"apps/mnyra-v2");
+await viteBuild({
+  configFile:false, base:v2Base, publicDir:false,
+  build:{outDir:v2Dir,emptyOutDir:false,target:"es2020",manifest:"v2-manifest.json",
+    rollupOptions:{input:resolve(repoRoot,"apps/mnyra-v2/profile.js")}}
+});
+const v2Manifest=JSON.parse(await readFile(resolve(v2Dir,"v2-manifest.json"),"utf8"));
+const v2Template=resolve(v2Dir,"index.html");
+await writeFile(v2Template,(await readFile(v2Template,"utf8")).replace(v2Base+"profile.js",v2Base+v2Manifest["apps/mnyra-v2/profile.js"].file)
+  .replace(/<link rel="stylesheet" href="\/apps\/mnyra-v2\/v2\.css"\s*\/?>/,`<style>${await readFile(resolve(v2Dir,"v2.css"),"utf8")}</style>`));
+
 // Keep the Creator entry and its optional features separate in production.
 const creatorPath = "apps/content-creator";
 const creatorBase = `/${creatorPath}/bundled/`;

@@ -175,7 +175,7 @@ test("zbulo header keeps the text logo and offers the pin as first action icon",
   // Textlogo ist zurueck ...
   assert.match(html, /class="smart-header-brand[^"]*"/);
   assert.match(html, />MNYRA<\/h1>/);
-  assert.match(html, />Social<\/span>/);
+  assert.match(html, /v2-brand/);
   // ... und das Location-Feld liegt daneben im selben DOM.
   assert.match(html, /data-feed-location-scope="header"/);
   assert.match(html, /id="feedLocationCityInput"/);
